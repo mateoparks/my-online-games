@@ -1,67 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Connect 4</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; background: #f4f4f8; }
-    #board { display: inline-grid; grid-template-columns: repeat(7, 56px); gap: 6px; padding: 10px; background: #1d4ed8; border-radius: 8px; }
-    .cell { width: 56px; height: 56px; border-radius: 50%; background: #fff; cursor: pointer; }
-    .cell.red { background: #ef4444; }
-    .cell.yellow { background: #facc15; }
-  </style>
+  <meta name="theme-color" content="#e9f7ed">
+  <title>Connect 4 | Arcade Current</title>
+  <script src="../../assets/theme.js"></script>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="game.css">
 </head>
-<body>
-  <p><a href="../../index.html">&larr; All games</a></p>
-  <h1>Connect 4</h1>
-  <p id="status"></p>
-  <div id="board"></div>
-  <p><button id="reset">New game</button></p>
-  <script>
-    const ROWS = 6, COLS = 7;
-    let grid, player, over;
-    const boardEl = document.getElementById('board');
-    const statusEl = document.getElementById('status');
-
-    function reset() {
-      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-      player = 'red'; over = false;
-      render();
-    }
-    function render() {
-      boardEl.innerHTML = '';
-      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-        const d = document.createElement('div');
-        d.className = 'cell' + (grid[r][c] ? ' ' + grid[r][c] : '');
-        d.onclick = () => drop(c);
-        boardEl.appendChild(d);
-      }
-      if (!over) statusEl.textContent = player + "'s turn";
-    }
-    function drop(c) {
-      if (over) return;
-      for (let r = ROWS - 1; r >= 0; r--) if (!grid[r][c]) {
-        grid[r][c] = player;
-        if (wins(r, c)) { over = true; statusEl.textContent = player + ' wins!'; }
-        else if (grid.every(row => row.every(Boolean))) { over = true; statusEl.textContent = 'Draw!'; }
-        else player = player === 'red' ? 'yellow' : 'red';
-        render();
-        return;
-      }
-    }
-    function wins(r, c) {
-      return [[0,1],[1,0],[1,1],[1,-1]].some(([dr, dc]) => {
-        let n = 1;
-        for (const s of [1, -1]) {
-          let rr = r + dr * s, cc = c + dc * s;
-          while (grid[rr] && grid[rr][cc] === player) { n++; rr += dr * s; cc += dc * s; }
-        }
-        return n >= 4;
-      });
-    }
-    document.getElementById('reset').onclick = reset;
-    reset();
-  </script>
+<body class="game-page">
+  <header class="site-header game-header">
+    <a class="back" href="../../index.html">&larr; All games</a>
+    <a class="brand" href="../../index.html">Arcade Current</a>
+    <button class="theme-toggle" type="button" aria-label="Switch color theme">
+      <span class="theme-icon" aria-hidden="true">☀</span>
+      <span class="theme-icon" aria-hidden="true">☾</span>
+      <span class="theme-thumb" aria-hidden="true"></span>
+    </button>
+  </header>
+  <main>
+    <p class="eyebrow">Drop, line up, win</p>
+    <h1>Connect 4</h1>
+    <p id="status"></p>
+    <div id="board"></div>
+    <div class="team-colors" role="group" aria-labelledby="checker-colors-title">
+      <p id="checker-colors-title" class="team-colors-title">Checker colors</p>
+      <label class="team-color" for="red-color">Red team <input id="red-color" data-checker="red" type="color" value="#d82e3f"></label>
+      <label class="team-color" for="yellow-color">Yellow team <input id="yellow-color" data-checker="yellow" type="color" value="#e9a916"></label>
+    </div>
+    <p><button id="reset" class="primary-button">New game</button></p>
+  </main>
+  <script src="game.js"></script>
 </body>
 </html>

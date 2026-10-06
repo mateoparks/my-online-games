@@ -1,0 +1,176 @@
+:root {
+  --well: #e8fbfa;
+  --checker-red: #d82e3f;
+  --checker-yellow: #e9a916;
+}
+
+[data-theme="dark"] {
+  --well: #111a20;
+}
+
+#status {
+  min-height: 1.5em;
+  margin: .8rem 0 1.25rem;
+  color: var(--muted);
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+#board {
+  display: inline-grid;
+  grid-template-columns: repeat(7, min(11vw, 56px));
+  gap: min(1.2vw, 6px);
+  padding: min(2vw, 10px);
+  border: 1px solid #ffffff80;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--aqua-bright), var(--aqua));
+  box-shadow: inset 0 2px #ffffff70, 0 14px 30px var(--shadow);
+}
+
+.cell {
+  width: min(11vw, 56px);
+  height: min(11vw, 56px);
+  border-radius: 50%;
+  background: var(--well);
+  box-shadow: inset 0 3px 6px #0002;
+  cursor: pointer;
+  transition: transform .15s ease;
+}
+
+.cell:hover {
+  transform: scale(.93);
+}
+
+.cell.red {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--checker-red) 58%, white), var(--checker-red));
+}
+
+.cell.yellow {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--checker-yellow) 58%, white), var(--checker-yellow));
+}
+
+.cell.dropping {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+  animation: drop-checker var(--drop-duration) cubic-bezier(.22, .7, .28, 1) both;
+}
+
+#confetti {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -1.5rem;
+  left: var(--left);
+  width: .65rem;
+  height: 1rem;
+  background: var(--piece-color);
+  border-radius: .1rem;
+  animation: confetti-fall var(--duration) cubic-bezier(.15, .65, .35, 1) var(--delay) forwards;
+}
+
+.confetti-piece:nth-child(3n) {
+  width: .45rem;
+  height: .45rem;
+  border-radius: 50%;
+}
+
+.confetti-piece:nth-child(4n) {
+  width: .8rem;
+  height: .35rem;
+}
+
+@keyframes confetti-fall {
+  to {
+    transform: translate3d(var(--drift), 110vh, 0) rotate(var(--rotation));
+    opacity: 0;
+  }
+}
+
+@keyframes drop-checker {
+  0% {
+    transform: translateY(calc(var(--drop-distance) * -1));
+  }
+
+  82% {
+    transform: translateY(3px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+#reset {
+  margin-top: 1.3rem;
+}
+
+.team-colors {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1.5rem auto 0;
+  padding: .8rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--palm) 28%, transparent);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--muted);
+  box-shadow: 0 3px 10px var(--shadow);
+}
+
+.team-colors-title {
+  width: 100%;
+  margin: 0 0 .1rem;
+  color: var(--aqua);
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.team-color {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  color: var(--ink);
+  font-size: .9rem;
+  font-weight: 800;
+}
+
+.team-color input {
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--palm) 30%, transparent);
+  border-radius: 50%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.team-color input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.team-color input::-webkit-color-swatch,
+.team-color input::-moz-color-swatch {
+  border: 0;
+  border-radius: 50%;
+}
+
+@media (max-width: 420px) {
+  .team-colors {
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+  }
+}
