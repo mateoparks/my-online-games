@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e9f7ed">
+  <title>Escape from Alpha Centauri | Arcade Current</title>
+  <script src="../../assets/theme.js"></script>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="game.css">
+</head>
+<body class="game-page">
+  <header class="site-header game-header">
+    <a class="back" href="../../index.html">&larr; All games</a>
+    <a class="brand" href="../../index.html">Arcade Current</a>
+    <button class="theme-toggle" type="button" aria-label="Switch color theme">
+      <span class="theme-icon" aria-hidden="true">☀</span>
+      <span class="theme-icon" aria-hidden="true">☾</span>
+      <span class="theme-thumb" aria-hidden="true"></span>
+    </button>
+  </header>
+  <main>
+    <p class="eyebrow">First signal</p>
+    <h1>Escape from Alpha Centauri</h1>
+    <p class="intro">You are alone, hungry, and far from home. Start by finding your footing.</p>
+    <section class="game-shell" aria-labelledby="game-title">
+      <h2 id="game-title" class="visually-hidden">Flatland expedition</h2>
+      <canvas id="game" width="960" height="480" aria-describedby="game-help" tabindex="0">
+        Your browser does not support canvas. Use a modern browser to play.
+      </canvas>
+      <p id="status" class="visually-hidden" aria-live="polite">Use the left and right arrow keys or A and D to walk.</p>
+      <p class="active-objective">Objective: <output id="active-objective" aria-live="polite">Follow the emergency signal east.</output></p>
+      <p id="game-help" class="game-help">Move: A/D or arrows · Mine: Space · Use: E · Quests: Q · Inventory: I</p>
+      <p class="expedition-actions"><button id="start-new-expedition" class="secondary-button" type="button">Start new expedition</button></p>
+    </section>
+  </main>
+  <dialog id="game-dialog" class="game-dialog" aria-labelledby="panel-title">
+    <div class="dialog-heading">
+      <h2 id="panel-title">Expedition</h2>
+      <button id="close-panel" class="dialog-close" type="button" aria-label="Close panel">×</button>
+    </div>
+    <section id="quests-panel" hidden aria-labelledby="panel-title">
+      <h3>Active objective</h3>
+      <p id="quest-active"></p>
+      <h3>Completed objectives</h3>
+      <ul class="quest-list">
+        <li id="complete-first-signal" hidden>Recovered the emergency transmission.</li>
+        <li id="complete-wreck-beacon" hidden>Recovered the wreck beacon route.</li>
+        <li id="complete-navigation" hidden>Repaired the navigation module.</li>
+        <li id="complete-main-wreck" hidden>Reached the main wreck.</li>
+        <li id="complete-reactor" hidden>Rebuilt the reactor core.</li>
+        <li id="complete-shelter" hidden>Established a safe shelter.</li>
+      </ul>
+      <h3>Recovered memories</h3>
+      <ul class="memory-list">
+        <li id="memory-first-signal" hidden>The escape pod survived a disaster above; the main wreck may hold a way home.</li>
+        <li id="memory-wreck-beacon" hidden>An emergency route leads beyond the ridge toward the main wreck.</li>
+        <li id="memory-navigation" hidden>A repaired star chart confirms the corridor to the wreck.</li>
+        <li id="memory-main-wreck" hidden>The wreck’s containment lattice can be restored at its reactor core.</li>
+        <li id="memory-reactor" hidden>Launch systems are ready, but departure needs a secure shelter.</li>
+        <li id="memory-shelter" hidden>The sealed shelter is a safe place to begin again.</li>
+      </ul>
+    </section>
+    <section id="inventory-panel" hidden aria-labelledby="panel-title">
+      <p class="capacity">Carried <output id="inventory-total">0</output> / 2 items</p>
+      <dl class="item-summary">
+        <div><dt>Alloy</dt><dd><output id="inventory-alloy">0</output></dd></div>
+        <div><dt>Damaged reactor coils</dt><dd><output id="inventory-reactor-coil">0</output></dd></div>
+      </dl>
+    </section>
+    <section id="cache-panel" hidden aria-labelledby="panel-title">
+      <p class="capacity">Transfer materials at the salvage cache. Carried capacity: <output id="cache-carried-total">0</output> / 2.</p>
+      <div class="cache-columns">
+        <section aria-labelledby="carried-title">
+          <h3 id="carried-title">Carried</h3>
+          <div class="cache-item"><p>Alloy: <output id="carried-alloy-count">0</output></p><button id="store-alloy-one" type="button">Move 1 →</button><button id="store-alloy-all" type="button">Move all →</button></div>
+          <div class="cache-item"><p>Reactor coils: <output id="carried-reactor-coil-count">0</output></p><button id="store-reactor-coil-one" type="button">Move 1 →</button><button id="store-reactor-coil-all" type="button">Move all →</button></div>
+        </section>
+        <section aria-labelledby="cached-title">
+          <h3 id="cached-title">Salvage cache</h3>
+          <div class="cache-item"><p>Alloy: <output id="cached-alloy-count">0</output></p><button id="take-alloy-one" type="button">← Move 1</button><button id="take-alloy-all" type="button">← Move all</button></div>
+          <div class="cache-item"><p>Reactor coils: <output id="cached-reactor-coil-count">0</output></p><button id="take-reactor-coil-one" type="button">← Move 1</button><button id="take-reactor-coil-all" type="button">← Move all</button></div>
+        </section>
+      </div>
+      <section class="cache-actions" aria-labelledby="cache-actions-title">
+        <h3 id="cache-actions-title">Cache equipment</h3>
+        <p id="kit-status"></p><button id="fabricate-kit" class="primary-button" type="button">Fabricate climbing kit (4 alloy)</button>
+        <p id="navigation-module-status"></p><button id="repair-navigation-module" class="primary-button" type="button" disabled>Repair navigation module (6 cached alloy)</button>
+        <p id="reactor-core-status"></p><button id="rebuild-reactor-core" class="primary-button" type="button" disabled>Rebuild reactor core (3 coils)</button>
+        <p id="shelter-status"></p><button id="deploy-shelter" class="primary-button" type="button" disabled>Deploy emergency shelter</button>
+      </section>
+    </section>
+    <div class="dialog-footer">
+      <button id="reset-save" class="secondary-button" type="button">Start new expedition</button>
+      <button id="close-panel-footer" class="primary-button" type="button">Close</button>
+    </div>
+  </dialog>
+  <dialog id="reset-confirmation" class="game-dialog confirmation-dialog" aria-labelledby="reset-confirmation-title" aria-describedby="reset-confirmation-description">
+    <h2 id="reset-confirmation-title">Start a new expedition?</h2>
+    <p id="reset-confirmation-description">This permanently removes your saved expedition and all of its progress.</p>
+    <div class="dialog-footer">
+      <button id="cancel-reset" class="secondary-button" type="button">Keep current expedition</button>
+      <button id="confirm-reset" class="primary-button" type="button">Start new expedition</button>
+    </div>
+  </dialog>
+  <script src="game.js"></script>
+</body>
+</html>
