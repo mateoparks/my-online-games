@@ -247,6 +247,27 @@ h1 {
   height: 64px;
 }
 
+.foxfire-link {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  padding: .55rem .8rem;
+  border: 1px solid color-mix(in srgb, var(--palm) 36%, transparent);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 3px 10px var(--shadow);
+  color: var(--palm);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.foxfire-link:hover {
+  transform: translateY(-1px);
+}
+
 @media (max-width: 520px) {
   .site-header,
   main {
@@ -260,5 +281,10 @@ h1 {
 
   .game-header .brand {
     display: none;
+  }
+
+  .foxfire-link {
+    right: .75rem;
+    bottom: .75rem;
   }
 }
