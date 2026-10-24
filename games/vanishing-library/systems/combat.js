@@ -258,7 +258,8 @@
   // 'hurt' or 'ignored' (already fainted, or still invulnerable).
   VL.hurtHero = function hurtHero(state, hit) {
     const player = state.player;
-    if (state.hp <= 0 || player.invuln > 0) return 'ignored';
+    // Carried by a chicken (systems/chickens.js), the hero is out of reach.
+    if (state.hp <= 0 || player.invuln > 0 || player.flight) return 'ignored';
     const shield = player.shieldItem;
     if (shield && (VL.TUNING.shieldBlocks[shield] || []).includes(hit.size || 'small') && sideOf(player, hit.from) === player.facing) {
       knockHero(state, hit.from, VL.TUNING.blockShoveSeconds);

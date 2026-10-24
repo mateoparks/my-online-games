@@ -180,6 +180,8 @@
         if (player.swing.t >= VL.TUNING.swingSeconds) player.swing = null;
       }
       player.shield = false;
+      // Hands are full with a chicken overhead (systems/chickens.js): S throws it.
+      if (player.carrying || player.flight) return;
       for (const hand of VL.HANDS) {
         const id = VL.heldItem(state, hand);
         if (id && actions.held[hand]) VL.ITEMS[id]?.hold?.(state, hand);

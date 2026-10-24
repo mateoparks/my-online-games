@@ -712,3 +712,71 @@ test('render: every building and a dig draw without error', () => {
   VL.drawWorld(ctx, t.game, 0.1);
   for (const id of ['woodShovel', 'metalShovel']) assert.ok(VL.ART.SPRITES[`item-${VL.ITEMS[id].icon}`], `${id} has a sprite`);
 });
+
+// ---------- with W7 chickens ----------
+
+// Lifts the first chicken on overworld `screen` from in front of the hero.
+function liftHen(t, screen, spot) {
+  const { VL } = t;
+  t.at({ area: 'overworld', screen, tx: 4, ty: 4, facing: 'up' });
+  const hen = t.game.room.entities.find((e) => e.type === 'chicken' && (!spot || e.spot === spot));
+  const px = t.game.player.x;
+  const py = t.game.player.y - 16;
+  Object.assign(hen, { px, py, x: VL.tileOf(px, py).tx, y: VL.tileOf(px, py).ty, mode: 'idle', idle: 99 });
+  t.press('interact');
+  assert.equal(t.game.player.carrying, hen, 'lifted');
+  t.hold([], 0.2);
+  return hen;
+}
+
+// Walks in through the building's door from the tile below it.
+function walkIn(t, id) {
+  const spot = t.VL.SPOTS[t.VL.BUILDINGS[id].door];
+  t.at({ area: spot.area, screen: spot.screen, tx: spot.x, ty: spot.y + 1, facing: 'up' });
+  t.hold(['up'], 0.5);
+  assert.equal(t.game.player.area, id, `in the ${id}`);
+}
+
+test('with chickens: a chicken carried into a building stays in hand, and S at the counter talks instead of throwing it', () => {
+  const t = setup();
+  const { VL } = t;
+  for (const id of BUILDINGS) {
+    t.game.player.carrying = null;
+    const hen = liftHen(t, '2,1');
+    walkIn(t, id);
+    t.at({ area: id, screen: '0,0', ...VL.BUILDINGS[id].talkAt, facing: 'up' });
+    t.press('interact');
+    assert.equal(t.app.sceneId, 'dialogue', `${id}: S at the counter talks`);
+    assert.equal(t.game.player.carrying, hen, `${id}: the chicken is still in hand`);
+    assert.ok(!t.game.room.entities.includes(hen), `${id}: not thrown over the counter`);
+    for (let i = 0; i < 20 && t.app.sceneId !== 'play'; i += 1) t.press(t.app.sceneId === 'shop' ? 'pause' : 'interact');
+    assert.equal(t.app.sceneId, 'play');
+    assert.equal(t.game.player.carrying, hen, `${id}: still in hand after the shop`);
+    // Away from the counter, S throws it as anywhere else.
+    t.at({ area: id, screen: '0,0', tx: 7, ty: 7, facing: 'down' });
+    t.press('interact');
+    assert.equal(t.game.player.carrying, null, `${id}: S away from the counter throws`);
+  }
+});
+
+test('with chickens: the lost chicken trots into a shop behind the hero and never blocks the counter', () => {
+  const t = setup();
+  const { VL } = t;
+  const spot = VL.SPOTS.lostChicken;
+  const hen = liftHen(t, spot.screen, 'lostChicken');
+  t.game.player.facing = 'down';
+  t.press('interact');
+  assert.equal(t.game.player.carrying, null, 'thrown');
+  walkIn(t, 'shop');
+  t.hold([], 1);
+  assert.ok(t.game.room.entities.includes(hen), 'it came into the shop');
+  assert.ok(VL.chickenWithHero(t.game, 'lostChicken'));
+  // Even standing on the hero's talking tile, it does not get in the way.
+  const { talkAt } = VL.BUILDINGS.shop;
+  t.at({ area: 'shop', screen: '0,0', ...talkAt, facing: 'up' });
+  t.hold([], 0.2);
+  Object.assign(hen, { px: t.game.player.x, py: t.game.player.y - 8, x: talkAt.tx, y: talkAt.ty, mode: 'follow' });
+  t.press('interact');
+  assert.equal(t.app.sceneId, 'dialogue', 'S at the counter still talks');
+  assert.equal(t.game.player.carrying, null, 'and does not pick the chicken up');
+});

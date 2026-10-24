@@ -27,7 +27,7 @@ const sizes = [
 ];
 const walkMs = 300;
 const slideMs = 700; // ~13 px to the edge, then the 350 ms slide
-const timeoutMs = 60000;
+const timeoutMs = 120000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -882,6 +882,111 @@ async function main() {
       if (econProblems.length) failures += 1;
       console.log(`${econProblems.length ? 'FAIL' : 'ok  '} economy: 4 buildings, mill trade, forging, digging, ${path.join(outDir, 'w10-*.png')}`);
       for (const problem of econProblems) console.log(`     ${problem}`);
+    }
+
+    // W7 chickens with real keys: S lifts the coop chicken and S throws it, F
+    // flies a short hop over the river, a long flight over the last highland
+    // chasm crosses the screen edge mid-air, a flight from the pier splashes
+    // down, and Space on a chicken five times brings the swarm, saved as
+    // w7-*.png. A block of its own, so its names never clash.
+    {
+      errors.length = 0;
+      const henProblems = [];
+      const codes = { KeyS: [83, 's'], KeyF: [70, 'f'], Space: [32, ' '] };
+      const tap = async (code) => {
+        const [vkCode, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vkCode, nativeVirtualKeyCode: vkCode };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+      };
+      const snap = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const peek = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      // A new game in play at `where` (no popups), with this screen's first
+      // chicken standing just in front of the hero.
+      const henGame = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        g.popups.seen.controls = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+      const henInFront = () => evaluate(`(() => {
+        const g = VL.app.game;
+        const hen = g.room.entities.find((e) => e.type === 'chicken');
+        const [dx, dy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[g.player.facing];
+        const px = g.player.x + dx * 12;
+        const py = g.player.y + dy * 16;
+        Object.assign(hen, { px, py, x: VL.tileOf(px, py).tx, y: VL.tileOf(px, py).ty, mode: 'idle', idle: 3 });
+      })()`);
+      const flown = async (ms) => {
+        await sleep(ms);
+        return peek('[Boolean(g.player.flight), g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty]');
+      };
+
+      await henGame({ area: 'overworld', screen: '2,1', tx: 4, ty: 4, facing: 'up' });
+      await henInFront();
+      await tap('KeyS');
+      await sleep(400);
+      await snap('w7-lift');
+      if (!(await peek('Boolean(g.player.carrying)'))) henProblems.push('S at the coop chicken did not lift it');
+      await evaluate("VL.app.game.player.facing = 'down'");
+      await tap('KeyS');
+      await sleep(130);
+      await snap('w7-throw');
+      if (await peek('Boolean(g.player.carrying)')) henProblems.push('S with a chicken overhead did not throw it');
+
+      await henGame({ area: 'overworld', screen: '3,-2', tx: 8, ty: 4, facing: 'right' });
+      await henInFront();
+      await tap('KeyF');
+      await sleep(350);
+      await snap('w7-flight-short');
+      const short = await flown(1200);
+      if (short.join() !== 'false,3,-2,11,4') henProblems.push(`the short flight over the river ended at ${short}`);
+
+      await henGame({ area: 'overworld', screen: '-2,-4', tx: 12, ty: 4, facing: 'right' }, 'g.flags.chickenAlmanacRead = true;');
+      await henInFront();
+      await tap('KeyF');
+      await sleep(820);
+      await snap('w7-flight-long-edge');
+      const long = await flown(1800);
+      if (long.join() !== 'false,-1,-4,1,4') henProblems.push(`the long flight over the chasm ended at ${long}`);
+
+      await henGame({ area: 'overworld', screen: '2,1', tx: 8, ty: 9, facing: 'left' });
+      await henInFront();
+      await tap('KeyF');
+      let dipped = false;
+      for (let i = 0; i < 30 && !dipped; i += 1) {
+        await sleep(50);
+        dipped = await peek("g.player.flight ? g.player.flight.phase === 'dip' : false");
+      }
+      await sleep(120);
+      await snap('w7-splash');
+      const splash = await flown(2500);
+      if (!dipped || splash.join() !== 'false,2,1,8,9') henProblems.push(`the flight off the pier: dipped ${dipped}, ended at ${splash}`);
+
+      await henGame({ area: 'overworld', screen: '2,1', tx: 4, ty: 4, facing: 'up' }, "VL.giveItem(g, 'woodSword');");
+      const hp = await peek('g.hp');
+      for (let i = 0; i < 5; i += 1) {
+        await henInFront();
+        await tap('Space');
+        await sleep(420);
+      }
+      await sleep(900);
+      await snap('w7-swarm');
+      const swarm = await peek("[g.room.entities.filter((e) => e.type === 'chickenSwarm').length, g.hp]");
+      if (!(swarm[0] > 0) || swarm[1] !== hp) henProblems.push(`after five hits: ${swarm[0]} swarming, hearts ${swarm[1]} of ${hp}`);
+
+      henProblems.push(...errors);
+      if (henProblems.length) failures += 1;
+      console.log(`${henProblems.length ? 'FAIL' : 'ok  '} chickens: lift, throw, short flight, long flight over a screen edge, splash, swarm, ${path.join(outDir, 'w7-*.png')}`);
+      for (const problem of henProblems) console.log(`     ${problem}`);
     }
 
     await cdp.send('Browser.close').catch(() => {});
