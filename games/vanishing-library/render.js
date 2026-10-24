@@ -7,13 +7,13 @@ VL.render = function render(ctx, app, t) {
   VL.SOUND.drawIndicator(ctx, app, t);
 };
 
-// `entities` defaults to the screen's static list (used for the outgoing screen
-// of a slide); the current screen passes the room's live per-visit copies.
-VL.drawScreen = function drawScreen(ctx, areaId, key, ox, oy, t, entities) {
+// `room` is the visit drawn (state.room, or the one a slide is leaving): its
+// live entity copies and changed tiles. Without one, the static screen data.
+VL.drawScreen = function drawScreen(ctx, areaId, key, ox, oy, t, room) {
   const { tile } = VL.TUNING;
   const screen = VL.getScreen(areaId, key);
-  VL.ART.drawScreenTiles(ctx, areaId, key, ox, oy, t);
-  for (const entity of entities || screen.entities) {
+  VL.ART.drawScreenTiles(ctx, areaId, key, ox, oy, t, room);
+  for (const entity of room?.entities || screen.entities) {
     VL.ENTITIES[entity.type]?.draw?.(ctx, entity, ox + entity.x * tile, oy + entity.y * tile, t);
   }
 };
@@ -37,10 +37,14 @@ VL.drawWorld = function drawWorld(ctx, state, t) {
     const [dx, dy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[slide.dir];
     ox = dx * (1 - k) * width;
     oy = dy * (1 - k) * playHeight;
-    VL.drawScreen(ctx, slide.from.area, slide.from.screen, -dx * k * width, -dy * k * playHeight, t);
+    VL.drawScreen(ctx, slide.from.area, slide.from.screen, -dx * k * width, -dy * k * playHeight, t, slide.from.room);
   }
-  VL.drawScreen(ctx, player.area, player.screen, ox, oy, t, state.room.entities);
-  VL.ART.drawHero(ctx, player, Math.round(ox + player.x), Math.round(oy + player.y), t);
+  VL.drawScreen(ctx, player.area, player.screen, ox, oy, t, state.room);
+  const heroX = Math.round(ox + player.x);
+  const heroY = Math.round(oy + player.y);
+  for (const layer of VL.HERO_LAYERS) layer.draw(ctx, state, heroX, heroY, t, 'behind');
+  VL.ART.drawHero(ctx, player, heroX, heroY, t);
+  for (const layer of VL.HERO_LAYERS) layer.draw(ctx, state, heroX, heroY, t, 'front');
   VL.ART.drawLight(ctx, VL.ART.lightFor(player.area), width, playHeight);
   ctx.restore();
   VL.ART.drawHud(ctx, state, t);

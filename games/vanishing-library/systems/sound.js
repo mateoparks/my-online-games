@@ -271,6 +271,7 @@
   ], { gap: 0.25 });
 
   VL.SOUND.onEvent('door', 'door');
+  VL.SOUND.onEvent('faint', 'faint');
 
   // ---------- game events, and the wall bump ----------
 

@@ -19,11 +19,12 @@ VL.enterScreen = function enterScreen(state, where, slideDir) {
   const screen = VL.getScreen(where.area, where.screen);
   const player = state.player;
   if (slideDir) {
+    // The outgoing screen slides out as the hero left it (a cut bush stays cut).
     state.transition = {
       dir: slideDir,
       t: 0,
       duration: VL.TUNING.slideSeconds,
-      from: { area: player.area, screen: player.screen },
+      from: { area: player.area, screen: player.screen, room: state.room },
     };
   }
   const spot = where.x === undefined ? VL.tileCenter(where.tx, where.ty) : where;
@@ -33,16 +34,29 @@ VL.enterScreen = function enterScreen(state, where, slideDir) {
   player.y = spot.y;
   if (where.facing) player.facing = where.facing;
   state.visited[`${where.area}:${where.screen}`] = true;
+  // `prepare(state, copy)` lets an entity type set up this visit's copy (an
+  // opened chest) or leave it out by returning false (an ore lump already taken).
   state.room = {
     area: where.area,
     screen: where.screen,
-    entities: screen.entities.map((entity) => ({ ...entity })),
+    entities: screen.entities.map((entity) => ({ ...entity })).filter((entity) => VL.ENTITIES[entity.type]?.prepare?.(state, entity) !== false),
     standingOn: null,
+    tiles: {},
   };
   state.events.push({ type: 'enterScreen', area: where.area, screen: where.screen });
 };
 
 VL.heroTile = (state) => VL.tileOf(state.player.x, state.player.y);
+
+// Things drawn with the hero (a sword swing, a raised shield): `draw(ctx,
+// state, x, y, t, pass)` runs once with pass 'behind' and once with 'front',
+// (x, y) being where the hero's feet are drawn.
+VL.HERO_LAYERS = [];
+
+VL.defineHeroLayer = function defineHeroLayer(id, draw) {
+  if (VL.HERO_LAYERS.some((layer) => layer.id === id)) throw new Error(`hero layer ${id} is already defined`);
+  VL.HERO_LAYERS.push({ id, draw });
+};
 
 VL.updateWorld = function updateWorld(state, actions, dt) {
   dt = Math.min(dt, VL.TUNING.maxDt);

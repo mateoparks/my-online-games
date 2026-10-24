@@ -2,10 +2,11 @@
 // no dependencies). Loads index.html from file://, fails on any console error
 // or uncaught exception, checks the integer scale at two window sizes and on a
 // live resize, walks the hero with real key events, checks a screen slide pans
-// the right way, plays the real start (title, typed name, intro, pause, Save &
-// Quit, reload), plays every sound effect and toggles the persisted mute,
-// talks to townsfolk and opens a shop, and saves a screenshot of each size,
-// scene and art sheet page.
+// the right way, plays the real start (title, typed name, intro, controls
+// popup, pause, Save & Quit, reload), plays every sound effect and toggles the
+// persisted mute, plays W5's core loop (chest, equipment, bush, berries), talks
+// to townsfolk and opens a shop, and saves a screenshot of each size, scene and
+// art sheet page.
 // Run: node games/vanishing-library/smoke.js --out <dir>
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
@@ -332,7 +333,12 @@ async function main() {
     await sleep(1500);
     await canvasShot('intro');
     await tap('KeyS', 's');
-    await expectScene('play', 'S on the intro');
+    // Play starts with the one-time controls popup (W5); S closes it.
+    await sleep(500);
+    await expectScene('popup', 'S on the intro');
+    await canvasShot('controls-popup');
+    await tap('KeyS', 's');
+    await expectScene('play', 'S on the controls popup');
     const started = JSON.parse(await evaluate("JSON.stringify({ name: VL.app.game && VL.app.game.name, slot: VL.app.slot, saved: localStorage.getItem('vanishing-library-slot-1') })"));
     if (started.name !== 'Robin' || started.slot !== 0) flowProblems.push(`new game is ${started.name} in slot ${started.slot}`);
     if (!started.saved || !started.saved.includes('"name":"Robin"')) flowProblems.push('the new game was not saved to slot 1');
@@ -393,6 +399,114 @@ async function main() {
       if (soundProblems.length) failures += 1;
       console.log(`${soundProblems.length ? 'FAIL' : 'ok  '} sound: context ${sound.state}, mute toggles and persists, ${path.join(outDir, 'muted.png')}`);
       for (const problem of soundProblems) console.log(`     ${problem}`);
+    }
+
+    // W5's core loop with real keys: the hut and its chest (S), the sword and
+    // shield popups, the equipment screen (E), a bush cut with Space and a
+    // berry bush picked with S. A block of its own, so its names never clash.
+    {
+      errors.length = 0;
+      const loopProblems = [];
+      const codes = { KeyS: [83, 's'], KeyE: [69, 'e'], Space: [32, ' '] };
+      const press = async (code) => {
+        const [vkCode, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vkCode, nativeVirtualKeyCode: vkCode };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) loopProblems.push(`animation frames stopped after ${code}`);
+      };
+      const shot = async (name) => {
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      };
+      const scene = async () => (await info()).scene;
+      const expect = async (wanted, after) => {
+        const got = await scene();
+        if (got !== wanted) loopProblems.push(`after ${after}: scene ${got}, expected ${wanted}`);
+      };
+      const closePopups = async () => {
+        for (let i = 0; i < 6 && (await scene()) === 'popup'; i += 1) {
+          await sleep(400);
+          await press('KeyS');
+        }
+      };
+      const placeHero = (where) => evaluate(`(() => {
+        VL.app.game = VL.app.game || VL.newGame();
+        VL.app.game.popups.seen.controls = true;
+        VL.app.setScene('play');
+        VL.place(VL.app.game, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+      await evaluate('VL.app.startGame(VL.newGame({ name: "Robin" }), null)');
+      const chest = JSON.parse(await evaluate("JSON.stringify(VL.getScreen('hut', '0,0').entities.find((e) => e.type === 'chest'))"));
+      await placeHero({ area: 'hut', screen: '0,0', tx: chest.x, ty: chest.y + 1, facing: 'up' });
+      await sleep(300);
+      await shot('w5-hut');
+      await press('KeyS');
+      await sleep(300);
+      await expect('popup', 'S at the chest');
+      await shot('w5-chest-popup');
+      const hands = JSON.parse(await evaluate('JSON.stringify(VL.app.game.hands)'));
+      if (hands.mainHand !== 'woodSword' || hands.offHand !== 'woodShield') loopProblems.push(`the chest put ${JSON.stringify(hands)} in the hands`);
+      await closePopups();
+      await expect('play', 'closing the chest popups');
+      await evaluate('VL.addResource(VL.app.game, "berries", 3); VL.addResource(VL.app.game, "wood", 4); VL.addResource(VL.app.game, "shells", 12)');
+      await press('KeyE');
+      await expect('equipment', 'E');
+      await sleep(200);
+      await shot('w5-equipment');
+      await press('KeyE');
+      await expect('play', 'E on the equipment screen');
+      const bush = JSON.parse(await evaluate(`JSON.stringify((() => {
+        for (const [key, screen] of Object.entries(VL.AREAS.overworld.screens)) {
+          for (let ty = 1; ty < 10; ty += 1) {
+            for (let tx = 1; tx < 15; tx += 1) {
+              if (screen.tiles[ty][tx] === 'B' && !VL.isSolidAt('overworld', key, tx, ty - 1)) return { screen: key, tx, ty };
+            }
+          }
+        }
+        return null;
+      })())`));
+      if (!bush) loopProblems.push('no bush with open ground above it in the overworld');
+      else {
+        await placeHero({ area: 'overworld', screen: bush.screen, tx: bush.tx, ty: bush.ty - 1, facing: 'down' });
+        await sleep(200);
+        await press('Space');
+        await shot('w5-bush-cut');
+        const cut = await evaluate(`!VL.isSolidAt('overworld', ${JSON.stringify(bush.screen)}, ${bush.tx}, ${bush.ty}, VL.app.game.room)`);
+        if (!cut) loopProblems.push(`Space did not cut the bush at ${bush.screen} ${bush.tx},${bush.ty}`);
+        await sleep(400);
+        await shot('w5-bush-after');
+      }
+      const berry = JSON.parse(await evaluate(`JSON.stringify((() => {
+        for (const [key, screen] of Object.entries(VL.AREAS.overworld.screens)) {
+          for (let ty = 1; ty < 10; ty += 1) {
+            for (let tx = 1; tx < 15; tx += 1) {
+              if (screen.tiles[ty][tx] === 'Y' && !VL.isSolidAt('overworld', key, tx, ty + 1)) return { screen: key, tx, ty };
+            }
+          }
+        }
+        return null;
+      })())`));
+      if (!berry) loopProblems.push('no berry bush with open ground below it in the overworld');
+      else {
+        await placeHero({ area: 'overworld', screen: berry.screen, tx: berry.tx, ty: berry.ty + 1, facing: 'up' });
+        await evaluate('VL.app.game.hp = 2');
+        await sleep(200);
+        await shot('w5-berry-bush');
+        await press('KeyS');
+        await sleep(300);
+        await expect('popup', 'S at the berry bush');
+        await shot('w5-berries-picked');
+        await closePopups();
+        const picked = JSON.parse(await evaluate('JSON.stringify([VL.app.game.inventory.berries, VL.app.game.hp])'));
+        if (!(picked[0] >= 5)) loopProblems.push(`picking gave ${picked[0]} berries in all`);
+      }
+      loopProblems.push(...errors);
+      if (loopProblems.length) failures += 1;
+      console.log(`${loopProblems.length ? 'FAIL' : 'ok  '} core loop: hut chest, popups, equipment, bush cut, berries, ${path.join(outDir, 'w5-*.png')}`);
+      for (const problem of loopProblems) console.log(`     ${problem}`);
     }
 
     // The art kit, page by page (scenes/art-sheet.js), cropped to the canvas:
