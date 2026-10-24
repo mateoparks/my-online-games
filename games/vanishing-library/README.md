@@ -220,8 +220,14 @@ matching what is around the prop. `'r': { solid: true, rock: true, art: 'rock',
 ground: 'sand' }` is a beach rock; `ground: 'shallow'` stands a rock in the
 shallows, and shores and foam then run round it as water. A name that is
 unknown, or has no ground pass, throws. The test `every prop in every area
-sits on a ground one of its neighbours shares` fails on a grass square on the
-beach or a sand square in the water.
+sits on a ground one of its neighbours shares` catches exactly one thing: a
+prop no neighbour's ground supports, such as a grass square on the beach or a
+sand square in the water. Neighbouring props don't count, and flowers (which
+draw their own ground) count as grass floor. One supporting neighbour is
+enough, so a grass prop on the top sand row, under the grass, passes as a
+one-tile grass tongue into the beach. A tree avenue between two paths, with
+trees north and south, is flagged (`grass among path`); give such a tree a
+grass tile beside it or `ground: 'path'`.
 
 A style has up to three passes, each run for the whole screen before the
 next: `ground` (the floor of the tile), `shadow`, then `raised` (anything

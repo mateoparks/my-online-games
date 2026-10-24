@@ -375,8 +375,8 @@ test('README has the art kit style guide', () => {
 // Hex colours outside VL.ART.addColors, CSS colour functions, and canvas text.
 function r6Breaks(source) {
   const code = source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:\\])\/\/.*$/gm, '$1')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/VL\.ART\.addColors\(\s*\{[^}]*\}\s*\)/g, '');
   const rules = [
     [/['"`]#[0-9a-fA-F]{3,8}['"`]/, 'a hex colour (use a palette name)'],
@@ -394,6 +394,7 @@ test('R6: no game file outside art.js draws with raw colours or canvas text', ()
   assert.deepEqual(r6Breaks("ctx.fillStyle = 'white';"), ['a colour literal (use VL.ART.color)']);
   assert.deepEqual(r6Breaks('ctx.strokeStyle = `#${hex}`;'), ['a colour literal (use VL.ART.color)']);
   assert.deepEqual(r6Breaks("if (opts.font === 'large') x(); // not fillText\n/* nor ctx.font = 'x' */ VL.ART.addColors( { moss: '#2a4a2a' } );"), []);
+  assert.deepEqual(r6Breaks("// tiles in art/*.js\nctx.fillStyle = 'red';\n/* done */"), ['a colour literal (use VL.ART.color)']);
   const { VL } = loadGame();
   for (const file of VL.scriptFiles().filter((name) => name !== 'art.js')) {
     assert.deepEqual(r6Breaks(read(file)), [], file);
@@ -472,7 +473,8 @@ function strandedProps(VL) {
         const ch = VL.tileAt(areaId, key, tx, ty);
         return ch === null ? null : VL.tileInfo(areaId, ch);
       };
-      const isProp = (other) => VL.ART.groundOf(other) !== VL.ART.tileStyleFor(other);
+      // Styles with their own ground pass (flowers) are floor, not props.
+      const isProp = (other) => VL.ART.groundOf(other) !== VL.ART.tileStyleFor(other) && !VL.ART.tileStyleFor(other).ground;
       for (let ty = 0; ty < rows; ty += 1) {
         for (let tx = 0; tx < cols; tx += 1) {
           const here = info(tx, ty);
@@ -499,6 +501,8 @@ test('every prop in every area sits on a ground one of its neighbours shares', (
     'probe 0,0 (3,0) grass among sand',
     'probe 0,0 (3,1) grass among shallow,water',
   ]);
+  probe.addScreens('probe', { '1,0': { tiles: [',,,,,,,,,,,,,,,,', ',,,,,,,TPPPPPPPP', ',,,,,,,P,,,,,,,,', ...Array(8).fill('')].map((row) => row.padEnd(16, '.')), entities: [] } });
+  assert.deepEqual(strandedProps(probe).filter((line) => line.startsWith('probe 1,0')), [], 'flowers and a tree beside a path');
   assert.deepEqual(strandedProps(loadGame().VL), []);
 });
 
