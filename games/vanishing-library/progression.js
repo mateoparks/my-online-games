@@ -267,14 +267,16 @@
     // A required lock that spends a counter must still be affordable when the
     // player has spent that counter on everything else reachable first (the
     // small-key softlock: the only key used on the door that hides the next).
+    // A lock used up before an event (disabled) was paid for in that stage's
+    // start counts, so it neither needs nor takes a counter again.
     function spendingProblems(stage) {
       const found = [];
       for (const rule of rules) {
-        if (rule.optional || rule.type === 'event' || !stage.have.has(rule.id)) continue;
+        if (rule.optional || rule.type === 'event' || !stage.have.has(rule.id) || stage.disabled.has(rule.id)) continue;
         for (const [counter, n] of Object.entries(rule.consumes)) {
           const blocked = new Set([...stage.disabled, rule.id]);
           const { have, counts } = closure(stage.keys, stage.startCounts, blocked);
-          const others = sum(rules.filter((other) => other !== rule && have.has(other.id)), (other) => other.consumes[counter]);
+          const others = sum(rules.filter((other) => other !== rule && have.has(other.id) && !stage.disabled.has(other.id)), (other) => other.consumes[counter]);
           const left = (counts[counter] || 0) - others;
           if (left < n) found.push(`${rule.id} needs ${n} ${counter} but a player who spent ${counter} on everything else first has ${left}`);
         }

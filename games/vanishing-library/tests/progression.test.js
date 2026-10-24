@@ -48,15 +48,15 @@ test('defineLock registers a lock with defaults and rejects an implemented dupli
 
 test('a later item claims a planned lock by defining it with a reached predicate', () => {
   const { VL } = loadGame();
-  assert.equal(VL.LOCKS.liftingGloves.reached, undefined, 'liftingGloves is planned until W14');
-  assert.equal(VL.LOCKS.liftingGloves.by, 'W14');
-  const claimed = VL.defineLock('liftingGloves', {
-    type: 'item', needs: ['scriptoriumEntered'],
-    doc: '§ The path through the game, 2', reached: (state) => Boolean(state.flags.gloves),
+  assert.equal(VL.LOCKS.grapplingRope.reached, undefined, 'grapplingRope is planned until W15');
+  assert.equal(VL.LOCKS.grapplingRope.by, 'W15');
+  const claimed = VL.defineLock('grapplingRope', {
+    type: 'item', needs: ['hollowOakEntered'],
+    doc: '§ The path through the game, 3', reached: (state) => Boolean(state.flags.rope),
   });
-  assert.equal(VL.LOCKS.liftingGloves, claimed);
-  assert.equal(claimed.reached({ flags: { gloves: true } }), true);
-  assert.throws(() => VL.defineLock('liftingGloves', { doc: '§ Controls', reached: () => true }), /already implemented/);
+  assert.equal(VL.LOCKS.grapplingRope, claimed);
+  assert.equal(claimed.reached({ flags: { rope: true } }), true);
+  assert.throws(() => VL.defineLock('grapplingRope', { doc: '§ Controls', reached: () => true }), /already implemented/);
 });
 
 test('a claim that changes the planned rule must say why (replan), so a loosened gate shows in the diff', () => {
@@ -70,8 +70,8 @@ test('a claim that changes the planned rule must say why (replan), so a loosened
   assert.equal(VL.LOCKS.lighthouseEntered, same);
   const d2 = VL.LOCKS.d2Boss;
   VL.defineLock('d2Boss', { ...d2, needs: ['hollowOakEntered', 'grapplingRope', ['metalSword', 'woodSword']], by: undefined, reached: () => true });
-  const loosened = VL.defineLock('scriptoriumEntered', { type: 'place', needs: ['town'], doc: '§ The world: Old Scriptorium', replan: 'the door is open; the key is decorative', reached: () => true });
-  assert.equal(loosened.replan, 'the door is open; the key is decorative');
+  const loosened = VL.defineLock('hollowOakEntered', { type: 'place', needs: ['town'], doc: '§ The path through the game, 3', replan: 'the oak stands in town; the Woods are scenery', reached: () => true });
+  assert.equal(loosened.replan, 'the oak stands in town; the Woods are scenery');
 });
 
 test('an item splits a planned placeholder into its own locks without editing milestones.js', () => {
@@ -87,14 +87,14 @@ test('an item splits a planned placeholder into its own locks without editing mi
   assert.throws(() => VL.splitLock('nothing', { a: part(1) }), /lock nothing does not exist/);
   // A split can only share out the placeholder's counters: it cannot hand out the placeholder's own
   // keys (that would loosen a gate without a replan) or counters the plan never promised.
-  assert.throws(() => VL.splitLock('woodsMural', { muralRoom: { type: 'place', needs: ['start'], gives: ['woodsMural'], doc: '§ The path through the game, 2', by: 'W14' } }), /woodsMural is not a placeholder \(it supplies no counter\); claim it with defineLock/);
+  assert.throws(() => VL.splitLock('hollowOakEntered', { oakRoom: { type: 'place', needs: ['start'], gives: ['hollowOakEntered'], doc: '§ The path through the game, 3', by: 'W15' } }), /hollowOakEntered is not a placeholder \(it supplies no counter\); claim it with defineLock/);
   assert.throws(() => VL.splitLock('fixtureBooks', { bookA: part(5), bookB: { ...part(5), gives: ['fixtureBooks'] } }), /part bookB gives fixtureBooks, which the placeholder stood for; claim it with defineLock and replan/);
   assert.throws(() => VL.splitLock('fixtureBooks', { bookA: part(5), bookB: { ...part(5), supplies: { books: 5, ore: 1 } } }), /part bookB supplies ore, which fixtureBooks does not/);
   VL.splitLock('fixtureBooks', { bookUnderRock: part(4), bookInTrunk: part(6) });
   assert.equal(VL.LOCKS.fixtureBooks, undefined);
   assert.equal(VL.LOCKS.bookInTrunk.supplies.books, 6);
   assert.throws(() => VL.defineLock('fixtureBooks', { ...part(1), reached: () => true }), /lock fixtureBooks was split into its parts/, 'a split id cannot come back with a looser rule');
-  assert.throws(() => VL.splitLock('oreScriptorium', { hiddenBooks: { type: 'item', needs: ['scriptoriumEntered'], supplies: { ore: 1 }, doc: '§ Tools: two tiers', by: 'W14' } }), /lock hiddenBooks was split into its parts/);
+  assert.throws(() => VL.splitLock('oreLakeIsland', { hiddenBooks: { type: 'item', needs: ['lakeIsland'], supplies: { ore: 1 }, doc: '§ Tools: two tiers', by: 'W17' } }), /lock hiddenBooks was split into its parts/);
   const report = VL.solveProgression();
   assert.deepEqual([...report.problems], []);
   assert.ok(report.stages[0].reached.includes('swiftfootBoots'), 'the 15-book reward still adds up');
@@ -136,7 +136,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 98);
+  assert.equal(Object.keys(VL.LOCKS).length, 104);
 });
 
 test('implemented place locks name screens that exist', () => {
@@ -623,8 +623,8 @@ test('playthrough: a step that does not reach its milestone fails, and steps are
     steps: { start() {}, hutInside: (drive) => drive.walkTo({ area: 'hut', screen: '0,0', tx: 2, ty: 2 }) },
   });
   assert.equal(good.playTo('hutInside').state.player.area, 'hut');
-  const planned = createPlaythrough(VL, { milestones: ['start', 'liftingGloves'], steps: { start() {}, liftingGloves() {} } });
-  assert.throws(() => planned.playTo('liftingGloves'), /liftingGloves is planned/);
+  const planned = createPlaythrough(VL, { milestones: ['start', 'grapplingRope'], steps: { start() {}, grapplingRope() {} } });
+  assert.throws(() => planned.playTo('grapplingRope'), /grapplingRope is planned/);
   const { step } = require('./playthrough');
   assert.throws(() => step('start', () => {}), /steps for milestone start are already registered/);
 });

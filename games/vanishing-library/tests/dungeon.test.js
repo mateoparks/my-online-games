@@ -119,7 +119,8 @@ test('defineDungeon registers a dungeon over an area and refuses bad definitions
 test('a new game holds a fresh state for every dungeon and an empty tile-change store, all JSON-safe', () => {
   const { VL } = loadDungeon();
   const game = VL.newGame();
-  assert.deepEqual(plain(game.dungeons), { sample: { keysGiven: 0, bossKey: false, map: false, doors: {}, plates: {}, switches: {}, boss: false } });
+  const fresh = { keysGiven: 0, bossKey: false, map: false, doors: {}, plates: {}, switches: {}, boss: false };
+  assert.deepEqual(plain(game.dungeons), Object.fromEntries(Object.keys(VL.DUNGEONS).map((id) => [id, fresh])));
   assert.deepEqual(plain(game.tileChanges), {});
   assert.ok(!VL.TRANSIENT_FIELDS.includes('dungeons') && !VL.TRANSIENT_FIELDS.includes('tileChanges'));
   assert.ok(VL.TRANSIENT_FIELDS.includes('dungeonNote'));
@@ -137,7 +138,7 @@ test('the W13 fixture loads with keys, doors, plates, switches, the map and the 
   assert.ok(Object.keys(fixture.tileChanges).length, 'a saved tile change');
   const backing = memoryStorage({ [VL.slotKey(0)]: JSON.stringify(fixture) });
   const game = VL.loadSlot(VL.createStorage(backing), 0);
-  assert.deepEqual(plain(game.dungeons), fixture.dungeons);
+  for (const id of Object.keys(fixture.dungeons)) assert.deepEqual(plain(game.dungeons[id]), fixture.dungeons[id]);
   assert.deepEqual(plain(game.tileChanges), fixture.tileChanges);
 });
 
