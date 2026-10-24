@@ -146,7 +146,7 @@ async function main() {
   fs.mkdirSync(outDir, { recursive: true });
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'vl-chrome-'));
   const browser = spawn(chrome, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
+    '--headless=new', '--mute-audio', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
     `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--hide-scrollbars', 'about:blank',
   ], { stdio: 'ignore' });
   // A stalled Chrome must fail the build, not hang it.
