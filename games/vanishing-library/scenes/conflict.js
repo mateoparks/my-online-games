@@ -8,7 +8,9 @@
 
   VL.defineScene('conflict', {
     update(app, actions) {
-      if (VL.confirmed(actions)) app.quit();
+      if (!VL.confirmed(actions)) return;
+      VL.sfx('menuSelect');
+      app.quit();
     },
 
     draw(ctx, app, t) {

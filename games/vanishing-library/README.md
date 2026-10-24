@@ -49,7 +49,8 @@ below exist to keep their diffs in different files:
   `defineScene`, `defineTileset`, `addScreens`), so a clash between two lanes
   fails the test run instead of silently dropping one side.
   `tests/load-names.test.js` also scans every manifest file for
-  `VL.define<Kind>('name'` and names both files when two define the same
+  `VL.define<Kind>('name'` and `VL.ART.define<Kind>('name'` (an enemy counts
+  as an entity) and names both files when two define the same
   name, so pick names that say whose they are (`henSquawk`, not `squawk`).
 - **Tests go in a new `tests/<item>.test.js`**, never appended to an existing
   one (see Testing).
@@ -364,9 +365,9 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   in either hand frees both, and `giveItem` equips it only when both are empty.
 - **Hands (`systems/hands.js`):** Space uses the main-hand item and D the
   off-hand one; `hold` runs every step the key is held (the shield sets
-  `state.player.shield`). S calls `VL.interact`: an entity's `onInteract` on
-  the tiles the hero faces (`VL.facingTiles(state)`: straight ahead first,
-  then the ones half overlapped), else a berry bush, else a bare-hand pull of
+  `state.player.shield`). S calls `VL.interact`: tile by tile over the tiles the hero faces
+  (`VL.facingTiles(state)`: straight ahead first, then the ones half
+  overlapped), an entity's `onInteract` or a berry bush there, else a bare-hand pull of
   one bush when no sword is in the main hand. Space with an empty main hand
   pulls too. Entities match by integer tile (`e.x/e.y`). A sword swing (`VL.swing`) sets `state.player.swing` for
   `TUNING.swingSeconds` and pushes `{ type: 'swing', item, hand, tiles }`; it
@@ -498,7 +499,9 @@ holds the heart containers.
   `drive.fight = true`, and `playTo` resets it before the next step. A
   damage-budget test walks from the hut through the Woods to the Hollow Oak
   with enemies live, never swinging, and allows at most half the starting
-  hearts.
+  hearts. A stand-still budget (`tests/polish.test.js`) keeps 10 s standing
+  on any open tile of an enemy screen to at most 4 half hearts, so place
+  enemies so their lines of fire never cross on one row or column.
 - **Townsfolk (W9):** the sword passes through NPCs (only enemies are hit),
   S on an NPC only talks, a knockback stops at an NPC's tile (NPCs are solid),
   and enemies wait with the rest of the world while a dialogue or shop is open.
@@ -515,21 +518,25 @@ holds the heart containers.
   a CSS size of 896×672, i.e. 3.5 CSS px per logical px. That is by design;
   crisp squares of device pixels are the point, not a whole-number CSS size.
 - `state.player.x/y` is the centre of the hero's feet box (`TUNING.heroBox`).
+- Corner assist (`systems/movement.js`): walking straight into a wall up to
+  `TUNING.cornerAssist` (6) px off an opening slides the hero sideways into
+  line, so 1-tile gaps and turns don't catch on trees.
 - The loop runs fixed `TUNING.step` slices; real time per frame is capped at
   `TUNING.maxFrame` and every update also clamps `dt` to `TUNING.maxDt`. On
   displays faster than the step rate, presses stay latched until a frame that
   runs a step, so no tap is lost.
 - Keys clear on window blur, when the tab hides, and when Cmd is released
   (macOS Chrome drops the keyup of other keys while Cmd is held). Modifier
-  chords (Cmd/Ctrl/Alt) are left to the browser; Space on the focused theme
-  toggle belongs to the toggle (links activate on Enter, so Space still swings
-  on a focused header link).
+  chords (Cmd/Ctrl/Alt) are left to the browser. Enter and Space on a header
+  control reached with Tab belong to it (links activate on Enter, so Space
+  still swings on a focused header link); on one that only has focus from a
+  mouse click, they are the game's and focus moves to the canvas.
 
 ## Scenes and menus
 
 `VL.START_SCENE` is `'title'` (`scenes/title.js`). A new player goes title
 (three slots) → `name` (typed into a field on the canvas, 12 characters,
-"Hero" when left blank) → `intro` (the three weathered lines; S, Space or
+"Hero" when left blank; Enter, or ↓ to START and S, Space or Enter) → `intro` (the three weathered lines; S, Space or
 Enter skips after half a second) → `play`. From play, Esc opens `pause`
 (Resume, Save & Quit, the controls); hearts running out opens `fainted`,
 where a press respawns the hero; `conflict` (another window saved this slot)
@@ -556,7 +563,9 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   whether storage works. `VL.createStorage(backing)` wraps `localStorage`
   (or a function returning it, since the getter itself can throw) and never
   throws. With `storage.ok` false, the title and pause menus say
-  "Saving is off in this browser" and everything still plays.
+  "Saving is off in this browser" and everything still plays. When only the
+  probe's write fails (storage already full at load), reads still work, so
+  the saved slots list and continue as usual, with nothing written.
 - **What is saved:** every field of the game state except
   `VL.TRANSIENT_FIELDS` (`time`, `player`, `room`, `transition`, `events`,
   `dirty`, `fainted`, plus anything added with
@@ -810,9 +819,9 @@ looks and wandering, `scenes/dialogue.js` the conversation, and
   `tests/npcs-dialogue.test.js` checks that no placed NPC starts beside a thing
   or can stand where it cuts its screen in two (R1); place new ones in open
   ground.
-- **Talking:** S goes through W5's `VL.interact`: an NPC on any tile the hero
-  faces or half faces wins, and that press does nothing else (no bush pulled,
-  no berries picked). Its `onInteract` turns it to the hero and opens the
+- **Talking:** S goes through W5's `VL.interact`: an NPC straight ahead, or on
+  a half-faced tile with no berry bush straight ahead, wins, and that press
+  does nothing else (no bush pulled, no berries picked). Its `onInteract` turns it to the hero and opens the
   `dialogue` scene. World code has no app, so it asks for a scene with
   `VL.requestScene(state, id, data)` (transient), opened after the step; play
   holds back a popup queued in the same step until the scene closes.
@@ -825,7 +834,9 @@ looks and wandering, `scenes/dialogue.js` the conversation, and
   `test: (state) => …`. A value may be one id or a list (all of them). A
   misspelt condition throws at load; an unknown lock, shop, item or resource,
   and words the font can't draw, are listed by `VL.dialogueProblems()`, which
-  the test keeps empty. A later item adds its own condition with
+  the test keeps empty. So is a `give` entry with no guard (its own `set`
+  flags all in its `notFlag`, or the item it gives in its `notItem`); a gift
+  meant to repeat says `repeat: true`. A later item adds its own condition with
   `VL.defineCondition('books', (state, least) => …)` (then `when: { books: 10 }`).
 - **Lines from another item:** `VL.addDialogue('gran', entries)` puts entries
   ahead of the NPC's own (later story first), so W16's shockwave lines live in
@@ -880,7 +891,9 @@ spots. Tests: `tests/chickens.test.js`.
   stop it. It lands on the farthest open tile before that, with the chicken
   still in hand; when there is none it goes out as far as it can, splashes
   down (water) or tires (chasm), and flaps the hero back to exactly where he
-  took off, so a flight never strands him. Facing a wall it is a hop in
+  took off, so a flight never strands him. Going up, that dip stops a row
+  short of the top edge when it can, and it flies low there, so the HUD never
+  hides the hero and the tired chicken. Facing a wall it is a hop in
   place. `VL.planFlight(state)` is the rule. The flight is `player.flight`;
   movement and the hands stand still while it is set, `player.lift` raises
   the hero, and crossing a screen edge mid-air starts the slide and the

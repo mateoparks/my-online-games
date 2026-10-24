@@ -373,6 +373,8 @@ async function main() {
     {
       errors.length = 0;
       const soundProblems = [];
+      // The menus just played menuSelect; let every effect's repeat gap pass.
+      await sleep(1100);
       const sound = JSON.parse(await evaluate(`JSON.stringify({
         state: VL.SOUND.contextState(), muted: VL.SOUND.muted,
         silent: Object.keys(VL.SOUND.EFFECTS).filter((name) => !VL.sfx(name)),

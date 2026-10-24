@@ -98,12 +98,13 @@ VL.createApp = function createApp({ storage } = {}) {
       return ok;
     },
     quit() {
+      const lastSlot = app.slot;
       app.game = null;
       app.slot = null;
       app.slotText = null;
       app.saveFailed = false;
       app.saveConflict = false;
-      app.setScene(VL.START_SCENE);
+      app.setScene(VL.START_SCENE, { slot: lastSlot });
     },
   };
   app.setScene(VL.START_SCENE);

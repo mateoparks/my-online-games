@@ -262,6 +262,21 @@ test('knockback pushes the hero away from what hit them, and the arrows do nothi
   assert.ok(t.player.x > x1, 'walking again');
 });
 
+test('the Swiftfoot Boots do not lengthen a knockback', () => {
+  const pushed = (boots) => {
+    const t = setup();
+    if (boots) t.game.items.swiftfootBoots = true;
+    t.at(6, 5);
+    touch(t, t.spawn('dummy', 9, 5), 'right');
+    t.step(t.VL.actions({ held: ['right'] }));
+    assert.ok(t.player.knockback, 'knocked back');
+    const x0 = t.player.x;
+    while (t.player.knockback) t.step(t.VL.actions({ held: ['right'] }));
+    return x0 - t.player.x;
+  };
+  assert.equal(pushed(true), pushed(false));
+});
+
 test('knockback stops at walls and never carries the hero off the screen', () => {
   const t = setup();
   t.at(1, 5);

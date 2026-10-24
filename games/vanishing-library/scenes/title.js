@@ -30,10 +30,13 @@
       const title = app.title;
       const { pressed } = actions;
       if (title.confirmDelete) {
+        const choice = title.deleteChoice;
         if (pressed.left) title.deleteChoice = 0;
         if (pressed.right) title.deleteChoice = 1;
+        if (title.deleteChoice !== choice) VL.sfx('menuMove');
         if (pressed.pause || pressed.erase) title.confirmDelete = false;
         else if (VL.confirmed(actions)) {
+          VL.sfx('menuSelect');
           // Yes deletes only the save the card showed; one another window
           // wrote since is shown instead.
           if (DELETE_OPTIONS[title.deleteChoice] === 'Yes') {
@@ -46,15 +49,19 @@
       }
       if (pressed.up) title.cursor = (title.cursor + VL.SLOT_COUNT - 1) % VL.SLOT_COUNT;
       if (pressed.down) title.cursor = (title.cursor + 1) % VL.SLOT_COUNT;
+      if (pressed.up || pressed.down) VL.sfx('menuMove');
       const slot = title.slots[title.cursor];
       if (pressed.erase && (slot.status === 'ok' || slot.status === 'damaged')) {
         title.confirmDelete = true;
         title.deleteChoice = 1;
+        VL.sfx('menuSelect');
         return;
       }
       if (!VL.confirmed(actions)) return;
+      if (slot.status === 'empty' || slot.status === 'ok') VL.sfx('menuSelect');
       if (slot.status === 'empty') {
-        app.setScene('name', { slot: title.cursor });
+        // Letters typed just after Enter, in the same frame, belong to the name.
+        app.setScene('name', { slot: title.cursor, typed: actions.pressed.confirm ? actions.typedAfterConfirm : '' });
       } else if (slot.status === 'ok') {
         const game = VL.loadSlot(app.storage, title.cursor);
         if (!game) {

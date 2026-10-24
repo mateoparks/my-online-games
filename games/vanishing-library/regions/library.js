@@ -199,7 +199,7 @@
 
   VL.defineDialogue('chickenKid', [
     {
-      when: { test: (state) => VL.chickenWithHero(state, 'lostChicken') },
+      when: { notFlag: 'thanked:pip', test: (state) => VL.chickenWithHero(state, 'lostChicken') },
       say: [
         'Henrietta! You found her! Oh, thank you, thank you, {name}!',
         'Here, this page blew into her coop last week. It\'s from some old book. You can have it!',
