@@ -989,6 +989,119 @@ async function main() {
       for (const problem of henProblems) console.log(`     ${problem}`);
     }
 
+    // W11, the library and its people with real keys: the library full and
+    // emptied, S at the desk through a reading and a reward, S at the stage
+    // for a puppet show, and Henrietta carried home to Pip, saved as
+    // w11-*.png. A block of its own, so its names never clash.
+    {
+      errors.length = 0;
+      const libProblems = [];
+      const codes = { KeyS: [83, 's'] };
+      const tapS = async () => {
+        const [vk, keyName] = codes.KeyS;
+        const event = { key: keyName, code: 'KeyS', windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) libProblems.push('animation frames stopped after S');
+      };
+      const picture = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const look = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      // A new game in play at `where`, after `setup` (code with g in scope).
+      const libGame = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        g.popups.seen.controls = true;
+        g.flags['met:fenwick'] = true;
+        g.flags['met:wife'] = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+      const desk = await look('VL.LIBRARY_TALK_AT');
+      const atDesk = { area: 'library', screen: '0,0', tx: desk.tx, ty: desk.ty, facing: 'up' };
+      const returnAll = (ids) => `for (const id of ${JSON.stringify(ids)}) VL.markFound(g, id); VL.returnBooks(g); for (let id = VL.nextReading(g); id; id = VL.nextReading(g)) VL.finishReading(g, id);`;
+      const shelfIds = await look('Object.keys(VL.BOOKS)');
+      // S until the scene is `scene` (or the press budget runs out).
+      const sTo = async (scene, presses = 20) => {
+        for (let i = 0; i < presses && (await evaluate('VL.app.sceneId')) !== scene; i += 1) {
+          await sleep(160);
+          await tapS();
+        }
+        return (await evaluate('VL.app.sceneId')) === scene;
+      };
+
+      await libGame(atDesk, returnAll(shelfIds));
+      await sleep(300);
+      await picture('w11-library-full');
+      const full = await look("g.room.entities.filter((e) => e.type === 'libraryShelf').reduce((n, s) => n + s.books.filter((b) => !b.gone).length, 0)");
+      if (full !== shelfIds.length) libProblems.push(`the full library shows ${full} of ${shelfIds.length} books`);
+      await libGame(atDesk, `${returnAll(shelfIds)} g.library.gone.push(...g.library.returned.filter((id, i) => i % 3 !== 2));`);
+      await sleep(300);
+      await picture('w11-library-emptied');
+
+      await libGame(atDesk, `${returnAll(['bookRiverside', 'bookCliffRoad', 'bookWoods', 'bookEastRoad'])} VL.markFound(g, 'bookChickenAlmanac');`);
+      await tapS();
+      if ((await evaluate('VL.app.sceneId')) !== 'dialogue') libProblems.push(`S at the desk gave scene ${await evaluate('VL.app.sceneId')}`);
+      if (!(await sTo('reading'))) libProblems.push('handing in the Almanac never reached its reading');
+      await sleep(1800);
+      await picture('w11-reading');
+      if (!(await sTo('popup'))) libProblems.push('the reading did not end in its popup');
+      await sleep(300);
+      await picture('w11-reading-popup');
+      if (!(await look('g.flags.chickenAlmanacRead'))) libProblems.push('the Almanac reading did not switch the long flight on');
+      if (!(await sTo('dialogue'))) libProblems.push('five books did not bring the reward talk');
+      await sleep(1600);
+      await picture('w11-reward');
+      if (!(await sTo('popup'))) libProblems.push('the reward talk did not end in its popup');
+      await sleep(300);
+      await picture('w11-reward-popup');
+      if (!(await look("VL.hasItem(g, 'shellPurse')"))) libProblems.push('five books did not give the Big Shell Purse');
+
+      await libGame({ area: 'overworld', screen: '2,0', tx: 4, ty: 3, facing: 'up' }, `g.library.returned = ${JSON.stringify(shelfIds.slice(0, 12))};`);
+      await sleep(300);
+      await picture('w11-square');
+      await tapS();
+      if ((await evaluate('VL.app.sceneId')) !== 'puppetShow') libProblems.push(`S at the stage gave scene ${await evaluate('VL.app.sceneId')}`);
+      for (let i = 0; i < 6; i += 1) {
+        await sleep(150);
+        await tapS();
+      }
+      await sleep(900);
+      await picture('w11-puppet-show');
+      const show = await look('VL.app.puppetShow && [VL.app.puppetShow.show.title, VL.app.puppetShow.beat]');
+      if (!show || show[0] !== 'Nosy Ned and the Very Big Dragon') libProblems.push(`the stage-3 show was ${JSON.stringify(show)}`);
+
+      const hen = await look('VL.SPOTS.lostChicken');
+      const pip = await look("VL.getScreen('overworld', '2,1').entities.find((e) => e.id === 'chickenKid')");
+      await libGame({ area: 'overworld', screen: hen.screen, tx: hen.x, ty: hen.y }, '');
+      await evaluate("VL.liftChicken(VL.app.game, VL.app.game.room.entities.find((e) => e.type === 'chicken' && e.lost))");
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        VL.place(g, { area: 'overworld', screen: '2,1', tx: ${pip.x}, ty: ${pip.y + 1}, facing: 'up' });
+        const kid = g.room.entities.find((e) => e.id === 'chickenKid');
+        Object.assign(kid, { x: ${pip.x}, y: ${pip.y}, walk: null, idle: 99 });
+      })()`);
+      await tapS();
+      await sleep(1600);
+      await picture('w11-kid');
+      if ((await evaluate('VL.app.sceneId')) !== 'dialogue') libProblems.push(`S at Pip holding Henrietta gave scene ${await evaluate('VL.app.sceneId')}`);
+      if (!(await sTo('popup'))) libProblems.push('Pip\'s thanks did not end in the page popup');
+      await sleep(300);
+      await picture('w11-kid-page');
+      if (!(await look("VL.spotFound(g, 'pageLostChicken') && !VL.chickenWithHero(g, 'lostChicken')"))) libProblems.push('Pip did not take Henrietta and give the page');
+
+      libProblems.push(...errors);
+      if (libProblems.length) failures += 1;
+      console.log(`${libProblems.length ? 'FAIL' : 'ok  '} library: full and emptied shelves, a reading, a reward, a puppet show, Pip's page, ${path.join(outDir, 'w11-*.png')}`);
+      for (const problem of libProblems) console.log(`     ${problem}`);
+    }
+
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();
   } finally {

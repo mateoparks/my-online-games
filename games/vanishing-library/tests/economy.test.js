@@ -341,11 +341,11 @@ test('metal is its own tier: forging needs no wood gear, and the wood offer step
 
 test('the Smith\'s Ledger, once read, makes forging cost fewer shells', () => {
   const { VL } = loadGame();
-  // W11 claims the book; stand in for it being returned and read.
-  VL.defineLock('bookSmithsLedger', { ...VL.LOCKS.bookSmithsLedger, reached: (state) => Boolean(state.flags.ledgerTest) });
   const game = VL.newGame();
-  assert.equal(VL.smithsLedgerRead(game), false);
-  game.flags.ledgerTest = true;
+  VL.markFound(game, 'bookSmithsLedger');
+  VL.returnBooks(game);
+  assert.equal(VL.smithsLedgerRead(game), false, 'returned but not read yet');
+  VL.finishReading(game, 'bookSmithsLedger');
   assert.equal(VL.smithsLedgerRead(game), true);
   assert.deepEqual(showing(VL, game, 'smithy'), ['woodSword', 'woodShield', 'woodShovel', 'metalSwordLedger', 'metalShieldLedger', 'metalShovelLedger']);
   give(VL, game, { ore: 1, shells: 6 });
@@ -558,9 +558,13 @@ test('digging odds come from the seeded random numbers: about 40%, or 60% with t
   assert.ok(plainRate > 0.37 && plainRate < 0.43, `plain ${plainRate}`);
   assert.ok(tideRate > 0.57 && tideRate < 0.63, `tide tables ${tideRate}`);
   assert.equal(rate(false), plainRate, 'the same seed digs the same shells');
-  // The book switches it on once W11's claim says it has been read.
-  VL.defineLock('bookTideTables', { ...VL.LOCKS.bookTideTables, reached: () => true });
-  assert.equal(VL.digChance(VL.newGame(), 'sand'), 0.6);
+  // The book switches it on once the librarian has read it (W11).
+  const game = VL.newGame();
+  VL.markFound(game, 'bookTideTables');
+  VL.returnBooks(game);
+  assert.equal(VL.digChance(game, 'sand'), 0.4);
+  VL.finishReading(game, 'bookTideTables');
+  assert.equal(VL.digChance(game, 'sand'), 0.6);
 });
 
 test('a wood shovel digs sand only; the metal one digs grass too; never rock, water or a hole', () => {

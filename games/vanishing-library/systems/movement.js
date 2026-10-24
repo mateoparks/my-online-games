@@ -70,6 +70,10 @@
   // A chicken flight's landing counts as arriving on a tile too.
   VL.standHooks = standHooks;
 
+  // Something worn (the Swiftfoot Boots) carries a `speed` factor on its item.
+  VL.heroSpeed = (state) => VL.TUNING.heroSpeed
+    * Object.values(VL.ITEMS).reduce((most, item) => (item.speed && VL.hasItem(state, item.id) ? Math.max(most, item.speed) : most), 1);
+
   VL.defineSystem('movement', {
     order: 10,
     update(state, actions, dt) {
@@ -94,7 +98,7 @@
         dx *= Math.SQRT1_2;
         dy *= Math.SQRT1_2;
       }
-      const speed = VL.TUNING.heroSpeed * dt;
+      const speed = VL.heroSpeed(state) * dt;
       moveAxis(state, 'x', dx * speed);
       moveAxis(state, 'y', dy * speed);
       crossEdges(state);

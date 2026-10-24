@@ -41,6 +41,7 @@ VL.FILES = {
     'systems/combat.js',
     'systems/economy.js',
     'systems/digging.js',
+    'systems/library.js',
   ],
 
   entities: [
@@ -60,6 +61,7 @@ VL.FILES = {
     'entities/spitter.js',
     'entities/gull.js',
     'entities/heart-container.js',
+    'entities/library-finds.js',
   ],
 
   regions: [
@@ -74,6 +76,7 @@ VL.FILES = {
     'regions/finds.js',
     'regions/townsfolk.js',
     'regions/buildings.js',
+    'regions/library.js',
   ],
 
   dungeons: [
@@ -92,6 +95,8 @@ VL.FILES = {
     'scenes/shop.js',
     'scenes/popup.js',
     'scenes/equipment.js',
+    'scenes/reading.js',
+    'scenes/puppet-show.js',
   ],
 
   boot: [
