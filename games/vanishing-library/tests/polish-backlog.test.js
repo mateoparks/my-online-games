@@ -131,3 +131,24 @@ test('a faint while carrying a chicken drops it: each chicken is back at its spo
   assert.deepEqual(home('henYardHen'), [[10, 2]]);
   assert.deepEqual(home('henYardLost'), [[12, 6]]);
 });
+
+// ---------- 4. corner assist around people ----------
+
+test('holding up a few pixels off Gran\'s corner slides the hero round her (wave-3 QA: 4 px off, stuck)', () => {
+  for (const offset of [-4, 4]) {
+    const { VL } = loadGame();
+    const app = playApp(VL);
+    const game = app.game;
+    game.popups.seen.controls = true;
+    game.popups.queue.length = 0;
+    VL.place(game, { area: 'overworld', screen: '2,0', tx: 5, ty: 9, facing: 'up' });
+    const gran = game.room.entities.find((e) => e.id === 'gran');
+    // Gran one tile to the side of the hero's column, standing still.
+    Object.assign(gran, { x: offset < 0 ? 4 : 6, y: 8, walk: null, idle: 99, pause: 99 });
+    Object.assign(game.player, { x: 88 + offset, y: 148.3 });
+    for (let i = 0; i < 30; i += 1) app.update(VL.actions({ held: ['up'] }), 1 / 60);
+    assert.ok(game.player.y < 128, `slid past her corner (offset ${offset}, y ${game.player.y})`);
+    const box = VL.TUNING.heroBox;
+    assert.ok(!VL.isBlocked('overworld', '2,0', game.player.x, game.player.y, box.w, box.h, game.room), 'and never into her');
+  }
+});
