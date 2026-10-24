@@ -24,10 +24,13 @@
       const pause = app.pause;
       const { pressed } = actions;
       if (pause.askQuit) {
+        const choice = pause.quitChoice;
         if (pressed.left) pause.quitChoice = 0;
         if (pressed.right) pause.quitChoice = 1;
+        if (pause.quitChoice !== choice) VL.sfx('menuMove');
         if (pressed.pause || pressed.erase) pause.askQuit = false;
         else if (VL.confirmed(actions)) {
+          VL.sfx('menuSelect');
           pause.askQuit = false;
           if (QUIT_OPTIONS[pause.quitChoice] === 'Yes') app.quit();
         }
@@ -37,8 +40,12 @@
         app.setScene('play');
         return;
       }
-      if (pressed.up || pressed.down) pause.cursor = 1 - pause.cursor;
+      if (pressed.up || pressed.down) {
+        pause.cursor = 1 - pause.cursor;
+        VL.sfx('menuMove');
+      }
       if (!VL.confirmed(actions)) return;
+      VL.sfx('menuSelect');
       if (VL.PAUSE_OPTIONS[pause.cursor] === 'Resume') {
         app.setScene('play');
         return;

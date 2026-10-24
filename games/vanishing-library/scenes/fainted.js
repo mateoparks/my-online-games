@@ -15,6 +15,7 @@
       const screen = app.faintScreen;
       screen.t += dt;
       if (screen.t < WAKE_AFTER || !VL.confirmed(actions)) return;
+      VL.sfx('menuSelect');
       VL.respawn(app.game);
       app.setScene('play');
     },

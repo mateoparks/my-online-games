@@ -148,4 +148,71 @@ test('corner assist: a hero well off the gap stays square against the wall', () 
   assert.ok(Math.abs(far.player.y - (4 * 16 + 4)) < 1e-6, 'flush against the wall');
 });
 
+// ---------- 3. menu sounds ----------
+
+function recordSfx(VL) {
+  const played = [];
+  const original = VL.sfx;
+  VL.sfx = (name) => {
+    played.push(name);
+    return original(name);
+  };
+  return played;
+}
+
+test('menu sounds: title moves and picks, the delete dialog, and name entry', () => {
+  const { VL } = loadGame();
+  const backing = memoryStorage();
+  const app = titleApp(VL, backing);
+  const played = recordSfx(VL);
+  press(VL, app, 'down');
+  press(VL, app, 'up');
+  assert.deepEqual(played.splice(0), ['menuMove', 'menuMove'], 'title cursor');
+  press(VL, app, 'confirm');
+  assert.deepEqual(played.splice(0), ['menuSelect'], 'an empty slot opens name entry');
+  type(VL, app, 'Kit');
+  press(VL, app, 'down');
+  press(VL, app, 'down');
+  assert.deepEqual(played.splice(0), ['menuMove'], 'onto START once');
+  press(VL, app, 'interact');
+  assert.ok(played.splice(0).includes('menuSelect'), 'START');
+  // Back at the title with Kit in slot 1: the delete dialog.
+  const again = titleApp(VL, backing);
+  played.length = 0;
+  press(VL, again, 'erase');
+  press(VL, again, 'left');
+  press(VL, again, 'left');
+  press(VL, again, 'right');
+  press(VL, again, 'confirm');
+  assert.deepEqual(played.splice(0), ['menuSelect', 'menuMove', 'menuMove', 'menuSelect'], 'delete dialog');
+});
+
+test('menu sounds: pause, its quit dialog, fainted and the conflict screen', () => {
+  const { VL } = loadGame();
+  const app = titleApp(VL);
+  app.startGame(VL.newGame(), null);
+  app.setScene('pause');
+  const played = recordSfx(VL);
+  press(VL, app, 'down');
+  assert.deepEqual(played.splice(0), ['menuMove']);
+  press(VL, app, 'up');
+  press(VL, app, 'confirm');
+  assert.deepEqual(played.splice(0), ['menuMove', 'menuSelect'], 'Resume');
+  app.setScene('pause');
+  app.pause.askQuit = true;
+  press(VL, app, 'left');
+  press(VL, app, 'confirm');
+  assert.deepEqual(played.splice(0), ['menuMove', 'menuSelect'], 'quit dialog');
+  app.startGame(VL.newGame(), null);
+  app.setScene('fainted');
+  for (let i = 0; i < 60; i += 1) app.update(VL.actions(), STEP);
+  played.length = 0;
+  press(VL, app, 'interact');
+  assert.ok(played.includes('menuSelect'), 'waking up');
+  app.setScene('conflict');
+  played.length = 0;
+  press(VL, app, 'confirm');
+  assert.deepEqual(played.splice(0), ['menuSelect'], 'conflict');
+});
+
 module.exports = { titleApp, press, type, STEP };

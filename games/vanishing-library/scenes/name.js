@@ -29,8 +29,10 @@
       // S and Space type their letter too; on START the press is what counts.
       const begin = pressed.confirm || (naming.onStart && VL.confirmed(actions));
       if (naming.onStart && !begin && actions.typed) naming.onStart = false;
+      const wasOnStart = naming.onStart;
       if (pressed.up) naming.onStart = false;
       if (pressed.down) naming.onStart = true;
+      if (naming.onStart !== wasOnStart && (pressed.up || pressed.down)) VL.sfx('menuMove');
       // NFC joins an accent typed as its own code point (e + ´) into é.
       for (const ch of naming.onStart ? '' : actions.typed.normalize('NFC')) {
         if (ch === '\b') naming.text = naming.text.slice(0, -1);
@@ -41,6 +43,7 @@
         return;
       }
       if (!begin) return;
+      VL.sfx('menuSelect');
       const name = naming.text.trim() || VL.DEFAULT_NAME;
       // Each adventure rolls its own drops.
       const seed = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) >>> 0;
