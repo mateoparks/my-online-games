@@ -12,6 +12,8 @@
     { kind: 'brokenShells', icon: 'icon-shell-broken' },
     { kind: 'ore', icon: 'icon-ore' },
     { kind: 'berries', icon: 'icon-berry' },
+    { kind: 'paper', icon: 'icon-paper' },
+    { kind: 'ink', icon: 'icon-ink' },
   ];
 
   const items = (app) => VL.equipmentItems(app.game);
@@ -76,6 +78,12 @@
         VL.sfx('menuSelect');
       }
       if (pressed.interact && item.id === 'berry') VL.sfx(VL.eatBerry(game) ? 'munch' : 'bump');
+      // `menuUse(app)` may switch scene (a map opens); it returns a sound or null.
+      if (pressed.interact && item.menuUse) {
+        const sound = item.menuUse(app);
+        if (sound) VL.sfx(sound);
+        if (app.sceneId !== 'equipment') return;
+      }
       view.cursor = VL.clamp(view.cursor, 0, Math.max(0, items(app).length - 1));
       scrollTo(view, items(app).length);
     },
@@ -124,7 +132,7 @@
         VL.ART.text(ctx, 'Nothing yet. Look around!', GRID.x, infoY, { color: 'textDim' });
       }
       RESOURCES.forEach(({ kind, icon }, i) => {
-        const x = GRID.x + i * 40;
+        const x = GRID.x + i * 28;
         const y = infoY + 28;
         centred(ctx, icon, x + 4, y + 3);
         VL.ART.text(ctx, String(game.inventory[kind]).padStart(2, '0'), x + 10, y, { color: 'text' });
