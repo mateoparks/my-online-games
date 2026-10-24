@@ -85,7 +85,7 @@
 
   // ---------- sound ----------
 
-  VL.defineSfx('squawk', [
+  VL.defineSfx('henSquawk', [
     { wave: 'square', freq: 1300, to: 700, dur: 0.11, vol: 0.18, filter: { type: 'bandpass', freq: 1500, q: 3 } },
     { wave: 'square', freq: 1700, to: 850, at: 0.1, dur: 0.15, vol: 0.18, filter: { type: 'bandpass', freq: 1700, q: 3 } },
   ], { gap: 0.2 });
@@ -101,7 +101,7 @@
     chickenCluck: 'cluck', chickenLift: 'cluck', chickenPeck: 'cluck',
     chickenThrow: 'flap', chickenFlight: 'flap', chickenFlap: 'flap',
     chickenLand: 'step', chickenSplash: 'dunk', chickenBonk: 'bump',
-    chickenTired: 'squawk', chickenHit: 'squawk', chickenSwarm: 'squawk',
+    chickenTired: 'henSquawk', chickenHit: 'henSquawk', chickenSwarm: 'henSquawk',
   };
   for (const [event, sound] of Object.entries(EVENT_SOUNDS)) VL.SOUND.onEvent(event, sound);
 
@@ -482,6 +482,8 @@
     };
     player.moving = false;
     player.lift = 0;
+    // W6's knockback would nudge the hero off the flight path each step.
+    player.knockback = null;
     state.events.push({ type: 'chickenFlight' });
     return true;
   };

@@ -417,7 +417,7 @@ test('swarm: hit a chicken too often and its friends flap round the hero, harmle
     press('mainHand');
     wait(0.5);
   }
-  assert.ok(sounds.includes('squawk'));
+  assert.ok(sounds.includes('henSquawk'));
   assert.equal(app.game.room.entities.filter((e) => e.type === 'chickenSwarm').length, 0, 'no swarm yet');
   inFront();
   press('mainHand');
@@ -463,6 +463,123 @@ test('the lost chicken follows the hero once found, across screen edges, until W
   assert.equal(chicken('yardLost'), undefined, 'home with the kid, gone from its spot');
 });
 
+// ---------- with W6 combat ----------
+
+// A practice enemy that never moves, so contact is under the test's control.
+function addDummy(VL) {
+  VL.defineEnemy('henDummy', { hp: 2, damage: 1, size: 'small', body: { w: 10, h: 10 }, think() {}, draw() {} });
+}
+
+// Puts an enemy's body just touching the hero on his right.
+function touchRight(app, enemy) {
+  enemy.cx = app.game.player.x + 9;
+  enemy.cy = app.game.player.y - 5;
+}
+
+test('with combat: a hit while carrying knocks the hero back with the chicken still in hand', () => {
+  const { VL, app, press, wait, withChicken } = setup();
+  addDummy(VL);
+  const hen = withChicken(7, 2, 'right');
+  press('interact');
+  const x = app.game.player.x;
+  const hp = app.game.hp;
+  touchRight(app, VL.spawnEnemy(app.game, 'henDummy', 8, 2));
+  wait(0.3);
+  assert.equal(app.game.hp, hp - 1, 'hurt');
+  assert.ok(app.game.player.x < x - 4, `knocked back (${x} -> ${app.game.player.x})`);
+  assert.equal(app.game.player.carrying, hen, 'still held');
+  assert.ok(!app.game.room.entities.includes(hen), 'not dropped');
+});
+
+test('with combat: a thrown chicken sails past an enemy, neither hurting the other', () => {
+  const { VL, app, press, wait, withChicken } = setup();
+  addDummy(VL);
+  const hen = withChicken(3, 2, 'right');
+  press('interact');
+  const dummy = VL.spawnEnemy(app.game, 'henDummy', 5, 2);
+  press('interact');
+  wait(1.5);
+  assert.equal(dummy.hp, VL.ENEMIES.henDummy.hp);
+  assert.ok(hen.mode === 'idle' || hen.mode === 'walk', `landed (${hen.mode})`);
+  assert.ok(hen.x >= 5, `flew past it (x ${hen.x})`);
+});
+
+test('with combat: the hero is out of reach in the air, so a flight never loses hearts or gets knocked about', () => {
+  const { VL, app, press, step, withChicken, tileOf, fly } = setup();
+  addDummy(VL);
+  withChicken(3, 3, 'right');
+  const hp = app.game.hp;
+  press('fly');
+  for (let i = 0; i < 6; i += 1) step();
+  const dummy = VL.spawnEnemy(app.game, 'henDummy', 5, 3);
+  for (let i = 0; i < 20; i += 1) {
+    touchRight(app, dummy);
+    step();
+  }
+  assert.equal(app.game.hp, hp, 'no damage mid-flight');
+  assert.ok(!app.game.player.knockback && !app.game.player.invuln, 'no push, no i-frames');
+  VL.ENEMIES.henDummy.harmful = () => false;
+  fly();
+  assert.deepEqual(tileOf(), [6, 3], 'landed where planned');
+});
+
+test('with combat: F while being knocked back takes off cleanly (the chicken scoops him up)', () => {
+  const { VL, app, press, step, withChicken } = setup();
+  addDummy(VL);
+  withChicken(7, 2, 'right');
+  touchRight(app, VL.spawnEnemy(app.game, 'henDummy', 8, 2));
+  step();
+  assert.ok(app.game.player.knockback, 'pushed');
+  press('fly');
+  assert.ok(app.game.player.flight, 'took off');
+  assert.equal(app.game.player.knockback, null);
+});
+
+test('with combat: the swarm never hurts, flashes or calms anything, and real enemies still work during it', () => {
+  const { VL, app, press, step, wait, withChicken, inFront } = setup();
+  addDummy(VL);
+  VL.giveItem(app.game, 'woodSword');
+  app.game.popups.queue.length = 0;
+  withChicken(7, 2, 'right');
+  for (let i = 0; i < VL.TUNING.chickenSwarmHits; i += 1) {
+    inFront();
+    press('mainHand');
+    wait(0.5);
+  }
+  assert.ok(app.game.room.entities.some((e) => e.type === 'chickenSwarm'), 'swarming');
+  const hp = app.game.hp;
+  wait(1);
+  assert.deepEqual([app.game.hp, app.game.player.invuln || 0, app.game.player.flash || 0], [hp, 0, 0]);
+  const dummy = VL.spawnEnemy(app.game, 'henDummy', 8, 2);
+  touchRight(app, dummy);
+  step();
+  assert.equal(app.game.hp, hp - 1, 'an enemy still hurts');
+  assert.ok(dummy.calm > 0, 'and calms after its one hit');
+});
+
+test('with combat: the sword passes through townsfolk but still bops a chicken, and a chicken is no enemy', () => {
+  const { VL, app, press, at, chicken } = setup();
+  VL.giveItem(app.game, 'woodSword');
+  app.game.popups.queue.length = 0;
+  VL.defineNpc('henTester', { name: 'Tess', look: 'townsfolk' });
+  VL.defineDialogue('henTester', [{ say: 'Hello!' }]);
+  at({ tx: 5, ty: 2, facing: 'right' });
+  const npc = { type: 'npc', id: 'henTester', x: 6, y: 2 };
+  app.game.room.entities.push(npc);
+  const hen = chicken('yardHen');
+  // Followers trot through anything (README "Chickens"), so one can stand at a townsperson's feet.
+  const feet = VL.tileCenter(6, 2);
+  Object.assign(hen, { px: feet.x + 3, py: feet.y, x: 6, y: 2, mode: 'idle', idle: 99 });
+  const seen = [];
+  press('mainHand');
+  seen.push(...app.game.events.map((e) => e.type));
+  assert.ok(seen.includes('chickenHit'), seen.join());
+  assert.ok(!seen.includes('enemyHit'));
+  assert.ok(!VL.isEnemy(hen));
+  assert.ok(app.game.room.entities.includes(npc));
+  assert.deepEqual([npc.x, npc.y, npc.knock, npc.hp], [6, 2, undefined, undefined]);
+});
+
 // ---------- safety, progression, sound, docs ----------
 
 test('a faint mid-flight never leaves the hero hanging in the air', () => {
@@ -491,7 +608,7 @@ test('W7 claims the chicken locks: chickens, and both flights', () => {
 
 test('chicken events make their sounds', () => {
   const { VL } = loadGame();
-  for (const name of ['squawk', 'flap', 'dunk']) assert.ok(VL.SOUND.EFFECTS[name], name);
+  for (const name of ['henSquawk', 'flap', 'dunk']) assert.ok(VL.SOUND.EFFECTS[name], name);
 });
 
 test('README documents chickens and the flight', () => {

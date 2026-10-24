@@ -35,7 +35,7 @@
     const k = VL.clamp(swing.t / VL.TUNING.swingSeconds, 0, 1);
     const pose = SWING[swing.facing];
     const [dir, dx, dy] = k < 0.3 ? pose.up : pose.out;
-    VL.ART.drawSprite(ctx, `swing-sword-wood-${dir}`, x + dx, y + dy);
+    VL.ART.drawSprite(ctx, `swing-${VL.ITEMS[swing.item]?.icon || 'sword-wood'}-${dir}`, x + dx, y + dy);
     if (k < 0.15 || k > 0.8) return;
     // A white swoosh trailing the blade round the hero.
     const [from, to] = pose.arc;
@@ -55,7 +55,7 @@
     const player = state.player;
     if (player.shield) {
       const [dx, dy, shieldPass] = SHIELD[player.facing] || SHIELD.down;
-      if (pass === shieldPass) VL.ART.drawSprite(ctx, 'item-shield-wood', x + dx, y + dy);
+      if (pass === shieldPass) VL.ART.drawSprite(ctx, `item-${VL.ITEMS[player.shieldItem]?.icon || 'shield-wood'}`, x + dx, y + dy);
     }
     if (player.swing && pass === (player.swing.facing === 'up' ? 'behind' : 'front')) drawSwing(ctx, player.swing, x, y);
   });

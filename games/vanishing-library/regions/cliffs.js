@@ -138,6 +138,7 @@
         'TTTTTTTTTTTTTTTT',
       ],
       entities: [
+        { type: 'gull', x: 7, y: 4 },
         spot('bookCliffRoad', 5, 7, 'bush', 'W11'),
       ],
     },
@@ -157,6 +158,7 @@
         'TTTTTTTTTTTTTTTT',
       ],
       entities: [
+        { type: 'gull', x: 8, y: 4 },
         spot('heartFieldB', 1, 1, 'pickup', 'W6'),
         spot('lostChicken', 13, 8, 'chicken', 'W7'),
       ],
@@ -175,7 +177,9 @@
         'TT....P....B..TT',
         'TTTTT.PTTTTTTTTT',
       ],
-      entities: [],
+      entities: [
+        { type: 'gull', x: 10, y: 7 },
+      ],
     },
     // Down towards the sea cliffs.
     '-1,0': {
@@ -192,7 +196,9 @@
         'CCC.......P....T',
         'CCCCCCCCCC.PCCCx',
       ],
-      entities: [],
+      entities: [
+        { type: 'gull', x: 11, y: 4 },
+      ],
     },
     // The lighthouse headland.
     '-1,1': {
@@ -210,6 +216,7 @@
         'WWWWWWWWWWWWWWWC',
       ],
       entities: [
+        { type: 'gull', x: 3, y: 6 },
         { type: 'decor', art: 'lighthouse', x: 6, y: 2 },
         spot('lighthouseDoor', 7, 4, 'door', 'W18', 'lighthouseEntered'),
         spot('bookLighthouse', 2, 3, 'trunk', 'W11'),
@@ -232,6 +239,7 @@
         'TTTTT.PTTTTTTTTC',
       ],
       entities: [
+        { type: 'gull', x: 12, y: 8 },
         spot('chickenLedge', 7, 3, 'chicken', 'W7', null),
       ],
     },

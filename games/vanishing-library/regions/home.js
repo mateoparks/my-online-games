@@ -43,7 +43,10 @@ VL.addScreens('overworld', {
       'T..............T',
       'TTTTTT....TTTTTT',
     ],
-    entities: [],
+    entities: [
+      { type: 'slime', x: 10, y: 5 },
+      { type: 'slime', x: 7, y: 2 },
+    ],
   },
   '0,1': {
     tiles: [
@@ -60,6 +63,7 @@ VL.addScreens('overworld', {
       'WWWWWWWWWWWWWWWW',
     ],
     entities: [
+      { type: 'crab', x: 4, y: 7 },
       { type: 'shell', x: 6, y: 8 },
       { type: 'shell', whole: true, id: 'shellHomeBeach', x: 11, y: 7 },
     ],

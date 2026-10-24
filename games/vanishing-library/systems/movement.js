@@ -73,6 +73,11 @@
     update(state, actions, dt) {
       const player = state.player;
       const { held } = actions;
+      // Knocked back (systems/combat.js): the push moves the hero, not the arrows.
+      if (player.knockback) {
+        player.moving = false;
+        return;
+      }
       let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
       let dy = (held.down ? 1 : 0) - (held.up ? 1 : 0);
       // Carried by a chicken (systems/chickens.js): the flight moves the hero.

@@ -48,6 +48,9 @@ below exist to keep their diffs in different files:
 - **Every registry throws on a duplicate id** (`defineSystem`, `defineEntity`,
   `defineScene`, `defineTileset`, `addScreens`), so a clash between two lanes
   fails the test run instead of silently dropping one side.
+  `tests/load-names.test.js` also scans every manifest file for
+  `VL.define<Kind>('name'` and names both files when two define the same
+  name, so pick names that say whose they are (`henSquawk`, not `squawk`).
 - **Tests go in a new `tests/<item>.test.js`**, never appended to an existing
   one (see Testing).
 
@@ -366,7 +369,8 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   one bush when no sword is in the main hand. Space with an empty main hand
   pulls too. Entities match by integer tile (`e.x/e.y`). A sword swing (`VL.swing`) sets `state.player.swing` for
   `TUNING.swingSeconds` and pushes `{ type: 'swing', item, hand, tiles }`; it
-  cuts the bushes on those tiles, so combat (W6) reads the same event.
+  cuts the bushes on those tiles. Enemies are hit by the blade's reach box
+  instead (see Combat).
 - **Bushes (`systems/foliage.js`):** a `cuttable` tile is cut for the visit
   by `VL.cutBush(state, tx, ty, 'sword' | 'hands')`; it becomes the legend's
   `cutTo` character (default grass `.`, so a bush on sand says `cutTo: 's'`).
@@ -407,6 +411,96 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
 - **Locks claimed:** `chestGear` (the hut chest, `found:hutChest`),
   `oreShallows`, `berryBush` (a screen with a berry bush visited), `berries`,
   `bushBareHands`, `bushCut`, `beachBrokenShells`.
+
+## Combat (W6)
+
+`systems/combat.js` runs after the hands (order 30): the sword hits enemies,
+enemies and seeds hurt the hero, the shield turns them away, and anything
+that hurts knocks back. Enemy types live one per file in `entities/`
+(`crab`, `slime`, `bat`, `spitter`, `gull`); `entities/heart-container.js`
+holds the heart containers.
+
+- **Tiers are data:** `TUNING.swordDamage` (`woodSword` 1, `metalSword` 2)
+  and `TUNING.shieldBlocks` (`woodShield` blocks `small`, `metalShield`
+  `small` and `big`). The metal items are defined here (sprites, popups);
+  W10's smith only gives them. A new shield (the Mirror Shield, W19) adds its
+  line, e.g. `fire`.
+- **Hurting the hero:** `VL.hurtHero(state, { damage, size, from, cause })`
+  (half hearts; `from` is a point, `cause` the faint line's id) returns
+  `'blocked'`, `'hurt'` or `'ignored'`. A hit sets `player.invuln` and
+  `player.flash` (`TUNING.invulnSeconds`; `render.js` skips the hero on
+  alternate frames while `flash` runs) and `player.knockback`, which moves
+  the hero for `TUNING.knockbackSeconds` with the arrows ignored
+  (`systems/movement.js`), stopping at walls and never crossing a screen
+  edge. A knockback belongs to its room, so a door or respawn mid-push ends
+  it. Hearts running out calls `VL.faint(state, cause)` and clears knockback,
+  invulnerability and flashing, so the hero wakes steady.
+- **The shield** blocks when a hand holding a shield has its key held
+  (`player.shieldItem`, worked out each step), the hit comes from the side the
+  hero faces, and the shield's list has the hit's `size`. A block shoves the
+  hero a little, bounces the enemy, sparks and plays `clank`; no damage, no
+  invulnerability.
+- **One approach, one hit:** an enemy that hurts the hero, or is blocked, is
+  `calm` for `TUNING.enemyCalmSeconds` (2.5 s, well past the 1.2 s of
+  invulnerability): harmless, and each type backs off while `e.calm > 0`
+  (a crab scuttles away, a slime hops away, a bat flies off, a gull climbs, a
+  spitter holds its fire). A seed calms its `owner`. A new enemy type reads
+  `e.calm` in its `think` the same way. `VL.enemyHarmful(e)` says whether
+  touching it hurts right now.
+- **Arriving:** enemies on a screen the hero walks onto hold still and are
+  harmless for `TUNING.enemyArrivalSeconds` (0.6 s); one spawned with
+  `VL.spawnEnemy` starts at once. A test walks onto every open entry of every
+  enemy screen and stands still for 1.5 s unhurt, so place new enemies far
+  enough in.
+- **Enemies:** `VL.defineEnemy(type, { tuning, body: { w, h }, size, flies,
+  rooted, faint, drops?, setup(state, e), think(state, e, dt), harmful(e),
+  onHit, onTouch, draw(ctx, e, cx, cy, t) })` also defines the entity type,
+  so a region places one with `{ type: 'crab', x, y }` (tiles). `tuning`
+  names a `VL.TUNING` entry whose `hp` and `damage` are read live. A live
+  enemy keeps its body centre in pixels (`e.cx`, `e.cy`); move it with
+  `VL.moveEnemy(state, e, dx, dy)` (walkers stop at solid tiles, fliers cross
+  them, and nothing leaves the screen) and aim with `VL.toHero(state, e)`.
+  Enemies are never solid, so none can wall off a path. They live in the
+  visit's room, so they come back at full strength on re-entry and never
+  follow the hero to another screen. `VL.spawnEnemy(state, type, tx, ty)` and
+  `VL.spawnProjectile(state, { cx, cy, vx, vy, size, damage, cause, sprite })`
+  add one to the current visit.
+- **Hits and drops:** a swing with an item listed in `TUNING.swordDamage`
+  (anything else does no harm) hits each enemy in the blade's reach once
+  (`VL.hitEnemy(state, e, damage, from)` for other weapons), knocks it back
+  (not a `rooted` one) and flashes it. A flier with `e.alt` (px above its
+  shadow) is hit where it is drawn. A beaten enemy leaves a puff and rolls
+  `TUNING.enemyDrops` (heart 20%, whole shell 20%) for a `drop` entity on its
+  tile, or the nearest open one.
+- **The roster:** beach crabs (sideways, hurry at a hero in their row) on the
+  beaches; slimes (hop at a nearby hero) in the fields, canyon, east road and
+  lake shore; bats (doze until the hero is close, flutter at them, fly off) and
+  spitters (rooted; puff up, then spit a seed along a straight line) in the
+  Woods; gulls (wheel, squawk, dive where the hero stood; `big`, so only metal
+  blocks them) on the cliffs and highlands. Every one does half a heart and
+  takes one to three wood-sword hits. The start screen, the home meadow (0,0)
+  and the town have none.
+- **Heart containers:** `VL.giveHeartContainer(state, id?)` adds
+  `TUNING.heartContainerHp` (one heart) to `maxHp`, fills every heart, marks
+  `id` found, shows its popup the first time only, plays `fanfare` and earns.
+  W6 fills the `heartFieldA` (east road, among the bushes) and `heartFieldB`
+  (cliff ledge) spots; bosses (W13+) call it directly. No new saved field:
+  `maxHp` and the found flags were already saved.
+- **Sounds:** events `enemyHit` (`hit`), `heroHurt` (`hurt`), `blocked`
+  (`clank`), `enemyDefeated` (`poof`), `spit`, `squawk` and `heartContainer`
+  (`fanfare`).
+- **Sprite names:** the hands draw `swing-<icon>-<up|down|left|right>` for
+  a sword and `item-<icon>` for a raised shield, `<icon>` being the item's
+  `icon`. A new sword or shield ships those sprites (a test checks).
+- **The playthrough** clears enemies from the room before every step, since
+  it scripts progression, not fights; a step that means to fight sets
+  `drive.fight = true`, and `playTo` resets it before the next step. A
+  damage-budget test walks from the hut through the Woods to the Hollow Oak
+  with enemies live, never swinging, and allows at most half the starting
+  hearts.
+- **Townsfolk (W9):** the sword passes through NPCs (only enemies are hit),
+  S on an NPC only talks, a knockback stops at an NPC's tile (NPCs are solid),
+  and enemies wait with the rest of the world while a dialogue or shop is open.
 
 ## Engine notes
 
@@ -565,7 +659,12 @@ and a continue at full hearts (screenshots `title.png`, `name.png`,
 sword and shield land in the hands), E for the equipment screen, Space on a
 bush (it must be cut) and S at a berry bush (`w5-hut.png`,
 `w5-chest-popup.png`, `w5-equipment.png`, `w5-bush-cut.png`,
-`w5-bush-after.png`, `w5-berry-bush.png`, `w5-berries-picked.png`). Then W9's
+`w5-bush-after.png`, `w5-berry-bush.png`, `w5-berries-picked.png`). Then
+combat (W6): each roster enemy on a screen it lives on
+(`w6-enemy-<type>.png`), Space hitting a slime that is knocked back
+(`w6-hit-knockback.png`), a crab hurting and knocking back the hero
+(`w6-hurt.png`), D held blocking a spitter's seed (`w6-shield-block.png`) and
+a heart container picked up (`w6-heart-container.png`). Then W9's
 people, with real keys: "Zoë" typed into name entry (with `ë`), S next to Nell
 and Gran (as "Élodie"), a long line over two pages, and the shop's "not
 enough" and Yes/No (`w9-name-entry.png`, `w9-conversation.png`,
@@ -773,6 +872,12 @@ spots. Tests: `tests/chickens.test.js`.
   movement and the hands stand still while it is set, `player.lift` raises
   the hero, and crossing a screen edge mid-air starts the slide and the
   glide finishes on the far screen. A faint mid-flight drops it.
+- **With combat (W6):** the hero is out of reach in the air (`VL.hurtHero`
+  ignores him while `player.flight` is set, so seeds pass under him), and a
+  take-off ends any knockback. A hit while carrying knocks him back with the
+  chicken still in hand. Enemies and chickens ignore each other; swarm birds
+  are not enemies and never hurt or start i-frames. The sword hits chickens
+  by the swing's tiles, so a townsperson never shields one.
 - **The Almanac:** `VL.chickenFlightTiles` is `chickenFlightLong` once
   `state.flags.chickenAlmanacRead` is set (W11 sets it when the librarian
   reads the book, and its popup tells the player about F), otherwise
@@ -799,7 +904,7 @@ spots. Tests: `tests/chickens.test.js`.
 - **Sounds:** events `chickenCluck`/`chickenLift`/`chickenPeck` (`cluck`),
   `chickenThrow`/`chickenFlight`/`chickenFlap` (`flap`), `chickenLand`
   (`step`), `chickenSplash` (`dunk`), `chickenBonk` (`bump`),
-  `chickenTired`/`chickenHit`/`chickenSwarm` (`squawk`).
+  `chickenTired`/`chickenHit`/`chickenSwarm` (`henSquawk`).
 
 ## Shops
 

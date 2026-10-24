@@ -135,7 +135,9 @@
         'FFFFFffFFFFFFFFF',
         'FFFFFFffFFFFFFFF',
       ],
-      entities: [],
+      entities: [
+        { type: 'bat', x: 10, y: 5 },
+      ],
     },
     // Two pockets that never meet: a dead end from the west (with a secret
     // ore lump) and the true path from the north out to the east.
@@ -172,6 +174,7 @@
         'FFFFFFFFFFFfFFFF',
       ],
       entities: [
+        { type: 'bat', x: 8, y: 4 },
         spot('bookWoods', 12, 8, 'trunk', 'W11'),
       ],
     },
@@ -205,7 +208,9 @@
         'FFFFFFFFFFffFFFF',
         'FFFFFFFFFFffFFFF',
       ],
-      entities: [],
+      entities: [
+        { type: 'bat', x: 4, y: 5 },
+      ],
     },
     // The heart of the Woods: the Hollow Oak.
     '7,-2': {
@@ -223,6 +228,8 @@
         'FFFFFFFffFFFFFFF',
       ],
       entities: [
+        { type: 'spitter', x: 3, y: 5 },
+        { type: 'spitter', x: 12, y: 5 },
         { type: 'decor', art: 'hollowOak', x: 5, y: 1 },
         spot('hollowOakDoor', 7, 3, 'door', 'W15', 'hollowOakEntered'),
       ],
@@ -243,7 +250,9 @@
         'FFFfFFFFFFFFFFFF',
         'FFFfFFFFFFFFFFFF',
       ],
-      entities: [],
+      entities: [
+        { type: 'bat', x: 6, y: 2 },
+      ],
     },
     '4,-1': {
       tiles: [
@@ -307,7 +316,9 @@
         'FFFFFFFFFFFFFFFF',
         'FFFFFFFFFFFFFFFF',
       ],
-      entities: [],
+      entities: [
+        { type: 'bat', x: 8, y: 3 },
+      ],
     },
   });
 
