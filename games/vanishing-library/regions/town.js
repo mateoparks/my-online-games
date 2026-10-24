@@ -294,6 +294,7 @@
         sign(6, 4, 'book'),
         spot('bookHerbalist', 13, 3, 'bush', 'W11'),
         spot('pageFieldA', 14, 9, 'pickup', 'W11'),
+        { type: 'npc', id: 'bramble', x: 11, y: 8 },
       ],
     },
     // The paper mill and its water wheel on the river, the bindery across it.
@@ -344,6 +345,7 @@
         { type: 'decor', art: 'well', x: 7, y: 6 },
         spot('hiddenBookSealed', 1, 3, 'trunk', 'W11'),
         spot('chickenSquare', 10, 8, 'chicken', 'W7', 'chickens'),
+        { type: 'npc', id: 'gran', x: 5, y: 8 },
       ],
     },
     // The blacksmith by the river; the east road leaves past the bridge.
@@ -365,6 +367,7 @@
         door('blacksmithDoor', 'blacksmith', 6, 3, 'W10'),
         sign(7, 3, 'anvil'),
         spot('bookSmithsLedger', 1, 1, 'trunk', 'W11'),
+        { type: 'npc', id: 'juniper', x: 13, y: 7 },
       ],
     },
     // The harbour: the chicken coop, a pier, and the beach path from the hut.
@@ -386,6 +389,7 @@
         spot('chickenCoop', 4, 3, 'chicken', 'W7', 'chickens'),
         spot('bookChickenAlmanac', 3, 3, 'trunk', 'W11'),
         spot('bookDragons', 14, 1, 'trunk', 'W11'),
+        { type: 'npc', id: 'nell', x: 11, y: 6 },
       ],
     },
     // The river meets the sea.

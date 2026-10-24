@@ -18,6 +18,8 @@ VL.FILES = {
     'progression.js',
     'milestones.js',
     'spots.js',
+    'talk.js',
+    'shop.js',
   ],
 
   art: [
@@ -39,6 +41,7 @@ VL.FILES = {
     'entities/spot.js',
     'entities/decor.js',
     'entities/save-point.js',
+    'entities/npc.js',
   ],
 
   regions: [
@@ -51,6 +54,7 @@ VL.FILES = {
     'regions/cliffs.js',
     'regions/highlands.js',
     'regions/finds.js',
+    'regions/townsfolk.js',
   ],
 
   dungeons: [
@@ -65,6 +69,8 @@ VL.FILES = {
     'scenes/pause.js',
     'scenes/fainted.js',
     'scenes/conflict.js',
+    'scenes/dialogue.js',
+    'scenes/shop.js',
   ],
 
   boot: [

@@ -167,7 +167,7 @@ test('name entry: 12 characters at most, backspace, only characters the font has
   assert.equal(app.naming.text, 'Bartholomew ');
   type(VL, app, '\b\b\b\b\b');
   assert.equal(app.naming.text, 'Barthol');
-  type(VL, app, 'é€');
+  type(VL, app, '€{');
   assert.equal(app.naming.text, 'Barthol', 'characters the font cannot draw are ignored');
   type(VL, app, '\b\b\b\b\b\b\b\b\b\b');
   assert.equal(app.naming.text, '');
@@ -566,14 +566,14 @@ test('an earning in any scene is saved the same step, not only in play', () => {
   addFixtureWorld(VL);
   const { app, backing } = titleApp(VL);
   newGameTo(VL, app, 'Kai');
-  VL.defineScene('shop', {
+  VL.defineScene('earningScene', {
     update(a) {
       a.game.flags.bought = true;
       VL.earned(a.game);
     },
     draw() {},
   });
-  app.setScene('shop');
+  app.setScene('earningScene');
   app.update(VL.noActions(), STEP);
   assert.equal(app.game.dirty, false);
   assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).flags.bought, true);

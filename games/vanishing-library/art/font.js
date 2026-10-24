@@ -4,10 +4,59 @@
 (() => {
   const g = (text) => text.split(' ');
 
+  // Accented letters are built from the base letter (é from e), so {name} in
+  // dialogue can be any Latin name. Marks are 2 rows, then a blank row: lower
+  // case rises 1px above the cell, capitals 3px (into the line gap above).
+  const ACCENTS = { acute: 'áéíóúÁÉÍÓÚ', grave: 'àèìòùÀÈÌÒÙ', circumflex: 'âêîôûÂÊÎÔÛ', diaeresis: 'äëïöüÄËÏÖÜ', tilde: 'ãõñÃÕÑ' };
+  const MARKS = {
+    acute: { 3: ['..#', '.#.'], 4: ['..#.', '.#..'], 5: ['...#.', '..#..'] },
+    grave: { 3: ['#..', '.#.'], 4: ['.#..', '..#.'], 5: ['.#...', '..#..'] },
+    circumflex: { 3: ['.#.', '#.#'], 4: ['.##.', '#..#'], 5: ['..#..', '.#.#.'] },
+    diaeresis: { 3: ['...', '#.#'], 4: ['....', '#..#'], 5: ['.....', '.#.#.'] },
+    tilde: { 4: ['.#.#', '#.#.'], 5: ['.##.#', '#..#.'] },
+  };
+  // The small font is 3px capitals with no room for 2 rows: a 1-row mark.
+  const SMALL_MARKS = { acute: '..#', grave: '#..', circumflex: '.#.', diaeresis: '#.#', tilde: '###' };
+  // Lower-case i loses its dot under an accent, so it is drawn 3px wide.
+  const DOTLESS_I = g('... ... .#. .#. .#. .#. .#.');
+
+  function withAccents(glyphs) {
+    for (const [mark, letters] of Object.entries(ACCENTS)) {
+      for (const ch of letters) {
+        const base = ch.normalize('NFD')[0];
+        const upper = base !== base.toLowerCase();
+        const rows = base === 'i' ? DOTLESS_I : glyphs[base];
+        const width = rows[0].length;
+        const blank = '.'.repeat(width);
+        glyphs[ch] = upper
+          ? { rise: 3, rows: [...MARKS[mark][width], blank, ...rows] }
+          : { rise: 1, rows: [...MARKS[mark][width], blank, ...rows.slice(2)] };
+      }
+    }
+    glyphs['ç'] = [...glyphs.c, '..#.', '.#..'];
+    glyphs['Ç'] = [...glyphs.C, '..#..', '.#...'];
+    glyphs['¡'] = g('. . # . # # # # #');
+    glyphs['¿'] = g('..... ..... ..#.. ..... ..#.. .#... #.... #...# .###.');
+    return glyphs;
+  }
+
+  function withSmallAccents(glyphs) {
+    for (const [mark, letters] of Object.entries(ACCENTS)) {
+      for (const ch of letters) {
+        if (ch !== ch.toUpperCase()) continue;
+        glyphs[ch] = { rise: 2, rows: [SMALL_MARKS[mark], '...', ...glyphs[ch.normalize('NFD')[0]]] };
+      }
+    }
+    glyphs['Ç'] = g('### #.. #.. ### .#.');
+    glyphs['¡'] = g('# . # # #');
+    glyphs['¿'] = g('.#. ... .#. #.. .##');
+    return glyphs;
+  }
+
   VL.ART.defineFont('normal', {
     cell: 9,
     lineHeight: 10,
-    glyphs: {
+    glyphs: withAccents({
       A: g('.###. #...# #...# ##### #...# #...# #...#'),
       B: g('####. #...# #...# ####. #...# #...# ####.'),
       C: g('.###. #...# #.... #.... #.... #...# .###.'),
@@ -96,7 +145,7 @@
       '↓': g('..#.. ..#.. ..#.. ..#.. #.#.# .###. ..#..'),
       '♥': g('.##.##. ####### ####### .#####. ..###.. ...#...'),
       '␣': g('..... ..... ..... ..... #...# #...# #####'),
-    },
+    }),
   });
 
   VL.ART.defineFont('large', { base: 'normal', scale: 2, lineHeight: 20 });
@@ -106,7 +155,7 @@
     cell: 5,
     lineHeight: 7,
     upper: true,
-    glyphs: {
+    glyphs: withSmallAccents({
       A: g('### #.# ### #.# #.#'),
       B: g('##. #.# ##. #.# ##.'),
       C: g('### #.. #.. #.. ###'),
@@ -160,6 +209,6 @@
       '→': g('..... ...#. ##### ...#. .....'),
       '↑': g('.#. ### .#. .#. .#.'),
       '↓': g('.#. .#. .#. ### .#.'),
-    },
+    }),
   });
 })();
