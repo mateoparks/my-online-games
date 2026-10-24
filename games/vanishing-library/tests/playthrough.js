@@ -65,12 +65,23 @@ function findPath(VL, from, to) {
   return null;
 }
 
-function createDrive(VL, app) {
+function createDrive(VL, initialApp, reload) {
+  let app = initialApp;
   const drive = {
     VL,
-    app,
+    get app() {
+      return app;
+    },
     get state() {
       return app.game;
+    },
+    // A player reloading the page: the hook saves, builds a fresh app and
+    // loads the save. W2 owns saving, so it supplies the hook (pass `reload`
+    // to createPlaythrough, or define VL.reloadApp once saves exist).
+    reload() {
+      const hook = reload || VL.reloadApp;
+      if (!hook) throw new Error('drive.reload needs a reload hook (W2): pass reload(app) to createPlaythrough or define VL.reloadApp');
+      app = hook(app);
     },
     update(actions = VL.noActions()) {
       app.update(actions, STEP);
@@ -107,8 +118,8 @@ function createDrive(VL, app) {
   return drive;
 }
 
-function createPlaythrough(VL, { milestones = VL.MILESTONES, steps = registry, app = playApp(VL) } = {}) {
-  const drive = createDrive(VL, app);
+function createPlaythrough(VL, { milestones = VL.MILESTONES, steps = registry, app = playApp(VL), reload } = {}) {
+  const drive = createDrive(VL, app, reload);
   const drivable = () => {
     const ids = [];
     for (const id of milestones) {

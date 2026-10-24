@@ -34,9 +34,12 @@
   lock('bindery', { type: 'place', needs: ['town'], doc: '§ Resources and economy: Bindery', by: 'W10' });
   lock('berryBush', { type: 'place', needs: ['start'], doc: '§ Resources and economy: Berries', by: 'W5' });
   lock('chickens', { type: 'place', needs: ['town'], doc: '§ Chickens', by: 'W7' });
+  lock('puppetStage', { type: 'place', needs: ['town'], doc: '§ The world: Town', by: 'W11' });
 
   // ---------- economy (renewable sources) ----------
 
+  // Spent by what uses them, so only renewable sources count (a one-time gift is a top-up).
+  VL.defineResources(['wood', 'shells', 'brokenShells', 'paper', 'ink', 'berries']);
   lock('bushBareHands', { needs: ['start'], gives: ['wood', 'shells'], renewable: true, doc: '§ Resources and economy: Bare hands', by: 'W5' });
   lock('bushCut', { needs: [anySword], gives: ['wood', 'shells'], renewable: true, doc: '§ Resources and economy: Bushes', by: 'W5' });
   lock('berries', { needs: ['berryBush'], renewable: true, doc: '§ Resources and economy: Berries', by: 'W5' });
@@ -132,7 +135,7 @@
 
   // ---------- finale ----------
 
-  lock('trapdoorOpen', { needs: ['d4Boss', 'library'], doc: '§ The path through the game, 9', by: 'W20' });
+  lock('trapdoorOpen', { needs: ['d4Boss', 'puppetStage'], doc: '§ The path through the game, 9', by: 'W20' });
   lock('workshop', { type: 'place', needs: ['trapdoorOpen'], doc: '§ Ending: Confrontation', by: 'W20' });
   lock('marionettes', { needs: ['workshop', anySword], doc: '§ Ending: Confrontation', by: 'W20' });
   lock('ending', { needs: ['marionettes'], doc: '§ Ending: Final scenes before the credits', by: 'W20' });
@@ -143,5 +146,10 @@
     'raft', 'lakeIsland', 'shipwreck', 'lighthouseEntered', 'slingshot', 'd3Boss',
     'climbersAlmanac', 'highlands', 'dragonsLairEntered', 'mirrorShield', 'd4Boss',
     'trapdoorOpen', 'marionettes', 'ending',
-  ]);
+  ], {
+    // Beats the next beat does not depend on: the smith sells a sword, so the
+    // chest can be skipped; the island, the shipwreck and the lighthouse come
+    // in any order.
+    skippable: ['chestGear', 'lakeIsland', 'shipwreck'],
+  });
 })();
