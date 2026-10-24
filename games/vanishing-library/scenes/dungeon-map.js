@@ -70,7 +70,7 @@
       }
       VL.ART.text(ctx, 'KEYS', SIDE_X, GRID.y, { size: 'small', color: 'textDim' });
       VL.ART.drawSprite(ctx, 'item-small-key', SIDE_X, GRID.y + 9);
-      VL.ART.text(ctx, `x${d.keys}`, SIDE_X + 9, GRID.y + 10, { color: 'text' });
+      VL.ART.text(ctx, `x${VL.smallKeys(game, dungeon.id)}`, SIDE_X + 9, GRID.y + 10, { color: 'text' });
       VL.ART.text(ctx, 'BOSS', SIDE_X, GRID.y + 30, { size: 'small', color: 'textDim' });
       if (d.bossKey) VL.ART.drawSprite(ctx, 'item-boss-key', SIDE_X, GRID.y + 39);
       else VL.ART.text(ctx, '-', SIDE_X + 1, GRID.y + 40, { color: 'textDim' });

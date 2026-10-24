@@ -1,15 +1,18 @@
 {
   "v": 1,
-  "name": "Robin",
-  "rngState": 1199730144,
-  "maxHp": 6,
+  "name": "Hero",
+  "rngState": 3599190430,
+  "maxHp": 8,
   "flags": {
-    "found:sampleKey": true,
+    "found:sampleChest": true,
     "found:sampleMap": true,
-    "found:sampleBossKey": true
+    "found:sampleKey": true,
+    "found:sampleBossKey": true,
+    "found:heartSample": true
   },
   "visited": {
     "overworld:1,1": true,
+    "sampleYard:0,0": true,
     "sample:0,0": true,
     "sample:1,0": true,
     "sample:0,-1": true,
@@ -32,14 +35,16 @@
     "paper": 0,
     "ink": 0
   },
-  "items": {},
+  "items": {
+    "woodSword": true
+  },
   "hands": {
-    "mainHand": null,
+    "mainHand": "woodSword",
     "offHand": null
   },
   "popups": {
     "seen": {
-      "controls": true,
+      "woodSword": true,
       "dungeonMap": true,
       "heartContainer": true
     },
@@ -47,7 +52,7 @@
   },
   "dungeons": {
     "sample": {
-      "keys": 1,
+      "keysGiven": 0,
       "bossKey": true,
       "map": true,
       "doors": {

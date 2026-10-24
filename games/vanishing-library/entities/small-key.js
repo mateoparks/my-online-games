@@ -10,7 +10,7 @@
       return true;
     },
     onStand(state, key) {
-      VL.dungeonPickup(state, key, (s, dungeonId) => VL.giveSmallKey(s, dungeonId));
+      VL.dungeonPickup(state, key, (s, dungeonId) => VL.smallKeyFound(s, dungeonId));
     },
     draw(ctx, key, x, y, t) {
       if (key.hidden) return;

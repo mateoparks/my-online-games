@@ -1054,7 +1054,7 @@ async function main() {
       const pushed = await peek("[g.room.entities.find((e) => e.type === 'pushBlock').x, g.dungeons.sample.plates.samplePlate === true, g.room.entities.find((e) => e.type === 'shutter').closed]");
       if (pushed.join() !== '12,true,false') dungeonProblems.push(`the block onto the plate: block x, plate latched, shutter closed = ${pushed}`);
 
-      await dungeonGame({ area: 'sample', screen: '0,-1', tx: 8, ty: 8, facing: 'up' }, "g.dungeons.sample.map = true; g.dungeons.sample.keys = 2; g.dungeons.sample.bossKey = true; g.visited['sample:0,0'] = true; g.visited['sample:1,0'] = true;");
+      await dungeonGame({ area: 'sample', screen: '0,-1', tx: 8, ty: 8, facing: 'up' }, "g.dungeons.sample.map = true; g.dungeons.sample.keysGiven = 2; g.dungeons.sample.bossKey = true; g.visited['sample:0,0'] = true; g.visited['sample:1,0'] = true;");
       await tap('KeyM');
       await sleep(250);
       await snap('w13-map');

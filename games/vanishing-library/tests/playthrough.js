@@ -18,9 +18,11 @@ function step(milestone, fn) {
 }
 
 // An entity type whose solidity depends on saved state (a locked door, a
-// shutter; W13) says so with `passable(state, entity, area)`.
+// shutter; W13) says so with `passable(state, entity, area)`; a tile changed
+// for good with VL.saveTile (W14's boulders) is read from the save.
 function isWalkable(VL, area, screen, tx, ty, state = null) {
-  if (VL.isSolidAt(area, screen, tx, ty)) return false;
+  const saved = state && VL.savedTile ? VL.savedTile(state, area, screen, tx, ty) : null;
+  if (saved !== null ? VL.tileInfo(area, saved).solid : VL.isSolidAt(area, screen, tx, ty)) return false;
   return !VL.getScreen(area, screen).entities.some((e) => {
     if (e.x !== tx || e.y !== ty) return false;
     const def = VL.ENTITIES[e.type];

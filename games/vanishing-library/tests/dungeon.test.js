@@ -46,6 +46,9 @@ function setup({ where = null, storage = false, enemies = false } = {}) {
     get d() {
       return VL.dungeonState(app.game, 'sample');
     },
+    get keys() {
+      return VL.smallKeys(app.game, 'sample');
+    },
     place(place) {
       VL.place(app.game, place);
       if (!t.enemies) t.clearEnemies();
@@ -116,13 +119,13 @@ test('defineDungeon registers a dungeon over an area and refuses bad definitions
 test('a new game holds a fresh state for every dungeon and an empty tile-change store, all JSON-safe', () => {
   const { VL } = loadDungeon();
   const game = VL.newGame();
-  assert.deepEqual(plain(game.dungeons), { sample: { keys: 0, bossKey: false, map: false, doors: {}, plates: {}, switches: {}, boss: false } });
+  assert.deepEqual(plain(game.dungeons), { sample: { keysGiven: 0, bossKey: false, map: false, doors: {}, plates: {}, switches: {}, boss: false } });
   assert.deepEqual(plain(game.tileChanges), {});
   assert.ok(!VL.TRANSIENT_FIELDS.includes('dungeons') && !VL.TRANSIENT_FIELDS.includes('tileChanges'));
   assert.ok(VL.TRANSIENT_FIELDS.includes('dungeonNote'));
   // A dungeon added after a save was written gets its state on first use.
   delete game.dungeons.sample;
-  assert.deepEqual(plain(VL.dungeonState(game, 'sample')), { keys: 0, bossKey: false, map: false, doors: {}, plates: {}, switches: {}, boss: false });
+  assert.deepEqual(plain(VL.dungeonState(game, 'sample')), { keysGiven: 0, bossKey: false, map: false, doors: {}, plates: {}, switches: {}, boss: false });
   assert.throws(() => VL.dungeonState(game, 'nowhere'), /no dungeon nowhere/);
 });
 
@@ -130,7 +133,7 @@ test('the W13 fixture loads with keys, doors, plates, switches, the map and the 
   const { VL } = loadGame();
   const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W13.json'), 'utf8'));
   const d = fixture.dungeons.sample;
-  assert.ok(d.keys > 0 && d.bossKey && d.map && d.boss && Object.keys(d.doors).length && Object.keys(d.plates).length && Object.keys(d.switches).length, 'non-default dungeon state');
+  assert.ok('keysGiven' in d && d.bossKey && d.map && d.boss && Object.keys(d.doors).length && Object.keys(d.plates).length && Object.keys(d.switches).length, 'non-default dungeon state');
   assert.ok(Object.keys(fixture.tileChanges).length, 'a saved tile change');
   const backing = memoryStorage({ [VL.slotKey(0)]: JSON.stringify(fixture) });
   const game = VL.loadSlot(VL.createStorage(backing), 0);
@@ -149,17 +152,17 @@ test('a small key is picked up once, counted for its dungeon, and a reload neith
   t.step();
   assert.ok(t.find('smallKey', 'sampleKey'), 'the key lies there');
   t.hold(['up'], 0.4);
-  assert.equal(t.d.keys, 1);
+  assert.equal(t.keys, 1);
   assert.equal(t.find('smallKey'), undefined);
   assert.ok(VL.spotFound(t.game, 'sampleKey'));
   assert.ok(events(t, 'smallKey').length || t.app.savedAt !== null, 'earned');
   t.reload(at('1,0', 7, 5, 'up'));
   t.step();
-  assert.equal(t.d.keys, 1, 'the key survives a reload');
+  assert.equal(t.keys, 1, 'the key survives a reload');
   assert.equal(t.find('smallKey'), undefined, 'and is not lying there again');
   // Walking the tile again gives nothing.
   t.hold(['up'], 0.4);
-  assert.equal(t.d.keys, 1);
+  assert.equal(t.keys, 1);
 });
 
 test('a locked door is solid without a key; walking into it with one opens it, spends the key and opens the far side too', () => {
@@ -173,10 +176,10 @@ test('a locked door is solid without a key; walking into it with one opens it, s
   assert.equal(t.game.dungeonNote?.text, 'Locked. A small key would open it.');
   assert.equal(t.game.player.screen, '0,0');
   VL.giveSmallKey(t.game, 'sample');
-  assert.equal(t.d.keys, 1);
+  assert.equal(t.keys, 1);
   t.hold(['up'], 0.1);
   assert.ok(door.open && !door.solid, 'opened by walking into it with a key');
-  assert.equal(t.d.keys, 0, 'the key is spent');
+  assert.equal(t.keys, 0, 'the key is spent');
   assert.equal(t.d.doors.sampleDoorNorth, true, 'saved');
   assert.equal(events(t, 'doorUnlocked').length + (t.app.savedAt === null ? 0 : 1) >= 1, true);
   t.until((g) => g.player.screen === '0,-1' && !g.transition, 3, ['up']);
@@ -189,7 +192,7 @@ test('a locked door is solid without a key; walking into it with one opens it, s
   t.reload(at('0,0', 7, 1, 'up'));
   t.step();
   assert.ok(t.find('lockedDoor', 'sampleDoorNorth').open);
-  assert.equal(t.d.keys, 0);
+  assert.equal(t.keys, 0);
 });
 
 test('S facing a locked door opens it as well, and a key never works in another dungeon', () => {
@@ -198,7 +201,7 @@ test('S facing a locked door opens it as well, and a key never works in another 
   VL.giveSmallKey(t.game, 'sample', 2);
   t.press('interact');
   assert.ok(t.find('lockedDoor', 'sampleDoorNorth').open);
-  assert.equal(t.d.keys, 1);
+  assert.equal(t.keys, 1);
   // A second dungeon with its own door: the sample's spare key opens nothing there.
   VL.defineArea('other', { tileset: 'dungeon' });
   VL.addScreens('other', {
@@ -213,8 +216,8 @@ test('S facing a locked door opens it as well, and a key never works in another 
   t.press('interact');
   const door = t.find('lockedDoor', 'otherDoor');
   assert.ok(door.solid && !door.open, 'locked: the other dungeon has no keys');
-  assert.equal(VL.dungeonState(t.game, 'other').keys, 0);
-  assert.equal(t.d.keys, 1, 'the sample key is untouched');
+  assert.equal(VL.smallKeys(t.game, 'other'), 0);
+  assert.equal(t.keys, 1, 'the sample key is untouched');
 });
 
 test('the boss key opens the boss door and is kept; the boss door ignores small keys', () => {
@@ -224,7 +227,7 @@ test('the boss key opens the boss door and is kept; the boss door ignores small 
   t.hold(['up'], 0.5);
   const door = t.find('lockedDoor', 'sampleBossDoor');
   assert.ok(door.solid, 'three small keys open no boss door');
-  assert.equal(t.d.keys, 3);
+  assert.equal(t.keys, 3);
   assert.equal(t.game.dungeonNote?.text, 'The big lock needs the boss key.');
   VL.giveBossKey(t.game, 'sample');
   t.hold([], 0.1);
@@ -411,7 +414,7 @@ test('the statue step saves the game and sets the respawn point; fainting return
   assert.equal(t.game.player.screen, '0,0');
   assert.deepEqual(t.tile(), [2, 1], 'awake at the statue');
   assert.equal(t.game.hp, t.game.maxHp);
-  assert.equal(t.d.keys, 1, 'the key is kept');
+  assert.equal(t.keys, 1, 'the key is kept');
   // A reload lands there too.
   t.reload();
   assert.deepEqual([t.game.player.area, ...t.tile()], ['sample', 2, 1]);
@@ -468,7 +471,7 @@ test('the map screen draws visited rooms, every room with the map, the boss mark
   assert.ok(!sprites.includes('icon-skull'), 'no boss mark without the map');
   assert.ok(strings.some((s) => s.str === 'SAMPLE VAULT') && strings.some((s) => s.str === 'x0'));
   t.d.map = true;
-  t.d.keys = 2;
+  t.d.keysGiven = 2;
   t.d.bossKey = true;
   sprites.length = 0;
   const mid = rects();
@@ -491,7 +494,7 @@ test('the dungeon HUD shows the keys over the play area inside a dungeon only', 
     return original(ctx, str, x, y, options);
   };
   const ctx = fakeDocument().createElement('canvas').getContext('2d');
-  t.d.keys = 3;
+  t.d.keysGiven = 3;
   VL.render(ctx, t.app, 0);
   assert.ok(strings.includes('x3'));
   strings.length = 0;
@@ -711,13 +714,13 @@ const sampleSteps = {
     drive.closePopups();
     drive.walkTo({ area: 'sample', screen: '1,0', tx: 7, ty: 4 });
     drive.reload();
-    assert.equal(drive.state.dungeons.sample.keys, 1, 'the key survives a reload');
+    assert.equal(drive.VL.smallKeys(drive.state, 'sample'), 1, 'the key survives a reload');
   },
   sampleDoorNorth(drive) {
     drive.walkTo({ area: 'sample', screen: '0,0', tx: 7, ty: 1 });
     drive.until((g) => g.dungeons.sample.doors.sampleDoorNorth, 1, ['up']);
     drive.reload();
-    assert.equal(drive.state.dungeons.sample.keys, 0, 'the key is spent with the door open');
+    assert.equal(drive.VL.smallKeys(drive.state, 'sample'), 0, 'the key is spent with the door open');
   },
   sampleBossKey(drive) {
     drive.walkTo({ area: 'sample', screen: '0,-1', tx: 3, ty: 4 });
@@ -765,7 +768,7 @@ test('playthrough: the sample dungeon from the yard to the boss and out, reloadi
   assert.deepEqual([drive.state.player.area, VL_tile(drive).tx, VL_tile(drive).ty], ['sample', 2, 1]);
   assert.equal(drive.state.maxHp, VL.TUNING.startMaxHp + VL.TUNING.heartContainerHp);
   assert.deepEqual(plain(drive.state.dungeons.sample), {
-    keys: 0, bossKey: true, map: true, boss: true,
+    keysGiven: 0, bossKey: true, map: true, boss: true,
     doors: { sampleDoorNorth: true, sampleBossDoor: true }, plates: { samplePlate: true }, switches: { sampleSwitch: true },
   });
 });
@@ -831,9 +834,195 @@ test('a carried chicken cannot fly over a dungeon pit', () => {
   assert.equal(plan.over, null);
 });
 
+// ---------- the lints: layouts that would softlock are told, not shipped ----------
+
+const room = (entities = []) => ({ tiles: ['#'.repeat(16), ...Array(9).fill(`#${'_'.repeat(14)}#`), '#'.repeat(16)], entities });
+
+test('the block lint: a push that cuts the hero off from every exit of a room is reported; the sample passes', () => {
+  const { VL } = loadDungeon();
+  assert.deepEqual([...VL.dungeonBlockProblems()], []);
+  // Block room 1,0's only way out is the left opening (0,5): a block at (2,5)
+  // pushed left lands in front of it, and a block moves once per visit.
+  VL.getScreen('sample', '1,0').entities.push({ type: 'pushBlock', x: 2, y: 5 });
+  assert.deepEqual([...VL.dungeonBlockProblems()], ['sample 1,0: block (2,5) pushed left to (1,5) cuts the hero off from every exit']);
+  assert.deepEqual([...VL.dungeonProblems()], [...VL.dungeonBlockProblems()], 'dungeonProblems gathers every lint');
+});
+
+test('the block lint follows pushes in sequence, a free block as far as it can go, and a door counts as an exit', () => {
+  const { VL } = loadDungeon();
+  // A corridor room: the way out is a door at (7,9) behind a one-tile gap at
+  // (7,8); the free block two tiles up can be walked round and pushed down into it.
+  const tiles = ['#'.repeat(16), ...Array(7).fill('#______________#'), '#######_########', '#######m########', '#'.repeat(16)];
+  VL.addScreens('sample', { '5,5': { tiles, entities: [{ type: 'door', x: 7, y: 9, to: at('0,0', 8, 7) }, { type: 'pushBlock', x: 7, y: 5, once: false }] } });
+  assert.deepEqual([...VL.dungeonBlockProblems()], ['sample 5,5: block (7,5) pushed down to (7,6), block (7,6) pushed down to (7,7) cuts the hero off from every exit']);
+  // The same block that moves once per visit cannot get there.
+  VL.getScreen('sample', '5,5').entities[1].once = true;
+  assert.deepEqual([...VL.dungeonBlockProblems()], []);
+});
+
+test('the lock lint: a lock is named by doors of one id only, and an id is never used twice across all areas', () => {
+  const { VL } = loadDungeon();
+  VL.getScreen('sample', '0,-1').entities.push({ type: 'lockedDoor', id: 'sampleDoorWest', kind: 'small', x: 2, y: 8, lock: 'sampleDoorNorth' });
+  assert.deepEqual([...VL.dungeonLockProblems()], ['lock sampleDoorNorth is named by doors sampleDoorNorth and sampleDoorWest: the solver counts one key, the game spends one per door id']);
+  VL.getScreen('sample', '0,-1').entities.pop();
+  // A key id reused by another area (found flags are global): it is already found there.
+  VL.getScreen('sampleYard', '0,0').entities.push({ type: 'chest', id: 'sampleKey', x: 5, y: 6, contents: [] });
+  assert.deepEqual([...VL.dungeonLockProblems()], ['id sampleKey is used by sample 1,0 smallKey and sampleYard 0,0 chest: ids are global, so prefix them with the dungeon']);
+});
+
+test('the door lint: a locked door on an edge needs its twin on the neighbour screen, or oneWay: true', () => {
+  const { VL } = loadDungeon();
+  assert.deepEqual([...VL.dungeonDoorProblems()], []);
+  const s = VL.getScreen('sample', '0,-1');
+  s.entities = s.entities.filter((e) => e.id !== 'sampleDoorNorth');
+  assert.deepEqual([...VL.dungeonDoorProblems()], ['sample 0,0 lockedDoor sampleDoorNorth on the edge has no copy on 0,-1 at (7,10): add one with the same id, or oneWay: true if that room is only ever entered through this door']);
+  const bossDoor = s.entities.find((e) => e.id === 'sampleBossDoor');
+  delete bossDoor.oneWay;
+  assert.match(VL.dungeonDoorProblems().join('\n'), /sampleBossDoor on the edge has no copy on 0,-2 at \(7,10\)/);
+  bossDoor.oneWay = true;
+  s.entities.push({ type: 'lockedDoor', id: 'sampleDoorNorth', kind: 'small', x: 7, y: 10, lock: 'sampleDoorNorth' });
+  // The same id in a third place, not a side of its edge.
+  VL.addScreens('sample', { '5,5': room([{ type: 'lockedDoor', id: 'sampleDoorNorth', kind: 'small', x: 7, y: 5, lock: 'sampleDoorNorth' }]) });
+  assert.match(VL.dungeonDoorProblems().join('\n'), /lockedDoor sampleDoorNorth is on 3 screens \(0,0, 0,-1, 5,5\): one id is one door, two copies at most, on the two sides of one edge/);
+});
+
+test('keys in hand are derived (keys found + keys given - doors opened), so a renamed door or key id heals itself after a save', () => {
+  const t = setup({ storage: true, where: at('0,0', 7, 1, 'up') });
+  const { VL } = t;
+  VL.markFound(t.game, 'sampleKey');
+  assert.equal(t.keys, 1);
+  t.hold(['up'], 0.2);
+  assert.equal(t.d.doors.sampleDoorNorth, true);
+  assert.equal(t.keys, 0);
+  assert.equal('keys' in t.d, false, 'nothing stored that could go stale');
+  t.app.save();
+  // A later release renames the door (both copies): it reads locked, but the key it took is back.
+  for (const s of ['0,0', '0,-1']) for (const e of VL.getScreen('sample', s).entities) if (e.id === 'sampleDoorNorth') e.id = 'sampleDoorNorthRenamed';
+  t.reload(at('0,0', 7, 1, 'up'));
+  t.step();
+  assert.ok(t.find('lockedDoor').solid, 'the renamed door is locked');
+  assert.equal(t.keys, 1, 'and the key it was opened with is in hand again');
+  t.hold(['up'], 0.2);
+  assert.ok(t.find('lockedDoor').open, 'so it opens again');
+  assert.equal(t.keys, 0);
+  // The key renamed instead: it lies there again, and the count never goes below zero.
+  VL.getScreen('sample', '1,0').entities.find((e) => e.type === 'smallKey').id = 'sampleKeyRenamed';
+  assert.equal(t.keys, 0);
+  t.place(at('1,0', 7, 5, 'up'));
+  assert.ok(t.find('smallKey'), 'the key under its new id is there to find');
+  // Keys from code (a chest, a drop) are counted as given.
+  VL.giveSmallKey(t.game, 'sample', 2);
+  assert.equal(t.d.keysGiven, 2);
+  assert.equal(t.keys, 1);
+});
+
+test('a boss that leaves the room alive is not beaten; one that fell (hp 0, or marked defeated) is', () => {
+  const t = setup({ where: at('0,-2', 7, 8, 'up'), enemies: true });
+  t.step();
+  t.step();
+  const golem = t.find('sampleGolem');
+  // A W14-style burrow done by taking the worm out of the room for a while.
+  t.game.room.entities = t.game.room.entities.filter((e) => e !== golem);
+  t.step();
+  assert.equal(t.d.boss, false, 'gone but alive: not beaten');
+  t.game.room.entities.push(golem);
+  t.step();
+  golem.defeated = true;
+  t.game.room.entities = t.game.room.entities.filter((e) => e !== golem);
+  t.step();
+  assert.equal(t.d.boss, true, 'a scripted kill marks it defeated before removing it');
+});
+
+test('the pathfinder walks through a tile opened with VL.saveTile and round one it walled', () => {
+  const t = setup({ where: at('1,0', 3, 2) });
+  const { VL } = t;
+  const from = at('1,0', 4, 4);
+  const to = at('1,0', 6, 4);
+  assert.equal(findPath(VL, from, to, t.game), null, 'a wall, and the pocket is shut');
+  VL.saveTile(t.game, 5, 4, '_');
+  assert.equal(findPath(VL, from, to, t.game)?.length, 3, 'straight through the opened wall');
+  VL.saveTile(t.game, 5, 4, '#');
+  assert.equal(findPath(VL, from, to, t.game), null);
+});
+
+test("a plate with weight: 'block' ignores the hero; any entity type with weighsPlate presses one, wherever its body stands", () => {
+  const t = setup({ storage: true, where: at('1,0', 12, 7, 'down') });
+  const { VL } = t;
+  t.until(() => t.tile()[1] === 8, 1, ['down']);
+  t.step();
+  assert.deepEqual(t.tile(), [12, 8], 'standing on the plate');
+  assert.equal(t.find('pressurePlate').down, false);
+  assert.equal(t.d.plates.samplePlate, undefined, 'the sample puzzle needs its block');
+  VL.defineEntity('samplePot', { weighsPlate: true, draw() {} });
+  t.game.room.entities.push({ type: 'samplePot', x: 11, y: 8, cx: 12 * 16 + 3, cy: 8 * 16 + 8 });
+  t.step();
+  assert.ok(t.find('pressurePlate').down, 'a pot whose body is on the plate presses it');
+  assert.equal(t.d.plates.samplePlate, true);
+});
+
+test('a block never slides onto an enemy, even one standing off the tile grid', () => {
+  const t = setup({ enemies: true, where: at('0,0', 4, 7, 'right') });
+  const { VL } = t;
+  t.step();
+  t.game.room.entities.push({ type: 'pushBlock', x: 5, y: 7, pushed: false });
+  const block = t.find('pushBlock');
+  const slime = t.find('slime');
+  slime.cx = 6 * 16 + 8 + 3;
+  slime.cy = 7 * 16 + 8;
+  slime.x = (slime.cx - 8) / 16;
+  assert.equal(VL.blockCanMove(t.game, block, 1, 0), false);
+  slime.cx = 8 * 16 + 8;
+  slime.x = 8;
+  assert.equal(VL.blockCanMove(t.game, block, 1, 0), true);
+});
+
+test("the keys HUD is drawn over the light and on the hero's flash-off frames", () => {
+  const t = setup({ where: at('0,0', 8, 7) });
+  const { VL } = t;
+  const order = [];
+  const original = { text: VL.ART.text, light: VL.ART.drawLight };
+  VL.ART.text = (ctx, str, ...rest) => {
+    order.push(String(str));
+    return original.text(ctx, str, ...rest);
+  };
+  VL.ART.drawLight = (...args) => {
+    order.push('light');
+    return original.light(...args);
+  };
+  const ctx = fakeDocument().createElement('canvas').getContext('2d');
+  t.d.keysGiven = 3;
+  t.game.player.flash = 1 / 16; // an odd sixteenth: a frame the hero is hidden on
+  VL.render(ctx, t.app, 0);
+  assert.ok(order.includes('x3'), 'drawn while the hero flashes');
+  assert.ok(order.indexOf('x3') > order.indexOf('light'), 'and after the light');
+  VL.ART.text = original.text;
+  VL.ART.drawLight = original.light;
+});
+
+test('a saved tile change and the saved door, switch and shutter states are in the room the moment it is built', () => {
+  const t = setup({ where: at('0,0', 8, 7), storage: true });
+  const { VL } = t;
+  VL.saveTile(t.game, 5, 5, '#');
+  t.d.doors.sampleDoorNorth = true;
+  t.place(at('1,0', 1, 5, 'left'));
+  VL.enterScreen(t.game, at('0,0', 15, 5, 'left'), 'left');
+  assert.ok(t.game.transition, 'sliding in');
+  assert.equal(VL.tileAt('sample', '0,0', 5, 5, t.game.room), '#', 'changed before the first step');
+  assert.ok(t.find('lockedDoor').open, 'the door is drawn open as the screen slides in');
+  assert.ok(t.find('shutter').closed && !t.find('shutter').solid, 'the shutter is settled (closed, not on the hero)');
+});
+
+test('the W13 fixture is a played state: keys derived, nothing stored for them', () => {
+  const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W13.json'), 'utf8'));
+  const d = fixture.dungeons.sample;
+  assert.equal('keys' in d, false);
+  assert.equal(d.keysGiven, 0);
+  assert.ok(fixture.flags['found:sampleKey'] && d.doors.sampleDoorNorth, 'the one key was found and spent on the door');
+});
+
 test('README documents the dungeon framework and how to build a dungeon', () => {
   const readme = read('README.md');
-  for (const phrase of ['## Dungeons', 'VL.defineDungeon', 'lockedDoor', 'pushBlock', 'pressurePlate', 'shutter', 'saveStatue', 'smallKey:', 'VL.saveTile', 'dungeonMap', 'How to build a dungeon', 'tests/sample-dungeon.js', 'VL.dungeonLockProblems']) {
+  for (const phrase of ['## Dungeons', 'VL.defineDungeon', 'lockedDoor', 'pushBlock', 'pressurePlate', 'shutter', 'saveStatue', 'smallKey:', 'VL.saveTile', 'dungeonMap', 'How to build a dungeon', 'tests/sample-dungeon.js', 'VL.dungeonLockProblems', 'VL.dungeonBlockProblems', 'VL.dungeonDoorProblems', 'VL.dungeonProblems', 'oneWay', 'weighsPlate', "weight: 'block'", 'defeated', 'VL.smallKeys', 'keysGiven']) {
     assert.ok(readme.includes(phrase), `README mentions ${phrase}`);
   }
 });

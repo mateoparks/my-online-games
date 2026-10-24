@@ -9,11 +9,14 @@
 
   // ---------- saved state ----------
 
-  // Per dungeon: keys in hand, doors opened, plates latched, switches thrown,
-  // the boss beaten, the map found. Every one is a permanent earning, so it
-  // saves at once; room state (block positions, a held plate, a shutter
-  // waiting on a fight) is the visit's and comes back fresh on re-entry.
-  const freshDungeon = () => ({ keys: 0, bossKey: false, map: false, doors: {}, plates: {}, switches: {}, boss: false });
+  // Per dungeon: keys given from code, doors opened, plates latched, switches
+  // thrown, the boss beaten, the map found. Every one is a permanent earning,
+  // so it saves at once; room state (block positions, a held plate, a shutter
+  // waiting on a fight) is the visit's and comes back fresh on re-entry. The
+  // keys in hand are never stored: VL.smallKeys derives them, so a door or
+  // key id renamed after a save can never leave a key spent on a door that
+  // reads locked (README "Dungeons", ids).
+  const freshDungeon = () => ({ keysGiven: 0, bossKey: false, map: false, doors: {}, plates: {}, switches: {}, boss: false });
   VL.DUNGEONS = {};
   VL.extendGame('dungeons', () => ({
     dungeons: Object.fromEntries(Object.keys(VL.DUNGEONS).map((id) => [id, freshDungeon()])),
@@ -70,11 +73,37 @@
   };
   VL.dungeonHere = (state) => VL.dungeonState(state, here(state).id);
 
+  // Small keys in hand: the dungeon's key pickups found, plus keys given from
+  // code (a chest, a drop), minus its small doors opened. Door copies share
+  // an id, so each id counts once; a door or key no longer on the map counts
+  // for nothing, which is what heals a rename.
+  VL.smallKeys = function smallKeys(state, dungeonId) {
+    const dungeon = VL.DUNGEONS[dungeonId];
+    const d = VL.dungeonState(state, dungeonId);
+    const seen = new Set();
+    let keys = d.keysGiven || 0;
+    for (const screen of Object.values(VL.AREAS[dungeon.area].screens)) {
+      for (const e of screen.entities) {
+        if (seen.has(`${e.type}:${e.id}`)) continue;
+        seen.add(`${e.type}:${e.id}`);
+        if (e.type === 'smallKey' && VL.spotFound(state, e.id)) keys += 1;
+        else if (e.type === 'lockedDoor' && e.kind !== 'boss' && d.doors[e.id]) keys -= 1;
+      }
+    }
+    return Math.max(0, keys);
+  };
+
+  // A key found on the map is counted by its found flag; this only tells.
+  VL.smallKeyFound = function smallKeyFound(state, dungeonId) {
+    VL.earned(state);
+    state.events.push({ type: 'smallKey', dungeon: dungeonId, keys: VL.smallKeys(state, dungeonId) });
+  };
+
+  // A key from code (a chest, a drop, a script): counted as given.
   VL.giveSmallKey = function giveSmallKey(state, dungeonId, n = 1) {
     const d = VL.dungeonState(state, dungeonId);
-    d.keys += n;
-    VL.earned(state);
-    state.events.push({ type: 'smallKey', dungeon: dungeonId, keys: d.keys });
+    d.keysGiven = (d.keysGiven || 0) + n;
+    VL.smallKeyFound(state, dungeonId);
   };
 
   VL.giveBossKey = function giveBossKey(state, dungeonId) {
@@ -104,19 +133,18 @@
 
   // ---------- doors ----------
 
-  // Opens a locked door for good: a small key is spent with the door's flag in
-  // the same step (both save together, so a reload can never keep one without
-  // the other); the boss key is shown, not spent. Returns 'opened', 'open' or
-  // 'locked'.
+  // Opens a locked door for good: the door's flag is the spent key (one
+  // saved fact, so a reload can never keep one without the other); the boss
+  // key is shown, not spent. Returns 'opened', 'open' or 'locked'.
   VL.openLockedDoor = function openLockedDoor(state, door) {
-    const d = VL.dungeonHere(state);
+    const dungeon = here(state);
+    const d = VL.dungeonState(state, dungeon.id);
     if (door.open || d.doors[door.id]) {
       door.open = true;
       door.solid = false;
       return 'open';
     }
-    if (door.kind === 'boss' ? !d.bossKey : d.keys <= 0) return 'locked';
-    if (door.kind !== 'boss') d.keys -= 1;
+    if (door.kind === 'boss' ? !d.bossKey : VL.smallKeys(state, dungeon.id) <= 0) return 'locked';
     d.doors[door.id] = true;
     door.open = true;
     door.solid = false;
@@ -187,10 +215,20 @@
     shutter.solid = shutter.closed && !heroBoxOverlaps(state, shutter.x, shutter.y);
   }
 
+  // The tile an entity stands on: its body's centre when it has one (an
+  // enemy, a chicken, a thrown pot), else its map tile.
+  const tileOfEntity = (e) => (e.cx === undefined ? { tx: e.x, ty: e.y } : VL.tileOf(e.cx, e.cy));
+
+  // What presses a plate: the hero (unless `weight: 'block'`) and any entity
+  // whose type says `weighsPlate: true` (a push block; W14's pots).
   function settlePlate(state, plate) {
     const hero = VL.heroTile(state);
-    const held = state.room.entities.some((e) => e.type === 'pushBlock' && e.x === plate.x && e.y === plate.y);
-    const stood = hero.tx === plate.x && hero.ty === plate.y;
+    const held = state.room.entities.some((e) => {
+      if (!VL.ENTITIES[e.type]?.weighsPlate) return false;
+      const at = tileOfEntity(e);
+      return at.tx === plate.x && at.ty === plate.y;
+    });
+    const stood = plate.weight !== 'block' && hero.tx === plate.x && hero.ty === plate.y;
     const d = VL.dungeonHere(state);
     const latched = Boolean(plate.id && d.plates[plate.id]);
     const down = latched || held || stood;
@@ -206,8 +244,20 @@
 
   const DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
 
-  // Where a block may go: open floor of this visit, no entity but a plate,
-  // never the edge row or column (so a block can never wall off an exit).
+  // Whether an entity occupies a tile: by its body's box when it has one (a
+  // wandering enemy sits between tiles), else by its map tile.
+  function occupies(e, tx, ty) {
+    if (e.cx === undefined) return e.x === tx && e.y === ty;
+    const { tile } = VL.TUNING;
+    const body = VL.ENEMIES[e.type]?.body || { w: 12, h: 12 };
+    return e.cx + body.w / 2 > tx * tile && e.cx - body.w / 2 < (tx + 1) * tile
+      && e.cy + body.h / 2 > ty * tile && e.cy - body.h / 2 < (ty + 1) * tile;
+  }
+
+  // Where a block may go: open floor of this visit, nothing on the tile but
+  // a plate, never the edge row or column (so a block never sits in an
+  // opening). Whether a push can still cut the hero off from every exit is
+  // VL.dungeonBlockProblems' question, asked of every dungeon by the tests.
   VL.blockCanMove = function blockCanMove(state, block, dx, dy) {
     const { cols, rows } = VL.TUNING;
     const tx = block.x + dx;
@@ -215,7 +265,7 @@
     if (tx < 1 || ty < 1 || tx > cols - 2 || ty > rows - 2) return false;
     const { area, screen } = state.player;
     if (VL.tileInfo(area, VL.tileAt(area, screen, tx, ty, state.room)).solid) return false;
-    return !state.room.entities.some((e) => e !== block && e.x === tx && e.y === ty && e.type !== 'pressurePlate');
+    return !state.room.entities.some((e) => e !== block && e.type !== 'pressurePlate' && occupies(e, tx, ty));
   };
 
   VL.pushBlock = function pushBlock(state, block, dx, dy) {
@@ -258,9 +308,9 @@
         } else e.pushT = 0;
       } else if (e.type === 'lockedDoor' && !e.open) {
         // One try per lean, and again when the keys in hand change.
-        const d = VL.dungeonHere(state);
-        const keys = `${d.keys}/${d.bossKey}`;
         if (push?.entity === e) {
+          const dungeon = here(state);
+          const keys = `${VL.smallKeys(state, dungeon.id)}/${VL.dungeonState(state, dungeon.id).bossKey}`;
           if (e.tried !== keys) {
             e.tried = keys;
             if (VL.openLockedDoor(state, e) === 'locked') VL.lockedDoorNote(state, e);
@@ -281,9 +331,9 @@
   // ---------- rooms ----------
 
   // Set up a fresh visit: saved tile changes, then every shutter, plate and
-  // door settled from saved state, the boss room cleared or armed. Runs at
-  // the start of the first step in a room, before movement, so collision
-  // never sees a room the framework has not seen.
+  // door settled from saved state, the boss room cleared or armed. Runs as
+  // the room is built (VL.onRoomBuilt), so a screen slides in already
+  // changed and collision never sees a room the framework has not seen.
   function prepareRoom(state) {
     const room = state.room;
     room.dungeonReady = true;
@@ -297,11 +347,19 @@
         room.entities = room.entities.filter((e) => e.type !== boss.type);
         bossRewards(state, dungeon);
       } else {
-        for (const e of room.entities) if (e.type === boss.type) e.boss = true;
+        // The marked boss is kept by reference: only its death counts (hp 0,
+        // or `defeated` set by a script), never its absence, so a boss that
+        // burrows out of the entity list for a while is not crowned.
+        for (const e of room.entities) {
+          if (e.type !== boss.type) continue;
+          e.boss = true;
+          room.bossRef = e;
+        }
       }
     }
     settleRoom(state);
   }
+  VL.onRoomBuilt(prepareRoom);
 
   // The heart container where the boss stood on the map (until it is taken)
   // and the warp out, in the boss room of a beaten dungeon.
@@ -393,26 +451,30 @@
           if (event.tiles.some(({ tx, ty }) => tx === lever.x && ty === lever.y)) VL.throwSwitch(state, lever);
         }
       }
-      // The boss is beaten when it is gone from its room, however it fell
-      // (a sword in the combat step, a thrown pot, a scene).
-      if (dungeon.boss && room.screen === dungeon.boss.screen) {
-        const alive = room.entities.some((e) => e.boss);
-        if (alive) room.bossSeen = true;
-        else if (room.bossSeen && !VL.dungeonState(state, dungeon.id).boss) VL.bossDefeated(state, dungeon.id);
+      // The boss is beaten when it has fallen and is gone from its room,
+      // however it fell (a sword in the combat step, a thrown pot, a script
+      // that sets `defeated` before removing it).
+      const boss = room.bossRef;
+      if (boss && !VL.dungeonState(state, dungeon.id).boss && !room.entities.includes(boss) && (boss.hp <= 0 || boss.defeated)) {
+        VL.bossDefeated(state, dungeon.id);
       }
       settleRoom(state);
     },
   });
 
-  // ---------- a dungeon's locks ----------
+  // ---------- the lints: a layout that would softlock is told, not shipped ----------
 
   // Progression (README "Progression"): a dungeon's small keys and locked
   // doors spend one counter, 'smallKey:<dungeon>', so W3's solver sees the
   // spending order. Every key pickup, boss key and locked door names its lock
-  // (`lock: 'id'`), and this check keeps map and table in step. Returns the
-  // problems; the test keeps it empty.
+  // (`lock: 'id'`), and this check keeps map and table in step: the rule
+  // matches, one lock is named by doors of one id (the game spends a key per
+  // door id, the solver one per lock), and no id is used twice anywhere
+  // (found flags are global, so a reused key id is already found). Returns
+  // the problems; the test keeps it empty.
   VL.dungeonLockProblems = function dungeonLockProblems(locks = VL.LOCKS) {
     const problems = [];
+    const doorsByLock = {};
     for (const dungeon of Object.values(VL.DUNGEONS)) {
       const counter = `smallKey:${dungeon.id}`;
       for (const [key, screen] of Object.entries(VL.AREAS[dungeon.area].screens)) {
@@ -420,6 +482,7 @@
           const where = `${dungeon.id} ${key} ${e.type} ${e.id || ''}`.trim();
           const expect = { smallKey: { supplies: counter }, bossKey: { gives: `bossKey:${dungeon.id}` }, lockedDoor: e.kind === 'boss' ? { needs: `bossKey:${dungeon.id}` } : { consumes: counter } }[e.type];
           if (!expect) continue;
+          if (e.type === 'lockedDoor' && e.lock) (doorsByLock[e.lock] || (doorsByLock[e.lock] = new Set())).add(e.id);
           const lock = locks[e.lock];
           if (!e.lock || !lock) {
             problems.push(`${where} needs lock: '<id>' naming a lock in the table`);
@@ -432,8 +495,179 @@
         }
       }
     }
+    for (const [lock, ids] of Object.entries(doorsByLock)) {
+      if (ids.size > 1) problems.push(`lock ${lock} is named by doors ${[...ids].join(' and ')}: the solver counts one key, the game spends one per door id`);
+    }
+    const uses = {};
+    for (const [areaId, area] of Object.entries(VL.AREAS)) {
+      for (const [key, screen] of Object.entries(area.screens)) {
+        for (const e of screen.entities) if (e.id && e.type !== 'lockedDoor') (uses[e.id] || (uses[e.id] = [])).push(`${areaId} ${key} ${e.type}`);
+      }
+    }
+    for (const [id, list] of Object.entries(uses)) {
+      if (list.length > 1) problems.push(`id ${id} is used by ${list.sort().join(' and ')}: ids are global, so prefix them with the dungeon`);
+    }
     return problems;
   };
+
+  // The side of the screen an edge tile is on, as the step across it.
+  function edgeStep(tx, ty) {
+    const { cols, rows } = VL.TUNING;
+    return [tx === 0 ? -1 : tx === cols - 1 ? 1 : 0, ty === 0 ? -1 : ty === rows - 1 ? 1 : 0];
+  }
+
+  // A locked door across a screen edge must have its copy (same id) on the
+  // matching tile of the neighbour, or the hero crossing from that side lands
+  // inside a closed door with nowhere to go; a door whose far room is only
+  // ever entered through it says `oneWay: true`. One id is one door: two
+  // copies at most, and only on the two sides of one edge.
+  VL.dungeonDoorProblems = function dungeonDoorProblems() {
+    const problems = [];
+    const { cols, rows } = VL.TUNING;
+    for (const dungeon of Object.values(VL.DUNGEONS)) {
+      const screens = VL.AREAS[dungeon.area].screens;
+      const where = {};
+      for (const [key, screen] of Object.entries(screens)) {
+        for (const e of screen.entities) {
+          if (e.type !== 'lockedDoor') continue;
+          const label = `${dungeon.id} ${key} lockedDoor ${e.id}`;
+          const [dx, dy] = edgeStep(e.x, e.y);
+          let twin = null;
+          if (dx || dy) {
+            const next = VL.neighborKey(key, dx, dy);
+            const tx = dx ? (dx < 0 ? cols - 1 : 0) : e.x;
+            const ty = dy ? (dy < 0 ? rows - 1 : 0) : e.y;
+            twin = screens[next]?.entities.find((other) => other.type === 'lockedDoor' && other.x === tx && other.y === ty) || null;
+            if (!screens[next]) problems.push(`${label} is on an edge with no screen ${next} beyond it`);
+            else if (!twin && !e.oneWay) problems.push(`${label} on the edge has no copy on ${next} at (${tx},${ty}): add one with the same id, or oneWay: true if that room is only ever entered through this door`);
+            else if (twin && twin.id !== e.id) problems.push(`${label} on the edge faces ${twin.id} on ${next} at (${tx},${ty}): both sides of one door share an id`);
+          }
+          (where[e.id] || (where[e.id] = [])).push({ key, twinKey: twin ? VL.neighborKey(key, dx, dy) : null });
+        }
+      }
+      for (const [id, list] of Object.entries(where)) {
+        const paired = list.length === 2 && list[0].twinKey === list[1].key && list[1].twinKey === list[0].key;
+        if (list.length > 1 && !paired) problems.push(`${dungeon.id} lockedDoor ${id} is on ${list.length} screens (${list.map((l) => l.key).join(', ')}): one id is one door, two copies at most, on the two sides of one edge`);
+      }
+    }
+    return problems;
+  };
+
+  // Every way the blocks of a room can be pushed, and whether any of them
+  // leaves the hero with no exit he can reach (then he can neither leave to
+  // reset the blocks nor, in a room without enemies, faint). A breadth-first
+  // search over block positions from every tile the hero can arrive on; the
+  // first (shortest) stranding sequence per room is reported. It models what
+  // the room is made of: walls, solid things, exits (openings, doors, locked
+  // doors, warps), plates pressed by blocks (or a latch plate the hero can
+  // reach, unless `weight: 'block'`) and the shutters they open; a shutter on
+  // anything else (cleared, a switch, a flag) is taken as open, and enemies
+  // are ignored, since they move.
+  const BLOCK_SEARCH_CAP = 4000;
+  const DIR_NAMES = { '-1,0': 'left', '1,0': 'right', '0,-1': 'up', '0,1': 'down' };
+
+  function roomBlockProblem(areaId, screen) {
+    const { cols, rows } = VL.TUNING;
+    const blocks0 = screen.entities.filter((e) => e.type === 'pushBlock');
+    if (!blocks0.length) return null;
+    const k = (tx, ty) => `${tx},${ty}`;
+    const inside = (tx, ty) => tx >= 0 && ty >= 0 && tx < cols && ty < rows;
+    const onEdge = (tx, ty) => tx === 0 || ty === 0 || tx === cols - 1 || ty === rows - 1;
+    const wall = (tx, ty) => VL.tileInfo(areaId, screen.tiles[ty][tx]).solid;
+    const fixed = screen.entities.filter((e) => e.type !== 'pushBlock' && !VL.ENEMIES[e.type]);
+    const exits = new Set();
+    const solid = new Set();
+    const plates = fixed.filter((e) => e.type === 'pressurePlate');
+    const shutters = fixed.filter((e) => e.type === 'shutter');
+    for (const e of fixed) {
+      if (e.type === 'door' || e.type === 'lockedDoor' || e.type === 'warp') exits.add(k(e.x, e.y));
+      if (e.type === 'lockedDoor' || (e.type !== 'shutter' && e.type !== 'pressurePlate' && (e.solid || VL.ENTITIES[e.type]?.solid))) solid.add(k(e.x, e.y));
+    }
+    for (let tx = 0; tx < cols; tx += 1) for (let ty = 0; ty < rows; ty += 1) if (onEdge(tx, ty) && !wall(tx, ty)) exits.add(k(tx, ty));
+    const occupied = fixed.filter((e) => e.type !== 'pressurePlate').map((e) => k(e.x, e.y));
+    const canPush = (blocks, b, dx, dy) => {
+      const tx = b.x + dx;
+      const ty = b.y + dy;
+      if (!inside(tx, ty) || onEdge(tx, ty) || wall(tx, ty) || occupied.includes(k(tx, ty))) return false;
+      return !blocks.some((o) => o !== b && o.x === tx && o.y === ty);
+    };
+    // The hero's reach, with the shutters settled to a fixpoint (a plate he
+    // or a block holds opens bars that may reach another plate).
+    const reach = (hero, blocks) => {
+      const blockAt = new Set(blocks.map((b) => k(b.x, b.y)));
+      let open = new Set(shutters.filter((s) => !s.open || (!s.open.plate && !s.open.plates)).map((s) => k(s.x, s.y)));
+      for (;;) {
+        const region = new Set();
+        const queue = [hero];
+        const walkable = (tx, ty) => inside(tx, ty) && !wall(tx, ty) && !solid.has(k(tx, ty)) && !blockAt.has(k(tx, ty))
+          && !shutters.some((s) => s.x === tx && s.y === ty && !open.has(k(tx, ty)));
+        if (walkable(hero.tx, hero.ty)) region.add(k(hero.tx, hero.ty));
+        while (queue.length) {
+          const { tx, ty } = queue.shift();
+          for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+            if (!walkable(tx + dx, ty + dy) || region.has(k(tx + dx, ty + dy))) continue;
+            region.add(k(tx + dx, ty + dy));
+            queue.push({ tx: tx + dx, ty: ty + dy });
+          }
+        }
+        const down = new Set(plates.filter((p) => blockAt.has(k(p.x, p.y)) || (p.weight !== 'block' && p.latch && region.has(k(p.x, p.y)))).map((p) => p.id));
+        const next = new Set(shutters.filter((s) => !s.open || [s.open.plate, ...(s.open.plates || [])].filter(Boolean).every((id) => down.has(id))).map((s) => k(s.x, s.y)));
+        if (next.size === open.size) return region;
+        open = next;
+      }
+    };
+    const exitReachable = (region) => [...exits].some((exit) => {
+      const [tx, ty] = exit.split(',').map(Number);
+      return region.has(exit) || [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => region.has(k(tx + dx, ty + dy)));
+    });
+    // Arrival tiles: every exit and the tiles beside it.
+    const starts = [];
+    for (const exit of exits) {
+      const [tx, ty] = exit.split(',').map(Number);
+      for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) if (inside(tx + dx, ty + dy)) starts.push({ tx: tx + dx, ty: ty + dy });
+    }
+    const seen = new Set();
+    const queue = [];
+    const blocksKey = (blocks) => blocks.map((b) => `${b.x},${b.y},${b.pushed ? 1 : 0}`).join(';');
+    const push = (blocks, hero, trail) => {
+      const region = reach(hero, blocks);
+      if (!region.size) return;
+      const id = `${blocksKey(blocks)}|${[...region].sort()[0]}`;
+      if (seen.has(id)) return;
+      seen.add(id);
+      queue.push({ blocks, region, trail });
+    };
+    for (const start of starts) push(blocks0.map((b) => ({ x: b.x, y: b.y, once: b.once, pushed: false })), start, []);
+    while (queue.length) {
+      if (seen.size > BLOCK_SEARCH_CAP) return `more than ${BLOCK_SEARCH_CAP} block positions to check: fewer free blocks (once: false), please`;
+      const { blocks, region, trail } = queue.shift();
+      if (!exitReachable(region)) return `${trail.join(', ')} cuts the hero off from every exit`;
+      blocks.forEach((b, i) => {
+        if (b.pushed && b.once !== false) return;
+        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          if (!region.has(k(b.x - dx, b.y - dy)) || !canPush(blocks, b, dx, dy)) continue;
+          const moved = blocks.map((o, j) => (j === i ? { ...o, x: o.x + dx, y: o.y + dy, pushed: true } : o));
+          push(moved, { tx: b.x, ty: b.y }, [...trail, `block (${b.x},${b.y}) pushed ${DIR_NAMES[k(dx, dy)]} to (${b.x + dx},${b.y + dy})`]);
+        }
+      });
+    }
+    return null;
+  }
+
+  VL.dungeonBlockProblems = function dungeonBlockProblems() {
+    const problems = [];
+    for (const dungeon of Object.values(VL.DUNGEONS)) {
+      for (const [key, screen] of Object.entries(VL.AREAS[dungeon.area].screens)) {
+        const problem = roomBlockProblem(dungeon.area, screen);
+        if (problem) problems.push(`${dungeon.id} ${key}: ${problem}`);
+      }
+    }
+    return problems;
+  };
+
+  // Every lint, for every dungeon: tests/dungeon.test.js keeps it empty, so a
+  // dungeon in the manifest is checked without a test of its own.
+  VL.dungeonProblems = () => [...VL.dungeonLockProblems(), ...VL.dungeonDoorProblems(), ...VL.dungeonBlockProblems()];
 
   // ---------- art shared by the entities ----------
 
@@ -503,13 +737,14 @@
 
   // Small keys and the boss key, shown over the play area while in a dungeon.
   VL.defineHeroLayer('dungeonHud', (ctx, state, x, y, t, pass) => {
-    if (pass !== 'front') return;
+    // The overlay pass: over the light, and never hidden by the hurt flash.
+    if (pass !== 'overlay') return;
     const dungeon = VL.dungeonOf(state);
     if (!dungeon) return;
     const d = VL.dungeonState(state, dungeon.id);
     const { width } = VL.TUNING;
     VL.ART.drawSprite(ctx, 'item-small-key', width - 23, 3);
-    VL.ART.text(ctx, `x${d.keys}`, width - 15, 4, { size: 'small', color: 'text', shadow: 'outline' });
+    VL.ART.text(ctx, `x${VL.smallKeys(state, dungeon.id)}`, width - 15, 4, { size: 'small', color: 'text', shadow: 'outline' });
     if (d.bossKey) VL.ART.drawSprite(ctx, 'item-boss-key', width - 36, 2);
     if (state.dungeonNote) VL.ART.text(ctx, state.dungeonNote.text, width / 2, 4, { size: 'small', align: 'center', color: 'goldLight', shadow: 'outline' });
   });

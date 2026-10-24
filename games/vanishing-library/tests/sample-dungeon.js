@@ -79,7 +79,7 @@
       ],
       entities: [
         { type: 'dungeonMap', id: 'sampleMap', x: 2, y: 2 },
-        { type: 'pressurePlate', id: 'samplePlate', x: 12, y: 8, latch: true },
+        { type: 'pressurePlate', id: 'samplePlate', x: 12, y: 8, latch: true, weight: 'block' },
         { type: 'pushBlock', x: 11, y: 8 },
         { type: 'shutter', id: 'sampleShutterKey', x: 7, y: 6, open: { plate: 'samplePlate' } },
         { type: 'smallKey', id: 'sampleKey', x: 7, y: 4, lock: 'sampleKey' },
@@ -105,7 +105,7 @@
         { type: 'switch', id: 'sampleSwitch', x: 3, y: 3 },
         { type: 'shutter', id: 'sampleShutterBossKey', x: 8, y: 6, open: { switch: 'sampleSwitch' } },
         { type: 'bossKey', id: 'sampleBossKey', x: 8, y: 5, lock: 'sampleBossKey' },
-        { type: 'lockedDoor', id: 'sampleBossDoor', kind: 'boss', x: 7, y: 0, lock: 'sampleBossDoor' },
+        { type: 'lockedDoor', id: 'sampleBossDoor', kind: 'boss', x: 7, y: 0, lock: 'sampleBossDoor', oneWay: true },
       ],
     },
     // The boss room: bars drop on the entry tile behind the hero until the

@@ -2,7 +2,8 @@
 // tile by walking into it (systems/dungeon.js). It moves once per visit
 // unless `once: false`, never onto a wall, another thing or the edge row,
 // and is back where the map puts it on every re-entry: a block can never be
-// saved into a spot that leaves a puzzle unsolvable.
+// saved into a spot that leaves a puzzle unsolvable. Whether a push can cut
+// the hero off from every exit is VL.dungeonBlockProblems' check.
 (() => {
   VL.ART.defineSprite('prop-push-block', {
     outline: false,
@@ -27,6 +28,7 @@
 
   VL.defineEntity('pushBlock', {
     solid: true,
+    weighsPlate: true,
     passable: () => false,
     prepare(state, copy) {
       copy.pushed = false;

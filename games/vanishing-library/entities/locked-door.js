@@ -1,7 +1,9 @@
-// { type: 'lockedDoor', id, kind: 'small' | 'boss', x, y, lock }: a door
-// across a doorway, solid until opened with a key of this dungeon (walk into
-// it or press S). Place one on each side of a screen edge with the same id:
-// both open together. Opened doors are saved (systems/dungeon.js).
+// { type: 'lockedDoor', id, kind: 'small' | 'boss', x, y, lock, oneWay? }:
+// a door across a doorway, solid until opened with a key of this dungeon
+// (walk into it or press S). Place one on each side of a screen edge with
+// the same id: both open together (VL.dungeonDoorProblems insists, unless
+// `oneWay: true` says the far room is only ever entered through it). Opened
+// doors are saved (systems/dungeon.js).
 (() => {
   const door = { o: 'outline', s: 'dgnStone', d: 'dgnStoneDark', l: 'dgnStoneLight', g: 'gold', y: 'goldLight', k: 'ink', r: 'heart' };
   VL.ART.defineSprite('prop-locked-door', {

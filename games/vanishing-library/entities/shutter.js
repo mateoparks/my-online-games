@@ -26,8 +26,8 @@
 
   VL.defineEntity('shutter', {
     prepare(state, copy) {
-      // `cleared` needs the room, which is still being built: the dungeon
-      // system settles it (order 5) before anything moves.
+      // `cleared` needs the whole room: the dungeon framework settles it as
+      // soon as the room is built (VL.onRoomBuilt), before anything moves.
       copy.closed = true;
       copy.solid = false;
     },

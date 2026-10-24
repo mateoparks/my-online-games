@@ -1,8 +1,10 @@
-// { type: 'pressurePlate', id, x, y, latch = false }: a floor plate, down
-// while the hero stands on it or a block sits on it (systems/dungeon.js
-// settles it every step). With `latch: true` the first press is saved for
-// good, so a shutter it opens stays open after a reload even though the
-// block that held it down is back at its start.
+// { type: 'pressurePlate', id, x, y, latch = false, weight? }: a floor
+// plate, down while the hero stands on it or something that `weighsPlate`
+// (a block, a pot) sits on it (systems/dungeon.js settles it every step);
+// `weight: 'block'` ignores the hero, so the puzzle needs its block. With
+// `latch: true` the first press is saved for good, so a shutter it opens
+// stays open after a reload even though the block that held it down is back
+// at its start.
 (() => {
   VL.ART.defineSprite('prop-plate', {
     outline: false,
