@@ -1,0 +1,49 @@
+{
+  "v": 1,
+  "name": "Robin",
+  "rngState": 424242,
+  "maxHp": 6,
+  "flags": {
+    "found:hutChest": true,
+    "found:oreShallows": true,
+    "cutBush": true,
+    "pickedBerries": true
+  },
+  "visited": {
+    "overworld:1,1": true,
+    "hut:0,0": true
+  },
+  "savePoint": {
+    "area": "hut",
+    "screen": "0,0",
+    "tx": 2,
+    "ty": 2,
+    "facing": "down"
+  },
+  "finished": false,
+  "inventory": {
+    "wood": 3,
+    "shells": 7,
+    "brokenShells": 2,
+    "berries": 2,
+    "ore": 1
+  },
+  "items": {
+    "woodSword": true,
+    "woodShield": true
+  },
+  "hands": {
+    "mainHand": "woodSword",
+    "offHand": "woodShield"
+  },
+  "popups": {
+    "seen": {
+      "woodSword": true,
+      "woodShield": true
+    },
+    "queue": [
+      "controls",
+      "wood"
+    ]
+  }
+}

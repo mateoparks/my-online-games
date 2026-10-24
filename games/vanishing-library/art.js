@@ -477,11 +477,12 @@
     for (const { style, cell } of cells) style.raised?.(ctx, cell, t);
   };
 
-  VL.ART.drawScreenTiles = function drawScreenTiles(ctx, areaId, key, ox, oy, t) {
+  // `room` (state.room) draws this visit's changed tiles, such as a cut bush.
+  VL.ART.drawScreenTiles = function drawScreenTiles(ctx, areaId, key, ox, oy, t, room) {
     const { cols, rows } = VL.TUNING;
     const [sx, sy] = key.split(',').map(Number);
     const lookup = (tx, ty) => {
-      const ch = VL.tileAt(areaId, key, tx, ty);
+      const ch = VL.tileAt(areaId, key, tx, ty, room);
       return ch === null ? null : VL.tileInfo(areaId, ch);
     };
     VL.ART.drawTiles(ctx, lookup, ox, oy, t, (sx || 0) * cols, (sy || 0) * rows);

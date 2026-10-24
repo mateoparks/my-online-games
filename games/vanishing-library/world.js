@@ -50,8 +50,10 @@ VL.neighborKey = function neighborKey(key, dx, dy) {
 
 // A lookup just past an edge reads the neighbouring screen, so collision works
 // across edges and the hero can only cross where both sides are open. Off the
-// world, or diagonally past a corner, it returns null (solid).
-VL.tileAt = function tileAt(areaId, key, tx, ty) {
+// world, or diagonally past a corner, it returns null (solid). `room`
+// (state.room) applies this visit's changes to its own screen: a cut bush,
+// a picked berry bush (VL.setRoomTile).
+VL.tileAt = function tileAt(areaId, key, tx, ty, room) {
   const { cols, rows } = VL.TUNING;
   const dx = tx < 0 ? -1 : tx >= cols ? 1 : 0;
   const dy = ty < 0 ? -1 : ty >= rows ? 1 : 0;
@@ -59,15 +61,25 @@ VL.tileAt = function tileAt(areaId, key, tx, ty) {
   if (dx || dy) {
     const other = VL.neighborKey(key, dx, dy);
     if (!VL.screenExists(areaId, other)) return null;
-    return VL.tileAt(areaId, other, tx - dx * cols, ty - dy * rows);
+    return VL.tileAt(areaId, other, tx - dx * cols, ty - dy * rows, room);
   }
-  return VL.getScreen(areaId, key).tiles[ty][tx];
+  const changed = room && room.area === areaId && room.screen === key ? room.tiles?.[`${tx},${ty}`] : undefined;
+  return changed ?? VL.getScreen(areaId, key).tiles[ty][tx];
 };
 
-VL.isSolidAt = (areaId, key, tx, ty) => Boolean(VL.tileInfo(areaId, VL.tileAt(areaId, key, tx, ty)).solid);
+VL.setRoomTile = function setRoomTile(state, tx, ty, ch) {
+  state.room.tiles[`${tx},${ty}`] = ch;
+};
+
+// With `room`, the visit's solid entities (a chest, a sign) block too.
+VL.isSolidAt = function isSolidAt(areaId, key, tx, ty, room) {
+  if (VL.tileInfo(areaId, VL.tileAt(areaId, key, tx, ty, room)).solid) return true;
+  if (!room || room.area !== areaId || room.screen !== key) return false;
+  return room.entities.some((e) => e.x === tx && e.y === ty && (e.solid || VL.ENTITIES[e.type]?.solid));
+};
 
 // Does a box centred at (x, y) in play-area pixels overlap a solid tile?
-VL.isBlocked = function isBlocked(areaId, key, x, y, w, h) {
+VL.isBlocked = function isBlocked(areaId, key, x, y, w, h, room) {
   const { tile } = VL.TUNING;
   const left = Math.floor((x - w / 2) / tile);
   const right = Math.floor((x + w / 2 - 1e-6) / tile);
@@ -75,7 +87,7 @@ VL.isBlocked = function isBlocked(areaId, key, x, y, w, h) {
   const bottom = Math.floor((y + h / 2 - 1e-6) / tile);
   for (let ty = top; ty <= bottom; ty += 1) {
     for (let tx = left; tx <= right; tx += 1) {
-      if (VL.isSolidAt(areaId, key, tx, ty)) return true;
+      if (VL.isSolidAt(areaId, key, tx, ty, room)) return true;
     }
   }
   return false;

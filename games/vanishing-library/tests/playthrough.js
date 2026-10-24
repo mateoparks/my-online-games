@@ -1,11 +1,12 @@
 // Scripted playthrough: drives the real game (app.update with Actions) from a
 // new game to a named milestone, running one registered step per milestone
-// and checking each milestone's `reached` on the way. Steps are data:
+// and checking each milestone's `reached` on the way, again after a page
+// reload following every step. Steps are data:
 // tests/steps/<item>.steps.js registers them (README "Progression").
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { playApp } = require('./harness');
+const { memoryStorage } = require('./harness');
 
 const STEP = 1 / 60;
 const DIRECTIONS = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] };
@@ -98,6 +99,16 @@ function createDrive(VL, initialApp, reload) {
       const { area, screen, x, y } = drive.state.player;
       throw new Error(`not reached after ${maxSeconds} s holding [${held}]: hero at ${area} ${screen} (${x.toFixed(1)},${y.toFixed(1)}), scene ${app.sceneId}`);
     },
+    // Reads and closes every popup that is up or waiting, as a player would (S).
+    closePopups() {
+      for (let i = 0; i < 20; i += 1) {
+        if (app.sceneId === 'play' && VL.currentPopup(app.game)) drive.update();
+        if (app.sceneId !== 'popup') return;
+        drive.hold([], 0.4);
+        drive.press('interact');
+      }
+      throw new Error(`popups kept coming: ${VL.currentPopup(app.game)?.id}`);
+    },
     // Walks the shortest tile path with real held directions; `target` fields
     // default to the hero's area and screen.
     walkTo(target) {
@@ -118,7 +129,17 @@ function createDrive(VL, initialApp, reload) {
   return drive;
 }
 
-function createPlaythrough(VL, { milestones = VL.MILESTONES, steps = registry, app = playApp(VL), reload } = {}) {
+// A new game in play, saved in slot 1 of a fresh in-memory store, so a
+// reload finds it.
+function slotApp(VL) {
+  const app = VL.createApp({ storage: VL.createStorage(memoryStorage()) });
+  app.startGame(VL.newGame(), 0, { fresh: true });
+  app.save();
+  app.setScene('play');
+  return app;
+}
+
+function createPlaythrough(VL, { milestones = VL.MILESTONES, steps = registry, app = slotApp(VL), reload } = {}) {
   const drive = createDrive(VL, app, reload);
   const drivable = () => {
     const ids = [];
@@ -141,13 +162,18 @@ function createPlaythrough(VL, { milestones = VL.MILESTONES, steps = registry, a
         if (!lock?.reached) throw new Error(`milestone ${id} is planned (no reached predicate), so its steps cannot be checked`);
         steps[id](drive);
         assert.ok(lock.reached(drive.state), `milestone ${id} was not reached by its steps`);
+        // Progress survives reloading the page at any point: reload (no save
+        // first) after every milestone and check it again.
+        if (drive.app.slot === null) throw new Error(`playTo reloads after ${id}, so the game needs a save slot: start from the title or the default app`);
+        drive.reload();
+        assert.ok(drive.state && lock.reached(drive.state), `milestone ${id} did not survive a reload (a missing VL.earned?)`);
       }
       return drive;
     },
   };
 }
 
-module.exports = { step, registry, findPath, isWalkable, createPlaythrough };
+module.exports = { step, registry, findPath, isWalkable, createPlaythrough, slotApp };
 
 const stepsDir = path.join(__dirname, 'steps');
 for (const file of fs.readdirSync(stepsDir).filter((name) => name.endsWith('.steps.js')).sort()) {

@@ -62,11 +62,11 @@ test('VL.tune adds tuning numbers from a system file and rejects a clash', () =>
 
 test('VL.extendGame adds state fields to every new game and rejects a clash', () => {
   const { VL } = loadGame();
-  VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }));
+  VL.extendGame('satchel', () => ({ satchel: { wood: 0 } }));
   const state = VL.newGame();
-  assert.deepEqual({ ...state.inventory }, { wood: 0 });
-  assert.notEqual(VL.newGame().inventory, state.inventory, 'fresh per game');
-  assert.throws(() => VL.extendGame('inventory', () => ({})), /inventory/);
+  assert.deepEqual({ ...state.satchel }, { wood: 0 });
+  assert.notEqual(VL.newGame().satchel, state.satchel, 'fresh per game');
+  assert.throws(() => VL.extendGame('satchel', () => ({})), /satchel/);
   VL.extendGame('clash', () => ({ hp: 99 }));
   assert.throws(() => VL.newGame(), /hp/);
   VL.GAME_EXTENSIONS.pop();
@@ -88,16 +88,16 @@ test('the renderer draws the live room entities, not the static screen data', ()
   const { VL, document } = loadGame();
   addFixtureWorld(VL);
   const drawn = [];
-  VL.defineEntity('chest', { draw: (ctx, entity) => drawn.push(entity) });
-  VL.AREAS.test.screens['0,0'].entities.push({ type: 'chest', x: 4, y: 4 });
+  VL.defineEntity('crate', { draw: (ctx, entity) => drawn.push(entity) });
+  VL.AREAS.test.screens['0,0'].entities.push({ type: 'crate', x: 4, y: 4 });
   const app = playApp(VL);
   VL.place(app.game, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
-  app.game.room.entities.find((e) => e.type === 'chest').opened = true;
+  app.game.room.entities.find((e) => e.type === 'crate').opened = true;
   const ctx = document.createElement('canvas').getContext('2d');
   VL.render(ctx, app, 0);
   assert.equal(drawn.length, 1);
   assert.equal(drawn[0].opened, true, 'the draw hook sees the per-visit copy');
-  app.game.room.entities = app.game.room.entities.filter((e) => e.type !== 'chest');
+  app.game.room.entities = app.game.room.entities.filter((e) => e.type !== 'crate');
   VL.render(ctx, app, 0);
   assert.equal(drawn.length, 1, 'an entity removed from the room is not drawn');
 });

@@ -17,6 +17,7 @@ VL.FILES = {
     'save.js',
     'progression.js',
     'milestones.js',
+    'items.js',
     'spots.js',
   ],
 
@@ -32,6 +33,8 @@ VL.FILES = {
   systems: [
     'systems/movement.js',
     'systems/sound.js',
+    'systems/foliage.js',
+    'systems/hands.js',
   ],
 
   entities: [
@@ -39,6 +42,10 @@ VL.FILES = {
     'entities/spot.js',
     'entities/decor.js',
     'entities/save-point.js',
+    'entities/chest.js',
+    'entities/sign.js',
+    'entities/pickups.js',
+    'entities/ore.js',
   ],
 
   regions: [
@@ -65,6 +72,8 @@ VL.FILES = {
     'scenes/pause.js',
     'scenes/fainted.js',
     'scenes/conflict.js',
+    'scenes/popup.js',
+    'scenes/equipment.js',
   ],
 
   boot: [
