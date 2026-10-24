@@ -135,18 +135,19 @@
   const nextIs = (id, when) => (state) => VL.nextMilestone(state) === id && (!when || when(state));
   const hintEntries = Object.entries(VL.LIBRARY_HINTS).flatMap(([id, hints]) => hints.map((hint) => ({ when: { test: nextIs(id, hint.when) }, say: hint.say })));
 
+  const introduction = [
+    'Oh! A visitor. Welcome to the library, {name}. I\'m Mr. Fenwick, the librarian.',
+    'Well... what\'s left of it. Our books keep vanishing, and I can\'t work out where they go.',
+    'If you ever find one, bring it here and we\'ll read it together. Ask me any time if you\'re stuck.',
+  ];
+  const booksHandedIn = 'Are those... books? You found books, {name}! Let me put them on the shelves.';
+
   VL.defineDialogue('librarian', [
-    { when: { test: carrying }, say: 'Are those... books? You found books, {name}! Let me put them on the shelves.', give: { returnBooks: true }, repeat: true },
+    // A kid who walks in already carrying the first book still meets him first.
+    { when: { notFlag: 'met:fenwick', test: carrying }, say: [...introduction, booksHandedIn], set: 'met:fenwick', give: { returnBooks: true } },
+    { when: { test: carrying }, say: booksHandedIn, give: { returnBooks: true }, repeat: true },
     { when: { test: beatsWaiting }, say: 'Now, where were we? Ah, yes!', give: { libraryChain: true }, repeat: true },
-    {
-      when: { notFlag: 'met:fenwick' },
-      say: [
-        'Oh! A visitor. Welcome to the library, {name}. I\'m Mr. Fenwick, the librarian.',
-        'Well... what\'s left of it. Our books keep vanishing, and I can\'t work out where they go.',
-        'If you ever find one, bring it here and we\'ll read it together. Ask me any time if you\'re stuck.',
-      ],
-      set: 'met:fenwick',
-    },
+    { when: { notFlag: 'met:fenwick' }, say: introduction, set: 'met:fenwick' },
     { when: { test: noticing }, say: 'That\'s odd. I was sure I put a book right here on this shelf. My memory must be going.', give: { noticeTheft: true }, repeat: true },
     ...hintEntries,
     { say: 'Every book you bring back makes this old room a little brighter, {name}.' },

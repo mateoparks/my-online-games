@@ -172,6 +172,27 @@ test('the librarian takes every carried book; the count of books returned ever o
   assert.equal(VL.saveSummary(VL.serializeSave(t.game)).books, 3, 'the slot card shows books returned');
 });
 
+test('bringing the first book before ever meeting him: he introduces himself first, then takes it, and never again', () => {
+  const t = setup();
+  const { VL } = t;
+  const talk = () => {
+    t.at({ area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT, facing: 'up' });
+    t.press('interact');
+    const words = t.app.dialogue.pages.flat().join(' ');
+    t.pressThrough();
+    return words;
+  };
+  find(VL, t.game, ['hiddenBookSealed']);
+  const first = talk();
+  assert.ok(first.indexOf('I\'m Mr. Fenwick') >= 0 && first.indexOf('I\'m Mr. Fenwick') < first.indexOf('Are those... books?'), first);
+  assert.ok(VL.hasItem(t.game, 'scriptoriumKey'), 'the reading and the key follow');
+  assert.ok(t.game.flags['met:fenwick']);
+  assert.ok(!talk().includes('A visitor'), 'no second introduction');
+  find(VL, t.game, ['bookRiverside']);
+  const later = talk();
+  assert.ok(later.startsWith('Are those... books?') && !later.includes('A visitor'), later);
+});
+
 test('handing books in, he says a line about each untitled one and the count', () => {
   const { VL } = loadGame();
   const game = VL.newGame({ name: 'Robin' });
@@ -627,6 +648,7 @@ test('progress in the library survives a reload at any point of a visit', () => 
   const t = setup({ storage: true });
   const { VL } = t;
   find(VL, t.game, ['bookChickenAlmanac', 'bookRiverside']);
+  t.game.flags['met:fenwick'] = true; // a one-page talk, without his introduction
   t.at({ area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT, facing: 'up' });
   t.press('interact');
   t.hold([], 0.35);
