@@ -28,6 +28,13 @@
       bat.timer = 0;
       bat.phase = 0;
     },
+    onTouch(state, bat) {
+      const hero = VL.toHero(state, bat);
+      bat.vx = (-hero.dx / (hero.dist || 1)) * T().speed;
+      bat.vy = (-hero.dy / (hero.dist || 1)) * T().speed;
+      bat.mode = 'leave';
+      bat.timer = T().leaveSeconds;
+    },
     onHit(state, bat) {
       if (bat.mode === 'rest') bat.mode = 'flutter';
       bat.timer = T().flutterSeconds;
@@ -36,7 +43,7 @@
       bat.timer -= dt;
       bat.phase += dt;
       if (bat.mode === 'rest') {
-        if (bat.timer <= 0 && VL.toHero(state, bat).dist < T().wake) {
+        if (bat.timer <= 0 && !(bat.calm > 0) && VL.toHero(state, bat).dist < T().wake) {
           bat.mode = 'flutter';
           bat.timer = T().flutterSeconds;
         }

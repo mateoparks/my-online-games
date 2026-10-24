@@ -121,6 +121,40 @@ test('sword and shield tiers are data: wood and metal damage and what each shiel
   }
 });
 
+test('every sword has a damage entry and swing sprites, every shield its held sprite, and only swords hurt', () => {
+  const { VL } = loadGame();
+  for (const [id, item] of Object.entries(VL.ITEMS).filter(([, def]) => def.sword)) {
+    assert.ok(VL.TUNING.swordDamage[id] > 0, `${id} in TUNING.swordDamage`);
+    for (const dir of ['up', 'down', 'left', 'right']) assert.ok(VL.ART.SPRITES[`swing-${item.icon}-${dir}`], `swing-${item.icon}-${dir}`);
+  }
+  for (const id of Object.keys(VL.TUNING.shieldBlocks)) assert.ok(VL.ART.SPRITES[`item-${VL.ITEMS[id].icon}`], `item-${VL.ITEMS[id].icon}`);
+  const t = setup();
+  t.at(5, 5);
+  const dummy = t.spawn('dummy', 6, 5);
+  dummy.cx = 104;
+  dummy.cy = 88;
+  t.player.swing = { t: 0, item: 'stick', facing: 'right' };
+  t.step();
+  assert.equal(dummy.hp, t.VL.ENEMIES.dummy.hp, 'an item with no swordDamage entry does no harm');
+});
+
+test('a flier is hit where it is drawn, above its shadow', () => {
+  const t = setup();
+  const { VL } = t;
+  t.give('woodSword');
+  t.at(5, 5, 'right');
+  t.game.hp = 99;
+  const gull = t.spawn('gull', 6, 5);
+  gull.cx = t.player.x + 14;
+  gull.cy = t.player.y + 20;
+  gull.alt = 14;
+  gull.mode = 'circle';
+  gull.timer = 99;
+  const hp = gull.hp;
+  t.press('mainHand');
+  assert.equal(gull.hp, hp - VL.TUNING.swordDamage.woodSword, 'the blade reaches the bird drawn at hero height');
+});
+
 test('the wood sword takes two hits to beat a 2-heart enemy, the metal sword one', () => {
   for (const [sword, swings] of [['woodSword', 2], ['metalSword', 1]]) {
     const t = setup();
@@ -250,8 +284,10 @@ test('after a hit the hero is invulnerable for a while and flashes, then can be 
   const { VL } = t;
   t.at(6, 5);
   const dummy = t.spawn('dummy', 9, 5);
+  const fresh = t.spawn('dummy', 9, 8);
   const hp = t.game.hp;
-  const pin = () => touch(t, dummy, 'right');
+  let pinned = dummy;
+  const pin = () => touch(t, pinned, 'right');
   pin();
   t.step();
   assert.equal(t.game.hp, hp - 1);
@@ -261,6 +297,8 @@ test('after a hit the hero is invulnerable for a while and flashes, then can be 
     t.step();
   }
   assert.equal(t.game.hp, hp - 1, 'no damage while invulnerable');
+  // The first dummy is calm now (one approach, one hit), so a fresh one tries.
+  pinned = fresh;
   for (let s = 0; s < 0.3; s += STEP) {
     pin();
     t.step();
@@ -520,6 +558,26 @@ test('hearts running out faints the hero with the enemy\'s line; waking keeps ev
   assert.ok(VL.hasItem(t.game, 'woodSword'));
 });
 
+test('a knockback ends when the hero is moved to another room mid-push (a door, a respawn)', () => {
+  const t = setup();
+  const { VL } = t;
+  t.at(6, 5);
+  const dummy = t.spawn('dummy', 9, 5);
+  touch(t, dummy, 'right');
+  t.step();
+  assert.ok(t.player.knockback);
+  VL.place(t.game, { area: 'arena', screen: '1,0', tx: 8, ty: 5, facing: 'right' });
+  const where = [t.player.x, t.player.y];
+  t.step();
+  assert.equal(t.player.knockback, null);
+  assert.deepEqual([t.player.x, t.player.y], where, 'not pushed in the new room');
+});
+
+test('combat does not wrap W2\'s VL.respawn: fainting itself settles the hero', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.respawn.name, 'respawn');
+});
+
 test('every roster enemy has its own faint line, in words the font has and kind to kids', () => {
   const { VL } = loadGame();
   for (const type of ROSTER) {
@@ -542,6 +600,164 @@ test('the roster is kid-friendly: small damage, few hits, long invulnerability',
     const hits = Math.ceil(def.hp / VL.TUNING.swordDamage.woodSword);
     assert.ok(hits >= 1 && hits <= 3, `${type} takes ${hits} wood hits`);
   }
+});
+
+// Where each roster enemy starts so that it comes at a hero standing on 8,5.
+const APPROACH = { crab: [12, 5], slime: [5, 5], bat: [10, 4], spitter: [8, 1], gull: [4, 3] };
+
+test('one approach, one hit: every roster enemy backs off after hurting the hero and stays harmless for TUNING.enemyCalmSeconds', () => {
+  const { VL } = loadGame();
+  assert.ok(VL.TUNING.enemyCalmSeconds >= VL.TUNING.invulnSeconds + 1, 'the hero gets a real moment to walk away once the flashing stops');
+  for (const type of ROSTER) {
+    const t = setup();
+    t.at(8, 5);
+    t.game.hp = 99;
+    const enemy = t.spawn(type, ...APPROACH[type]);
+    const hurts = () => t.events.filter((e) => e === 'heroHurt').length;
+    for (let s = 0; s < 10 && !hurts(); s += STEP) t.step();
+    assert.equal(hurts(), 1, `${type} came at the hero and hit`);
+    t.hold([], t.VL.TUNING.enemyCalmSeconds);
+    assert.equal(hurts(), 1, `${type} hit a hero standing still more than once in ${t.VL.TUNING.enemyCalmSeconds} s`);
+    if (!t.VL.ENEMIES[type].rooted) {
+      const gap = Math.hypot(enemy.cx - t.player.x, enemy.cy - (t.player.y - 5));
+      assert.ok(gap > 16, `${type} backed off (${gap.toFixed(1)} px away)`);
+    }
+  }
+});
+
+test('a seed that hits calms the spitter that spat it', () => {
+  const t = setup();
+  t.at(8, 5);
+  t.game.hp = 99;
+  const spitter = t.spawn('spitter', 8, 1);
+  for (let s = 0; s < 6 && !t.events.includes('heroHurt'); s += STEP) t.step();
+  assert.ok(t.events.includes('heroHurt'));
+  assert.ok(spitter.calm > 0, 'calm');
+});
+
+test('a bat that hits flies off, so a hero standing still is not hit again while it leaves and dozes', () => {
+  const t = setup();
+  const { VL } = t;
+  t.at(8, 5);
+  t.game.hp = 99;
+  const bat = t.spawn('bat', 10, 4);
+  for (let s = 0; s < 5 && !t.events.includes('heroHurt'); s += STEP) t.step();
+  assert.ok(t.events.includes('heroHurt'));
+  assert.equal(bat.mode, 'leave');
+  const hp = t.game.hp;
+  t.hold([], VL.TUNING.enemyBat.leaveSeconds + VL.TUNING.enemyBat.doze);
+  assert.equal(t.game.hp, hp);
+});
+
+// A player who walks the shortest path with real input and, when knocked off
+// it, steers back to the middle of the tile and plans again. The hero's box
+// touches the row below from the tile's centre line, so it steers to just
+// above it.
+function steerTo(drive, goal) {
+  const { VL } = drive;
+  const { findPath } = require('./playthrough');
+  let lost = 0;
+  const update = (held) => {
+    drive.update(VL.actions({ held }));
+    for (const e of drive.state.events) if (e.type === 'heroHurt') lost += e.damage;
+    assert.ok(drive.state.hp > 0, `fainted on ${drive.state.player.screen}`);
+  };
+  const near = (spot) => {
+    const p = drive.state.player;
+    return Math.abs(p.x - spot.x) < 1.5 && p.y <= spot.y + 1e-6 && p.y > spot.y - 3.5;
+  };
+  for (let plan = 0; plan < 60; plan += 1) {
+    while (drive.state.player.knockback || drive.state.transition) update([]);
+    for (let i = 0; i < 60; i += 1) {
+      const p = drive.state.player;
+      const { tx, ty } = VL.heroTile(drive.state);
+      const c = VL.tileCenter(tx, ty);
+      if (p.y > c.y) update(['up']);
+      else if (p.y < c.y - 3) update(['down']);
+      else if (Math.abs(p.x - c.x) > 1.5) update([p.x < c.x ? 'right' : 'left']);
+      else break;
+    }
+    const p = drive.state.player;
+    const route = findPath(VL, { area: p.area, screen: p.screen, ...VL.heroTile(drive.state) }, { area: p.area, ...goal });
+    assert.ok(route, `a path to ${goal.screen}`);
+    let knocked = false;
+    for (const node of route.slice(1)) {
+      const spot = VL.tileCenter(node.tx, node.ty);
+      const there = () => drive.state.player.screen === node.screen && !drive.state.transition && near(spot);
+      for (let t = 0; t < 3 && !there() && !knocked; t += STEP) {
+        update([node.dir]);
+        knocked = Boolean(drive.state.player.knockback);
+      }
+      if (knocked) break;
+      assert.ok(there(), `stuck on the way to ${node.screen} ${node.tx},${node.ty}`);
+    }
+    if (!knocked) return lost;
+  }
+  throw new Error(`kept getting knocked off the way to ${goal.screen}`);
+}
+
+test('damage budget: walking from the hut through the Woods to the Hollow Oak, never swinging, costs at most half the starting hearts', () => {
+  for (const seed of [1, 2, 3]) {
+    const { VL } = loadGame();
+    // Stand-ins for the gate items, as in W8's Woods walk.
+    for (const ch of ['O', 'h', 'V']) VL.TILESETS.base[ch].solid = false;
+    const { createPlaythrough } = require('./playthrough');
+    const { drive } = createPlaythrough(VL);
+    drive.fight = true;
+    drive.state.popups.seen.controls = true;
+    drive.state.rngState = seed * 7919;
+    const lost = steerTo(drive, { screen: '7,-2', tx: 7, ty: 4 });
+    assert.equal(drive.state.player.screen, '7,-2');
+    assert.ok(lost <= VL.TUNING.startMaxHp / 2, `seed ${seed}: lost ${lost} half hearts of ${VL.TUNING.startMaxHp}`);
+  }
+});
+
+test('a hero who walks onto any enemy screen can stand and look around for a moment unhurt', () => {
+  const { VL } = loadGame();
+  const { cols, rows } = VL.TUNING;
+  const STAND = 1.5;
+  let checked = 0;
+  for (const [key, screen] of Object.entries(VL.AREAS.overworld.screens)) {
+    if (!screen.entities.some((e) => VL.ENEMIES[e.type])) continue;
+    for (const [dx, dy, facing] of [[-1, 0, 'right'], [1, 0, 'left'], [0, -1, 'down'], [0, 1, 'up']]) {
+      const next = VL.neighborKey(key, dx, dy);
+      if (!VL.screenExists('overworld', next)) continue;
+      const length = dx ? rows : cols;
+      for (let i = 0; i < length; i += 1) {
+        const tx = dx ? (dx < 0 ? 0 : cols - 1) : i;
+        const ty = dy ? (dy < 0 ? 0 : rows - 1) : i;
+        const nx = dx ? (dx < 0 ? cols - 1 : 0) : i;
+        const ny = dy ? (dy < 0 ? rows - 1 : 0) : i;
+        if (VL.isSolidAt('overworld', key, tx, ty) || VL.isSolidAt('overworld', next, nx, ny)) continue;
+        const app = playApp(VL);
+        app.game.popups.seen.controls = true;
+        VL.place(app.game, { area: 'overworld', screen: key, tx, ty, facing });
+        const hp = app.game.hp;
+        for (let s = 0; s < STAND; s += STEP) app.update(VL.noActions(), STEP);
+        assert.equal(app.game.hp, hp, `hurt within ${STAND} s of walking into ${key} at ${tx},${ty}`);
+        checked += 1;
+      }
+    }
+  }
+  assert.ok(checked > 40, `${checked} entries checked`);
+});
+
+test('enemies on a screen the hero just entered hold still and are harmless for TUNING.enemyArrivalSeconds', () => {
+  const t = setup();
+  const { VL } = t;
+  assert.ok(VL.TUNING.enemyArrivalSeconds > 0);
+  VL.place(t.game, { area: 'arena', screen: '0,0', tx: 9, ty: 8, facing: 'right' });
+  const crab = t.enemies()[0];
+  const at = [crab.cx, crab.cy];
+  touch(t, crab, 'right');
+  const pinned = [crab.cx, crab.cy];
+  const hp = t.game.hp;
+  t.hold([], VL.TUNING.enemyArrivalSeconds - 0.05);
+  assert.equal(t.game.hp, hp, 'harmless');
+  assert.deepEqual([crab.cx, crab.cy], pinned, 'still');
+  assert.notDeepEqual(pinned, at);
+  t.hold([], 0.1);
+  assert.equal(t.game.hp, hp - 1, 'then it is a crab again');
 });
 
 test('a beach crab scuttles sideways only', () => {
@@ -576,9 +792,13 @@ test('a bat rests until the hero comes near, then flutters at them', () => {
   t.at(5, 3);
   t.game.room.entities.push(bat);
   const d0 = Math.hypot(bat.cx - t.player.x, bat.cy - t.player.y);
-  t.hold([], 0.8);
+  let nearest = d0;
+  for (let s = 0; s < 0.8; s += STEP) {
+    t.step();
+    nearest = Math.min(nearest, Math.hypot(bat.cx - t.player.x, bat.cy - t.player.y));
+  }
   assert.notEqual(bat.mode, 'rest');
-  assert.ok(Math.hypot(bat.cx - t.player.x, bat.cy - t.player.y) < d0, 'came closer');
+  assert.ok(nearest < d0 - 4, `came closer: ${d0.toFixed(1)} → ${nearest.toFixed(1)}`);
 });
 
 test('a spitter never moves and spits seeds straight at a hero in range, after a puff-up warning', () => {
@@ -797,4 +1017,23 @@ test('scripted playthroughs walk past enemies (cleared each step) unless a step 
   VL.place(drive.state, { area: 'overworld', screen: '0,1', tx: 8, ty: 3 });
   drive.update();
   assert.equal(beachCrabs(), 1);
+});
+
+test('drive.fight is reset before every milestone step, so one step\'s fight never leaks into the next', () => {
+  const { VL } = loadGame();
+  const { createPlaythrough, registry } = require('./playthrough');
+  const [first, second] = VL.MILESTONES;
+  let seen = null;
+  const steps = {
+    [first]: (drive) => {
+      registry[first](drive);
+      drive.fight = true;
+    },
+    [second]: (drive) => {
+      seen = drive.fight;
+      registry[second](drive);
+    },
+  };
+  createPlaythrough(VL, { steps }).playTo(second);
+  assert.equal(seen, false);
 });

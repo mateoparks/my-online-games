@@ -423,13 +423,26 @@ holds the heart containers.
   alternate frames while `flash` runs) and `player.knockback`, which moves
   the hero for `TUNING.knockbackSeconds` with the arrows ignored
   (`systems/movement.js`), stopping at walls and never crossing a screen
-  edge. Hearts running out calls `VL.faint(state, cause)`; `VL.respawn` also
-  clears knockback and flashing.
+  edge. A knockback belongs to its room, so a door or respawn mid-push ends
+  it. Hearts running out calls `VL.faint(state, cause)` and clears knockback,
+  invulnerability and flashing, so the hero wakes steady.
 - **The shield** blocks when a hand holding a shield has its key held
   (`player.shieldItem`, worked out each step), the hit comes from the side the
   hero faces, and the shield's list has the hit's `size`. A block shoves the
   hero a little, bounces the enemy, sparks and plays `clank`; no damage, no
   invulnerability.
+- **One approach, one hit:** an enemy that hurts the hero, or is blocked, is
+  `calm` for `TUNING.enemyCalmSeconds` (2.5 s, well past the 1.2 s of
+  invulnerability): harmless, and each type backs off while `e.calm > 0`
+  (a crab scuttles away, a slime hops away, a bat flies off, a gull climbs, a
+  spitter holds its fire). A seed calms its `owner`. A new enemy type reads
+  `e.calm` in its `think` the same way. `VL.enemyHarmful(e)` says whether
+  touching it hurts right now.
+- **Arriving:** enemies on a screen the hero walks onto hold still and are
+  harmless for `TUNING.enemyArrivalSeconds` (0.6 s); one spawned with
+  `VL.spawnEnemy` starts at once. A test walks onto every open entry of every
+  enemy screen and stands still for 1.5 s unhurt, so place new enemies far
+  enough in.
 - **Enemies:** `VL.defineEnemy(type, { tuning, body: { w, h }, size, flies,
   rooted, faint, drops?, setup(state, e), think(state, e, dt), harmful(e),
   onHit, onTouch, draw(ctx, e, cx, cy, t) })` also defines the entity type,
@@ -443,9 +456,11 @@ holds the heart containers.
   follow the hero to another screen. `VL.spawnEnemy(state, type, tx, ty)` and
   `VL.spawnProjectile(state, { cx, cy, vx, vy, size, damage, cause, sprite })`
   add one to the current visit.
-- **Hits and drops:** a swing hits each enemy in the blade's reach once
+- **Hits and drops:** a swing with an item listed in `TUNING.swordDamage`
+  (anything else does no harm) hits each enemy in the blade's reach once
   (`VL.hitEnemy(state, e, damage, from)` for other weapons), knocks it back
-  (not a `rooted` one) and flashes it. A beaten enemy leaves a puff and rolls
+  (not a `rooted` one) and flashes it. A flier with `e.alt` (px above its
+  shadow) is hit where it is drawn. A beaten enemy leaves a puff and rolls
   `TUNING.enemyDrops` (heart 20%, whole shell 20%) for a `drop` entity on its
   tile, or the nearest open one.
 - **The roster:** beach crabs (sideways, hurry at a hero in their row) on the
@@ -465,9 +480,15 @@ holds the heart containers.
 - **Sounds:** events `enemyHit` (`hit`), `heroHurt` (`hurt`), `blocked`
   (`clank`), `enemyDefeated` (`poof`), `spit`, `squawk` and `heartContainer`
   (`fanfare`).
+- **Sprite names:** the hands draw `swing-<icon>-<up|down|left|right>` for
+  a sword and `item-<icon>` for a raised shield, `<icon>` being the item's
+  `icon`. A new sword or shield ships those sprites (a test checks).
 - **The playthrough** clears enemies from the room before every step, since
   it scripts progression, not fights; a step that means to fight sets
-  `drive.fight = true`.
+  `drive.fight = true`, and `playTo` resets it before the next step. A
+  damage-budget test walks from the hut through the Woods to the Hollow Oak
+  with enemies live, never swinging, and allows at most half the starting
+  hearts.
 
 ## Engine notes
 

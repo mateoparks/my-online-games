@@ -29,7 +29,8 @@
         if (slime.timer > 0) return;
         const hero = VL.toHero(state, slime);
         let angle = VL.random(state) * Math.PI * 2;
-        if (hero.dist < T().sense) angle = Math.atan2(hero.dy, hero.dx);
+        if (slime.calm > 0) angle = Math.atan2(-hero.dy, -hero.dx);
+        else if (hero.dist < T().sense) angle = Math.atan2(hero.dy, hero.dx);
         slime.vx = Math.cos(angle) * T().hopSpeed;
         slime.vy = Math.sin(angle) * T().hopSpeed;
         slime.mode = 'hop';

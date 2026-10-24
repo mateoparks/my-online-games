@@ -58,7 +58,7 @@
       if (plant.mode === 'wait') {
         const hero = VL.toHero(state, plant);
         if (hero.dist < T().range * 1.5) plant.aim = hero.side;
-        if (plant.timer <= 0 && hero.dist < T().range) {
+        if (plant.timer <= 0 && !(plant.calm > 0) && hero.dist < T().range) {
           plant.mode = 'puff';
           plant.timer = T().warn;
         }
@@ -75,6 +75,7 @@
         damage: VL.ENEMIES.spitter.damage,
         cause: 'spitter',
         sprite: 'fx-seed',
+        owner: plant,
       });
       state.events.push({ type: 'spit' });
       plant.mode = 'wait';

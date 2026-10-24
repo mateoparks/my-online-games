@@ -86,7 +86,7 @@ function createDrive(VL, initialApp, reload) {
     },
     // Scripted play is about progression, so enemies are cleared from every
     // screen before each step (combat has tests/combat.test.js); a step that
-    // means to fight sets `drive.fight = true`.
+    // means to fight sets `drive.fight = true`, which lasts for that step only.
     fight: false,
     update(actions = VL.noActions()) {
       if (!drive.fight && app.game?.room && VL.isEnemy) {
@@ -167,6 +167,7 @@ function createPlaythrough(VL, { milestones = VL.MILESTONES, steps = registry, a
       for (const id of milestones.slice(0, index + 1)) {
         const lock = VL.LOCKS[id];
         if (!lock?.reached) throw new Error(`milestone ${id} is planned (no reached predicate), so its steps cannot be checked`);
+        drive.fight = false;
         steps[id](drive);
         assert.ok(lock.reached(drive.state), `milestone ${id} was not reached by its steps`);
         // Progress survives reloading the page at any point: reload (no save

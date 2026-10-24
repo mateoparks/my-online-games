@@ -31,6 +31,11 @@
         return;
       }
       const hero = VL.toHero(state, crab);
+      if (crab.calm > 0) {
+        crab.dir = -Math.sign(hero.dx) || crab.dir;
+        VL.moveEnemy(state, crab, crab.dir * T().speed * dt, 0);
+        return;
+      }
       const charging = Math.abs(hero.dy) < 10 && Math.abs(hero.dx) < T().sense;
       if (charging) crab.dir = Math.sign(hero.dx) || crab.dir;
       const speed = charging ? T().chargeSpeed : T().speed;

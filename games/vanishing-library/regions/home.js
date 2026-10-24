@@ -45,7 +45,7 @@ VL.addScreens('overworld', {
     ],
     entities: [
       { type: 'slime', x: 10, y: 5 },
-      { type: 'slime', x: 5, y: 8 },
+      { type: 'slime', x: 7, y: 2 },
     ],
   },
   '0,1': {

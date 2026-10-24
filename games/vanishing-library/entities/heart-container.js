@@ -1,6 +1,5 @@
-// { type: 'heartContainer', id }: one more heart for good, found once. W6
-// fills the two overworld heart spots; dungeon bosses (W13+) give theirs with
-// VL.giveHeartContainer (design: Hearts and combat).
+// { type: 'heartContainer', id }: one more heart for good, found once
+// (design: Hearts and combat). README "Combat".
 (() => {
   VL.tune({ heartContainerHp: 2 });
 

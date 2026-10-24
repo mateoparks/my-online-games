@@ -136,7 +136,7 @@
         'FFFFFFffFFFFFFFF',
       ],
       entities: [
-        { type: 'bat', x: 7, y: 7 },
+        { type: 'bat', x: 10, y: 5 },
       ],
     },
     // Two pockets that never meet: a dead end from the west (with a secret

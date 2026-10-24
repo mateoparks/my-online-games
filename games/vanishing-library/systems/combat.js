@@ -4,10 +4,14 @@
 // live one per file in entities/, registered with VL.defineEnemy. README "Combat".
 (() => {
   VL.tune({
-    // Tiers as data: W10's smith only has to hand out the metal ids.
     swordDamage: { woodSword: 1, metalSword: 2 },
     shieldBlocks: { woodShield: ['small'], metalShield: ['small', 'big'] },
     invulnSeconds: 1.2,
+    // After an enemy hurts the hero (or is blocked) it backs off and is
+    // harmless this long, so one approach costs at most one hit.
+    enemyCalmSeconds: 2.5,
+    // Enemies hold still and harmless this long after the hero walks in.
+    enemyArrivalSeconds: 0.6,
     knockbackSpeed: 170,
     knockbackSeconds: 0.16,
     blockShoveSeconds: 0.07,
@@ -68,6 +72,12 @@
   const overlap = (a, b) => Math.abs(a.x - b.x) * 2 < a.w + b.w && Math.abs(a.y - b.y) * 2 < a.h + b.h;
   const heroBody = (player) => ({ x: player.x, y: player.y - 5, w: 10, h: 14 });
   const enemyBody = (enemy) => ({ x: enemy.cx, y: enemy.cy, w: VL.ENEMIES[enemy.type].body.w, h: VL.ENEMIES[enemy.type].body.h });
+  // A flier is drawn `alt` px above its shadow; the blade hits it there too.
+  function swordTarget(enemy) {
+    const body = enemyBody(enemy);
+    const alt = enemy.alt || 0;
+    return { ...body, y: body.y - alt / 2, h: body.h + alt };
+  }
 
   // Where the blade reaches, as a box centred off the hero's feet.
   const REACH = { right: [13, -6, 18, 20], left: [-13, -6, 18, 20], up: [0, -22, 20, 18], down: [0, 8, 20, 18] };
@@ -151,6 +161,7 @@
       enemy: true,
       prepare(state, copy) {
         startEnemy(state, copy);
+        copy.arriving = VL.TUNING.enemyArrivalSeconds;
       },
       draw(ctx, copy, x, y, t) {
         const cx = x + 8 + (copy.cx - (copy.x * 16 + 8));
@@ -173,6 +184,8 @@
     copy.timer = 0;
     copy.hurt = 0;
     copy.knock = null;
+    copy.calm = 0;
+    copy.arriving = 0;
     def.setup?.(state, copy);
   }
 
@@ -191,6 +204,10 @@
   };
 
   VL.isEnemy = (entity) => Boolean(VL.ENEMIES[entity.type]);
+
+  // Whether touching this enemy hurts now. A calm enemy (it just hurt the
+  // hero) backs off in its own `think` by reading `enemy.calm > 0`.
+  VL.enemyHarmful = (enemy) => !(enemy.calm > 0) && !(enemy.arriving > 0) && VL.ENEMIES[enemy.type].harmful(enemy);
 
   // Moves an enemy by (dx, dy): fliers anywhere on the screen, walkers only
   // over open ground. False when something stopped it.
@@ -233,7 +250,8 @@
     const player = state.player;
     const [ux, uy] = away(from, VL.heroCentre(state), BACK[player.facing] || [0, 1]);
     const speed = VL.TUNING.knockbackSpeed;
-    player.knockback = { vx: ux * speed, vy: uy * speed, t: seconds };
+    // Tied to the room, so a teleport mid-push (a door, a respawn) ends it.
+    player.knockback = { vx: ux * speed, vy: uy * speed, t: seconds, room: state.room };
   }
 
   // `hit` = { damage, size, from: { x, y }, cause }. Returns 'blocked',
@@ -253,14 +271,29 @@
     player.flash = VL.TUNING.invulnSeconds;
     knockHero(state, hit.from, VL.TUNING.knockbackSeconds);
     state.events.push({ type: 'heroHurt', cause: hit.cause, damage: hit.damage });
-    if (state.hp <= 0) VL.faint(state, hit.cause);
+    if (state.hp <= 0) {
+      settleHero(player);
+      VL.faint(state, hit.cause);
+    }
     return 'hurt';
   };
+
+  // Fainting starts the hero afresh: no push, flashing or invulnerability
+  // carries over to the save point.
+  function settleHero(player) {
+    player.knockback = null;
+    player.invuln = 0;
+    player.flash = 0;
+  }
 
   function moveHero(state, dt) {
     const player = state.player;
     const knock = player.knockback;
     if (!knock) return;
+    if (knock.room !== state.room) {
+      player.knockback = null;
+      return;
+    }
     const { w, h } = VL.TUNING.heroBox;
     const pos = { x: player.x, y: player.y };
     moveBox(state, pos, knock.vx * dt, knock.vy * dt, { w, h });
@@ -333,9 +366,10 @@
     const swing = player.swing;
     if (!swing) return;
     const box = swordBox(player, swing.facing);
-    const damage = VL.TUNING.swordDamage[swing.item] ?? 1;
+    const damage = VL.TUNING.swordDamage[swing.item] ?? 0;
+    if (!damage) return;
     for (const enemy of enemies) {
-      if (enemy.hitBy === swing || !overlap(box, enemyBody(enemy))) continue;
+      if (enemy.hitBy === swing || !overlap(box, swordTarget(enemy))) continue;
       enemy.hitBy = swing;
       VL.hitEnemy(state, enemy, damage, VL.heroCentre(state));
     }
@@ -345,18 +379,21 @@
     const body = heroBody(state.player);
     for (const enemy of enemies) {
       const def = VL.ENEMIES[enemy.type];
-      if (state.hp <= 0 || !state.room.entities.includes(enemy) || !def.harmful(enemy) || !overlap(body, enemyBody(enemy))) continue;
+      if (state.hp <= 0 || !state.room.entities.includes(enemy) || !VL.enemyHarmful(enemy) || !overlap(body, enemyBody(enemy))) continue;
       const from = { x: enemy.cx, y: enemy.cy };
       const result = VL.hurtHero(state, { damage: def.damage, size: def.size, from, cause: enemy.type });
+      if (result === 'ignored') continue;
       if (result === 'blocked') knockEnemy(state, enemy, VL.heroCentre(state));
-      if (result !== 'ignored') def.onTouch?.(state, enemy, result);
+      enemy.calm = VL.TUNING.enemyCalmSeconds;
+      def.onTouch?.(state, enemy, result);
     }
   }
 
   // ---------- projectiles ----------
 
-  // { cx, cy, vx, vy, size, damage, cause, sprite }: flies straight until it
-  // hits the hero, a solid tile or the screen edge.
+  // { cx, cy, vx, vy, size, damage, cause, sprite, owner? }: flies straight
+  // until it hits the hero, a solid tile or the screen edge. A hit calms the
+  // enemy that is its `owner`.
   VL.spawnProjectile = function spawnProjectile(state, shot) {
     const projectile = { type: 'projectile', ...shot };
     sync(projectile);
@@ -377,6 +414,7 @@
       if (!gone && state.hp > 0 && overlap(heroBody(player), { x: shot.cx, y: shot.cy, w: 4, h: 4 })) {
         const from = { x: player.x - shot.vx, y: player.y - 5 - shot.vy };
         gone = VL.hurtHero(state, { damage: shot.damage, size: shot.size, from, cause: shot.cause }) !== 'ignored';
+        if (gone && shot.owner) shot.owner.calm = VL.TUNING.enemyCalmSeconds;
       }
       if (gone) room.entities = room.entities.filter((e) => e !== shot);
     }
@@ -434,15 +472,6 @@
 
   // ---------- the system ----------
 
-  // Dying resets position only (W2): no knockback or flashing carries over.
-  const respawn = VL.respawn;
-  VL.respawn = function respawnCalm(state) {
-    state.player.knockback = null;
-    state.player.invuln = 0;
-    state.player.flash = 0;
-    return respawn(state);
-  };
-
   VL.defineSystem('combat', {
     order: 30,
     update(state, actions, dt) {
@@ -450,12 +479,18 @@
       player.shieldItem = raisedShield(state, actions);
       if (player.invuln > 0) player.invuln = Math.max(0, player.invuln - dt);
       if (player.flash > 0) player.flash = Math.max(0, player.flash - dt);
-      if (state.hp <= 0) return;
+      if (state.hp <= 0) {
+        settleHero(player);
+        return;
+      }
       moveHero(state, dt);
       const enemies = state.room.entities.filter(VL.isEnemy);
       for (const enemy of enemies) {
         if (enemy.hurt > 0) enemy.hurt = Math.max(0, enemy.hurt - dt);
-        if (enemy.knock) {
+        if (enemy.calm > 0) enemy.calm = Math.max(0, enemy.calm - dt);
+        if (enemy.arriving > 0) {
+          enemy.arriving = Math.max(0, enemy.arriving - dt);
+        } else if (enemy.knock) {
           VL.moveEnemy(state, enemy, enemy.knock.vx * dt, enemy.knock.vy * dt);
           enemy.knock.t -= dt;
           if (enemy.knock.t <= 1e-9) enemy.knock = null;

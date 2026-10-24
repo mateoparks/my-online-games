@@ -60,7 +60,7 @@
         gull.angle += dt * 1.6;
         const target = { x: gull.home.x + Math.cos(gull.angle) * 20, y: gull.home.y + Math.sin(gull.angle) * 10 };
         toward(state, gull, target, T().circleSpeed, dt);
-        if (gull.timer <= 0 && VL.toHero(state, gull).dist < T().sense) {
+        if (gull.timer <= 0 && !(gull.calm > 0) && VL.toHero(state, gull).dist < T().sense) {
           gull.mode = 'aim';
           gull.timer = T().warn;
           state.events.push({ type: 'squawk' });
