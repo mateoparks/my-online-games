@@ -51,7 +51,8 @@
       if (pressed.down) title.cursor = (title.cursor + 1) % VL.SLOT_COUNT;
       if (pressed.up || pressed.down) VL.sfx('menuMove');
       const slot = title.slots[title.cursor];
-      if (pressed.erase && (slot.status === 'ok' || slot.status === 'damaged')) {
+      // With saving off nothing can be removed, so Delete is not offered.
+      if (pressed.erase && app.storage.ok && (slot.status === 'ok' || slot.status === 'damaged')) {
         title.confirmDelete = true;
         title.deleteChoice = 1;
         VL.sfx('menuSelect');
@@ -99,7 +100,7 @@
         }
         if (slot.status === 'damaged') {
           VL.ART.text(ctx, 'Damaged save', CARD.x + 14, y + 4, { color: 'heartLight' });
-          VL.ART.text(ctx, 'BACKSPACE: DELETE IT', CARD.x + 14, y + 15, { size: 'small', color: 'textDim' });
+          if (app.storage.ok) VL.ART.text(ctx, 'BACKSPACE: DELETE IT', CARD.x + 14, y + 15, { size: 'small', color: 'textDim' });
           return;
         }
         if (slot.status === 'newer') {
@@ -120,7 +121,7 @@
         VL.ART.text(ctx, `BOOKS ${books}`, CARD.x + CARD.w - 8, y + 15, { size: 'small', align: 'right', color: 'textDim' });
       });
 
-      VL.ART.text(ctx, '↑↓ PICK A SLOT   S: START   BACKSPACE: DELETE', width / 2, 130, { size: 'small', align: 'center', color: 'textDim' });
+      VL.ART.text(ctx, app.storage.ok ? '↑↓ PICK A SLOT   S: START   BACKSPACE: DELETE' : '↑↓ PICK A SLOT   S: START', width / 2, 130, { size: 'small', align: 'center', color: 'textDim' });
       if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', width / 2, 138, { size: 'small', align: 'center', color: 'goldLight' });
 
       if (title.confirmDelete) {

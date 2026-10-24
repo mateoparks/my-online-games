@@ -24,7 +24,12 @@
       if (view.t < READY || !VL.confirmed(actions)) return;
       VL.dismissPopup(app.game);
       VL.sfx('menuSelect');
-      app.setScene(VL.currentPopup(app.game) ? 'popup' : 'play');
+      if (VL.currentPopup(app.game)) {
+        app.setScene('popup');
+        return;
+      }
+      VL.graceAfterPopup(app.game);
+      app.setScene('play');
     },
 
     draw(ctx, app, t) {

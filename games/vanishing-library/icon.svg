@@ -1,1 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#176b4a"/><path d="M12 16h18v34H12z" fill="#fff4d4"/><path d="M34 16h18v34H34z" fill="#fff4d4"/><path d="M30 16h4v34h-4z" fill="#c9b07a"/><path d="M16 22h10M16 28h10M16 34h10M38 22h10M38 28h10" stroke="#467071" stroke-width="2" stroke-linecap="round"/><path d="M40 36c4-4 10-2 10 3-3 1-6 0-8 2 0-2-1-4-2-5z" fill="#e34a4a"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="An open book whose pages drift away">
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#1a2d3a"/>
+      <stop offset="1" stop-color="#2f84c9"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="10" fill="url(#night)"/>
+  <g fill="#eef7fa">
+    <rect x="9" y="9" width="2" height="2"/>
+    <rect x="22" y="5" width="1" height="1"/>
+    <rect x="15" y="19" width="1" height="1"/>
+    <rect x="54" y="26" width="1" height="1"/>
+  </g>
+  <g transform="rotate(-14 22 22)" opacity="0.45">
+    <rect x="17" y="17" width="10" height="12" rx="1" fill="#efe2c4"/>
+    <path d="M19 21h6M19 24h6" stroke="#9fb3bf" stroke-width="1"/>
+  </g>
+  <g transform="rotate(12 44 14)" opacity="0.7">
+    <rect x="39" y="8" width="11" height="13" rx="1" fill="#efe2c4"/>
+    <path d="M41 12h7M41 15h7M41 18h5" stroke="#cdbb98" stroke-width="1"/>
+  </g>
+  <g transform="rotate(-6 39 31)">
+    <rect x="33" y="25" width="12" height="13" rx="1" fill="#fbfbf6"/>
+    <path d="M35 29h8M35 32h8M35 35h5" stroke="#cdbb98" stroke-width="1"/>
+  </g>
+  <path d="M5 44h54v8H35l-3 2-3-2H5z" fill="#6e4527"/>
+  <path d="M5 44h54v2H5z" fill="#a0703f"/>
+  <path d="M8 36c8-3 16-2 24 3v12c-8-5-16-6-24-3z" fill="#efe2c4"/>
+  <path d="M56 36c-8-3-16-2-24 3v12c8-5 16-6 24-3z" fill="#fbfbf6"/>
+  <path d="M32 39v12" stroke="#cdbb98" stroke-width="1.5"/>
+  <path d="M12 41c5-1 10 0 16 3M12 45c5-1 10 0 16 3" stroke="#cdbb98" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+  <path d="M52 41c-5-1-10 0-16 3" stroke="#cdbb98" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+  <path d="M42 48l2-5 2 5" fill="#e2443c"/>
+  <path d="M43 43h2v5l-1-1-1 1z" fill="#e2443c"/>
+  <g fill="#ffd36b">
+    <path d="M29 17l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"/>
+    <path d="M53 7l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>
+    <path d="M50 33l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/>
+  </g>
+  <rect x="5" y="54" width="54" height="2" rx="1" fill="#0b151c" opacity="0.35"/>
+</svg>

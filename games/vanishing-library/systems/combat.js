@@ -12,6 +12,9 @@
     enemyCalmSeconds: 2.5,
     // Enemies hold still and harmless this long after the hero walks in.
     enemyArrivalSeconds: 0.6,
+    // Nothing hurts the hero this long after a popup or a talk closes: the
+    // world was frozen mid-dive under it (wave-3 QA: a gull hit in 0.5 s).
+    popupGraceSeconds: 0.8,
     knockbackSpeed: 170,
     knockbackSeconds: 0.16,
     blockShoveSeconds: 0.07,
@@ -204,6 +207,11 @@
   };
 
   VL.isEnemy = (entity) => Boolean(VL.ENEMIES[entity.type]);
+
+  // Invulnerable without the hurt flash: nothing happened to the hero.
+  VL.graceAfterPopup = function graceAfterPopup(state) {
+    state.player.invuln = Math.max(state.player.invuln || 0, VL.TUNING.popupGraceSeconds);
+  };
 
   // Whether touching this enemy hurts now. A calm enemy (it just hurt the
   // hero) backs off in its own `think` by reading `enemy.calm > 0`.
