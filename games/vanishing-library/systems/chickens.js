@@ -340,6 +340,14 @@
     return true;
   };
 
+  // A faint drops whatever chicken is with the hero, as a reload would: each
+  // goes back to its spot, and his hands are free on waking.
+  VL.onFaint((state) => {
+    state.player.carrying = null;
+    if (state.chickenFollower) remove(state, state.chickenFollower);
+    state.chickenFollower = null;
+  });
+
   // ---------- the swarm ----------
 
   function startSwarm(state) {

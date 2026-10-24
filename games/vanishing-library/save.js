@@ -228,10 +228,16 @@
     VL.FAINT_LINES[cause] = line;
   };
 
+  VL.FAINT_HOOKS = [];
+  VL.onFaint = function onFaint(hook) {
+    VL.FAINT_HOOKS.push(hook);
+  };
+
   VL.faint = function faint(state, cause = 'default') {
     state.hp = 0;
     state.fainted = { cause };
     state.events.push({ type: 'faint', cause });
+    for (const hook of VL.FAINT_HOOKS) hook(state);
   };
 
   // A page reload that continues the same slot: what the playthrough's

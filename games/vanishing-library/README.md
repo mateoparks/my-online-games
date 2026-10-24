@@ -954,7 +954,9 @@ spots. Tests: `tests/chickens.test.js`.
   with the hero, `VL.takeChicken(state, id)` takes it away, and
   `VL.markFound(state, 'lostChicken')` keeps it off its spot for good.
 - **Saved:** nothing. Carrying, flights, the follower and the swarm are play
-  state; a reload puts every chicken back at its spot.
+  state; a reload puts every chicken back at its spot. A faint does the
+  same (`VL.onFaint`, hooks run inside `VL.faint`): the hero drops what he
+  carries and the follower goes home, so his hands are free on waking.
 - **Locks claimed:** `chickens` (a screen with a town chicken visited),
   `chickenFlightShort` (with `chickens`), `chickenFlightLong` (with
   `chickens` and `chickenAlmanacRead`).

@@ -80,3 +80,54 @@ test('when nobody is hidden, the box keeps to the half away from the hero', () =
   VL.place(game, { area: 'overworld', screen: '0,0', tx: 7, ty: 2 });
   assert.equal(VL.dialogueSide(game, { x: 9, y: 2 }, popup), 'bottom', 'a speaker beside the hero');
 });
+
+// ---------- 3. a faint drops the chicken ----------
+
+function chickenYard(VL) {
+  VL.addScreens('henYard', {
+    '0,0': {
+      tiles: ['TTTTTTTTTTTTTTTT', ...Array(9).fill('T..............T'), 'TTTTTTTTTTTTTTTT'],
+      entities: [
+        { type: 'chicken', spot: 'henYardHen', x: 10, y: 2 },
+        { type: 'chicken', spot: 'henYardLost', x: 12, y: 6, lost: true },
+      ],
+    },
+  });
+}
+
+test('a faint while carrying a chicken drops it: each chicken is back at its spot, and the sword works on waking', () => {
+  const { VL } = loadGame();
+  chickenYard(VL);
+  VL.sfx = () => true;
+  const app = playApp(VL);
+  const game = app.game;
+  game.popups.seen.controls = true;
+  game.popups.queue.length = 0;
+  const press = (action) => app.update(VL.actions({ pressed: [action] }), 1 / 60);
+  const lift = (spot, tx, ty) => {
+    VL.place(game, { area: 'henYard', screen: '0,0', tx, ty, facing: 'right' });
+    const hen = game.room.entities.find((e) => e.type === 'chicken' && e.spot === spot);
+    const px = game.player.x + 12;
+    Object.assign(hen, { px, py: game.player.y, x: VL.tileOf(px, game.player.y).tx, y: VL.tileOf(px, game.player.y).ty, mode: 'idle', idle: 99 });
+    press('interact');
+    assert.equal(game.player.carrying, hen, `${spot} lifted`);
+  };
+  lift('henYardLost', 4, 6);
+  press('interact');
+  for (let i = 0; i < 60; i += 1) app.update(VL.noActions(), 1 / 60);
+  assert.ok(game.chickenFollower, 'the lost chicken follows');
+  lift('henYardHen', 4, 3);
+  VL.faint(game);
+  assert.equal(game.player.carrying, null, 'dropped as he faints');
+  assert.equal(game.chickenFollower, null, 'the lost chicken stops following, as on a reload');
+  VL.respawn(game);
+  app.setScene('play');
+  game.items.woodSword = true;
+  game.hands.mainHand = 'woodSword';
+  press('mainHand');
+  assert.ok(game.player.swing, 'the sword swings on waking');
+  VL.place(game, { area: 'henYard', screen: '0,0', tx: 3, ty: 8 });
+  const home = (spot) => game.room.entities.filter((e) => e.type === 'chicken' && e.spot === spot).map((e) => [e.x, e.y]);
+  assert.deepEqual(home('henYardHen'), [[10, 2]]);
+  assert.deepEqual(home('henYardLost'), [[12, 6]]);
+});
