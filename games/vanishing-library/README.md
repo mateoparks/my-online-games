@@ -699,7 +699,14 @@ paper and ink with real keys: Space grinding a berry with the mortar
 (`w12-map-ask.png`), the map inking in and drawn with the Herbalist's marks
 (`w12-map-drawing.png`, `w12-map.png`) and a screen explored after
 (`w12-map-explored.png`), then the whole overworld with every mark
-(`w12-map-full.png`). It runs
+(`w12-map-full.png`). Then W14's Scriptorium with real keys: every room
+(`w14-room-<x>_<y>.png`), the locked door outside (`w14-door-locked.png`),
+the gloves from the big chest (`w14-gloves-popup.png`), a pot lifted and
+thrown over the pits onto the switch (`w14-lift.png`, `w14-throw.png`,
+`w14-switch.png`), a book under a rock (`w14-rock-book.png`), a canyon
+boulder (`w14-boulder.png`) and the Bookworm up, hit and beaten
+(`w14-boss.png`, `w14-boss-hit.png`, `w14-reward-popup.png`,
+`w14-reward.png`). It runs
 for 120 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
@@ -742,8 +749,8 @@ that runs no tests, and an `async` test function, both fail the node run.
   decides what the copied map changes about them (the map enforces the
   `softGate`).
 - **Gate tiles** carry `gate: '<key>'` and stay solid until the item that
-  owns the key makes them passable (W14 lifts boulders, W19 opens the hidden
-  path). Rocks (`rock: true`) are liftable with the gloves and bushes are
+  owns the key makes them passable (W14 lifts boulders for good with
+  `VL.saveTile`, see Lifting; W19 opens the hidden path). Rocks (`rock: true`) are liftable with the gloves and bushes are
   always passable (bare hands), so neither is used as a wall between areas.
 - **Spots** (`spots.js`) are placement markers,
   `{ type: 'spot', id, x, y, how, by, lock }`, for everything another item
@@ -1187,6 +1194,114 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
   rules. `mortarPestle` is a key of W14's `d1Boss`.
 - **Sounds:** `pestleGrind` (event `grind`), `penScratch` (`copied`, and each
   screen inked in), `mapUnfold` (a map or copy opening).
+
+## Lifting (W14)
+
+`systems/lifting.js` holds the Lifting Gloves and every lift and throw;
+`entities/pot.js`, `entities/big-chest.js` and `entities/rock-book.js` are
+the things lifted, the chest the gloves come in, and the books under rocks.
+Tests: `tests/lifting.test.js`.
+
+- **The gloves** (`liftingGloves`) are worn, like the Swiftfoot Boots: an item
+  with `worn: true` is owned without filling a hand. `VL.giveWornItem(state,
+  id)` gives one (popup, earned); a `{ type: 'bigChest', id, item }` (solid, S
+  opens it once, `found:<id>`) wears a worn item and hands anything else over
+  like a chest.
+- **What lifts:** S facing an entity whose type says `liftable: 'pot'` (a
+  `{ type: 'pot', x, y, respawn? }`, solid), a tile with `rock: true` or a
+  tile with `boulder: true` (the canyon's `O`). `VL.tryLift(state)` checks the
+  faced tiles in order like `VL.interact` and leaves anything else S could
+  mean (a chest, a person, berries, a bush) to it. Without the gloves, S
+  straight at one says it is too heavy (a half-faced one says nothing). A
+  lifted **rock** turns into the ground it stood on for this visit only (the
+  legend's `liftTo`, else its `ground`: grass `.`, sand `s`, scree `:`) and is
+  back next visit; anything on its tile is marked `uncovered`. A lifted
+  **boulder** is gone for good: `VL.saveTile` (W13) writes its `P`, so it
+  stays lifted through a reload and shows on the drawn map. A pot with
+  `respawn` sits back on its spot `TUNING.potRespawnSeconds` after it was
+  taken (puzzle rooms and the boss room never run out); a plain one is back
+  on the next visit.
+- **Holding:** `player.lifted` (`{ kind, since, t }`, play state) is drawn
+  over the hero's head. The `lifting` system (order 15, before the stage,
+  the counters, the hands and the chickens) **spends** the presses it uses:
+  while something is held, S, Space or D throws it and F does nothing, so
+  no other system acts on that press. A hit drops it (it shatters at his
+  feet); a faint empties his hands.
+- **Throwing:** `{ type: 'liftThrown', kind, gx, gy, z, dx, dy }` flies
+  `TUNING.liftThrowTiles` tiles at `liftThrowSpeed` over open floor and over
+  **low** tiles (`pit`, `water`, `flyOver`, or a legend entry with
+  `low: true`, like the Scriptorium's reading desks), and stops at walls, solid
+  things (a closed shutter, a block, a chest) and the screen's edge. A
+  `switch` it hits is thrown (`VL.throwSwitch`), an enemy it hits takes
+  `liftThrowDamage` through `VL.hitEnemy` with `enemy.struckBy = 'throw'`
+  set for the hit (the Bookworm only counts those). Everything shatters
+  (`liftShards`); one that lands in a pit falls, in water splashes.
+- **Rock books:** `{ type: 'rockBook', id }` fills W8's four rock spots
+  (`bookMeadowRock`, `bookLakeShore`, `bookHighlands`,
+  `bookScriptoriumRock`): a corner of red peeks from under the rock; once the
+  rock is lifted, walking onto the book finds it (`VL.findBook`).
+- **Sounds:** events `lift` (`liftHeave`), `liftThrow` (`swing`), `shatter`
+  (`potSmash` for a pot, `rockCrunch` otherwise), `liftSplash` (`dunk`),
+  `bigChestOpened` (`fanfare`).
+
+## The Old Scriptorium (W14)
+
+Dungeon 1 (design: The path through the game, 2), in `dungeons/scriptorium.js`
+on W13's framework, with its boss in `entities/bookworm.js`. Tests:
+`tests/scriptorium.test.js`; its play, lock by lock, is
+`tests/scriptorium-route.js`, which `tests/steps/w14.steps.js` strings into
+the story's milestones. Fixture: `tests/fixtures/save-v1-W14.json` (played
+through to the Bookworm, two canyon boulders lifted).
+
+```
+                         boss (1,-2): the Bookworm
+                              | boss door (oneWay)
+  gallery (0,0)       stacks (1,-1) --door A-- vault (2,-1): the gloves
+  mural, block->key A      | map                   | rock
+       +------- entrance (1,0) ---rock--- pit room (2,0) --door B-- copying hall (3,0)
+                statue, door out          pot->switch->key B, ore    pot over desks->switch->boss key
+```
+
+- **The way in:** the `scriptoriumDoor` spot is a `door` with
+  `needs: 'scriptoriumKey'` and `locked` words: such a door is solid without the item
+  (`passable` for the pathfinder), S says its words, and walking into it says
+  them once per visit (the `keyedDoors` system). With the librarian's key it
+  is an ordinary door.
+- **The order:** key A (block onto the gallery's plate) opens door A, behind
+  which the big chest holds the Lifting Gloves (mid-dungeon); only then can
+  the rocks in the entrance's east corridor and the vault's south corridor be
+  lifted, so key B, door B and the boss key all lie past the gloves and key
+  A can't be wasted on door B. Two throw puzzles: a pot over the pits onto a
+  switch (key B), a pot over the reading desks onto a switch (the boss key).
+  The ore lump (`oreScriptorium`) is in the pit room. The Woods mural is a
+  W12 `copyable` in the gallery, open from the start (copying needs ink, which
+  needs the boss's Mortar & Pestle).
+- **The Bookworm** (`bookworm`, `rooted`, `size: 'big'`): under the floor
+  (`under`, a dust trail between holes), `rumble` at the next hole, `up`
+  (the only time it is harmful; one paper wad, a `small` shot, per
+  surfacing), `down`; a hit makes it `hurt` and dive. It surfaces at the hole
+  tile (`h`, `hole: true`) nearest the hero but not under him
+  (`VL.bookwormNextHole`), so from the middle of the room every surfacing is
+  in a straight line. Only a throw hurts it: a sword bounces off with a note,
+  and its `hp` is refilled on every hit, so `hits` (to
+  `TUNING.bookwormHits`, 3) is the count. On the last it is `dying`, then is
+  marked `defeated` before it leaves the room, so the framework crowns it
+  (never by burrowing). Every hole and timing is in `VL.tune`.
+- **Rewards** (`boss.onDefeat`): the Mortar & Pestle (`VL.giveItem`, W12's
+  item) and a bundle of three books (`VL.BOOKWORM_BUNDLE`, untitled books
+  defined here, found at once with `VL.giveBookBundle`); the framework adds
+  the heart container `heartD1` where the worm began and the warp out.
+- **Locks:** claims `scriptoriumEntered`, `woodsMural` (a visit to the
+  gallery), `oreScriptorium` with the planned rules, and `liftingGloves`
+  (`needs` adds `d1DoorA`) and `d1Boss` (adds `d1BossDoor`) with `replan`;
+  adds `d1KeyA`, `d1DoorA`, `d1KeyB`, `d1DoorB`, `d1BossKey`, `d1BossDoor`.
+  Ids are `d1…` (and `heartD1`, `oreScriptorium`).
+- **Solver note:** a one-time lock used up before an event (the doors here,
+  before the shockwave) is paid for in that stage's start counts, so the
+  spending check no longer asks for its key again after the event.
+- **Pathfinder note:** `tests/playthrough.js` also reads this visit's tile
+  changes on the hero's screen (a lifted rock), so `walkTo` goes through a
+  corridor once its rock is lifted.
 
 ## Dungeons (W13)
 

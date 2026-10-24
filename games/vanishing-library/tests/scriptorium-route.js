@@ -84,7 +84,7 @@ const route = {
     pickUp(drive, at('0,0', 4, 6), 'up', (state) => drive.VL.spotFound(state, 'd1KeyA'));
   },
   d1DoorA(drive) {
-    if (!d1(drive).map) pickUp(drive, at('1,-1', 2, 8), 'down', () => d1(drive).map);
+    if (!d1(drive).map) pickUp(drive, at('1,-1', 3, 9), 'left', () => d1(drive).map);
     go(drive, at('1,-1', 14, 5));
     drive.until(() => d1(drive).doors.d1DoorA, 1, ['right']);
   },

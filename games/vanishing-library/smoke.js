@@ -1284,6 +1284,142 @@ async function main() {
       for (const problem of dungeonProblems) console.log(`     ${problem}`);
     }
 
+    // W14, the Old Scriptorium and the Lifting Gloves with real keys: every
+    // room, the locked door outside, the gloves from the big chest and their
+    // popup, a pot lifted and thrown over the pits onto the switch, a book
+    // under a rock, a canyon boulder lifted for good, and the Bookworm: up,
+    // hit by a thrown pot, beaten, and its rewards. Saved as w14-*.png.
+    {
+      errors.length = 0;
+      const scrProblems = [];
+      const codes = { KeyS: [83, 's'], ArrowUp: [38, 'ArrowUp'], ArrowRight: [39, 'ArrowRight'] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) scrProblems.push(`animation frames stopped after ${code}`);
+      };
+      const holdKey = async (code, ms) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await sleep(ms);
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      // A new game in play at `where` with the gloves (unless `setup` says otherwise).
+      const scrGame = (where, setup = 'g.items.liftingGloves = true;') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap', 'firstBook']) g.popups.seen[id] = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+      const scr = (screen, tx, ty, facing = 'up') => ({ area: 'scriptorium', screen, tx, ty, facing });
+
+      for (const screen of ['1,0', '0,0', '1,-1', '2,-1', '2,0', '3,0', '1,-2']) {
+        await scrGame(scr(screen, 7, 7), "g.items.liftingGloves = true; g.dungeons.scriptorium.doors.d1BossDoor = true;");
+        await sleep(250);
+        await shot(`w14-room-${screen.replace(',', '_')}`);
+      }
+
+      await scrGame({ area: 'overworld', screen: '2,-2', tx: 8, ty: 4, facing: 'up' }, '');
+      await holdKey('ArrowUp', 300);
+      await sleep(150);
+      await shot('w14-door-locked');
+      const locked = await see("[g.player.area, VL.app.sceneId, Boolean(g.message && /locked/.test(g.message.text))]");
+      if (locked.join() !== 'overworld,popup,true') scrProblems.push(`walking into the Scriptorium door without the key: ${locked}`);
+
+      await scrGame(scr('2,-1', 7, 5), '');
+      await tapKey('KeyS');
+      await sleep(250);
+      await shot('w14-gloves-popup');
+      const gloves = await see("[VL.hasItem(g, 'liftingGloves'), VL.app.sceneId, VL.currentPopup(g) && VL.currentPopup(g).title]");
+      if (gloves.join() !== 'true,popup,You got the Lifting Gloves!') scrProblems.push(`the big chest: gloves, scene, popup = ${gloves}`);
+
+      await scrGame(scr('2,0', 6, 2, 'left'));
+      await tapKey('KeyS');
+      await sleep(250);
+      await shot('w14-lift');
+      if (!(await see("Boolean(g.player.lifted && g.player.lifted.kind === 'pot')"))) scrProblems.push('S beside a pot with the gloves did not lift it');
+      await evaluate(`VL.place(VL.app.game, ${JSON.stringify(scr('2,0', 7, 2, 'right'))})`);
+      await tapKey('KeyS');
+      await sleep(120);
+      await shot('w14-throw');
+      if (!(await waitFor('g.dungeons.scriptorium.switches.d1SwitchPit', 1500))) scrProblems.push('a pot thrown over the pits did not throw the switch');
+      await sleep(300);
+      await shot('w14-switch');
+
+      const rock = await see("(() => { const s = VL.SPOTS.bookScriptoriumRock; return { screen: s.screen, x: s.x, y: s.y }; })()");
+      await scrGame({ area: 'overworld', screen: rock.screen, tx: rock.x + 1, ty: rock.y, facing: 'left' });
+      await tapKey('KeyS');
+      await sleep(250);
+      await shot('w14-rock-book');
+      if (!(await see("g.room.entities.some((e) => e.type === 'rockBook' && e.uncovered)"))) scrProblems.push('lifting the rock did not uncover the book');
+
+      await scrGame({ area: 'overworld', screen: '4,0', tx: 4, ty: 5, facing: 'right' });
+      await tapKey('KeyS');
+      await sleep(250);
+      await shot('w14-boulder');
+      if (!(await see("VL.savedTile(g, 'overworld', '4,0', 5, 5) === 'P'"))) scrProblems.push('a lifted canyon boulder was not saved');
+
+      // The Bookworm: wait for its head, then turn to it holding a pot and throw.
+      await scrGame(scr('1,-2', 7, 7), "g.items.liftingGloves = true; g.dungeons.scriptorium.doors.d1BossDoor = true;");
+      const throwAtWorm = async () => {
+        if (!(await waitFor("g.room.entities.some((e) => e.type === 'bookworm' && e.mode === 'up')", 6000))) return false;
+        await evaluate(`(() => {
+          const g = VL.app.game;
+          const w = g.room.entities.find((e) => e.type === 'bookworm');
+          const hole = VL.tileOf(w.at.x, w.at.y);
+          const hero = VL.heroTile(g);
+          g.player.facing = hole.tx === hero.tx ? (hole.ty < hero.ty ? 'up' : 'down') : hole.tx < hero.tx ? 'left' : 'right';
+          g.player.lifted = { kind: 'pot', since: -1, t: 1 };
+        })()`);
+        return true;
+      };
+      if (!(await throwAtWorm())) scrProblems.push('the Bookworm never rose');
+      await shot('w14-boss');
+      await tapKey('KeyS');
+      if (!(await waitFor("g.room.entities.some((e) => e.type === 'bookworm' && e.hits === 1)", 1500))) scrProblems.push('a pot thrown at the Bookworm did not hit it');
+      await sleep(100);
+      await shot('w14-boss-hit');
+      await evaluate("VL.app.game.room.entities.find((e) => e.type === 'bookworm').hits = VL.TUNING.bookwormHits - 1");
+      await throwAtWorm();
+      await tapKey('KeyS');
+      if (!(await waitFor("VL.bossBeaten(g, 'scriptorium')", 4000))) scrProblems.push('the Bookworm was not beaten');
+      await sleep(300);
+      await shot('w14-reward-popup');
+      const reward = await see("[VL.hasItem(g, 'mortarPestle'), VL.BOOKWORM_BUNDLE.every((id) => VL.booksCarried(g).includes(id)), g.room.entities.some((e) => e.type === 'heartContainer'), g.room.entities.some((e) => e.type === 'warp')]");
+      if (reward.join() !== 'true,true,true,true') scrProblems.push(`the Bookworm's rewards (mortar, books, heart, warp) = ${reward}`);
+      for (let i = 0; i < 6 && (await evaluate('VL.app.sceneId')) === 'popup'; i += 1) {
+        await sleep(450);
+        await tapKey('KeyS');
+      }
+      await sleep(200);
+      await shot('w14-reward');
+
+      scrProblems.push(...errors);
+      if (scrProblems.length) failures += 1;
+      console.log(`${scrProblems.length ? 'FAIL' : 'ok  '} scriptorium: 7 rooms, the locked door, the gloves, lift and throw, a rock book, a boulder, the Bookworm and its rewards, ${path.join(outDir, 'w14-*.png')}`);
+      for (const problem of scrProblems) console.log(`     ${problem}`);
+    }
+
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();
   } finally {

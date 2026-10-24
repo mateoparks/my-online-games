@@ -195,7 +195,7 @@
     const { gx, gy } = thrown;
     if (gx < 0 || gy < 0 || gx >= T.width || gy >= T.rows * T.tile) return 'edge';
     for (const e of room.entities) {
-      if (!VL.isEnemy?.(e) || e.hp <= 0) continue;
+      if (!VL.isEnemy(e) || e.hp <= 0) continue;
       const box = enemyBox(e);
       if (gx + 4 > box.x && gx - 4 < box.x + box.w && gy + 4 > box.y && gy - 4 < box.y + box.h) {
         e.struckBy = 'throw';
@@ -251,7 +251,7 @@
     const hero = VL.heroTile(state);
     room.respawns = room.respawns.filter(({ entity, at }) => {
       if (state.time < at) return true;
-      const busy = (hero.tx === entity.x && hero.ty === entity.y) || room.entities.some((e) => e.x === entity.x && e.y === entity.y && (e.solid || VL.ENTITIES[e.type]?.solid || VL.isEnemy?.(e)));
+      const busy = (hero.tx === entity.x && hero.ty === entity.y) || room.entities.some((e) => e.x === entity.x && e.y === entity.y && (e.solid || VL.ENTITIES[e.type]?.solid || VL.isEnemy(e)));
       if (busy) return true;
       room.entities.push({ ...entity });
       return false;
