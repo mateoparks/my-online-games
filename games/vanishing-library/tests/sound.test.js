@@ -201,7 +201,7 @@ test('effects stay gentle: a master volume below 0.4 and every voice at most ful
 });
 
 // The loudest moment of an effect: the largest sum of voice volumes that sound
-// at the same time, times the master volume. Today's loudest is pickup's ~0.21.
+// at the same time, times the master volume.
 test('effects stay gentle: overlapping voices never add up past half scale', () => {
   const { VL } = soundGame();
   for (const [name, effect] of Object.entries(VL.SOUND.EFFECTS)) {
