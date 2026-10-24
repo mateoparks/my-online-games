@@ -8,8 +8,9 @@
 
   // ---------- opening (implemented against W1's placeholder world) ----------
 
+  lock('named', { type: 'flag', doc: '§ Starting and saving: Title screen', by: 'W2' });
   lock('start', {
-    type: 'place', doc: '§ Starting and saving: Intro',
+    type: 'place', needs: ['named'], doc: '§ Starting and saving: Intro',
     reached: (state) => Boolean(state.visited[`${VL.START.area}:${VL.START.screen}`]),
   });
   lock('hutInside', {
@@ -141,7 +142,7 @@
   lock('ending', { needs: ['marionettes'], doc: '§ Ending: Final scenes before the credits', by: 'W20' });
 
   VL.defineMilestones([
-    'start', 'chestGear', 'scriptoriumKey', 'scriptoriumEntered', 'liftingGloves', 'd1Boss',
+    'named', 'start', 'chestGear', 'scriptoriumKey', 'scriptoriumEntered', 'liftingGloves', 'd1Boss',
     'woodsMapCopy', 'hollowOakEntered', 'grapplingRope', 'd2Boss', 'shockwave',
     'raft', 'lakeIsland', 'shipwreck', 'lighthouseEntered', 'slingshot', 'd3Boss',
     'climbersAlmanac', 'highlands', 'dragonsLairEntered', 'mirrorShield', 'd4Boss',

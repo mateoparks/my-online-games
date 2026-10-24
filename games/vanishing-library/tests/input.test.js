@@ -43,7 +43,7 @@ test('key repeat does not re-press and unknown keys are ignored', () => {
   assert.equal(input.poll().pressed.interact, false);
   const stray = keyEvent('KeyZ');
   win.dispatch('keydown', stray);
-  assert.equal(stray.prevented, false);
+  assert.equal(stray.prevented, true, 'no action, but a typed character stays off the browser');
   const actions = input.poll();
   assert.deepEqual(Object.values(actions.pressed).filter(Boolean), []);
 });

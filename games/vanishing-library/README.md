@@ -116,6 +116,8 @@ VL.defineScene('title', {
   update(app, actions, dt) {},
   draw(ctx, app, t) {},
   smokeData(app) { return data; },   // optional: what the render smoke passes to enter
+  textEntry: true,                   // optional: typing here; letter shortcuts (N mute) stay off
+  soundIndicator: { x: 243, y: 181 }, // optional: where the mute icon goes when the top strip holds text
 });
 ```
 
@@ -299,8 +301,9 @@ blocked context, mute); an unknown name does throw, so a typo fails the tests.
 - **Mute:** N, on every scene, saved as `vanishing-library-muted` (`'1'`/`'0'`).
   A crossed-out speaker sits in the HUD while muted, and a note shows for
   1.5 s after each toggle, in the HUD gap so it never covers the play field. A
-  scene that types text (name entry) sets `textEntry: true` on its scene object
-  so N stays a letter there.
+  scene whose top strip holds text (the title) sets `soundIndicator: { x, y }`
+  and the icon and note sit there instead. A scene that types text (name
+  entry) sets `textEntry: true` on its scene object so N stays a letter there.
 - **Touch (future lesson):** an on-screen mute button calls the public
   `VL.SOUND.toggleMute()` from a `touchend` or `click` handler (a `touchstart`
   is not a gesture, so the unmute confirmation would be dropped). The sprites
@@ -328,6 +331,108 @@ blocked context, mute); an unknown name does throw, so a typo fails the tests.
   toggle belongs to the toggle (links activate on Enter, so Space still swings
   on a focused header link).
 
+## Scenes and menus
+
+`VL.START_SCENE` is `'title'` (`scenes/title.js`). A new player goes title
+(three slots) → `name` (typed into a field on the canvas, 12 characters,
+"Hero" when left blank) → `intro` (the three weathered lines; S, Space or
+Enter skips after half a second) → `play`. From play, Esc opens `pause`
+(Resume, Save & Quit, the controls); hearts running out opens `fainted`,
+where a press respawns the hero; `conflict` (another window saved this slot)
+sends the player back to the title. One file per scene, each drawing through
+the art kit, and the render smoke in `tests/engine.test.js` covers every one.
+
+- Menus accept Enter, S or Space: `VL.confirmed(actions)`. Enter is the
+  `confirm` action, Backspace and Delete are `erase`. A scene that wants a
+  press to do nothing in the world just does not call `VL.updateWorld`
+  that step, so a confirm never leaks into play.
+- `actions.typed` is the text typed since the last poll (`'\b'` for
+  Backspace, key repeat kept); only the name scene reads it. Game letters
+  (S, E, D…) are typed there like any other.
+- `app.game` is the live game, `app.slot` its slot (`null` for a game no
+  slot holds, as in tests and the smoke), `app.storage` the wrapped store,
+  `app.save()` writes the game to its slot (true when written), `app.quit()`
+  returns to the title, `app.startGame(game, slot)` sets both. After every
+  scene's `update`, the app saves a dirty game, so no scene needs to.
+
+## Saving
+
+- **Keys:** `vanishing-library-slot-1`, `-2`, `-3` hold one JSON save each;
+  `vanishing-library-probe` is written, read and removed once at boot to see
+  whether storage works. `VL.createStorage(backing)` wraps `localStorage`
+  (or a function returning it, since the getter itself can throw) and never
+  throws. With `storage.ok` false, the title and pause menus say
+  "Saving is off in this browser" and everything still plays.
+- **What is saved:** every field of the game state except
+  `VL.TRANSIENT_FIELDS` (`time`, `player`, `room`, `transition`, `events`,
+  `dirty`, `fainted`, plus anything added with
+  `VL.extendGame('enemies', () => ({ knockback: null }), { transient: true })`)
+  and `hp`. Loading gives full hearts at the last save point (`savePoint`, or
+  the start when there is none or a later map change removed its screen).
+  `finished` marks a finished game: the slot shows FINISHED and loads the
+  last save before the finale (the ending sets it).
+- **When (design: Option B, Zelda-style):** call `VL.earned(state)` after
+  anything the player earns (an item, a chest opened, a book, a page, a flag,
+  a boss) and the app saves at the end of that step, in whatever scene (a
+  shop, a dialogue, the equipment screen), with a "SAVED" flash in play.
+  Standing on a save point saves too (`{ type: 'savePoint', x, y }`
+  entity, a lantern, or `VL.touchSavePoint(state, place)` from your own
+  entity). Save & Quit saves; a new game is saved as soon as it is named.
+  Dying never saves or loses anything: `VL.faint(state, cause)` → the
+  `fainted` scene → `VL.respawn(state)`. `VL.addFaintLine('crab', '…')` adds
+  the line for a cause (`shrub` is already there).
+- **When a write fails** (the browser ran out of space after boot), the game
+  stays dirty and every step retries; play shows "COULD NOT SAVE" and Save &
+  Quit stays on the pause menu with the note until a write succeeds
+  (`app.saveFailed`); pressing Save & Quit again asks "Quit without
+  saving?" (No first), so a kid is never stuck. **Two windows on one slot:** the app remembers the
+  slot's text as it last read or wrote it (a new game's baseline is "empty"),
+  and a write that finds a different save there refuses, so the newer
+  progress is never overwritten; the stale window goes to the `conflict`
+  scene and back to the title, and Yes in the delete dialog deletes only the
+  save the card showed. A slot that is gone (site data cleared) is simply
+  written again; a read that throws counts as a failed write.
+- **Schema (R2):** saves carry `v`, `VL.saveVersion()`. **Adding a field
+  needs no migration.** Add it from your own file with
+  `VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }))` and a save
+  written before it gets the default on load, nested keys included (an
+  `inventory.paper` added later fills in as 0). A saved value whose kind no
+  longer matches its default (an object or array on either side) takes the
+  default too, and `VL.readSlot(...).resets` lists those paths so the fixture
+  test can fail instead of a player losing progress; play state in an old
+  save (a field that is transient now) is dropped. Keep fields JSON-safe:
+  plain objects, arrays, numbers, strings, booleans, null (never `undefined`,
+  a Set, a Map or a Date; `tests/saving.test.js` checks a new game and the
+  playthrough's final state). A default applies only to saves that lack the
+  field: changing `TUNING.startMaxHp` leaves existing players at their saved
+  `maxHp`; changing an existing player's value needs a migration.
+  **Changing the shape** of a saved field (a rename, a split, a type change)
+  needs a migration, from the file that makes the change:
+  `VL.defineMigration(2, (save) => ({ ...save, flags: renamed(save.flags) }))`.
+  Versions are sequential (the next one is `VL.saveVersion() + 1`), so two
+  lanes picking the same number throw at load and one renumbers. A save goes
+  through every migration after its own version **before defaults are
+  filled**, so a migration sees the save as it was written: a field added
+  after that save may be missing, so read it with `?? default`. A save newer
+  than the game (a cached old page next to a newer one) shows as "Saved by a
+  newer game: reload the page" and is left exactly as it is, never deletable;
+  one that fails validation shows as **Damaged** and can be deleted (with a
+  confirm). **Fixtures:** `tests/fixtures/save-v1.json` is the W2-era
+  version 1 save, frozen forever; **every item that adds or changes a saved
+  field** commits its own `save-v<N>-<item>.json`, written by the game at
+  that version with the new field holding a non-default value, and never
+  edits an older one. Every `save-*.json` must load through the real
+  migrations with no field reset (a test checks each, and a fixture at the
+  current version must come back field for field), so a later item that
+  changes a field's kind without a migration fails at its own build rather
+  than resetting a student's progress.
+- The slot card shows name, hearts and books; the book count comes from
+  `VL.slotSource('books', (save) => …)`, plugged in once by the library item.
+- `VL.reloadApp(app)` is a page reload that continues the same slot: what the
+  playthrough's `drive.reload()` uses to prove progress survives. Like a real
+  reload it does not save first (so a forgotten `VL.earned` shows up);
+  `VL.reloadApp(app, { save: true })` is the console shortcut.
+
 ## Testing
 
 ```sh
@@ -351,7 +456,12 @@ scene, holds an arrow towards open ground through real key events and checks
 the hero moved, then saves a screenshot. It then walks the hero over the first
 open edge of the start area and checks the slide pans the way the hero walked
 with the hero on the canvas throughout, and resizes the window without
-reloading and checks the scale follows. It runs for 60 s at most. A test file
+reloading and checks the scale follows. Then it plays the real start with key
+events: title → Enter on an empty slot → "Robin" typed → Enter → the intro →
+S → play, with the slot saved; Esc, Save & Quit back to the title; a reload
+that still lists Robin, a muted title (N, then N again) and a continue at full
+hearts (screenshots `title.png`, `name.png`, `intro.png`, `pause.png`,
+`title-saved.png`, `title-muted.png`). It runs for 60 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
 ## Progression: locks, keys, the solver and the playthrough
@@ -484,7 +594,8 @@ screen edges and doors with real held directions; `drive.press(action)`,
 up as a `not reached` error naming the scene). `drive.reload()` stands for the
 player reloading the page: it swaps in the app returned by the `reload(app)`
 hook given to `createPlaythrough` (or `VL.reloadApp`), which W2 supplies once
-saving exists (save, fresh `createApp`, load); until then it throws. The app
+saving exists (fresh `createApp`, load; no save first, like a real reload);
+until then it throws. The app
 itself is also injectable (`createPlaythrough(VL, { app })`), so the title
 screen and name entry can be driven from there. The test drives to the last
 milestone that has steps; the first milestone without steps must be planned,

@@ -14,6 +14,7 @@ VL.FILES = {
     'app.js',
     'screen.js',
     'loop.js',
+    'save.js',
     'progression.js',
     'milestones.js',
   ],
@@ -34,6 +35,7 @@ VL.FILES = {
 
   entities: [
     'entities/door.js',
+    'entities/save-point.js',
   ],
 
   regions: [
@@ -46,6 +48,12 @@ VL.FILES = {
   scenes: [
     'scenes/play.js',
     'scenes/art-sheet.js',
+    'scenes/title.js',
+    'scenes/name.js',
+    'scenes/intro.js',
+    'scenes/pause.js',
+    'scenes/fainted.js',
+    'scenes/conflict.js',
   ],
 
   boot: [

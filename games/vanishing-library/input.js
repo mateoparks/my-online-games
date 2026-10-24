@@ -12,6 +12,10 @@ VL.KEYS = {
   KeyF: 'fly',
   KeyM: 'map',
   Escape: 'pause',
+  Enter: 'confirm',
+  NumpadEnter: 'confirm',
+  Backspace: 'erase',
+  Delete: 'erase',
 };
 
 VL.KEY_NAMES = {
@@ -21,6 +25,9 @@ VL.KEY_NAMES = {
   e: 'equipment',
   f: 'fly',
   m: 'map',
+  enter: 'confirm',
+  backspace: 'erase',
+  delete: 'erase',
 };
 
 VL.actionForKey = (event) => VL.KEYS[event.code] || VL.KEY_NAMES[(event.key || '').toLowerCase()] || null;
@@ -28,26 +35,33 @@ VL.actionForKey = (event) => VL.KEYS[event.code] || VL.KEY_NAMES[(event.key || '
 VL.createKeyboardInput = function createKeyboardInput(win, doc) {
   const held = new Set();
   const pressed = new Set();
+  let typed = '';
   const textFields = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
-  const buttons = new Set(['BUTTON']);
+  // A focused header control keeps the keys that activate it (the theme
+  // toggle keeps focus after a click, so arrows and letters must still play).
+  const controlKeys = { BUTTON: new Set(['mainHand', 'confirm']), A: new Set(['confirm']) };
 
   function clear() {
     held.clear();
     pressed.clear();
+    typed = '';
   }
 
   win.addEventListener('keydown', (event) => {
-    const action = VL.actionForKey(event);
-    if (!action) return;
     // Browser shortcuts (Cmd/Ctrl+S, Alt+…) stay the browser's.
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const tag = event.target?.tagName;
     if (textFields.has(tag)) return;
-    // Space activates the focused theme toggle, so it is the toggle's (links
-    // activate on Enter, so Space still swings on a focused header link); the
-    // toggle keeps focus after a click, so arrows must still play.
-    if (buttons.has(tag) && action === 'mainHand') return;
+    const action = VL.actionForKey(event);
+    if (action && controlKeys[tag]?.has(action)) return;
+    const key = event.key || '';
+    // Typed text keeps key repeat (holding Backspace clears a name).
+    if (key === 'Backspace' || key === 'Delete') typed += '\b';
+    else if (key.length === 1) typed += key;
+    // A typed character is the game's too: ' and / open Firefox's Quick Find.
+    if (!action && key.length !== 1) return;
     event.preventDefault();
+    if (!action) return;
     if (event.repeat || held.has(action)) return;
     held.add(action);
     pressed.add(action);
@@ -79,7 +93,9 @@ VL.createKeyboardInput = function createKeyboardInput(win, doc) {
         actions.held[action] = true;
         actions.pressed[action] = true;
       }
+      actions.typed = typed;
       pressed.clear();
+      typed = '';
       return actions;
     },
   };
