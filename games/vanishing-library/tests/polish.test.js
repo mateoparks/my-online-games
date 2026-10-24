@@ -3,7 +3,7 @@
 // guards, berries ahead of a diagonal NPC, the Hollow Oak crossfire, the
 // load-names scan and a flight's dip under the HUD.
 const assert = require('node:assert/strict');
-const { test, loadGame, memoryStorage, fakeDocument, fakeWindow, keyEvent, playState, hold } = require('./harness');
+const { test, loadGame, memoryStorage, fakeDocument, fakeWindow, keyEvent, playState, playApp, hold } = require('./harness');
 
 const STEP = 1 / 60;
 const press = (VL, app, action) => app.update(VL.actions({ pressed: [action] }), STEP);
@@ -363,6 +363,43 @@ test('S at a berry bush straight ahead picks berries, even with a person on the 
   // With the bush picked, the next S talks to Pip.
   VL.interact(state);
   assert.equal(state.sceneRequest?.id, 'dialogue');
+});
+
+// ---------- 7. standing still is never a fast faint ----------
+
+// Kids stop to look around; the walk-past budget (combat.test.js) misses that.
+test('damage budget: standing still for 10 s on any open tile of an enemy screen costs at most 4 half hearts', () => {
+  const { VL } = loadGame();
+  const SECONDS = 10;
+  const BUDGET = 4;
+  const over = [];
+  let checked = 0;
+  for (const [key, screen] of Object.entries(VL.AREAS.overworld.screens)) {
+    if (!screen.entities.some((e) => VL.ENEMIES[e.type])) continue;
+    for (let ty = 0; ty < VL.TUNING.rows; ty += 1) {
+      for (let tx = 0; tx < VL.TUNING.cols; tx += 1) {
+        if (VL.isSolidAt('overworld', key, tx, ty)) continue;
+        const app = playApp(VL);
+        app.game.popups.seen.controls = true;
+        VL.place(app.game, { area: 'overworld', screen: key, tx, ty, facing: 'up' });
+        app.game.maxHp = 999;
+        app.game.hp = 999;
+        for (let s = 0; s < SECONDS && app.game.player.screen === key; s += STEP) app.update(VL.noActions(), STEP);
+        const lost = 999 - app.game.hp;
+        if (lost > BUDGET) over.push(`${key} at ${tx},${ty}: ${lost}`);
+        checked += 1;
+      }
+    }
+  }
+  assert.ok(checked > 1000, `${checked} tiles checked`);
+  assert.deepEqual(over, []);
+});
+
+test('the Hollow Oak spitters are on different rows, so no tile is in both lines of fire', () => {
+  const { VL } = loadGame();
+  const rows = VL.AREAS.overworld.screens['7,-2'].entities.filter((e) => e.type === 'spitter').map((e) => e.y);
+  assert.equal(rows.length, 2);
+  assert.notEqual(rows[0], rows[1]);
 });
 
 module.exports = { titleApp, press, type, STEP };

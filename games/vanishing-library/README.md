@@ -497,7 +497,9 @@ holds the heart containers.
   `drive.fight = true`, and `playTo` resets it before the next step. A
   damage-budget test walks from the hut through the Woods to the Hollow Oak
   with enemies live, never swinging, and allows at most half the starting
-  hearts.
+  hearts. A stand-still budget (`tests/polish.test.js`) keeps 10 s standing
+  on any open tile of an enemy screen to at most 4 half hearts, so place
+  enemies so their lines of fire never cross on one row or column.
 - **Townsfolk (W9):** the sword passes through NPCs (only enemies are hit),
   S on an NPC only talks, a knockback stops at an NPC's tile (NPCs are solid),
   and enemies wait with the rest of the world while a dialogue or shop is open.
