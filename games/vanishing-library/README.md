@@ -170,3 +170,61 @@ open edge of the start area and checks the slide pans the way the hero walked
 with the hero on the canvas throughout, and resizes the window without
 reloading and checks the scale follows. It runs for 60 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
+
+## Progression: locks, keys, the solver and the playthrough
+
+`progression.js` holds the one table of everything that gates progress
+(`VL.LOCKS`) and `milestones.js` seeds it with the whole game's path from the
+design doc, every entry citing the design-doc section it comes from. A lock is
+registered with `VL.defineLock(id, rule)` **from the file that implements it**;
+`milestones.js` already has a *planned* entry (`by: 'W14'`) for each one, and an
+item claims it by defining the same id with a `reached` predicate. Defining an
+id that is already implemented throws, so two lanes cannot clash. Fields:
+
+```js
+VL.defineLock('liftingGloves', {
+  type: 'item',                       // place | item | flag | event
+  needs: ['scriptoriumEntered', ['woodSword', 'metalSword']],  // keys; an inner array is any-of
+  gives: ['heartD1'],                 // extra keys besides the id
+  supplies: { ore: 1 },               // counters; `count: { pages: 5 }` requires one, `consumes: { ore: 1 }` spends one
+  renewable: true,                    // can be obtained again (bushes, shops, forging); default: one time
+  optional: true,                     // not needed for the ending (rewards, heart containers)
+  loses: [...], retires: [...],       // events only: keys taken; `loses` must be regainable, `retires` is for good
+  doc: '§ The path through the game, 2',
+  reached: (state) => Boolean(state.flags.gloves),   // implemented locks; planned ones give `by: 'W14'` instead
+  place: { area: 'scriptorium', screen: '0,0' },     // implemented places: the test checks the screen exists
+});
+```
+
+`VL.progress(state)` lists the locks a live game has reached (hints can pick
+from it). `VL.MILESTONES` is the story order (fixed in `milestones.js`; adding
+a beat is an edit there).
+
+**The solver**, `VL.solveProgression()`, runs in `tests/progression.test.js`
+over the whole table, planned entries included, so the full path is checked
+from day one. It computes everything obtainable, then applies each event
+(`shockwave`, `primerTaken`) as a new stage from the **worst-case player**: one
+holding only the keys the event cannot be reached without (plus what the event
+gives, minus what it takes), with every one-time source that fed something now
+lost treated as used up. It fails the run when a lock is unreachable, a
+required lock is unreachable after an event, something an event `loses` cannot
+be regained, a counter cannot cover what was lost (ore for metal gear) or its
+total demand (each loss costs it again), a key or counter is unknown, or the
+milestone order disagrees with the stages. Optional locks that an event cuts
+off are listed as `missable` (today: the drawn world map after Dungeon 3).
+Two events available at once are applied in story order only; hearts and
+health are not modelled (dying keeps everything, so bare-hand bush pulls never
+softlock). Deliberately broken tables in the test show each failure.
+
+**The playthrough harness**, `tests/playthrough.js`, drives the real game
+(`app.update` with Actions, one step at a time) from a new game through the
+milestones in order and checks each milestone's `reached`. Steps are data: an
+item adds `tests/steps/<item>.steps.js` exporting
+`(step) => { step('chestGear', (drive) => { ... }); }`, one step per milestone it
+implements. `drive.walkTo({ area, screen, tx, ty })` paths through open tiles,
+screen edges and doors with real held directions; `drive.press(action)`,
+`drive.hold(actions, seconds)`, `drive.until(pred, maxSeconds, held)` and
+`drive.state`/`drive.app` do the rest (a popup scene that swallows input shows
+up as a `not reached` error naming the scene). The test drives to the last
+milestone that has steps; the first milestone without steps must be planned,
+not implemented, so an item that implements a beat also scripts it.
