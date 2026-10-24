@@ -560,6 +560,115 @@ async function main() {
       for (const problem of mapProblems.slice(0, 6)) console.log(`     ${problem}`);
     }
 
+    // W6 combat with real keys: every roster enemy on a screen it lives on, a
+    // sword hit knocking a slime back, the hero hurt and knocked back, a seed
+    // blocked by the raised shield (D held) and a heart container's popup,
+    // saved as w6-*.png. A block of its own, so its names never clash.
+    {
+      errors.length = 0;
+      const combatProblems = [];
+      const codes = { KeyD: [68, 'd'], Space: [32, ' '], ArrowLeft: [37, 'ArrowLeft'] };
+      const key = (type, code) => {
+        const [vkCode, keyName] = codes[code];
+        return call('Input.dispatchKeyEvent', { type, key: keyName, code, windowsVirtualKeyCode: vkCode, nativeVirtualKeyCode: vkCode });
+      };
+      const shot = async (name) => {
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      };
+      const read = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      // A new game in play at `where`, gear in hand without its popups, and
+      // the screen's own enemies cleared unless `keep`.
+      const stage = (where, gear = [], keep = false) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        g.popups.seen.controls = true;
+        for (const id of ${JSON.stringify(gear)}) VL.giveItem(g, id);
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        if (!${keep}) g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+
+      const homes = await read(`(() => {
+        const found = {};
+        for (const [screen, data] of Object.entries(VL.AREAS.overworld.screens)) {
+          for (const e of data.entities) if (VL.ENEMIES[e.type] && !found[e.type]) found[e.type] = { screen, x: e.x, y: e.y };
+        }
+        return found;
+      })()`);
+      for (const type of ['crab', 'slime', 'bat', 'spitter', 'gull']) {
+        const home = homes[type];
+        if (!home) {
+          combatProblems.push(`no ${type} anywhere in the overworld`);
+          continue;
+        }
+        const spot = await read(`(() => {
+          let best = null;
+          for (let ty = 1; ty < 10; ty += 1) for (let tx = 1; tx < 15; tx += 1) {
+            const d = Math.hypot(tx - ${home.x}, ty - ${home.y});
+            if (d < 3 || VL.isSolidAt('overworld', '${home.screen}', tx, ty)) continue;
+            if (!best || d < best.d) best = { tx, ty, d };
+          }
+          return best;
+        })()`);
+        await stage({ area: 'overworld', screen: home.screen, tx: spot.tx, ty: spot.ty, facing: 'down' }, [], true);
+        await sleep(type === 'gull' ? 1800 : 500);
+        await shot(`w6-enemy-${type}`);
+        const there = await read(`g.room.entities.some((e) => e.type === '${type}')`);
+        if (!there) combatProblems.push(`no ${type} on ${home.screen} in play`);
+      }
+
+      await stage({ area: 'overworld', screen: '1,0', tx: 7, ty: 5, facing: 'right' }, ['woodSword']);
+      await evaluate("Object.assign(VL.spawnEnemy(VL.app.game, 'slime', 8, 5), { timer: 99 })");
+      await sleep(150);
+      await key('keyDown', 'Space');
+      await key('keyUp', 'Space');
+      await sleep(70);
+      await shot('w6-hit-knockback');
+      const slime = await read("(() => { const s = g.room.entities.find((e) => e.type === 'slime'); return s && { hp: s.hp, cx: s.cx }; })()");
+      if (!slime || slime.hp !== 1 || !(slime.cx > 8 * 16 + 8 + 4)) combatProblems.push(`Space did not hit and knock the slime back: ${JSON.stringify(slime)}`);
+
+      await stage({ area: 'overworld', screen: '1,0', tx: 7, ty: 5, facing: 'right' });
+      await evaluate("(() => { const p = VL.app.game.player; Object.assign(VL.spawnEnemy(VL.app.game, 'crab', 8, 5), { mode: 'pause', timer: 99, cx: p.x + 10, cy: p.y - 5 }); })()");
+      await sleep(100);
+      await shot('w6-hurt');
+      const hurt = await read('[g.hp, g.maxHp, g.player.x, g.player.flash > 0]');
+      if (!(hurt[0] < hurt[1]) || !(hurt[2] < 7 * 16 + 8) || !hurt[3]) combatProblems.push(`the crab did not hurt and knock back the hero: ${JSON.stringify(hurt)}`);
+
+      await stage({ area: 'overworld', screen: '1,0', tx: 7, ty: 5, facing: 'right' }, ['woodShield']);
+      await evaluate("Object.assign(VL.spawnEnemy(VL.app.game, 'spitter', 10, 5), { timer: 0.1 })");
+      await key('keyDown', 'KeyD');
+      let blocked = false;
+      for (let i = 0; i < 60 && !blocked; i += 1) {
+        await sleep(25);
+        blocked = await read('g.player.blockedAt !== undefined');
+      }
+      await sleep(40);
+      await shot('w6-shield-block');
+      await key('keyUp', 'KeyD');
+      const block = await read('[g.hp, g.maxHp]');
+      if (!blocked || block[0] !== block[1]) combatProblems.push(`the raised shield did not block the seed: blocked ${blocked}, hearts ${block}`);
+
+      const heart = await read('VL.SPOTS.heartFieldA');
+      await stage({ area: heart.area, screen: heart.screen, tx: heart.x, ty: heart.y, facing: 'down' });
+      await sleep(100);
+      await key('keyDown', 'ArrowLeft');
+      await sleep(80);
+      await key('keyUp', 'ArrowLeft');
+      await sleep(400);
+      await shot('w6-heart-container');
+      const container = await read('[VL.app.sceneId, g.maxHp, VL.spotFound(g, "heartFieldA")]');
+      if (container[0] !== 'popup' || container[1] !== 8 || !container[2]) combatProblems.push(`the heart container: ${JSON.stringify(container)}`);
+
+      combatProblems.push(...errors);
+      if (combatProblems.length) failures += 1;
+      console.log(`${combatProblems.length ? 'FAIL' : 'ok  '} combat: 5 enemies, hit, hurt, shield block, heart container, ${path.join(outDir, 'w6-*.png')}`);
+      for (const problem of combatProblems) console.log(`     ${problem}`);
+    }
+
     // W9: accented name entry, talking to townsfolk with S, a long line over
     // several pages, {name} with an accented name and the shop/trade UI, with
     // real key events, saved as w9-*.png. A block of its own, so its names

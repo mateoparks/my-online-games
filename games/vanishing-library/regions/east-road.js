@@ -51,7 +51,9 @@
         'T.,.CCCCCCCC...T',
         'TTTTCCCCCCCCTTTT',
       ],
-      entities: [],
+      entities: [
+        { type: 'slime', x: 13, y: 8 },
+      ],
     },
     // The road ends at the dark edge of the Woods.
     '5,0': {
@@ -69,6 +71,8 @@
         'TTTTTTTTTTTTTTTT',
       ],
       entities: [
+        { type: 'slime', x: 3, y: 8 },
+        { type: 'slime', x: 10, y: 6 },
         spot('heartFieldA', 14, 8, 'pickup', 'W6'),
         spot('bookEastRoad', 10, 3, 'bush', 'W11'),
       ],

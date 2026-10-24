@@ -104,6 +104,7 @@
         'CVVVVVVVVVVVVVVC',
       ],
       entities: [
+        { type: 'gull', x: 9, y: 6 },
         spot('chickenHighlands', 6, 5, 'chicken', 'W7', null),
       ],
     },
@@ -141,6 +142,7 @@
         'CCCC::CCCCCCCVVV',
       ],
       entities: [
+        { type: 'gull', x: 6, y: 5 },
         spot('chickenGap', 11, 4, 'chicken', 'W7', null),
       ],
     },

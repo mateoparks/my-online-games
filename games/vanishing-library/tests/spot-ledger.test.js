@@ -23,7 +23,6 @@ function squatters(VL) {
 }
 
 const LEDGER = {
-  W6: ['heartFieldA', 'heartFieldB'],
   W7: ['chickenCoop', 'chickenGap', 'chickenHighlands', 'chickenLair', 'chickenLedge', 'chickenRiverside', 'chickenSquare', 'lostChicken'],
   W10: ['binderyDoor', 'blacksmithDoor', 'bookBeachBuried', 'paperMillDoor', 'shopDoor'],
   W11: [
@@ -61,7 +60,7 @@ test('nothing but its filler sits on an unfilled spot', () => {
 
 test('the squatter check catches an entity placed on a spot instead of filling it', () => {
   const { VL } = loadGame();
-  const spot = VL.SPOTS.heartFieldA;
-  VL.getScreen(spot.area, spot.screen).entities.push({ type: 'heart', id: 'heartFieldA', x: spot.x, y: spot.y });
-  assert.deepEqual(squatters(VL), ['heart heartFieldA on spot heartFieldA']);
+  const spot = VL.SPOTS.lairDoor;
+  VL.getScreen(spot.area, spot.screen).entities.push({ type: 'door', id: 'lairDoor', x: spot.x, y: spot.y });
+  assert.deepEqual(squatters(VL), ['door lairDoor on spot lairDoor']);
 });

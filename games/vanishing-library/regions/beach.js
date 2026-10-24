@@ -84,6 +84,8 @@
         'WWWWWWWWWWWWWWWW',
       ],
       entities: [
+        { type: 'crab', x: 6, y: 5 },
+        { type: 'crab', x: 10, y: 5 },
         spot('bookBeachBuried', 7, 5, 'buried', 'W10'),
         starfish(2, 6, 4, 6),
         starfish(11, 6, 2, 3),
@@ -105,6 +107,8 @@
         'WWWWWWWWWWWWWWWW',
       ],
       entities: [
+        { type: 'crab', x: 6, y: 6 },
+        { type: 'crab', x: 11, y: 7 },
         spot('bookTideTables', 10, 5, 'trunk', 'W11'),
         starfish(4, 6, 6, 8),
       ],
