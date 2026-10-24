@@ -4,6 +4,7 @@ VL.render = function render(ctx, app, t) {
   const { width, height } = VL.TUNING;
   VL.ART.rect(ctx, 'ink', 0, 0, width, height);
   app.scene.draw(ctx, app, t);
+  VL.SOUND.drawIndicator(ctx, app, t);
 };
 
 // `entities` defaults to the screen's static list (used for the outgoing screen
