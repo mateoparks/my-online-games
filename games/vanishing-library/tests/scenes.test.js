@@ -33,6 +33,12 @@ function newGameTo(VL, app, name, slot = 0, stopAt = 'play') {
   wait(VL, app, 1);
   press(VL, app, 'interact');
   assert.equal(app.sceneId, 'play');
+  // W5's controls popup opens on the first step of play; read and close it
+  // in exactly one second, so the HUD's blinking notes keep their phase.
+  wait(VL, app, 1 - STEP);
+  assert.equal(app.sceneId, 'popup');
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'play');
 }
 
 // Records every string the kit draws during a draw.
@@ -224,7 +230,8 @@ test('the intro shows the three weathered lines, then plays on its own', () => {
   const late = drawnText(VL, document, app, 8);
   assert.ok(late.some((s) => s.includes('oblivion')), 'the last line has faded in');
   wait(VL, app, VL.INTRO.total);
-  assert.equal(app.sceneId, 'play', 'the intro ends by itself');
+  assert.equal(app.sceneId, 'popup', 'the intro ends by itself, into play with the controls popup (W5)');
+  assert.equal(VL.currentPopup(app.game).id, 'controls');
 });
 
 // ---------- title and slots ----------
@@ -421,7 +428,8 @@ test('Esc pauses: the world freezes, Resume continues, Save & Quit saves and ret
   assert.ok(paused.some((s) => /N: SOUND ON\/OFF/.test(s)), 'lists the sound key for W21');
   assert.ok(!paused.some((s) => /\bF\b/.test(s)), 'chicken flight stays a secret');
   assert.ok(!paused.some((s) => s.includes('␣')), 'Space is not mentioned before a main-hand item');
-  VL.ART.hudSource('mainHand', () => 'sword-wood');
+  game.items.woodSword = true;
+  game.hands.mainHand = 'woodSword';
   assert.ok(drawnText(VL, document, app).some((s) => s.includes('␣ MAIN HAND')), 'and is once the hero holds one');
   press(VL, app, 'pause');
   assert.equal(app.sceneId, 'play', 'Esc resumes');

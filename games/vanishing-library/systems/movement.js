@@ -5,7 +5,7 @@
 
   function blocked(state, x, y) {
     const { w, h } = VL.TUNING.heroBox;
-    return VL.isBlocked(state.player.area, state.player.screen, x, y, w, h);
+    return VL.isBlocked(state.player.area, state.player.screen, x, y, w, h, state.room);
   }
 
   // Sub-pixel steps so the hero stops flush against a wall instead of short of it.

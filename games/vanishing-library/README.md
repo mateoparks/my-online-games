@@ -42,7 +42,7 @@ below exist to keep their diffs in different files:
   "exists" check.
 - **Never edit `config.js`, `state.js` or `tiles.js`** to add things. From your
   own file use `VL.tune({ crabSpeed: 40 })` for tuning numbers,
-  `VL.extendGame('inventory', (options) => ({ inventory: {} }))` for saved
+  `VL.extendGame('library', (options) => ({ library: {} }))` for saved
   state fields, and `VL.extendTileset('base', { '%': { solid: true, ore: true } })`
   for tile characters. Each throws on a name another file already took.
 - **Every registry throws on a duplicate id** (`defineSystem`, `defineEntity`,
@@ -99,12 +99,24 @@ things the renderer or sound should react to this step; it's cleared each step.
 
 ### Adding an entity type
 
-Create `entities/<name>.js` with `VL.defineEntity('chest', { onStand, draw })`.
+Create `entities/<name>.js` with `VL.defineEntity('crate', { onStand, draw })`.
 `onStand(state, entity)` fires once when the hero's feet tile enters the entity's
 tile. `state.room.entities` holds fresh copies of the screen's entities for the
 current visit: the renderer draws **these** (so mark one `opened`, move it or
 remove it from the array and the screen follows); `state.flags` is for permanent
-state.
+state. More hooks:
+
+- `solid: true` blocks the hero on its tile (and the playthrough's pathing).
+- `onInteract(state, entity)` runs when S is pressed facing its tile (a chest, a
+  sign, later an NPC).
+- `prepare(state, copy)` runs on each fresh copy as the hero enters the screen:
+  set it up from saved state (`copy.opened = …`) or return `false` to leave it
+  out of the visit (an ore lump already taken).
+
+A visit can also change tiles: `VL.setRoomTile(state, tx, ty, ch)` (a cut
+bush). Pass `state.room` as the last argument of `VL.tileAt`, `VL.isSolidAt`
+or `VL.isBlocked` to see the visit's changes and its solid entities; without it
+they read the static map. Everything resets when the hero re-enters the screen.
 
 ### Adding a scene
 
@@ -309,6 +321,73 @@ blocked context, mute); an unknown name does throw, so a typo fails the tests.
   is not a gesture, so the unmute confirmation would be dropped). The sprites
   `icon-sound` and `icon-sound-off` are ready for its two states.
 
+## Core loop (W5)
+
+What the hero carries, the hands, popups, bushes and pickups. `items.js`
+(core) holds the registries; `systems/hands.js`, `systems/foliage.js`,
+`entities/{chest,sign,pickups,ore}.js` and `scenes/{popup,equipment}.js` use them.
+
+- **Saved state:** `state.inventory` counts the resources (`wood`, `shells`
+  (whole shells, the money), `brokenShells`, `berries`, `ore`);
+  `state.items` maps owned item ids to `true`; `state.hands` is
+  `{ mainHand, offHand }` (item ids or null); `state.popups` is
+  `{ seen, queue }`. Fixture: `tests/fixtures/save-v1-W5.json`.
+- **Resources:** `VL.addResource(state, 'wood', 1)` (a negative amount
+  spends; it never goes below 0) earns, so the game saves.
+- **Items:** `VL.defineItem(id, { name, icon, about, popup, use(state, hand),
+  hold(state, hand), count(state), sword, prefers })` from the item's own file;
+  `icon` names the `item-<icon>` sprite the HUD and the equipment screen draw.
+  `VL.giveItem(state, id)` owns it, puts it in an empty hand (the main hand
+  first; `prefers: 'offHand'` for a shield), queues its popup and earns.
+  `VL.hasItem`, `VL.setHand(state, hand, id)` (choosing the held item again
+  empties the hand) and `VL.equipmentItems(state)` do the rest. An item with
+  `count` (berries) is owned while the count is above 0. Two-handed items
+  (the shovel) are still to come (W10).
+- **Hands (`systems/hands.js`):** Space uses the main-hand item and D the
+  off-hand one; `hold` runs every step the key is held (the shield sets
+  `state.player.shield`). S calls `VL.interact`: an entity's `onInteract` on
+  the tile in front (`VL.facingTile(state)`), else a berry bush, else a bare-hand
+  pull when no sword is in the main hand. Space with an empty main hand pulls
+  too. A sword swing (`VL.swing`) sets `state.player.swing` for
+  `TUNING.swingSeconds` and pushes `{ type: 'swing', item, hand, tiles }`; it
+  cuts the bushes on those tiles, so combat (W6) reads the same event.
+- **Bushes (`systems/foliage.js`):** a `cuttable` tile is cut for the visit
+  by `VL.cutBush(state, tx, ty, 'sword' | 'hands')`; it becomes the legend's
+  `cutTo` character (default grass `.`, so a bush on sand says `cutTo: 's'`).
+  One roll per bush, `TUNING.bushDrops` (heart 2%, whole shell 5%, wood 20%,
+  exclusive bands), puts a `drop` entity on the tile that fades after
+  `TUNING.dropSeconds`. A bare-hand pull costs `TUNING.pullCost` half hearts,
+  and a pull on the last half heart faints the hero (`shrub`). Berry bushes
+  (`berry: true`) are picked with S (`TUNING.berriesPerPick`), show bare (`u`)
+  until the hero comes back, and a sword only bounces off them. Eating a berry
+  (`VL.eatBerry`, a berry in a hand or S on the equipment screen) heals
+  `TUNING.berryHeal` half hearts and never past full.
+- **Pickups:** walking over a `drop`, a `shell` (`{ type: 'shell', x, y }` is a
+  broken shell that washes up on every visit; `whole: true, id` is a whole
+  shell found once) or an `ore` lump (`id`, found once) collects it. One-time
+  finds are saved as `state.flags['found:<id>']`, the same flag W8's
+  `VL.markFound` sets. A `chest` (`{ type: 'chest', id, contents: [{ item } |
+  { resource, amount }] }`) and a `sign` (`{ type: 'sign', text, title }`) are
+  solid and answer S.
+- **Popups:** `VL.definePopup(id, { title, text })` (`{name}` is the hero's
+  name) and `VL.showPopup(state, id)` queue a once-only explanation; the play
+  scene opens the `popup` scene over the paused world, and closing it marks it
+  seen (both saved, so a reload never loses or repeats one).
+  `VL.showMessage(state, { title, text })` shows words every time and is never
+  saved (signs). The controls popup is queued as the intro hands over to play.
+  Keep a popup to 4 lines: a test checks every popup and sign.
+- **Equipment screen (`'equipment'`, E):** arrows choose, Space or D puts the
+  item in that hand, S uses it (eats a berry), E or Esc goes back.
+- **Drawing with the hero:** `VL.defineHeroLayer(id, (ctx, state, x, y, t,
+  pass) => {})` draws with the hero, once behind (`pass === 'behind'`) and once
+  in front; the swing and the raised shield are the `hands` layer.
+- **Sounds:** events `swing`, `pickup` (`kind`; shells chime), `bushCut`
+  (`rustle`), `pullHurt` (`hurt`), `tink` (a sword on a berry bush) and `eat`
+  (`munch`).
+- **Locks claimed:** `chestGear` (the hut chest, `found:hutChest`),
+  `oreShallows`, `berryBush` (a screen with a berry bush visited), `berries`,
+  `bushBareHands`, `bushCut`, `beachBrokenShells`.
+
 ## Engine notes
 
 - Logical canvas 256×192: a 16px HUD strip over a 16×11 grid of 16px tiles.
@@ -394,9 +473,9 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   written again; a read that throws counts as a failed write.
 - **Schema (R2):** saves carry `v`, `VL.saveVersion()`. **Adding a field
   needs no migration.** Add it from your own file with
-  `VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }))` and a save
-  written before it gets the default on load, nested keys included (an
-  `inventory.paper` added later fills in as 0). A saved value whose kind no
+  `VL.extendGame('library', () => ({ library: { returned: 0 } }))` and a save
+  written before it gets the default on load, nested keys included (a
+  `library.read` added later fills in as 0). A saved value whose kind no
   longer matches its default (an object or array on either side) takes the
   default too, and `VL.readSlot(...).resets` lists those paths so the fixture
   test can fail instead of a player losing progress; play state in an old
@@ -458,10 +537,16 @@ open edge of the start area and checks the slide pans the way the hero walked
 with the hero on the canvas throughout, and resizes the window without
 reloading and checks the scale follows. Then it plays the real start with key
 events: title → Enter on an empty slot → "Robin" typed → Enter → the intro →
-S → play, with the slot saved; Esc, Save & Quit back to the title; a reload
-that still lists Robin, a muted title (N, then N again) and a continue at full
-hearts (screenshots `title.png`, `name.png`, `intro.png`, `pause.png`,
-`title-saved.png`, `title-muted.png`). It runs for 60 s at most. A test file
+S → the controls popup → S → play, with the slot saved; Esc, Save & Quit back
+to the title; a reload that still lists Robin, a muted title (N, then N again)
+and a continue at full hearts (screenshots `title.png`, `name.png`,
+`intro.png`, `controls-popup.png`, `pause.png`, `title-saved.png`,
+`title-muted.png`). Then the core loop with real keys: S at the hut chest (the
+sword and shield land in the hands), E for the equipment screen, Space on a
+bush (it must be cut) and S at a berry bush (`w5-hut.png`,
+`w5-chest-popup.png`, `w5-equipment.png`, `w5-bush-cut.png`,
+`w5-bush-after.png`, `w5-berry-bush.png`, `w5-berries-picked.png`). It runs
+for 60 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
 ## Progression: locks, keys, the solver and the playthrough
@@ -591,12 +676,17 @@ implements. `drive.walkTo({ area, screen, tx, ty })` paths through open tiles,
 screen edges and doors with real held directions; `drive.press(action)`,
 `drive.hold(actions, seconds)`, `drive.until(pred, maxSeconds, held)` and
 `drive.state`/`drive.app` do the rest (a popup scene that swallows input shows
-up as a `not reached` error naming the scene). `drive.reload()` stands for the
+up as a `not reached` error naming the scene; `drive.closePopups()` reads and
+closes every waiting popup with S). `drive.reload()` stands for the
 player reloading the page: it swaps in the app returned by the `reload(app)`
 hook given to `createPlaythrough` (or `VL.reloadApp`), which W2 supplies once
 saving exists (fresh `createApp`, load; no save first, like a real reload);
-until then it throws. The app
+until then it throws. **`playTo` reloads after every milestone's step** and
+checks `reached` again, so progress that was never earned (`VL.earned`) fails
+there: progress survives reloading the page at any point. The default app is
+therefore a new game saved in slot 1 of an in-memory store (`slotApp`); the app
 itself is also injectable (`createPlaythrough(VL, { app })`), so the title
-screen and name entry can be driven from there. The test drives to the last
+screen and name entry can be driven from there, and an app without a save slot
+fails `playTo` with a message. The test drives to the last
 milestone that has steps; the first milestone without steps must be planned,
 not implemented, so an item that implements a beat also scripts it.

@@ -1,5 +1,6 @@
-// The play scene: the world updates and is drawn. Esc pauses, a save flashes
-// SAVED (the app saves after every step), and hearts running out hands over
+// The play scene: the world updates and is drawn. Esc pauses, E opens the
+// equipment screen, a save flashes SAVED (the app saves after every step),
+// a waiting popup opens over the world, and hearts running out hands over
 // to the fainted scene.
 (() => {
   const SAVED_FLASH = 1.5;
@@ -14,8 +15,13 @@
         app.setScene('pause');
         return;
       }
+      if (actions.pressed.equipment && !game.transition) {
+        app.setScene('equipment');
+        return;
+      }
       VL.updateWorld(game, actions, dt);
       if (game.hp <= 0) app.setScene('fainted');
+      else if (VL.currentPopup(game) && !game.transition) app.setScene('popup');
     },
     draw(ctx, app, t) {
       VL.drawWorld(ctx, app.game, t);

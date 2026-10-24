@@ -27,7 +27,11 @@
     update(app, actions, dt) {
       const intro = app.intro;
       intro.t += dt;
-      if ((intro.t > VL.INTRO.skipAfter && VL.confirmed(actions)) || intro.t >= VL.INTRO.total) app.setScene('play');
+      if ((intro.t > VL.INTRO.skipAfter && VL.confirmed(actions)) || intro.t >= VL.INTRO.total) {
+        // The controls are taught once, as play begins (design: Controls).
+        if (app.game) VL.showPopup(app.game, 'controls');
+        app.setScene('play');
+      }
     },
 
     draw(ctx, app, t) {

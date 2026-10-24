@@ -15,7 +15,7 @@ VL.addScreens('overworld', {
     tiles: [
       'TTTTTTTTTTTTTTTT',
       'T..............T',
-      'T..B.....,.....T',
+      'T..B.....,...Y.T',
       'T......R.......T',
       'T...............',
       'T......,........',
@@ -57,7 +57,10 @@ VL.addScreens('overworld', {
       'Wwwwwwwwwwwwwwww',
       'WWWWWWWWWWWWWWWW',
     ],
-    entities: [],
+    entities: [
+      { type: 'shell', x: 6, y: 8 },
+      { type: 'shell', whole: true, id: 'shellHomeBeach', x: 11, y: 7 },
+    ],
   },
   '1,1': {
     tiles: [
@@ -75,6 +78,10 @@ VL.addScreens('overworld', {
     ],
     entities: [
       { type: 'door', x: 8, y: 3, to: { area: 'hut', screen: '0,0', tx: 7, ty: 8, facing: 'up' } },
+      { type: 'sign', x: 10, y: 4, text: 'Home. Step on the lantern inside to save your adventure.' },
+      { type: 'shell', x: 3, y: 8 },
+      { type: 'shell', x: 13, y: 7 },
+      { type: 'ore', id: 'oreShallows', x: 12, y: 9 },
     ],
   },
 });
@@ -97,6 +104,7 @@ VL.addScreens('hut', {
     entities: [
       { type: 'door', x: 7, y: 9, to: { area: 'overworld', screen: '1,1', tx: 8, ty: 4, facing: 'down' } },
       { type: 'savePoint', x: 2, y: 2 },
+      { type: 'chest', id: 'hutChest', x: 12, y: 2, contents: [{ item: 'woodSword' }, { item: 'woodShield' }] },
     ],
   },
 });

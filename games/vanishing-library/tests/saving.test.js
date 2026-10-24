@@ -61,7 +61,7 @@ test('slot keys carry the game prefix', () => {
 test('a save carries v and the persistent fields only: no transient play state, no hp', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
-  VL.extendGame('inventory', () => ({ inventory: { wood: 2 } }));
+  VL.extendGame('satchel', () => ({ satchel: { wood: 2 } }));
   const state = playState(VL, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
   state.hp = 1;
   state.flags.chest = true;
@@ -70,7 +70,7 @@ test('a save carries v and the persistent fields only: no transient play state, 
   assert.equal(save.v, 1);
   assert.equal(save.name, 'Hero');
   assert.deepEqual({ ...save.flags }, { chest: true });
-  assert.deepEqual({ ...save.inventory }, { wood: 2 }, 'extension fields are saved');
+  assert.deepEqual({ ...save.satchel }, { wood: 2 }, 'extension fields are saved');
   assert.equal(save.savePoint, null);
   assert.equal(save.finished, false);
   for (const field of ['hp', 'time', 'player', 'room', 'transition', 'events', 'dirty', 'fainted']) {
@@ -85,17 +85,17 @@ test('a save carries v and the persistent fields only: no transient play state, 
 test('save and load round trip: earnings kept, full hearts, back at the save point', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
-  VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }));
+  VL.extendGame('satchel', () => ({ satchel: { wood: 0 } }));
   const storage = VL.createStorage(memoryStorage());
   const state = playState(VL, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
-  state.inventory.wood = 3;
+  state.satchel.wood = 3;
   state.flags.chest = true;
   state.hp = 1;
   VL.touchSavePoint(state, { area: 'room', screen: '0,0', tx: 7, ty: 5, facing: 'down' });
   assert.equal(VL.saveSlot(storage, 1, state), true);
   const loaded = VL.loadSlot(storage, 1);
   assert.equal(loaded.name, 'Hero');
-  assert.equal(loaded.inventory.wood, 3);
+  assert.equal(loaded.satchel.wood, 3);
   assert.equal(loaded.flags.chest, true);
   assert.equal(loaded.hp, loaded.maxHp, 'loading gives full hearts');
   assert.equal(loaded.player.area, 'room');
@@ -182,15 +182,15 @@ test('an older save gets the defaults of fields added since, nested objects incl
   state.flags.chest = true;
   VL.saveSlot(storage, 0, state);
   // Two later items land: a new top-level field and a new key inside one the save already has.
-  VL.extendGame('inventory', () => ({ inventory: { wood: 0, shells: 0 } }));
+  VL.extendGame('satchel', () => ({ satchel: { wood: 0, shells: 0 } }));
   const first = VL.loadSlot(storage, 0);
-  assert.deepEqual({ ...first.inventory }, { wood: 0, shells: 0 });
-  first.inventory.wood = 4;
+  assert.deepEqual({ ...first.satchel }, { wood: 0, shells: 0 });
+  first.satchel.wood = 4;
   VL.saveSlot(storage, 0, first);
   VL.GAME_EXTENSIONS.pop();
-  VL.extendGame('inventory', () => ({ inventory: { wood: 0, shells: 0, paper: 0 } }));
+  VL.extendGame('satchel', () => ({ satchel: { wood: 0, shells: 0, paper: 0 } }));
   const second = VL.loadSlot(storage, 0);
-  assert.deepEqual({ ...second.inventory }, { wood: 4, shells: 0, paper: 0 });
+  assert.deepEqual({ ...second.satchel }, { wood: 4, shells: 0, paper: 0 });
   assert.equal(second.flags.chest, true);
   assert.equal(second.name, 'Old');
 });
@@ -260,7 +260,7 @@ test('a save from a newer game reads as newer, never damaged, and is left as it 
 test('transient keys, hp and wrong-typed objects in a stored save take the fresh values', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
-  VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }));
+  VL.extendGame('satchel', () => ({ satchel: { wood: 0 } }));
   VL.extendGame('library', () => ({ books: [] }));
   const backing = memoryStorage();
   const storage = VL.createStorage(backing);
@@ -275,32 +275,32 @@ test('transient keys, hp and wrong-typed objects in a stored save take the fresh
   assert.equal(game.time, 0);
   assert.equal(game.player.area, VL.START.area);
   // An object or array field holding something else takes the default.
-  backing.setItem(VL.slotKey(1), JSON.stringify({ ...base, inventory: null, books: 'none', savePoint: 'hut' }));
+  backing.setItem(VL.slotKey(1), JSON.stringify({ ...base, satchel: null, books: 'none', savePoint: 'hut' }));
   assert.equal(VL.readSlot(storage, 1).status, 'ok');
   const typed = VL.loadSlot(storage, 1);
-  assert.deepEqual({ ...typed.inventory }, { wood: 0 });
+  assert.deepEqual({ ...typed.satchel }, { wood: 0 });
   assert.deepEqual([...typed.books], []);
   assert.equal(typed.player.area, VL.START.area, 'a bad save point means the start');
   // A number over a nested object default too.
-  backing.setItem(VL.slotKey(2), JSON.stringify({ ...base, inventory: 5 }));
-  assert.deepEqual({ ...VL.loadSlot(storage, 2).inventory }, { wood: 0 });
+  backing.setItem(VL.slotKey(2), JSON.stringify({ ...base, satchel: 5 }));
+  assert.deepEqual({ ...VL.loadSlot(storage, 2).satchel }, { wood: 0 });
 });
 
 test('a saved field whose kind changed without a migration takes the default and is reported, either way round', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
-  // W5 saved inventory.wood as a number; a later item made it an object. Another item made coins a number.
-  VL.extendGame('inventory', () => ({ inventory: { wood: { count: 0, metal: false } } }));
+  // W5 saved satchel.wood as a number; a later item made it an object. Another item made coins a number.
+  VL.extendGame('satchel', () => ({ satchel: { wood: { count: 0, metal: false } } }));
   VL.extendGame('coins', () => ({ coins: 0 }));
   const storage = VL.createStorage(memoryStorage());
   const savePoint = { area: 'test', screen: '0,0', tx: 8, ty: 2, facing: 'down' };
-  const old = { v: 1, name: 'Robin', maxHp: 8, flags: { a: true }, visited: {}, savePoint, inventory: { wood: 3 }, coins: { gold: 5 } };
+  const old = { v: 1, name: 'Robin', maxHp: 8, flags: { a: true }, visited: {}, savePoint, satchel: { wood: 3 }, coins: { gold: 5 } };
   storage.write(VL.slotKey(0), JSON.stringify(old));
   const read = VL.readSlot(storage, 0);
   assert.equal(read.status, 'ok');
-  assert.deepEqual([...read.resets].sort(), ['coins', 'inventory.wood'], 'every reset is named by path');
+  assert.deepEqual([...read.resets].sort(), ['coins', 'satchel.wood'], 'every reset is named by path');
   const game = VL.loadSlot(storage, 0);
-  assert.deepEqual(JSON.parse(JSON.stringify(game.inventory.wood)), { count: 0, metal: false });
+  assert.deepEqual(JSON.parse(JSON.stringify(game.satchel.wood)), { count: 0, metal: false });
   assert.equal(game.coins, 0);
   assert.deepEqual(JSON.parse(JSON.stringify(game.savePoint)), savePoint, 'a null default takes any kind');
   VL.saveSlot(storage, 1, game);
@@ -358,22 +358,22 @@ test('extendGame with transient: true adds play state that is never saved and re
   const { VL } = loadGame();
   addFixtureWorld(VL);
   VL.extendGame('enemies', () => ({ knockback: null, cooldown: 0 }), { transient: true });
-  VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }));
+  VL.extendGame('satchel', () => ({ satchel: { wood: 0 } }));
   assert.ok(VL.TRANSIENT_FIELDS.includes('knockback') && VL.TRANSIENT_FIELDS.includes('cooldown'));
   const storage = VL.createStorage(memoryStorage());
   const state = playState(VL, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
   assert.equal(state.cooldown, 0);
   state.cooldown = 3;
-  state.inventory.wood = 2;
+  state.satchel.wood = 2;
   const save = VL.serializeSave(state);
   assert.equal('cooldown' in save, false);
   assert.equal('knockback' in save, false);
-  assert.equal(save.inventory.wood, 2);
+  assert.equal(save.satchel.wood, 2);
   VL.saveSlot(storage, 0, state);
   const loaded = VL.loadSlot(storage, 0);
   assert.equal(loaded.cooldown, 0);
   assert.equal(loaded.knockback, null);
-  assert.equal(loaded.inventory.wood, 2);
+  assert.equal(loaded.satchel.wood, 2);
   VL.extendGame('again', () => ({ cooldown: 1 }));
   assert.throws(() => VL.createGame(), /cooldown/, 'a saved field cannot shadow a transient one');
 });
@@ -435,9 +435,9 @@ test('standing on a savePoint entity sets the save point', () => {
 test('fainting keeps everything earned and respawns at the save point with full hearts', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
-  VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }));
+  VL.extendGame('satchel', () => ({ satchel: { wood: 0 } }));
   const state = playState(VL, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
-  state.inventory.wood = 4;
+  state.satchel.wood = 4;
   VL.touchSavePoint(state, { area: 'room', screen: '0,0', tx: 7, ty: 5 });
   VL.place(state, { area: 'test', screen: '1,0', tx: 8, ty: 2 });
   VL.faint(state, 'shrub');
@@ -446,7 +446,7 @@ test('fainting keeps everything earned and respawns at the save point with full 
   VL.respawn(state);
   assert.equal(state.hp, state.maxHp);
   assert.equal(state.fainted, null);
-  assert.equal(state.inventory.wood, 4);
+  assert.equal(state.satchel.wood, 4);
   assert.equal(state.player.area, 'room');
   assert.equal(state.player.screen, '0,0');
   assert.deepEqual([state.player.x, state.player.y], [VL.tileCenter(7, 5).x, VL.tileCenter(7, 5).y]);
