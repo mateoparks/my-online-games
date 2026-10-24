@@ -17,17 +17,26 @@ function step(milestone, fn) {
   registry[milestone] = fn;
 }
 
-function isWalkable(VL, area, screen, tx, ty) {
-  if (VL.isSolidAt(area, screen, tx, ty)) return false;
-  return !VL.getScreen(area, screen).entities.some((e) => e.x === tx && e.y === ty && (e.solid || VL.ENTITIES[e.type]?.solid));
+// An entity type whose solidity depends on saved state (a locked door, a
+// shutter; W13) says so with `passable(state, entity, area)`; a tile changed
+// for good with VL.saveTile (W14's boulders) is read from the save.
+function isWalkable(VL, area, screen, tx, ty, state = null) {
+  const saved = state && VL.savedTile ? VL.savedTile(state, area, screen, tx, ty) : null;
+  if (saved !== null ? VL.tileInfo(area, saved).solid : VL.isSolidAt(area, screen, tx, ty)) return false;
+  return !VL.getScreen(area, screen).entities.some((e) => {
+    if (e.x !== tx || e.y !== ty) return false;
+    const def = VL.ENTITIES[e.type];
+    if (state && def?.passable) return !def.passable(state, e, area);
+    return e.solid || def?.solid;
+  });
 }
 
 const nodeKey = (node) => `${node.area}|${node.screen}|${node.tx}|${node.ty}`;
 
 // Stepping onto a door tile teleports, so the tile itself is never a
 // waypoint: walking towards it arrives at the door's target.
-function stepTo(VL, area, screen, tx, ty, dir, via) {
-  if (!isWalkable(VL, area, screen, tx, ty)) return null;
+function stepTo(VL, area, screen, tx, ty, dir, via, state) {
+  if (!isWalkable(VL, area, screen, tx, ty, state)) return null;
   const door = VL.getScreen(area, screen).entities.find((e) => e.type === 'door' && e.x === tx && e.y === ty);
   if (door) return { area: door.to.area, screen: door.to.screen, tx: door.to.tx, ty: door.to.ty, dir, via: 'door' };
   return { area, screen, tx, ty, dir, via };
@@ -35,7 +44,7 @@ function stepTo(VL, area, screen, tx, ty, dir, via) {
 
 // Breadth-first over tiles: neighbours within the screen, across open edges
 // into the next screen, and through doors into their target.
-function findPath(VL, from, to) {
+function findPath(VL, from, to, state = null) {
   const { cols, rows } = VL.TUNING;
   const prev = new Map([[nodeKey(from), null]]);
   const queue = [from];
@@ -51,11 +60,11 @@ function findPath(VL, from, to) {
       const tx = node.tx + dx;
       const ty = node.ty + dy;
       if (tx >= 0 && tx < cols && ty >= 0 && ty < rows) {
-        nexts.push(stepTo(VL, node.area, node.screen, tx, ty, dir, 'walk'));
+        nexts.push(stepTo(VL, node.area, node.screen, tx, ty, dir, 'walk', state));
         continue;
       }
       const screen = VL.neighborKey(node.screen, dx, dy);
-      if (VL.screenExists(node.area, screen)) nexts.push(stepTo(VL, node.area, screen, tx - dx * cols, ty - dy * rows, dir, 'edge'));
+      if (VL.screenExists(node.area, screen)) nexts.push(stepTo(VL, node.area, screen, tx - dx * cols, ty - dy * rows, dir, 'edge', state));
     }
     for (const next of nexts.filter(Boolean)) {
       if (prev.has(nodeKey(next))) continue;
@@ -122,8 +131,14 @@ function createDrive(VL, initialApp, reload) {
       const player = drive.state.player;
       const here = { area: player.area, screen: player.screen, ...VL.heroTile(drive.state) };
       const goal = { area: here.area, screen: here.screen, ...target };
-      const route = findPath(VL, here, goal);
+      const route = findPath(VL, here, goal, drive.state);
       if (!route) throw new Error(`no path from ${here.area} ${here.screen} (${here.tx},${here.ty}) to ${goal.area} ${goal.screen} (${goal.tx},${goal.ty})`);
+      // Back onto the tile's centre first: a hero left flush against a chest
+      // or a door is off it, and each node below is checked against a centre.
+      const start = VL.tileCenter(here.tx, here.ty);
+      for (const [axis, minus, plus] of [['x', 'left', 'right'], ['y', 'up', 'down']]) {
+        drive.until((state) => Math.abs(state.player[axis] - start[axis]) < 0.7, 1, [player[axis] > start[axis] ? minus : plus]);
+      }
       for (const node of route.slice(1)) {
         const spot = VL.tileCenter(node.tx, node.ty);
         // Tile centres are 12 steps apart, so holding a direction lands on

@@ -1,5 +1,7 @@
-// { type: 'chest', id, x, y, contents: [{ item } | { resource, amount }] }:
-// solid; S facing it opens it once for good (saved as the `found:<id>` flag).
+// { type: 'chest', id, x, y, contents: [{ item } | { resource, amount } |
+// { smallKey: '<dungeon>' }] }: solid; S facing it opens it once for good
+// (saved as the `found:<id>` flag). A small key is the named dungeon's
+// (systems/dungeon.js, VL.giveSmallKey).
 // The hut's chest holds the wood sword and shield (design: The path through
 // the game, 1).
 (() => {
@@ -48,6 +50,7 @@
       state.flags[`found:${chest.id}`] = true;
       for (const thing of chest.contents || []) {
         if (thing.item) VL.giveItem(state, thing.item);
+        else if (thing.smallKey) VL.giveSmallKey(state, thing.smallKey);
         else VL.addResource(state, thing.resource, thing.amount ?? 1);
       }
       VL.earned(state);

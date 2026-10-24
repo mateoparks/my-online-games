@@ -406,8 +406,10 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   shows 4×2 items and scrolls a row at a time (arrows at its side show more
   above or below), so any number of items fits.
 - **Drawing with the hero:** `VL.defineHeroLayer(id, (ctx, state, x, y, t,
-  pass) => {})` draws with the hero, once behind (`pass === 'behind'`) and once
-  in front; the swing and the raised shield are the `hands` layer.
+  pass) => {})` draws with the hero, once behind (`pass === 'behind'`), once
+  in front (`'front'`) and once more after the light (`'overlay'`, outside
+  the hurt-flash gate: the dungeon keys HUD); the swing and the raised
+  shield are the `hands` layer.
 - **Sounds:** events `swing`, `pickup` (`kind`; shells chime), `bushCut`
   (`rustle`), `pullHurt` (`hurt`), `tink` (a sword on a berry bush) and `eat`
   (`munch`). `systems/sound.js` maps the core `faint` event to `faint`.
@@ -1118,6 +1120,240 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   `heartLibrary`, `swiftfootBoots`, `lostChicken`, `pageLostChicken`,
   `primerTaken`. All keep the planned rules.
 - **Sounds:** `booksReturned` and a finished reading play `libraryChime`.
+
+## Dungeons (W13)
+
+`systems/dungeon.js` is the framework the four dungeons (W14, W15, W18, W19)
+build on from their own files; the pieces live one per file in `entities/`
+(`locked-door`, `push-block`, `pressure-plate`, `switch`, `shutter`,
+`save-statue`, `small-key`, `boss-key`, `dungeon-map`, `warp`) and the map
+screen is `scenes/dungeon-map.js`. The worked example is
+`tests/sample-dungeon.js` (four rooms; loaded by the tests and the browser
+smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
+`tests/fixtures/save-v1-W13.json`.
+
+- **Saved state:** `state.dungeons[<id>]` is `{ keysGiven, bossKey, map,
+  doors, plates, switches, boss }`, read with `VL.dungeonState(state, id)` (a
+  dungeon added after a save was written gets a fresh one). Every field is a
+  permanent earning and saves at once; **room state is the visit's** (block
+  positions, a plate held down, a shutter waiting on a fight) and is rebuilt
+  on every entry, so nothing can be saved half-solved. `state.tileChanges`
+  holds tile changes that outlast a visit, in any area: `VL.saveTile(state,
+  tx, ty, ch)` changes the hero's current screen now and on every later
+  visit, through a reload (`VL.savedTile(state, area, screen, tx, ty)` reads
+  one back). That is the mechanism for W14's lifted boulders and W19's opened
+  path (dug holes are W14's call); a change on a screen that no longer exists
+  is simply never applied. The framework applies these, and settles every
+  door, shutter and plate, **as the room is built** (`VL.onRoomBuilt`, from
+  `engine.js`), so a screen slides in already changed and collision never
+  sees an unsettled room.
+- **Ids are global and permanent.** Every `id` on any screen (keys, chests,
+  the map, heart containers, plates, switches) is a `found:` flag or a saved
+  key, shared by the whole game, so **prefix ids with the dungeon**
+  (`d1KeyA`, `d1DoorA`, `heartD1`); `VL.dungeonLockProblems` fails an id
+  used twice anywhere (a reused key id would already be "found"). Once a
+  dungeon has merged, its dungeon, door, plate, switch and found ids are
+  part of every save: renaming one needs a W2 migration. Keys are the one
+  thing a rename cannot strand (next bullet).
+- **Keys** are counted per dungeon and never work in another: an entity in a
+  dungeon's area only ever reads its own dungeon's count. The keys in hand
+  are **derived, never stored**: `VL.smallKeys(state, dungeonId)` is the
+  dungeon's `smallKey` pickups found (their `found:` flags) plus
+  `keysGiven` (keys from code) minus its small doors opened (`doors`), so a
+  door or key renamed after a save re-locks or reappears *and gives the key
+  back*; a door opened is the key spent, one saved fact. `{ type: 'smallKey',
+  id, x, y, lock, reveal?: 'cleared' }` is found once; `reveal: 'cleared'`
+  keeps it hidden until every enemy in the room is beaten. `{ type: 'bossKey',
+  id, x, y, lock }` likewise. From code (a chest, a drop, a script):
+  `VL.giveSmallKey(state, dungeonId, n)` (counted in `keysGiven`),
+  `VL.giveBossKey`, `VL.giveDungeonMap`; a chest holds one as
+  `contents: [{ smallKey: '<dungeon>' }]`. A key that appears at runtime is
+  one of those two things, a map key with `reveal` or `VL.giveSmallKey`,
+  never a `smallKey` entity pushed into `room.entities` (it would be found
+  but never counted, so `VL.dungeonPickup` throws on one). The keys in hand
+  show over the play area while in a dungeon (`dungeonHud`, on the second
+  row at the right, under the SAVED note; drawn in the hero layers'
+  `overlay` pass: over the light, never hidden by the hurt flash) and on the
+  map screen.
+- **Locked doors:** `{ type: 'lockedDoor', id, kind: 'small' | 'boss', x, y,
+  lock, oneWay? }` is solid until opened by walking into it or pressing S
+  with a key; the boss key is shown, not spent. A door across a screen edge
+  gets a copy on each side with the **same id**; both open together.
+  `VL.dungeonDoorProblems` insists on the copy (a hero crossing from the
+  other side would land inside a closed door with nowhere to go) unless the
+  door says `oneWay: true`, meaning the room beyond is only ever entered
+  through it (the sample's boss door). **That claim is checked:** the lint
+  floods the dungeon's screens from its entries (every screen a door or warp
+  from outside lands on) through openings, doors and warps without crossing
+  the one-way door, and fails the layout if the far room is reached (a loop
+  of rooms, a warp in); a dungeon nothing leads into yet fails too, since
+  the flood has nowhere to start. One id is one door: two copies at most,
+  on the two sides of one edge, and one lock per door id (the game spends a
+  key per id, the solver one per lock).
+  `VL.openLockedDoor(state, door)` returns `'opened'`, `'open'` or `'locked'`.
+- **Push blocks:** `{ type: 'pushBlock', x, y, once = true }` slides a tile
+  after the hero leans on it for `TUNING.blockPushSeconds`, once per visit
+  (Zelda's rule; `once: false` for a free block), never onto a wall, another
+  thing (a plate is fine; an enemy's body counts wherever it stands) or the
+  edge row or column (`VL.blockCanMove`, `VL.pushBlock`). Blocks are back
+  where the map puts them on every entry. A block *can* still seal a room
+  from inside (in front of an opening, a door or a corridor), and a sealed
+  room without enemies is a softlock, so **`VL.dungeonBlockProblems`**
+  searches every push sequence of every room from every tile the hero can
+  appear on (beside each exit, the statue step he respawns on, every tile a
+  door or warp lands him on) and names the first position with no exit he
+  can reach without another push (openings, doors, locked doors, warps; an
+  exit under closed bars is no exit). It models walls, solid things, plates
+  pressed by blocks (or a latch plate the hero can reach, unless `weight:
+  'block'`; a latched plate stays down for the rest of the sequence),
+  switches in the room (thrown once he can stand beside one) and their
+  shutters; a shutter on anything else (`cleared`, a flag, a switch on
+  another screen) counts as open and enemies are ignored. The rule is
+  deliberately strict: a room whose way out needs a push first (the block
+  must come off the switch's alcove before the bars will lift) is refused
+  with `… can reach no exit without a push`; lay it out so the hero always
+  has a way out before he pushes. Free blocks are searched to a cap; keep
+  them few.
+- **Pressure plates:** `{ type: 'pressurePlate', id, x, y, latch = false,
+  weight? }` is `down` while the hero stands on it or something that weighs
+  sits on it: any entity type that says `weighsPlate: true` in its definition
+  (a push block; W14's pots add the flag in their own file), judged by its
+  body's tile when it has one. `weight: 'block'` ignores the hero, so a block
+  puzzle cannot be skipped by standing on the plate (the sample's plate).
+  `latch: true` saves the first press for good, so the shutter it opens stays
+  open after a reload even though the block is back at its start.
+  `VL.plateDown(state, id)`.
+- **Switches:** `{ type: 'switch', id, x, y }` (solid) is thrown for good by S
+  or a sword swing; a thrown pot (W14) or a slingshot shot (W18) calls
+  `VL.throwSwitch(state, lever)`.
+- **Shutters:** `{ type: 'shutter', id?, x, y, open: condition }` are bars that
+  lift while the condition holds, settled every step: `{ cleared: true }`
+  (every enemy in the room beaten this visit; a boss does not count),
+  `{ plate: id }`, `{ plates: [ids] }`, `{ switch: id }`, `{ flag: id }`,
+  `{ door: id }`, `{ bossBeaten: true }`; several fields must all hold
+  (`VL.dungeonCondition`). A shutter never shuts on the hero, so **put it on
+  the tile the hero enters by** (the edge tile, or the tile a door lands him
+  on): it stays up while he is on it (he can still turn round and leave) and
+  drops once he has stepped in. Enemies come back on re-entry, so a `cleared`
+  shutter closes again, and so can never softlock.
+- **Save statue:** `{ type: 'saveStatue', x, y }` at the entrance: (x, y) is
+  the step in front, where standing saves and sets the respawn point; the
+  statue stands in the wall niche above, so `(x, y - 1)` must be a wall. A
+  faint or Continue puts the hero there with everything kept.
+- **The map:** `{ type: 'dungeonMap', id, x, y }`. M inside a dungeon opens
+  the `dungeonMap` scene (M, Esc or E closes): rooms visited are lit; with the
+  map every room shows and the boss's room is marked. **W12:** open the drawn
+  world map only when `!VL.dungeonOf(state)`, since M is shared.
+- **The boss room:** `boss: { screen, type, heart, warp: { tx, ty }, onDefeat }`
+  in `defineDungeon`. `type` is an enemy of the dungeon's own
+  (`VL.defineEnemy`, usually `rooted`, `size: 'big'`); the framework marks it
+  `boss` in its room and keeps it by reference. The boss is beaten when it
+  has **fallen and is gone** from the room: its `hp` at or below 0 (a sword,
+  a thrown pot: `VL.hitEnemy` does this) or `defeated: true` set by a script
+  before it is removed. Absence alone never counts, so **hide a burrowing
+  boss with a flag of its own (or move it off screen); never remove it
+  alive**. Then `VL.bossDefeated` saves it, puts the heart container (`heart`
+  is its found id) where the boss stood on the map and the warp out (to
+  `entrance`) at `warp`, and calls `onDefeat(state)` for the dungeon's own
+  rewards (the Mortar & Pestle, books). On later visits the boss is gone, the
+  warp is there and the heart waits until taken. A shutter
+  `{ bossBeaten: true }` on the entry tile bars the way back once the hero
+  has stepped in; since he is then shut in until the boss falls or he
+  faints, a boss behind such bars must be able to make him faint, or the
+  boss door's lock should need the weapon (the sample's boss *lock* needs a
+  sword, its door does not). `VL.bossBeaten(state, id)`.
+- **Entering and leaving:** ordinary `door` entities link the overworld and
+  the dungeon both ways (fill W8's door spot from the dungeon's file). The
+  hero is always placed with `VL.enterScreen`, so W6's arrival grace for
+  enemies holds in every room, after a warp and at a statue respawn. A warp
+  sets `state.warpHold` (transient): `systems/movement.js` ignores the arrows
+  until they are let go, so a direction held through the boss warp never
+  walks the hero straight back through the door he lands beside.
+- **Pits and chickens:** `VL.DUNGEON_TILES` (`#` wall, `_` floor, `m` door
+  mat, `o` pit, `n` solid floor under decor) is the base legend; a pit is
+  solid and never `flyOver`, so a carried chicken cannot fly the puzzle.
+  `defineDungeon` refuses a tileset with a `flyOver` tile unless the dungeon
+  says `allowFlyOver: true` (then its gaps are its own problem).
+- **Sounds:** events `smallKey`/`bossKey` (`dungeonKey`), `dungeonMap`
+  (`pickup`), `doorUnlocked` (`dungeonUnlock`), `doorLocked` (`bump`),
+  `shutterOpen` (`dungeonShutter`), `blockPushed` (`dungeonBlock`),
+  `platePressed`/`revealed` (`dungeonPlate`), `switchOn` (`dungeonSwitch`),
+  `warp` (`dungeonWarp`), `bossDefeated` (`dungeonBoss`), `statue` (`popup`).
+- **Playthrough:** the pathfinder asks an entity type's `passable(state,
+  entity, area)` (locked doors, shutters, blocks define it) and reads tiles
+  changed with `VL.saveTile` from the save, so `walkTo` routes through an
+  opened door, a lifted boulder and round a block; walk through a `cleared`
+  shutter by hand when fighting (`drive.fight`). A pickup that queues a popup
+  stops `walkTo` on arrival: walk to the tile before it and `drive.until`.
+
+### How to build a dungeon
+
+1. `dungeons/<name>.js`: a tileset from the base legend plus your own
+   characters (`VL.defineTileset('scriptorium', { ...VL.DUNGEON_TILES, p: {...} })`),
+   `VL.defineArea`, `VL.addScreens` with the rooms (8–14, keyed `'x,y'`; open
+   edges line up like the overworld), the dungeon's enemies and boss
+   (`VL.defineEnemy`), then
+   ```js
+   VL.defineDungeon('scriptorium', {
+     area: 'scriptorium', name: 'Old Scriptorium',
+     entrance: { area: 'overworld', screen: '2,-2', tx: 8, ty: 4, facing: 'down' },   // outside its door
+     boss: { screen: '1,-2', type: 'bookworm', heart: 'heartD1', warp: { tx: 7, ty: 8 }, onDefeat(state) { VL.giveItem(state, 'mortarPestle'); } },
+     light: 'indoor',   // or 'dark' (W18)
+   });
+   ```
+2. Fill the overworld door spot with a `door` into the first room and put a
+   `door` on the mat tile back out; a `saveStatue` by the entrance.
+3. Lay the puzzles with the entities above, every id prefixed with the
+   dungeon (`d1…`); every key, boss key, map, plate and switch has one.
+   Every `smallKey`, `bossKey` and `lockedDoor` names its lock
+   (`lock: 'id'`); a door across an edge has its twin on the other screen
+   (or `oneWay: true`, which only holds if no loop of rooms and no warp
+   reaches the far room another way); a block puzzle's plate says
+   `weight: 'block'` so standing on it is not a solution; a pot or anything
+   else that should press a plate gets `weighsPlate: true` in its own entity
+   definition. Wherever the hero can appear (beside an opening, on the
+   statue step, where a door or warp lands him) he must have a way out
+   before he pushes anything.
+4. Register the locks in the table (README "Progression"): claim the planned
+   ones (`scriptoriumEntered`, `liftingGloves`, `d1Boss`, ...) and add one per
+   key and door, so the solver sees the spending order:
+   ```js
+   VL.defineLock('d1KeyA', { type: 'item', needs: ['scriptoriumEntered'], supplies: { 'smallKey:scriptorium': 1 }, doc: '§ …', reached: (s) => VL.spotFound(s, 'd1KeyA') });
+   VL.defineLock('d1DoorA', { needs: ['scriptoriumEntered'], consumes: { 'smallKey:scriptorium': 1 }, doc: '§ …', reached: (s) => Boolean(s.dungeons.scriptorium?.doors.d1DoorA) });
+   VL.defineLock('d1BossKey', { type: 'item', needs: ['d1DoorA'], gives: ['bossKey:scriptorium'], doc: '§ …', reached: (s) => VL.spotFound(s, 'd1BossKey') });
+   VL.defineLock('d1BossDoor', { needs: ['d1DoorA', 'bossKey:scriptorium'], doc: '§ …', reached: (s) => Boolean(s.dungeons.scriptorium?.doors.d1BossDoor) });
+   ```
+   A door reachable from both sides lists both ways in as any-of
+   (`needs: [['d1RoomA', 'd1RoomB']]`), or the worst-case spending check
+   misses an order. A key with no map entity (from a chest with
+   `{ smallKey: '<dungeon>' }`, an enemy drop, a script calling
+   `VL.giveSmallKey`) still gets a supplying lock, on the chest's or drop's
+   own id; the lint cannot see those, so check that each
+   `smallKey:<dungeon>` supplier in the table is one you give. **The table
+   must tell the truth about geography:** a key's `needs` names every
+   locked door on the way to it (through other locks if you like). Nothing
+   checks the map against the table for that; a key wrongly said to need
+   only the entrance passes the lint and the solver, and only the
+   playthrough (step 6, if its steps walk to every key) catches it.
+5. **Lint.** `VL.dungeonProblems()` runs every check over every dungeon the
+   game has defined (`tests/dungeon.test.js` keeps it empty, so a dungeon in
+   the manifest is checked with no test of its own): `dungeonLockProblems`
+   (every key and door names a lock with the matching rule, one lock per
+   door id, every key, map, plate and switch has an id, no id used twice
+   anywhere), `dungeonDoorProblems` (edge doors have their twin, or `oneWay`
+   and the far room really is reached through them alone) and
+   `dungeonBlockProblems` (from every tile the hero can appear on, no push
+   sequence leaves him without an exit). Each message names the room and
+   the fix. The lints are strict on purpose: they refuse anything they
+   cannot see is safe (a one-way door in a dungeon nothing leads into yet, a
+   way out that needs a push first), so a message is a layout to change,
+   not a flag to add. Run it from the console on a new layout before
+   writing steps.
+6. Steps in `tests/steps/<item>.steps.js` for the milestones you implement,
+   a smoke block with screenshots, and a save fixture if you add a field
+   (`save-v1-W13.json` is a played state: the key found and spent on the
+   north door, `keysGiven: 0`). The sample's suite shows a faint-anywhere
+   check worth copying.
 
 ## Progression: locks, keys, the solver and the playthrough
 

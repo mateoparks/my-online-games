@@ -1,0 +1,76 @@
+{
+  "v": 1,
+  "name": "Hero",
+  "rngState": 3599190430,
+  "maxHp": 8,
+  "flags": {
+    "found:sampleChest": true,
+    "found:sampleMap": true,
+    "found:sampleKey": true,
+    "found:sampleBossKey": true,
+    "found:heartSample": true
+  },
+  "visited": {
+    "overworld:1,1": true,
+    "sampleYard:0,0": true,
+    "sample:0,0": true,
+    "sample:1,0": true,
+    "sample:0,-1": true,
+    "sample:0,-2": true
+  },
+  "savePoint": {
+    "area": "sample",
+    "screen": "0,0",
+    "tx": 2,
+    "ty": 1,
+    "facing": "down"
+  },
+  "finished": false,
+  "inventory": {
+    "wood": 0,
+    "shells": 0,
+    "brokenShells": 0,
+    "berries": 0,
+    "ore": 0,
+    "paper": 0,
+    "ink": 0
+  },
+  "items": {
+    "woodSword": true
+  },
+  "hands": {
+    "mainHand": "woodSword",
+    "offHand": null
+  },
+  "popups": {
+    "seen": {
+      "woodSword": true,
+      "dungeonMap": true,
+      "heartContainer": true
+    },
+    "queue": []
+  },
+  "dungeons": {
+    "sample": {
+      "keysGiven": 0,
+      "bossKey": true,
+      "map": true,
+      "doors": {
+        "sampleDoorNorth": true,
+        "sampleBossDoor": true
+      },
+      "plates": {
+        "samplePlate": true
+      },
+      "switches": {
+        "sampleSwitch": true
+      },
+      "boss": true
+    }
+  },
+  "tileChanges": {
+    "sample:0,-2": {
+      "3,3": "o"
+    }
+  }
+}
