@@ -37,6 +37,7 @@ VL.FILES = {
     'systems/sound.js',
     'systems/foliage.js',
     'systems/hands.js',
+    'systems/chickens.js',
     'systems/combat.js',
   ],
 
@@ -50,6 +51,7 @@ VL.FILES = {
     'entities/sign.js',
     'entities/pickups.js',
     'entities/ore.js',
+    'entities/chicken.js',
     'entities/crab.js',
     'entities/slime.js',
     'entities/bat.js',
