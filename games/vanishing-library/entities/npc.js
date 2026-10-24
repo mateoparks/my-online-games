@@ -117,15 +117,25 @@
   }
 
   // Inside the screen but off its edge rows (exits), within range of home,
-  // on open ground, clear of every other entity and of the hero's feet box.
-  function canStep(state, npc, tx, ty) {
-    const { cols, rows, tile, heroBox } = VL.TUNING;
-    const room = state.room;
+  // on open ground (this visit's tiles: a cut bush is open), clear of every
+  // other entity and never beside one other than a person, so no one stands
+  // on the only way up to a chest, a sign or a door. Tests check every
+  // placed NPC against this.
+  VL.npcMayStand = function npcMayStand(room, npc, tx, ty) {
+    const { cols, rows } = VL.TUNING;
+    const home = npc.home || npc;
     if (tx < 1 || ty < 1 || tx > cols - 2 || ty > rows - 2) return false;
-    if (Math.abs(tx - npc.home.x) > range(npc) || Math.abs(ty - npc.home.y) > range(npc)) return false;
-    if (VL.isSolidAt(room.area, room.screen, tx, ty)) return false;
+    if (Math.abs(tx - home.x) > range(npc) || Math.abs(ty - home.y) > range(npc)) return false;
+    if (VL.isSolidAt(room.area, room.screen, tx, ty, room)) return false;
     const taken = (e) => (e.x === tx && e.y === ty) || (e.walk && e.walk.fromX === tx && e.walk.fromY === ty);
-    if (room.entities.some((e) => e !== npc && taken(e))) return false;
+    const beside = (e) => e.type !== 'npc' && Math.abs(e.x - tx) + Math.abs(e.y - ty) === 1;
+    return !room.entities.some((e) => e !== npc && (taken(e) || beside(e)));
+  };
+
+  // ... and clear of the hero's feet box.
+  function canStep(state, npc, tx, ty) {
+    if (!VL.npcMayStand(state.room, npc, tx, ty)) return false;
+    const { tile, heroBox } = VL.TUNING;
     const { x, y } = state.player;
     const margin = 2;
     return x + heroBox.w / 2 + margin <= tx * tile || x - heroBox.w / 2 - margin >= (tx + 1) * tile
@@ -157,23 +167,6 @@
     order: 30,
     update(state, actions, dt) {
       for (const npc of state.room.entities) if (npc.type === 'npc') wander(state, npc, dt);
-    },
-  });
-
-  // ---------- talking ----------
-
-  // W5's hands system sends S to an entity's onInteract; until it is loaded,
-  // this finds the NPC ahead itself (the same probe as W5's VL.facingTile).
-  const PROBE = { up: [0, -14], down: [0, 8], left: [-12, -4], right: [12, -4] };
-  VL.defineSystem('talk', {
-    order: 25,
-    update(state, actions) {
-      if (!actions.pressed.interact || VL.interact) return;
-      const { x, y, facing } = state.player;
-      const [dx, dy] = PROBE[facing] || PROBE.down;
-      const { tx, ty } = VL.tileOf(x + dx, y + dy);
-      const npc = state.room.entities.find((e) => e.type === 'npc' && e.x === tx && e.y === ty);
-      if (npc) VL.ENTITIES.npc.onInteract(state, npc);
     },
   });
 

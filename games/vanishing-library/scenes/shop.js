@@ -36,6 +36,12 @@
       VL.sfx('nope');
       return;
     }
+    const refusal = offer.refuse?.(game);
+    if (refusal) {
+      say(view, VL.popupText(refusal, game), true);
+      VL.sfx('nope');
+      return;
+    }
     const short = VL.shortfall(game, offer.cost);
     if (short) {
       say(view, `Not enough ${VL.currencyName(short, 2)}!`, true);
@@ -60,7 +66,7 @@
     }
     const result = VL.buyOffer(app.game, offer);
     if (result.ok) {
-      say(view, VL.fillName(offer.thanks || 'Thank you!', app.game), false);
+      say(view, VL.popupText(offer.thanks || 'Thank you!', app.game), false);
       VL.sfx('shell');
     } else {
       pick(app, view, offer);
@@ -214,7 +220,7 @@
     }
     const row = rows[view.cursor];
     const about = row === 'leave' ? '' : row.about || view.shop.greeting || '';
-    if (about) text(ctx, VL.ART.wrapText(VL.fillName(about, game), width).slice(0, 2).join('\n'), x, y, { color: 'textDim' });
+    if (about) text(ctx, VL.ART.wrapText(VL.popupText(about, game), width).slice(0, 2).join('\n'), x, y, { color: 'textDim' });
   }
 
   // What the hero holds of every resource this shop deals in.

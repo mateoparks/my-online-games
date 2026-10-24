@@ -11,7 +11,8 @@ VL.defineScene = function defineScene(id, scene) {
 };
 
 // World code has no app: it asks for a scene (a talk, a shop) and the app
-// opens it after the step, only if play is still the scene by then.
+// opens it after the step. Play holds back a popup queued in the same step,
+// so only fainting in that step (no longer in play) drops the request.
 VL.extendGame('sceneRequest', () => ({ sceneRequest: null }), { transient: true });
 VL.requestScene = function requestScene(state, id, data) {
   state.sceneRequest = { id, data };

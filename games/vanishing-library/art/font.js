@@ -7,13 +7,14 @@
   // Accented letters are built from the base letter (é from e), so {name} in
   // dialogue can be any Latin name. Marks are 2 rows, then a blank row: lower
   // case rises 1px above the cell, capitals 3px (into the line gap above).
-  const ACCENTS = { acute: 'áéíóúÁÉÍÓÚ', grave: 'àèìòùÀÈÌÒÙ', circumflex: 'âêîôûÂÊÎÔÛ', diaeresis: 'äëïöüÄËÏÖÜ', tilde: 'ãõñÃÕÑ' };
+  const ACCENTS = { acute: 'áéíóúýÁÉÍÓÚÝ', grave: 'àèìòùÀÈÌÒÙ', circumflex: 'âêîôûÂÊÎÔÛ', diaeresis: 'äëïöüÿÄËÏÖÜŸ', tilde: 'ãõñÃÕÑ', ring: 'å' };
   const MARKS = {
     acute: { 3: ['..#', '.#.'], 4: ['..#.', '.#..'], 5: ['...#.', '..#..'] },
     grave: { 3: ['#..', '.#.'], 4: ['.#..', '..#.'], 5: ['.#...', '..#..'] },
     circumflex: { 3: ['.#.', '#.#'], 4: ['.##.', '#..#'], 5: ['..#..', '.#.#.'] },
     diaeresis: { 3: ['...', '#.#'], 4: ['....', '#..#'], 5: ['.....', '.#.#.'] },
     tilde: { 4: ['.#.#', '#.#.'], 5: ['.##.#', '#..#.'] },
+    ring: { 4: ['.##.', '.##.'] },
   };
   // The small font is 3px capitals with no room for 2 rows: a 1-row mark.
   const SMALL_MARKS = { acute: '..#', grave: '#..', circumflex: '.#.', diaeresis: '#.#', tilde: '###' };
@@ -33,6 +34,12 @@
           : { rise: 1, rows: [...MARKS[mark][width], blank, ...rows.slice(2)] };
       }
     }
+    // Å's ring closes on the A's own top row.
+    glyphs['Å'] = { rise: 2, rows: ['.###.', '.#.#.', ...glyphs.A] };
+    glyphs['ø'] = g('.... ...# .### #.## ##.# #..# ###.');
+    glyphs['Ø'] = g('.#### #..## #..## #.#.# ##..# ##..# ####.');
+    glyphs['æ'] = g('....... ....... .##.##. ...#..# .###### #..#... .##.###');
+    glyphs['Æ'] = g('.###### #..#... #..#... ######. #..#... #..#... #..####');
     glyphs['ç'] = [...glyphs.c, '..#.', '.#..'];
     glyphs['Ç'] = [...glyphs.C, '..#..', '.#...'];
     glyphs['¡'] = g('. . # . # # # # #');
@@ -43,11 +50,14 @@
   function withSmallAccents(glyphs) {
     for (const [mark, letters] of Object.entries(ACCENTS)) {
       for (const ch of letters) {
-        if (ch !== ch.toUpperCase()) continue;
+        if (ch !== ch.toUpperCase() || !SMALL_MARKS[mark]) continue;
         glyphs[ch] = { rise: 2, rows: [SMALL_MARKS[mark], '...', ...glyphs[ch.normalize('NFD')[0]]] };
       }
     }
     glyphs['Ç'] = g('### #.. #.. ### .#.');
+    glyphs['Å'] = { rise: 2, rows: ['.#.', '#.#', ...glyphs.A] };
+    glyphs['Ø'] = g('.### #.## #.## ##.# ###.');
+    glyphs['Æ'] = g('##### #.#.. ####. #.#.. #.###');
     glyphs['¡'] = g('# . # # #');
     glyphs['¿'] = g('.#. ... .#. #.. .##');
     return glyphs;

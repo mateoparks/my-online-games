@@ -5,8 +5,8 @@ const assert = require('node:assert/strict');
 const { test, loadGame, memoryStorage, fakeContext } = require('./harness');
 
 const STEP = 1 / 60;
-const ACCENTED_LOWER = 'áàâäãéèêëíìîïóòôöõúùûüñç';
-const ACCENTED_UPPER = 'ÁÀÂÄÃÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÑÇ';
+const ACCENTED_LOWER = 'áàâäãåæéèêëíìîïóòôöõøúùûüýÿñç';
+const ACCENTED_UPPER = 'ÁÀÂÄÃÅÆÉÈÊËÍÌÎÏÓÒÔÖÕØÚÙÛÜÝŸÑÇ';
 const LONG_NAME = 'Ñandú Élodïe';
 
 function pixelContext() {
@@ -22,23 +22,25 @@ function pixelContext() {
 }
 const inked = (ctx) => [...ctx.pixels.keys()].map((key) => key.split(',').map(Number));
 
+const OPEN_ROOM = [
+  'TTTTTTTTTTTTTTTT',
+  'T..............T',
+  'T..............T',
+  'T..............T',
+  'T..............T',
+  'T..............T',
+  'T..............T',
+  'T..............T',
+  'T..............T',
+  'T..............T',
+  'TTTTTTTTTTTTTTTT',
+];
+
 // A walled room with an NPC two tiles above the hero's start, and a game in it.
-function talkWorld(VL, { npc = {}, entities = [] } = {}) {
+function talkWorld(VL, { npc = {}, entities = [], tiles = OPEN_ROOM } = {}) {
   VL.addScreens('talk', {
     '0,0': {
-      tiles: [
-        'TTTTTTTTTTTTTTTT',
-        'T..............T',
-        'T..............T',
-        'T..............T',
-        'T..............T',
-        'T..............T',
-        'T..............T',
-        'T..............T',
-        'T..............T',
-        'T..............T',
-        'TTTTTTTTTTTTTTTT',
-      ],
+      tiles,
       entities: [{ type: 'npc', id: 'tester', x: 7, y: 4, ...npc }, ...entities],
     },
   });
@@ -64,15 +66,8 @@ const wait = (VL, app, seconds) => {
 };
 const npcIn = (state, id = 'tester') => state.room.entities.find((e) => e.type === 'npc' && e.id === id);
 
-// W5's resource API, for this branch until W5 merges: the shop spends through it.
 function withPurse(VL, state, amounts) {
-  if (!VL.addResource) {
-    VL.addResource = (game, kind, amount) => {
-      game.inventory[kind] = Math.max(0, (game.inventory[kind] ?? 0) + amount);
-      VL.earned(game);
-    };
-  }
-  state.inventory = { ...(state.inventory || {}), ...amounts };
+  state.inventory = { ...state.inventory, ...amounts };
 }
 
 // ---------- accented glyphs (W2 review M7: {name} appears in dialogue) ----------
@@ -87,7 +82,7 @@ test('fonts draw accented Latin letters and ¡ ¿ in every size', () => {
 
 test('an accented letter is its base letter plus a mark above (or a cedilla below), same width', () => {
   const { VL } = loadGame();
-  const pairs = [['é', 'e'], ['ñ', 'n'], ['ü', 'u'], ['ö', 'o'], ['ç', 'c'], ['á', 'a'], ['í', 'i'], ['ó', 'o'], ['ú', 'u'], ['à', 'a'], ['É', 'E'], ['Ñ', 'N'], ['Ç', 'C'], ['Ö', 'O']];
+  const pairs = [['é', 'e'], ['ñ', 'n'], ['ü', 'u'], ['ö', 'o'], ['ç', 'c'], ['á', 'a'], ['í', 'i'], ['ó', 'o'], ['ú', 'u'], ['à', 'a'], ['É', 'E'], ['Ñ', 'N'], ['Ç', 'C'], ['Ö', 'O'], ['ý', 'y'], ['Ý', 'Y'], ['ÿ', 'y'], ['å', 'a'], ['Å', 'A']];
   for (const size of ['normal', 'small']) {
     for (const [accented, base] of pairs) {
       const a = pixelContext();
@@ -138,9 +133,9 @@ test('name entry accepts accented letters, joins a typed accent with its letter,
 test('{name} becomes the hero\'s name everywhere in a line, Hero when unnamed', () => {
   const { VL } = loadGame();
   const state = VL.createGame({ name: 'Élodie' });
-  assert.equal(VL.fillName('Hi {name}! {name}, wait.', state), 'Hi Élodie! Élodie, wait.');
-  assert.equal(VL.fillName('Hi {name}.', { name: '' }), 'Hi Hero.');
-  assert.equal(VL.fillName('No name here.', state), 'No name here.');
+  assert.equal(VL.popupText('Hi {name}! {name}, wait.', state), 'Hi Élodie! Élodie, wait.');
+  assert.equal(VL.popupText('Hi {name}.', { name: '' }), 'Hi Hero.');
+  assert.equal(VL.popupText('No name here.', state), 'No name here.');
 });
 
 // ---------- conditions ----------
@@ -193,14 +188,23 @@ test('dialogue: no matching entry gives null, and a misspelt condition is an err
   assert.throws(() => VL.pickDialogue(VL.newGame(), 'nobody'), /no dialogue nobody/);
 });
 
-test('dialogue problems name unknown locks, unreachable entries, missing fallbacks and glyphs', () => {
+test('dialogue problems name unknown locks, items and resources, unreachable entries, missing fallbacks and glyphs', () => {
   const { VL } = loadGame();
   VL.defineDialogue('broken', [
     { say: 'everyone' },
     { when: { flag: 'x' }, say: 'never shown' },
   ]);
   VL.defineDialogue('noFallback', [{ when: { progress: 'noSuchLock' }, say: 'Price: 5€' }]);
+  VL.defineDialogue('typos', [
+    { when: { item: 'shelPurse', has: { shell: 3 } }, say: 'x' },
+    { when: { notItem: 'woodSword' }, say: 'y', give: { item: 'swiftBoots' } },
+    { say: 'z' },
+  ]);
   const problems = VL.dialogueProblems().join('\n');
+  assert.match(problems, /typos: unknown resource shell\b/);
+  assert.match(problems, /typos: unknown item shelPurse/);
+  assert.match(problems, /typos: unknown item swiftBoots/);
+  assert.doesNotMatch(problems, /unknown item woodSword/);
   assert.match(problems, /broken: entry 2 can never be picked/);
   assert.match(problems, /noFallback: no entry without conditions/);
   assert.match(problems, /noFallback: unknown lock noSuchLock/);
@@ -220,7 +224,7 @@ test('paging: a long line splits into popup-sized pages, words kept in order', (
     assert.ok(page.length >= 1 && page.length <= maxLines);
     for (const line of page) assert.ok(VL.ART.measureText(line) <= width - pad * 2, line);
   }
-  assert.equal(pages.flat().join(' '), VL.fillName(words, state));
+  assert.equal(pages.flat().join(' '), VL.popupText(words, state));
 });
 
 test('paging: each string of a list starts a new page; \\n forces a line break', () => {
@@ -266,7 +270,7 @@ test('an NPC with nothing to say stays silent', () => {
   assert.equal(app.sceneId, 'play');
 });
 
-test('an entry\'s `set` flags are earned (saved) when the talk starts, and change the next talk', () => {
+test('an entry\'s `set` flags are earned (saved) when the talk ends, and change the next talk', () => {
   const { VL } = loadGame();
   talkWorld(VL);
   defineTester(VL, [
@@ -282,15 +286,132 @@ test('an entry\'s `set` flags are earned (saved) when the talk starts, and chang
     return original(state);
   };
   press(VL, app, 'interact');
-  VL.earned = original;
-  assert.equal(app.game.flags['met:tester'], true);
-  assert.equal(earned.length, 1);
+  assert.equal(app.game.flags['met:tester'], undefined, 'not while the words are still showing');
   assert.equal(app.dialogue.pages[0][0], 'Nice to meet you!');
   press(VL, app, 'interact');
   press(VL, app, 'interact');
+  VL.earned = original;
   assert.equal(app.sceneId, 'play');
+  assert.equal(app.game.flags['met:tester'], true);
+  assert.equal(earned.length, 1);
   press(VL, app, 'interact');
   assert.equal(app.dialogue.pages[0][0], 'Hello again.');
+});
+
+test('Esc still counts as heard: the entry\'s flags and gifts land', () => {
+  const { VL } = loadGame();
+  talkWorld(VL);
+  defineTester(VL, [
+    { when: { notFlag: 'gave:wood' }, say: ['Here, take some wood.', 'It was a gift from the mill.'], set: 'gave:wood', give: { wood: 2 } },
+    { say: 'Build something nice.' },
+  ]);
+  const app = talkApp(VL);
+  press(VL, app, 'interact');
+  press(VL, app, 'pause');
+  assert.equal(app.sceneId, 'play');
+  assert.equal(app.game.inventory.wood, 2);
+  assert.equal(app.game.flags['gave:wood'], true);
+});
+
+test('an NPC that gives keeps talking: words first, then the gift and its popup, then the rest of the conversation', () => {
+  const { VL } = loadGame();
+  talkWorld(VL);
+  defineTester(VL, [
+    { when: { notItem: 'woodSword' }, say: 'Take this sword, {name}.', give: { item: 'woodSword', shells: 3 } },
+    { say: 'Swing it well.' },
+  ]);
+  const app = talkApp(VL);
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'dialogue');
+  assert.equal(VL.hasItem(app.game, 'woodSword'), false, 'nothing is handed over before the words');
+  press(VL, app, 'interact');
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'popup', 'the gift\'s popup follows the talk at once');
+  assert.equal(VL.currentPopup(app.game).id, 'woodSword');
+  assert.equal(VL.hasItem(app.game, 'woodSword'), true);
+  assert.equal(app.game.inventory.shells, 3);
+  wait(VL, app, 0.5);
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'play');
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'dialogue');
+  assert.equal(app.dialogue.pages[0][0], 'Swing it well.');
+  press(VL, app, 'interact');
+  press(VL, app, 'interact');
+  assert.equal(app.game.inventory.shells, 3, 'given once');
+});
+
+test('a talk and a popup asked for in the same step: the talk shows, then the popup', () => {
+  const { VL } = loadGame();
+  talkWorld(VL);
+  defineTester(VL, [{ say: 'Hello!' }]);
+  const talk = VL.ENTITIES.npc.onInteract;
+  VL.ENTITIES.npc.onInteract = (state, entity) => {
+    talk(state, entity);
+    VL.giveItem(state, 'woodShield');
+  };
+  const app = talkApp(VL);
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'dialogue');
+  press(VL, app, 'interact');
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'popup');
+  assert.equal(VL.currentPopup(app.game).id, 'woodShield');
+});
+
+test('gifts are checked: an unknown kind fails at definition, and later items add kinds', () => {
+  const { VL } = loadGame();
+  assert.throws(() => VL.defineDialogue('typo', [{ say: 'x', give: { shell: 1 } }]), /unknown gift shell/);
+  assert.throws(() => VL.defineDialogue('fn', [{ say: 'x', give: () => {} }]), /give is/);
+  VL.defineGift('heartContainer', (state, n) => {
+    state.maxHp += 2 * n;
+  });
+  assert.throws(() => VL.defineGift('heartContainer', () => {}), /already defined/);
+  talkWorld(VL);
+  defineTester(VL, [{ say: 'A heart for you.', give: { heartContainer: 1 } }]);
+  const app = talkApp(VL);
+  const before = app.game.maxHp;
+  press(VL, app, 'interact');
+  press(VL, app, 'interact');
+  press(VL, app, 'interact');
+  assert.equal(app.game.maxHp, before + 2);
+});
+
+test('later items add conditions and put their lines ahead of an NPC\'s own', () => {
+  const { VL } = loadGame();
+  VL.defineCondition('books', (state, least) => (state.testBooks || 0) >= least);
+  assert.throws(() => VL.defineCondition('books', () => true), /already defined/);
+  VL.defineDialogue('librarian', [{ when: { books: 5 }, say: 'Five!' }, { say: 'Welcome.' }]);
+  VL.addDialogue('librarian', [{ when: { flag: 'shockwave' }, say: 'Did you feel that?' }]);
+  assert.throws(() => VL.addDialogue('nobody', [{ say: 'x' }]), /no dialogue nobody/);
+  assert.throws(() => VL.addDialogue('librarian', [{ when: { book: 1 }, say: 'x' }]), /unknown condition book/);
+  const state = VL.newGame();
+  assert.equal(VL.pickDialogue(state, 'librarian').say, 'Welcome.');
+  state.testBooks = 5;
+  assert.equal(VL.pickDialogue(state, 'librarian').say, 'Five!');
+  state.flags.shockwave = true;
+  assert.equal(VL.pickDialogue(state, 'librarian').say, 'Did you feel that?');
+});
+
+test('S on an NPC only talks: a bush or berry bush the hero half faces is left alone', () => {
+  const { VL } = loadGame();
+  const tiles = [...OPEN_ROOM];
+  tiles[4] = 'T.....Y.B......T';
+  talkWorld(VL, { tiles });
+  defineTester(VL);
+  for (const side of [-5, 5]) {
+    const app = talkApp(VL);
+    app.game.player.x += side;
+    const reach = VL.facingTiles(app.game).map(({ tx, ty }) => `${tx},${ty}`);
+    assert.ok(reach.includes('7,4') && reach.length > 1, `${side}: ${reach}`);
+    const hp = app.game.hp;
+    press(VL, app, 'interact');
+    assert.equal(app.sceneId, 'dialogue');
+    assert.equal(app.game.hp, hp, 'no bush pulled');
+    assert.equal(app.game.inventory.berries, 0, 'no berries picked');
+    assert.equal(VL.tileAt('talk', '0,0', 6, 4, app.game.room), 'Y');
+    assert.equal(VL.tileAt('talk', '0,0', 8, 4, app.game.room), 'B');
+  }
 });
 
 test('talking adds no saved field: only flags an entry sets reach the save', () => {
@@ -348,6 +469,18 @@ test('typewriter: Space and Enter work like S; Esc ends the talk at once', () =>
   assert.equal(app.dialogue.page, 1);
   press(VL, app, 'pause');
   assert.equal(app.sceneId, 'play');
+});
+
+test('holding S never skips text: only a fresh press finishes or turns a page', () => {
+  const { VL } = loadGame();
+  talkWorld(VL);
+  defineTester(VL, [{ say: ['The first page is here.', 'And the second.'] }]);
+  const app = talkApp(VL);
+  press(VL, app, 'interact');
+  for (let i = 0; i < 600; i += 1) app.update(VL.actions({ held: ['interact', 'confirm', 'mainHand'] }), STEP);
+  assert.equal(app.sceneId, 'dialogue');
+  assert.equal(app.dialogue.page, 0);
+  assert.equal(VL.dialogueRevealed(app.dialogue), 'The first page is here.', 'typed out by time alone');
 });
 
 test('the world waits while the NPC talks, and the dialogue box keeps one size', () => {
@@ -518,6 +651,30 @@ test('shop rules: prices, what is short, sold out, and a buy pays every cost or 
   assert.deepEqual([state.inventory.wood, state.inventory.shells], [0, 3]);
 });
 
+test('an offer can refuse with its own reason, in the rules and the scene, spending nothing', () => {
+  const { VL } = loadGame();
+  VL.defineShop('bindery', {
+    title: 'Bindery',
+    offers: [{ id: 'bind', name: 'Binding', cost: { shells: 1 }, give: (state) => { state.flags.bound = true; }, refuse: (state) => (state.flags.pages ? null : 'Bring me pages first, {name}!') }],
+  });
+  const state = VL.newGame({ name: 'Robin' });
+  withPurse(VL, state, { shells: 5 });
+  const offer = VL.SHOPS.bindery.offers[0];
+  assert.deepEqual({ ...VL.buyOffer(state, offer) }, { ok: false, reason: 'refused', text: 'Bring me pages first, {name}!' });
+  assert.equal(state.inventory.shells, 5);
+  const app = VL.createApp();
+  app.game = state;
+  app.setScene('shop', { shop: 'bindery' });
+  press(VL, app, 'interact');
+  assert.equal(app.shopView.mode, 'browse');
+  assert.equal(app.shopView.note.text, 'Bring me pages first, Robin!');
+  state.flags.pages = true;
+  press(VL, app, 'interact');
+  press(VL, app, 'interact');
+  assert.equal(state.flags.bound, true);
+  assert.equal(state.inventory.shells, 4);
+});
+
 test('shop definitions are checked: costs, duplicate ids, and a shop with no offers', () => {
   const { VL } = loadGame();
   const make = (id, offers) => () => VL.defineShop(id, { title: 'X', offers });
@@ -665,14 +822,20 @@ test('every NPC placed on the map is defined, with a fallback line and drawable 
 
 // R1: a wandering NPC is solid once W5's entity collision is in, so it must
 // never stand where it would cut a screen in two.
-test('no townsperson can wander onto a tile that splits its screen', () => {
+test('no townsperson can stand where it splits its screen or blocks the way up to something', () => {
   const { VL } = loadGame();
   const { cols, rows } = VL.TUNING;
+  const solidThing = (e) => e.type !== 'npc' && (e.solid || VL.ENTITIES[e.type]?.solid);
+  let checked = 0;
   for (const area of Object.values(VL.AREAS)) {
     for (const [key, screen] of Object.entries(area.screens)) {
       for (const entity of screen.entities.filter((e) => e.type === 'npc')) {
+        const room = { area: area.id, screen: key, entities: screen.entities.map((e) => ({ ...e })), tiles: {} };
+        const npc = room.entities.find((e) => e.type === 'npc' && e.id === entity.id && e.x === entity.x && e.y === entity.y);
         const range = entity.wander ?? VL.NPCS[entity.id].wander;
-        const open = (tx, ty, blocked) => tx >= 0 && ty >= 0 && tx < cols && ty < rows && !(tx === blocked.tx && ty === blocked.ty) && !VL.isSolidAt(area.id, key, tx, ty);
+        // People move, so only tiles and solid things count as walls here.
+        const wall = (tx, ty) => VL.isSolidAt(area.id, key, tx, ty) || room.entities.some((e) => solidThing(e) && e.x === tx && e.y === ty);
+        const open = (tx, ty, blocked) => tx >= 0 && ty >= 0 && tx < cols && ty < rows && !(tx === blocked.tx && ty === blocked.ty) && !wall(tx, ty);
         const parts = (blocked) => {
           const seen = new Set();
           let count = 0;
@@ -696,14 +859,39 @@ test('no townsperson can wander onto a tile that splits its screen', () => {
           return count;
         };
         const whole = parts({ tx: -9, ty: -9 });
+        const others = room.entities.filter((e) => e !== npc);
+        assert.ok(!others.some((e) => e.type !== 'npc' && Math.abs(e.x - npc.x) + Math.abs(e.y - npc.y) === 1), `${entity.id} is placed beside something on ${key}`);
         for (let ty = entity.y - range; ty <= entity.y + range; ty += 1) {
           for (let tx = entity.x - range; tx <= entity.x + range; tx += 1) {
-            if (!open(tx, ty, { tx: -9, ty: -9 })) continue;
+            const here = tx === entity.x && ty === entity.y;
+            if (!here && !VL.npcMayStand(room, npc, tx, ty)) continue;
+            checked += 1;
             assert.equal(parts({ tx, ty }), whole, `${entity.id} at ${tx},${ty} on ${key} splits the screen`);
           }
         }
       }
     }
+  }
+  assert.ok(checked > 0);
+});
+
+test('wandering keeps off tiles beside things, and follows this visit\'s tiles', () => {
+  const { VL } = loadGame();
+  const tiles = [...OPEN_ROOM];
+  tiles[4] = 'T.....B.B......T';
+  talkWorld(VL, { npc: { wander: 2 }, tiles, entities: [{ type: 'sign', x: 7, y: 2, text: 'Hi' }] });
+  defineTester(VL);
+  const app = talkApp(VL, { ty: 8 });
+  const room = app.game.room;
+  const npc = npcIn(app.game);
+  assert.equal(VL.npcMayStand(room, npc, 7, 3), false, 'beside the sign');
+  assert.equal(VL.npcMayStand(room, npc, 6, 3), true);
+  assert.equal(VL.npcMayStand(room, npc, 6, 4), false, 'a bush');
+  VL.setRoomTile(app.game, 6, 4, '.');
+  assert.equal(VL.npcMayStand(room, npc, 6, 4), true, 'cut this visit');
+  for (let i = 0; i < 60 * 60; i += 1) {
+    app.update(VL.noActions(), STEP);
+    assert.ok(!(npc.x === 7 && npc.y === 3), 'never beside the sign');
   }
 });
 

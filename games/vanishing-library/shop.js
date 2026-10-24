@@ -21,7 +21,8 @@
     && Object.values(value).every((n) => Number.isInteger(n) && n > 0);
 
   // offers: [{ id, name, cost: { shells: 2 }, gain: { paper: 1 }, give(state),
-  // about, icon, verb, soldOut(state), hidden(state) }]
+  // about, icon, verb, soldOut(state), hidden(state), refuse(state) }].
+  // `refuse` returns why not right now ("Bring me pages first!") or null.
   VL.defineShop = function defineShop(id, shop) {
     if (VL.SHOPS[id]) throw new Error(`shop ${id} is already defined`);
     if (!shop.offers?.length) throw new Error(`shop ${id} has no offers`);
@@ -63,9 +64,12 @@
   // anything else is bought.
   VL.offerVerb = (offer) => offer.verb || (offer.gain && 'shells' in offer.gain ? 'Trade' : 'Buy');
 
-  // Pays every cost or none. { ok } or { ok: false, reason: 'soldOut' | 'notEnough', kind }.
+  // Pays every cost or none. { ok } or { ok: false, reason: 'soldOut' |
+  // 'refused' (with text) | 'notEnough' (with kind) }.
   VL.buyOffer = function buyOffer(state, offer) {
     if (offer.soldOut?.(state)) return { ok: false, reason: 'soldOut' };
+    const refusal = offer.refuse?.(state);
+    if (refusal) return { ok: false, reason: 'refused', text: refusal };
     const kind = VL.shortfall(state, offer.cost);
     if (kind) return { ok: false, reason: 'notEnough', kind };
     for (const [spent, n] of Object.entries(offer.cost)) VL.addResource(state, spent, -n);

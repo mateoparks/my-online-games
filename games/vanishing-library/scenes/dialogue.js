@@ -1,6 +1,7 @@
 // A conversation over the paused world: the speaker's name and one page at a
 // time, typed out. A press finishes the page, the next turns it; after the
-// last page play resumes (or the speaker's shop opens). Esc ends it.
+// last page the entry's flags and gifts land (VL.endTalk) and the speaker's
+// shop opens, or a popup a gift queued, or play resumes. Esc ends it too.
 (() => {
   VL.tune({ talkCharsPerSecond: 45 });
 
@@ -12,21 +13,22 @@
 
   VL.dialogueRevealed = (view) => pageText(view).slice(0, Math.floor(view.shown));
 
-  function close(app) {
-    const shop = app.dialogue.shop;
-    app.setScene(shop ? 'shop' : 'play', shop ? { shop } : undefined);
+  function close(app, { shop = app.dialogue.shop } = {}) {
+    VL.endTalk(app.game, app.dialogue.end);
+    if (shop) app.setScene('shop', { shop });
+    else app.setScene(VL.currentPopup(app.game) ? 'popup' : 'play');
   }
 
   VL.defineScene('dialogue', {
-    // data: { speaker, pages (from VL.dialoguePages), shop }
+    // data: { speaker, pages (from VL.dialoguePages), shop, end (for VL.endTalk) }
     enter(app, data) {
-      app.dialogue = { speaker: data.speaker, pages: data.pages, shop: data.shop || null, page: 0, shown: 0 };
+      app.dialogue = { speaker: data.speaker, pages: data.pages, shop: data.shop || null, end: data.end || null, page: 0, shown: 0 };
     },
 
     update(app, actions, dt) {
       const view = app.dialogue;
       if (actions.pressed.pause) {
-        app.setScene('play');
+        close(app, { shop: null });
         return;
       }
       const text = pageText(view);
