@@ -1,9 +1,13 @@
 // { type: 'warp', x, y, to: Place }: a glowing ring on the floor that carries
 // the hero to `to` (a beaten boss room's way out, to the dungeon entrance).
+// The hero then waits for the keys to be let go (`warpHold`, honoured by
+// systems/movement.js), so a direction held through the warp never walks
+// him straight back through the door he lands beside.
 (() => {
   VL.defineEntity('warp', {
     onStand(state, warp) {
       VL.enterScreen(state, warp.to);
+      state.warpHold = true;
       state.events.push({ type: 'warp', to: warp.to });
     },
     draw(ctx, warp, x, y, t) {

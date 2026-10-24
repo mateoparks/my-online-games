@@ -886,6 +886,138 @@ test('the door lint: a locked door on an edge needs its twin on the neighbour sc
   assert.match(VL.dungeonDoorProblems().join('\n'), /lockedDoor sampleDoorNorth is on 3 screens \(0,0, 0,-1, 5,5\): one id is one door, two copies at most, on the two sides of one edge/);
 });
 
+// A walled room from `open` rows (the gaps are its openings) and a wall-only
+// neighbour with one opening, for the lint layouts below.
+const WALL = '#'.repeat(16);
+const FLOOR = `#${'_'.repeat(14)}#`;
+const walledRoom = (rows, entities) => ({ tiles: rows, entities });
+const stub = (opening) => ({ tiles: Array.from({ length: 11 }, (_, y) => (y === opening.y ? WALL.slice(0, opening.x) + '_' + WALL.slice(opening.x + 1) : WALL)), entities: [] });
+
+test('the block lint: a closed shutter on an exit is no way out, so a block pushed off the plate that holds the only bars up is reported', () => {
+  const { VL } = loadDungeon();
+  // The only way out of 5,5 is the left opening, barred unless the plate is
+  // held down; the block starts on the plate, and its one push takes it off.
+  const rows = [WALL, FLOOR, FLOOR, FLOOR, FLOOR, `_${'_'.repeat(14)}#`, FLOOR, FLOOR, FLOOR, FLOOR, WALL];
+  VL.addScreens('sample', {
+    '5,5': walledRoom(rows, [
+      { type: 'shutter', id: 'sampleBars55', x: 0, y: 5, open: { plate: 'samplePlate55' } },
+      { type: 'pressurePlate', id: 'samplePlate55', x: 3, y: 5, weight: 'block' },
+      { type: 'pushBlock', x: 3, y: 5 },
+    ]),
+    '4,5': stub({ x: 15, y: 5 }),
+  });
+  assert.deepEqual([...VL.dungeonBlockProblems()], ['sample 5,5: block (3,5) pushed left to (2,5) cuts the hero off from every exit']);
+  // Latched, the plate keeps the bars up once the block has pressed it.
+  VL.getScreen('sample', '5,5').entities[1].latch = true;
+  assert.deepEqual([...VL.dungeonBlockProblems()], []);
+});
+
+test('the block lint starts from the statue and every arrival tile too: a respawn pocket with no way out is a bricked save', () => {
+  const { VL } = loadDungeon();
+  // The statue step (2,1) sits in a pocket whose mouth (2,2) holds the block:
+  // pushed from outside it opens the way in; on every Continue the block is
+  // back and the hero wakes behind it.
+  const rows = [WALL, '#__#___________#', FLOOR, '#_##___________#', '####___________#', '####____________', '####___________#', '####___________#', '####___________#', '####___________#', WALL];
+  VL.addScreens('sample', {
+    '5,5': walledRoom(rows, [{ type: 'pushBlock', x: 2, y: 2 }, { type: 'saveStatue', x: 2, y: 1 }]),
+    '6,5': stub({ x: 0, y: 5 }),
+  });
+  assert.deepEqual([...VL.dungeonBlockProblems()], ['sample 5,5: the hero respawning at the statue (2,1) can reach no exit without a push']);
+  // A door landing the hero in the pocket is the same trap.
+  VL.getScreen('sample', '5,5').entities.pop();
+  VL.getScreen('sampleYard', '0,0').entities.push({ type: 'door', x: 12, y: 6, to: at('5,5', 1, 2, 'down') });
+  assert.deepEqual([...VL.dungeonBlockProblems()], ['sample 5,5: the hero arriving at (1,2) can reach no exit without a push']);
+  // With the mouth open, the pocket is just a corner of the room.
+  VL.getScreen('sample', '5,5').entities.shift();
+  assert.deepEqual([...VL.dungeonBlockProblems()], []);
+});
+
+test('the block lint: a shutter on a switch in the room opens only once the hero can stand beside the switch', () => {
+  const { VL } = loadDungeon();
+  // The entry bars drop behind the hero and open on the switch in the alcove
+  // at (1,1), reached along row 3; the block at (5,3) pushed left to (4,3)
+  // walls the alcove off.
+  const rows = [WALL, '#__#___________#', '#__#___________#', FLOOR, '####___________#', `_${'_'.repeat(14)}#`, FLOOR, FLOOR, FLOOR, FLOOR, WALL];
+  VL.addScreens('sample', {
+    '5,5': walledRoom(rows, [
+      { type: 'shutter', id: 'sampleBars55', x: 0, y: 5, open: { switch: 'sampleSwitch55' } },
+      { type: 'switch', id: 'sampleSwitch55', x: 1, y: 1 },
+      { type: 'pushBlock', x: 5, y: 3 },
+    ]),
+    '4,5': stub({ x: 15, y: 5 }),
+  });
+  assert.deepEqual([...VL.dungeonBlockProblems()], ['sample 5,5: block (5,3) pushed left to (4,3) cuts the hero off from every exit']);
+  // A switch that is not in the room is taken as thrown, as before.
+  VL.getScreen('sample', '5,5').entities.splice(1, 1);
+  assert.deepEqual([...VL.dungeonBlockProblems()], []);
+});
+
+test('the door lint: a oneWay door is checked, so a warp or a loop that reaches its far room another way is reported', () => {
+  const { VL } = loadDungeon();
+  // A warp in the hall into the boss room, past the boss door.
+  VL.getScreen('sample', '0,0').entities.push({ type: 'warp', x: 12, y: 8, to: at('0,-2', 7, 6, 'up') });
+  assert.deepEqual([...VL.dungeonDoorProblems()], ['sample 0,-1 lockedDoor sampleBossDoor is oneWay but 0,-2 is also reached from 0,0 through the warp at (12,8): give the door a twin, or remove the other way in']);
+  VL.getScreen('sample', '0,0').entities.pop();
+  // A loop: 0,0 -> 1,0 -> 1,-1 -> 0,-1 comes round to the far side of a
+  // one-way door on 0,0's top edge.
+  const gaps = (top, right, bottom, left) => Array.from({ length: 11 }, (_, y) => Array.from({ length: 16 }, (_, x) => {
+    const edge = x === 0 || y === 0 || x === 15 || y === 10;
+    const gap = (top && y === 0 && x === 7) || (right && x === 15 && y === 5) || (bottom && y === 10 && x === 7) || (left && x === 0 && y === 5);
+    return edge && !gap ? '#' : '_';
+  }).join(''));
+  VL.defineArea('loop', { tileset: 'dungeon' });
+  VL.addScreens('loop', {
+    '0,0': walledRoom(gaps(true, true, false, false), [{ type: 'lockedDoor', id: 'loopOneWay', kind: 'small', x: 7, y: 0, lock: 'loopOneWay', oneWay: true }]),
+    '0,-1': walledRoom(gaps(false, true, true, false), []),
+    '1,-1': walledRoom(gaps(false, false, true, true), []),
+    '1,0': walledRoom(gaps(true, false, false, true), []),
+  });
+  VL.defineDungeon('loop', { area: 'loop', entrance: { area: 'sampleYard', screen: '0,0', tx: 12, ty: 7, facing: 'down' } });
+  const loopProblems = () => [...VL.dungeonDoorProblems()].filter((p) => p.startsWith('loop'));
+  // With nothing leading into the dungeon yet, the lint cannot tell and says so.
+  assert.deepEqual(loopProblems(), ['loop 0,0 lockedDoor loopOneWay is oneWay but no door or warp leads into dungeon loop from outside, so where its far room is reached from cannot be told: add the dungeon\'s door']);
+  VL.getScreen('sampleYard', '0,0').entities.push({ type: 'door', x: 12, y: 6, to: { area: 'loop', screen: '0,0', tx: 7, ty: 5, facing: 'up' } });
+  assert.deepEqual(loopProblems(), ['loop 0,0 lockedDoor loopOneWay is oneWay but 0,-1 is also reached from 1,-1 through the opening at (0,5): give the door a twin, or remove the other way in']);
+  // Walling the loop off leaves the far room reached through the door alone.
+  VL.getScreen('loop', '1,-1').tiles[5] = `#${'_'.repeat(14)}#`;
+  assert.deepEqual(loopProblems(), []);
+});
+
+test('the lock lint: a key, the boss key, the map, a plate and a switch each need an id', () => {
+  const { VL } = loadDungeon();
+  VL.getScreen('sample', '0,0').entities.push({ type: 'smallKey', x: 4, y: 4, lock: 'sampleKey' }, { type: 'switch', x: 4, y: 6 });
+  assert.deepEqual([...VL.dungeonLockProblems()], ['sample 0,0 smallKey needs an id', 'sample 0,0 switch needs an id']);
+});
+
+test('a smallKey entity that is not on the map is refused when picked up: a key from code is VL.giveSmallKey', () => {
+  const t = setup({ where: at('0,0', 5, 5, 'right') });
+  t.step();
+  t.game.room.entities.push({ type: 'smallKey', id: 'sampleDropKey', x: 6, y: 5, lock: 'sampleKey' });
+  assert.throws(() => t.hold(['right'], 0.5), /smallKey sampleDropKey is not on screen sample 0,0: a key that appears at runtime is a map key with reveal, or VL.giveSmallKey/);
+});
+
+test("a chest can hold a small key: { smallKey: '<dungeon>' } gives one of that dungeon's keys", () => {
+  const t = setup({ where: at('0,0', 5, 6, 'up') });
+  t.game.room.entities.push({ type: 'chest', id: 'sampleKeyChest', x: 5, y: 5, contents: [{ smallKey: 'sample' }] });
+  t.press('interact');
+  assert.equal(t.keys, 1);
+  assert.equal(t.d.keysGiven, 1);
+  assert.ok(events(t, 'smallKey').length, 'the key chime');
+});
+
+test('the boss warp waits for the keys to be let go, so a direction held through it never walks the hero straight back in', () => {
+  const t = setup({ where: at('0,-2', 7, 9, 'up') });
+  t.d.boss = true;
+  t.d.doors.sampleBossDoor = true;
+  t.place(at('0,-2', 7, 9, 'up'));
+  t.hold(['up'], 1.5);
+  assert.equal(t.game.player.area, 'sampleYard', 'out through the warp');
+  assert.deepEqual(t.tile(), [8, 4], 'still at the entrance with Up held');
+  t.hold([], 0.1);
+  t.hold(['up'], 0.5);
+  assert.equal(t.game.player.area, 'sample', 'let go and pressed again: in through the door');
+});
+
 test('keys in hand are derived (keys found + keys given - doors opened), so a renamed door or key id heals itself after a save', () => {
   const t = setup({ storage: true, where: at('0,0', 7, 1, 'up') });
   const { VL } = t;
@@ -1022,7 +1154,7 @@ test('the W13 fixture is a played state: keys derived, nothing stored for them',
 
 test('README documents the dungeon framework and how to build a dungeon', () => {
   const readme = read('README.md');
-  for (const phrase of ['## Dungeons', 'VL.defineDungeon', 'lockedDoor', 'pushBlock', 'pressurePlate', 'shutter', 'saveStatue', 'smallKey:', 'VL.saveTile', 'dungeonMap', 'How to build a dungeon', 'tests/sample-dungeon.js', 'VL.dungeonLockProblems', 'VL.dungeonBlockProblems', 'VL.dungeonDoorProblems', 'VL.dungeonProblems', 'oneWay', 'weighsPlate', "weight: 'block'", 'defeated', 'VL.smallKeys', 'keysGiven']) {
+  for (const phrase of ['## Dungeons', 'VL.defineDungeon', 'lockedDoor', 'pushBlock', 'pressurePlate', 'shutter', 'saveStatue', 'smallKey:', 'VL.saveTile', 'dungeonMap', 'How to build a dungeon', 'tests/sample-dungeon.js', 'VL.dungeonLockProblems', 'VL.dungeonBlockProblems', 'VL.dungeonDoorProblems', 'VL.dungeonProblems', 'oneWay', 'weighsPlate', "weight: 'block'", 'defeated', 'VL.smallKeys', 'keysGiven', "{ smallKey: '<dungeon>' }", 'warpHold', "'overlay'", 'can reach no exit without a push', 'the far room really is reached through them alone']) {
     assert.ok(readme.includes(phrase), `README mentions ${phrase}`);
   }
 });

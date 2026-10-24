@@ -121,9 +121,15 @@
   };
 
   // A pickup found once at its tile (a key, the boss key, the map): gone from
-  // this visit, remembered by its found flag, `apply` hands it over.
+  // this visit, remembered by its found flag, `apply` hands it over. A small
+  // key is only counted from the map (VL.smallKeys), so one pushed into the
+  // room by a script would be found and never counted: refused.
   VL.dungeonPickup = function dungeonPickup(state, entity, apply) {
     if (entity.hidden || VL.spotFound(state, entity.id)) return false;
+    const { area, screen } = state.player;
+    if (entity.type === 'smallKey' && !VL.getScreen(area, screen).entities.some((e) => e.type === 'smallKey' && e.id === entity.id)) {
+      throw new Error(`smallKey ${entity.id} is not on screen ${area} ${screen}: a key that appears at runtime is a map key with reveal, or VL.giveSmallKey`);
+    }
     state.room.entities = state.room.entities.filter((e) => e !== entity);
     state.room.standingOn = null;
     VL.markFound(state, entity.id);
@@ -430,7 +436,9 @@
     },
   });
 
-  VL.extendGame('dungeonNote', () => ({ dungeonNote: null }), { transient: true });
+  // `warpHold`: a warp just carried the hero with a direction still held
+  // (entities/warp.js); systems/movement.js waits for the release.
+  VL.extendGame('dungeonNote', () => ({ dungeonNote: null, warpHold: false }), { transient: true });
 
   VL.defineSystem('dungeon', {
     order: 40,
@@ -469,9 +477,11 @@
   // spending order. Every key pickup, boss key and locked door names its lock
   // (`lock: 'id'`), and this check keeps map and table in step: the rule
   // matches, one lock is named by doors of one id (the game spends a key per
-  // door id, the solver one per lock), and no id is used twice anywhere
-  // (found flags are global, so a reused key id is already found). Returns
-  // the problems; the test keeps it empty.
+  // door id, the solver one per lock), everything found or thrown has an id
+  // (two keys with none share one found flag), and no id is used twice
+  // anywhere (found flags are global, so a reused key id is already found).
+  // Returns the problems; the test keeps it empty.
+  const NEEDS_ID = ['smallKey', 'bossKey', 'dungeonMap', 'pressurePlate', 'switch'];
   VL.dungeonLockProblems = function dungeonLockProblems(locks = VL.LOCKS) {
     const problems = [];
     const doorsByLock = {};
@@ -480,6 +490,10 @@
       for (const [key, screen] of Object.entries(VL.AREAS[dungeon.area].screens)) {
         for (const e of screen.entities) {
           const where = `${dungeon.id} ${key} ${e.type} ${e.id || ''}`.trim();
+          if (NEEDS_ID.includes(e.type) && !e.id) {
+            problems.push(`${where} needs an id`);
+            continue;
+          }
           const expect = { smallKey: { supplies: counter }, bossKey: { gives: `bossKey:${dungeon.id}` }, lockedDoor: e.kind === 'boss' ? { needs: `bossKey:${dungeon.id}` } : { consumes: counter } }[e.type];
           if (!expect) continue;
           if (e.type === 'lockedDoor' && e.lock) (doorsByLock[e.lock] || (doorsByLock[e.lock] = new Set())).add(e.id);
@@ -516,11 +530,58 @@
     return [tx === 0 ? -1 : tx === cols - 1 ? 1 : 0, ty === 0 ? -1 : ty === rows - 1 ? 1 : 0];
   }
 
+  // The screens of a dungeon the hero can reach from its entry screens (where
+  // a door or warp from outside lands him) without crossing one edge: the
+  // openings, doors and warps between screens, taken as crossable both ways
+  // (a locked door opens from either side once it has its twin). Returns
+  // { reached: Map key -> how it was first reached, entries } .
+  function floodScreens(dungeon, skipEdge) {
+    const { cols, rows } = VL.TUNING;
+    const areaId = dungeon.area;
+    const screens = VL.AREAS[areaId].screens;
+    const entries = new Set();
+    for (const [otherId, area] of Object.entries(VL.AREAS)) {
+      if (otherId === areaId) continue;
+      for (const screen of Object.values(area.screens)) {
+        for (const e of screen.entities) if ((e.type === 'door' || e.type === 'warp') && e.to?.area === areaId) entries.add(e.to.screen);
+      }
+    }
+    if (dungeon.entrance.area === areaId) entries.add(dungeon.entrance.screen);
+    const reached = new Map([...entries].map((key) => [key, 'as an entry (a door or warp from outside lands there)']));
+    const queue = [...entries];
+    const visit = (key, how) => {
+      if (!screens[key] || reached.has(key)) return;
+      reached.set(key, how);
+      queue.push(key);
+    };
+    while (queue.length) {
+      const key = queue.shift();
+      const screen = screens[key];
+      for (let ty = 0; ty < rows; ty += 1) {
+        for (let tx = 0; tx < cols; tx += 1) {
+          const [dx, dy] = edgeStep(tx, ty);
+          if (!(dx || dy) || (dx && dy) || VL.tileInfo(areaId, screen.tiles[ty][tx]).solid || skipEdge(key, tx, ty)) continue;
+          const next = VL.neighborKey(key, dx, dy);
+          const ntx = dx ? (dx < 0 ? cols - 1 : 0) : tx;
+          const nty = dy ? (dy < 0 ? rows - 1 : 0) : ty;
+          if (screens[next] && !VL.tileInfo(areaId, screens[next].tiles[nty][ntx]).solid) visit(next, `from ${key} through the opening at (${tx},${ty})`);
+        }
+      }
+      for (const e of screen.entities) {
+        if ((e.type === 'door' || e.type === 'warp') && e.to?.area === areaId) visit(e.to.screen, `from ${key} through the ${e.type} at (${e.x},${e.y})`);
+      }
+      if (dungeon.boss?.screen === key && dungeon.entrance.area === areaId) visit(dungeon.entrance.screen, `from ${key} through the boss room's warp`);
+    }
+    return { reached, entries };
+  }
+
   // A locked door across a screen edge must have its copy (same id) on the
   // matching tile of the neighbour, or the hero crossing from that side lands
   // inside a closed door with nowhere to go; a door whose far room is only
-  // ever entered through it says `oneWay: true`. One id is one door: two
-  // copies at most, and only on the two sides of one edge.
+  // ever entered through it says `oneWay: true`, and that claim is checked:
+  // the far room must be unreachable from the dungeon's entries without
+  // crossing the door (a loop of openings, a warp in). One id is one door:
+  // two copies at most, and only on the two sides of one edge.
   VL.dungeonDoorProblems = function dungeonDoorProblems() {
     const problems = [];
     const { cols, rows } = VL.TUNING;
@@ -541,6 +602,12 @@
             if (!screens[next]) problems.push(`${label} is on an edge with no screen ${next} beyond it`);
             else if (!twin && !e.oneWay) problems.push(`${label} on the edge has no copy on ${next} at (${tx},${ty}): add one with the same id, or oneWay: true if that room is only ever entered through this door`);
             else if (twin && twin.id !== e.id) problems.push(`${label} on the edge faces ${twin.id} on ${next} at (${tx},${ty}): both sides of one door share an id`);
+            else if (!twin && e.oneWay) {
+              const isDoorEdge = (k, x, y) => (k === key && x === e.x && y === e.y) || (k === next && x === tx && y === ty);
+              const { reached, entries } = floodScreens(dungeon, isDoorEdge);
+              if (!entries.size) problems.push(`${label} is oneWay but no door or warp leads into dungeon ${dungeon.id} from outside, so where its far room is reached from cannot be told: add the dungeon's door`);
+              else if (reached.has(next)) problems.push(`${label} is oneWay but ${next} is also reached ${reached.get(next)}: give the door a twin, or remove the other way in`);
+            }
           }
           (where[e.id] || (where[e.id] = [])).push({ key, twinKey: twin ? VL.neighborKey(key, dx, dy) : null });
         }
@@ -556,17 +623,37 @@
   // Every way the blocks of a room can be pushed, and whether any of them
   // leaves the hero with no exit he can reach (then he can neither leave to
   // reset the blocks nor, in a room without enemies, faint). A breadth-first
-  // search over block positions from every tile the hero can arrive on; the
-  // first (shortest) stranding sequence per room is reported. It models what
-  // the room is made of: walls, solid things, exits (openings, doors, locked
-  // doors, warps), plates pressed by blocks (or a latch plate the hero can
-  // reach, unless `weight: 'block'`) and the shutters they open; a shutter on
-  // anything else (cleared, a switch, a flag) is taken as open, and enemies
+  // search over block positions from every tile the hero can appear on: each
+  // exit and the tiles beside it, the statue step (a faint or Continue puts
+  // him there with the blocks back at their start), and every tile a door
+  // or warp lands him on; the first (shortest) stranding sequence per room
+  // is reported. It models what the room is made of: walls, solid things,
+  // exits (openings, doors, locked doors, warps; an exit under closed bars
+  // is no exit), plates pressed by blocks (or a latch plate the hero can
+  // reach, unless `weight: 'block'`), switches in the room (thrown once he
+  // can stand beside one) and the shutters they open; a shutter on anything
+  // else (cleared, a flag, a switch elsewhere) is taken as open, and enemies
   // are ignored, since they move.
   const BLOCK_SEARCH_CAP = 4000;
   const DIR_NAMES = { '-1,0': 'left', '1,0': 'right', '0,-1': 'up', '0,1': 'down' };
+  const STEPS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-  function roomBlockProblem(areaId, screen) {
+  // Every door and warp in the game that lands the hero on this screen.
+  function arrivals(areaId, key) {
+    const places = [];
+    for (const area of Object.values(VL.AREAS)) {
+      for (const screen of Object.values(area.screens)) {
+        for (const e of screen.entities) {
+          if ((e.type === 'door' || e.type === 'warp') && e.to?.area === areaId && e.to.screen === key) places.push(e.to);
+        }
+      }
+    }
+    const dungeon = VL.dungeonOfArea(areaId);
+    if (dungeon?.entrance.area === areaId && dungeon.entrance.screen === key) places.push(dungeon.entrance);
+    return places;
+  }
+
+  function roomBlockProblem(areaId, key, screen) {
     const { cols, rows } = VL.TUNING;
     const blocks0 = screen.entities.filter((e) => e.type === 'pushBlock');
     if (!blocks0.length) return null;
@@ -579,6 +666,8 @@
     const solid = new Set();
     const plates = fixed.filter((e) => e.type === 'pressurePlate');
     const shutters = fixed.filter((e) => e.type === 'shutter');
+    const shutterAt = new Set(shutters.map((s) => k(s.x, s.y)));
+    const switchesHere = new Set(fixed.filter((e) => e.type === 'switch').map((e) => e.id));
     for (const e of fixed) {
       if (e.type === 'door' || e.type === 'lockedDoor' || e.type === 'warp') exits.add(k(e.x, e.y));
       if (e.type === 'lockedDoor' || (e.type !== 'shutter' && e.type !== 'pressurePlate' && (e.solid || VL.ENTITIES[e.type]?.solid))) solid.add(k(e.x, e.y));
@@ -591,63 +680,73 @@
       if (!inside(tx, ty) || onEdge(tx, ty) || wall(tx, ty) || occupied.includes(k(tx, ty))) return false;
       return !blocks.some((o) => o !== b && o.x === tx && o.y === ty);
     };
-    // The hero's reach, with the shutters settled to a fixpoint (a plate he
-    // or a block holds opens bars that may reach another plate).
-    const reach = (hero, blocks) => {
+    const beside = (region, tx, ty) => STEPS.some(([dx, dy]) => region.has(k(tx + dx, ty + dy)));
+    // The hero's reach and the bars that are up, settled together to a
+    // fixpoint from everything shut: a plate he or a block holds (or latched
+    // earlier in the sequence), or a switch he can stand beside, opens bars
+    // that may reach another plate or switch.
+    const reach = (hero, blocks, latched) => {
       const blockAt = new Set(blocks.map((b) => k(b.x, b.y)));
-      let open = new Set(shutters.filter((s) => !s.open || (!s.open.plate && !s.open.plates)).map((s) => k(s.x, s.y)));
+      let open = new Set();
       for (;;) {
         const region = new Set();
         const queue = [hero];
-        const walkable = (tx, ty) => inside(tx, ty) && !wall(tx, ty) && !solid.has(k(tx, ty)) && !blockAt.has(k(tx, ty))
-          && !shutters.some((s) => s.x === tx && s.y === ty && !open.has(k(tx, ty)));
+        const walkable = (tx, ty) => inside(tx, ty) && !wall(tx, ty) && !solid.has(k(tx, ty)) && !blockAt.has(k(tx, ty)) && (!shutterAt.has(k(tx, ty)) || open.has(k(tx, ty)));
         if (walkable(hero.tx, hero.ty)) region.add(k(hero.tx, hero.ty));
         while (queue.length) {
           const { tx, ty } = queue.shift();
-          for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          for (const [dx, dy] of STEPS) {
             if (!walkable(tx + dx, ty + dy) || region.has(k(tx + dx, ty + dy))) continue;
             region.add(k(tx + dx, ty + dy));
             queue.push({ tx: tx + dx, ty: ty + dy });
           }
         }
-        const down = new Set(plates.filter((p) => blockAt.has(k(p.x, p.y)) || (p.weight !== 'block' && p.latch && region.has(k(p.x, p.y)))).map((p) => p.id));
-        const next = new Set(shutters.filter((s) => !s.open || [s.open.plate, ...(s.open.plates || [])].filter(Boolean).every((id) => down.has(id))).map((s) => k(s.x, s.y)));
-        if (next.size === open.size) return region;
+        const down = new Set(plates.filter((p) => latched.has(p.id) || blockAt.has(k(p.x, p.y)) || (p.weight !== 'block' && p.latch && region.has(k(p.x, p.y)))).map((p) => p.id));
+        const thrown = new Set(fixed.filter((e) => e.type === 'switch' && beside(region, e.x, e.y)).map((e) => e.id));
+        const lifted = (s) => !s.open || ([s.open.plate, ...(s.open.plates || [])].filter(Boolean).every((id) => down.has(id))
+          && (!s.open.switch || !switchesHere.has(s.open.switch) || thrown.has(s.open.switch)));
+        const next = new Set(shutters.filter(lifted).map((s) => k(s.x, s.y)));
+        if (next.size === open.size) return { region, open, latched: new Set(plates.filter((p) => p.latch && down.has(p.id)).map((p) => p.id)) };
         open = next;
       }
     };
-    const exitReachable = (region) => [...exits].some((exit) => {
+    const exitReachable = ({ region, open }) => [...exits].some((exit) => {
+      if (shutterAt.has(exit) && !open.has(exit)) return false;
       const [tx, ty] = exit.split(',').map(Number);
-      return region.has(exit) || [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => region.has(k(tx + dx, ty + dy)));
+      return region.has(exit) || beside(region, tx, ty);
     });
-    // Arrival tiles: every exit and the tiles beside it.
+    // Where the hero can appear: every exit and the tiles beside it, the
+    // statue step, and wherever a door or warp lands him.
     const starts = [];
     for (const exit of exits) {
       const [tx, ty] = exit.split(',').map(Number);
-      for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) if (inside(tx + dx, ty + dy)) starts.push({ tx: tx + dx, ty: ty + dy });
+      for (const [dx, dy] of [[0, 0], ...STEPS]) if (inside(tx + dx, ty + dy)) starts.push({ tx: tx + dx, ty: ty + dy, label: `the hero at (${tx + dx},${ty + dy})` });
     }
+    for (const e of fixed) if (e.type === 'saveStatue' || e.type === 'savePoint') starts.push({ tx: e.x, ty: e.y, label: `the hero respawning at the statue (${e.x},${e.y})` });
+    for (const to of arrivals(areaId, key)) starts.push({ tx: to.tx, ty: to.ty, label: `the hero arriving at (${to.tx},${to.ty})` });
     const seen = new Set();
     const queue = [];
     const blocksKey = (blocks) => blocks.map((b) => `${b.x},${b.y},${b.pushed ? 1 : 0}`).join(';');
-    const push = (blocks, hero, trail) => {
-      const region = reach(hero, blocks);
-      if (!region.size) return;
-      const id = `${blocksKey(blocks)}|${[...region].sort()[0]}`;
+    const push = (blocks, hero, latched, trail, label) => {
+      const reached = reach(hero, blocks, latched);
+      if (!reached.region.size) return;
+      const id = `${blocksKey(blocks)}|${[...reached.latched].sort()}|${[...reached.region].sort()[0]}`;
       if (seen.has(id)) return;
       seen.add(id);
-      queue.push({ blocks, region, trail });
+      queue.push({ blocks, reached, trail, label });
     };
-    for (const start of starts) push(blocks0.map((b) => ({ x: b.x, y: b.y, once: b.once, pushed: false })), start, []);
+    for (const start of starts) push(blocks0.map((b) => ({ x: b.x, y: b.y, once: b.once, pushed: false })), start, new Set(), [], start.label);
     while (queue.length) {
       if (seen.size > BLOCK_SEARCH_CAP) return `more than ${BLOCK_SEARCH_CAP} block positions to check: fewer free blocks (once: false), please`;
-      const { blocks, region, trail } = queue.shift();
-      if (!exitReachable(region)) return `${trail.join(', ')} cuts the hero off from every exit`;
+      const { blocks, reached, trail, label } = queue.shift();
+      if (!exitReachable(reached)) return trail.length ? `${trail.join(', ')} cuts the hero off from every exit` : `${label} can reach no exit without a push`;
+      const { region, latched } = reached;
       blocks.forEach((b, i) => {
         if (b.pushed && b.once !== false) return;
-        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        for (const [dx, dy] of STEPS) {
           if (!region.has(k(b.x - dx, b.y - dy)) || !canPush(blocks, b, dx, dy)) continue;
           const moved = blocks.map((o, j) => (j === i ? { ...o, x: o.x + dx, y: o.y + dy, pushed: true } : o));
-          push(moved, { tx: b.x, ty: b.y }, [...trail, `block (${b.x},${b.y}) pushed ${DIR_NAMES[k(dx, dy)]} to (${b.x + dx},${b.y + dy})`]);
+          push(moved, { tx: b.x, ty: b.y }, latched, [...trail, `block (${b.x},${b.y}) pushed ${DIR_NAMES[k(dx, dy)]} to (${b.x + dx},${b.y + dy})`], label);
         }
       });
     }
@@ -658,7 +757,7 @@
     const problems = [];
     for (const dungeon of Object.values(VL.DUNGEONS)) {
       for (const [key, screen] of Object.entries(VL.AREAS[dungeon.area].screens)) {
-        const problem = roomBlockProblem(dungeon.area, screen);
+        const problem = roomBlockProblem(dungeon.area, key, screen);
         if (problem) problems.push(`${dungeon.id} ${key}: ${problem}`);
       }
     }
@@ -742,10 +841,12 @@
     const dungeon = VL.dungeonOf(state);
     if (!dungeon) return;
     const d = VL.dungeonState(state, dungeon.id);
+    // On the second row of the play area: the SAVED note (scenes/play.js)
+    // has the first, and keys are earned right under it.
     const { width } = VL.TUNING;
-    VL.ART.drawSprite(ctx, 'item-small-key', width - 23, 3);
-    VL.ART.text(ctx, `x${VL.smallKeys(state, dungeon.id)}`, width - 15, 4, { size: 'small', color: 'text', shadow: 'outline' });
-    if (d.bossKey) VL.ART.drawSprite(ctx, 'item-boss-key', width - 36, 2);
+    VL.ART.drawSprite(ctx, 'item-small-key', width - 23, 14);
+    VL.ART.text(ctx, `x${VL.smallKeys(state, dungeon.id)}`, width - 15, 15, { size: 'small', color: 'text', shadow: 'outline' });
+    if (d.bossKey) VL.ART.drawSprite(ctx, 'item-boss-key', width - 36, 13);
     if (state.dungeonNote) VL.ART.text(ctx, state.dungeonNote.text, width / 2, 4, { size: 'small', align: 'center', color: 'goldLight', shadow: 'outline' });
   });
 

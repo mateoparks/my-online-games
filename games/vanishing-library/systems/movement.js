@@ -119,6 +119,15 @@
         player.moving = false;
         return;
       }
+      // Just carried by a warp (entities/warp.js): the arrows held through
+      // it are ignored until they are let go.
+      if (state.warpHold) {
+        if (dx || dy) {
+          player.moving = false;
+          return;
+        }
+        state.warpHold = false;
+      }
       updateFacing(player, dx, dy);
       player.moving = dx !== 0 || dy !== 0;
       if (!player.moving) return;
