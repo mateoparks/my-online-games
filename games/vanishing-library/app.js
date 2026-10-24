@@ -44,10 +44,12 @@ VL.createApp = function createApp({ storage } = {}) {
     draw(ctx, t) {
       VL.render(ctx, app, t);
     },
-    startGame(game, slot) {
+    // A fresh game's baseline is "the slot was empty when it was chosen", so
+    // a game another window made there since is found at the first write.
+    startGame(game, slot, { fresh = false } = {}) {
       app.game = game;
       app.slot = slot;
-      app.slotText = slot === null ? null : app.storage.read(VL.slotKey(slot));
+      app.slotText = slot === null || fresh ? null : app.storage.read(VL.slotKey(slot));
       app.savedAt = null;
       app.saveFailed = false;
       app.saveConflict = false;
@@ -56,7 +58,8 @@ VL.createApp = function createApp({ storage } = {}) {
     // a slot (tests, the smoke) or with storage off just drops the dirty
     // mark. A write that fails keeps the game dirty and sets saveFailed
     // until one succeeds; a slot another window wrote since sets
-    // saveConflict and is never overwritten.
+    // saveConflict and is never overwritten. A slot that is gone (site data
+    // cleared) holds nothing to keep, so it is simply written again.
     save() {
       const game = app.game;
       if (!game) return false;
@@ -65,13 +68,14 @@ VL.createApp = function createApp({ storage } = {}) {
         return false;
       }
       const key = VL.slotKey(app.slot);
-      if (app.storage.read(key) !== app.slotText) {
+      const current = app.storage.read(key);
+      if (typeof current === 'string' && current !== app.slotText) {
         app.saveConflict = true;
         game.dirty = false;
         return false;
       }
       const text = JSON.stringify(VL.serializeSave(game));
-      const ok = app.storage.write(key, text);
+      const ok = current !== undefined && app.storage.write(key, text);
       if (ok) {
         app.slotText = text;
         app.savedAt = app.time;

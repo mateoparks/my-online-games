@@ -47,7 +47,10 @@
         if (chosen) VL.ART.text(ctx, '→', centre - 44, y, { color: 'goldLight' });
         VL.ART.text(ctx, option, centre - 32, y, { color: chosen ? 'goldLight' : 'text' });
       });
-      controls(app.game).forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 56 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
+      if (VL.PAUSE_OPTIONS[app.pause.cursor] === 'Save & Quit' && app.storage.ok) {
+        VL.ART.text(ctx, 'CONTINUE STARTS AT YOUR LAST SAVE POINT', centre, BOX.y + 48, { size: 'small', align: 'center', color: 'textDim' });
+      }
+      controls(app.game).forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 58 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
       if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'goldLight' });
       else if (app.saveFailed) VL.ART.text(ctx, 'COULD NOT SAVE. STILL TRYING', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'heartLight' });
     },

@@ -385,15 +385,20 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   stays dirty and every step retries; play shows "COULD NOT SAVE" and Save &
   Quit stays on the pause menu with the note until a write succeeds
   (`app.saveFailed`). **Two windows on one slot:** the app remembers the
-  slot's text as it last read or wrote it, and a write finds the slot changed
-  by another window refuses, so the newer progress is never overwritten; the
-  stale window goes to the `conflict` scene and back to the title.
+  slot's text as it last read or wrote it (a new game's baseline is "empty"),
+  and a write that finds a different save there refuses, so the newer
+  progress is never overwritten; the stale window goes to the `conflict`
+  scene and back to the title, and Yes in the delete dialog deletes only the
+  save the card showed. A slot that is gone (site data cleared) is simply
+  written again; a read that throws counts as a failed write.
 - **Schema (R2):** saves carry `v`, `VL.saveVersion()`. **Adding a field
   needs no migration.** Add it from your own file with
   `VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }))` and a save
   written before it gets the default on load, nested keys included (an
-  `inventory.paper` added later fills in as 0). A saved object or array that
-  turned into something else takes the default too, and play state in an old
+  `inventory.paper` added later fills in as 0). A saved value whose kind no
+  longer matches its default (an object or array on either side) takes the
+  default too, and `VL.readSlot(...).resets` lists those paths so the fixture
+  test can fail instead of a player losing progress; play state in an old
   save (a field that is transient now) is dropped. Keep fields JSON-safe:
   plain objects, arrays, numbers, strings, booleans, null (never `undefined`,
   a Set, a Map or a Date; `tests/saving.test.js` checks a new game and the
@@ -412,11 +417,14 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   newer game: reload the page" and is left exactly as it is, never deletable;
   one that fails validation shows as **Damaged** and can be deleted (with a
   confirm). **Fixtures:** `tests/fixtures/save-v1.json` is the W2-era
-  version 1 save, frozen forever; an item that changes the shape adds its
-  own `save-v<N>-<item>.json` written by the game at that version and never
+  version 1 save, frozen forever; **every item that adds or changes a saved
+  field** commits its own `save-v<N>-<item>.json`, written by the game at
+  that version with the new field holding a non-default value, and never
   edits an older one. Every `save-*.json` must load through the real
-  migrations (a test checks each), so a migration that breaks an old save
-  fails at its own build.
+  migrations with no field reset (a test checks each, and a fixture at the
+  current version must come back field for field), so a later item that
+  changes a field's kind without a migration fails at its own build rather
+  than resetting a student's progress.
 - The slot card shows name, hearts and books; the book count comes from
   `VL.slotSource('books', (save) => …)`, plugged in once by the library item.
 - `VL.reloadApp(app)` is a page reload that continues the same slot: what the

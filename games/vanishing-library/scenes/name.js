@@ -35,7 +35,7 @@
       const name = naming.text.trim() || VL.DEFAULT_NAME;
       // Each adventure rolls its own drops.
       const seed = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) >>> 0;
-      app.startGame(VL.newGame({ name, seed }), naming.slot);
+      app.startGame(VL.newGame({ name, seed }), naming.slot, { fresh: true });
       app.save();
       app.setScene('intro');
     },

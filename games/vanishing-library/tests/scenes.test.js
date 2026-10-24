@@ -539,6 +539,162 @@ test('two windows on one slot: the stale one stops instead of overwriting the ne
   assert.equal(JSON.parse(backing.getItem(VL.slotKey(0))).flags.bookThree, true);
 });
 
+test('a stale Empty card never overwrites a game another window made in that slot since', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const backing = memoryStorage();
+  const a = VL.createApp({ storage: VL.createStorage(backing) });
+  assert.equal(a.title.slots[0].status, 'empty');
+  const b = VL.createApp({ storage: VL.createStorage(backing) });
+  newGameTo(VL, b, 'Kai');
+  b.game.flags.bookOne = true;
+  VL.earned(b.game);
+  b.update(VL.noActions(), STEP);
+  // Window A, still showing Empty, names a hero for the same slot.
+  press(VL, a, 'confirm');
+  assert.equal(a.sceneId, 'name');
+  type(VL, a, 'Zed');
+  press(VL, a, 'confirm');
+  const saved = JSON.parse(backing.getItem(VL.slotKey(0)));
+  assert.equal(saved.name, 'Kai', 'Kai\'s game is kept');
+  assert.equal(saved.flags.bookOne, true);
+  assert.equal(a.sceneId, 'conflict');
+  assert.ok(drawnText(VL, document, a).some((s) => /another window/i.test(s)), 'window A is told');
+  press(VL, a, 'interact');
+  assert.equal(a.sceneId, 'title');
+  assert.equal(a.title.slots[0].summary.name, 'Kai', 'the title now shows Kai');
+});
+
+test('a slot that vanished under a playing window is written back, not reported as a newer game', () => {
+  const { VL } = loadGame();
+  addFixtureWorld(VL);
+  const { app, backing } = titleApp(VL);
+  newGameTo(VL, app, 'Kai');
+  backing.removeItem(VL.slotKey(0)); // site data cleared, or deleted from another window
+  app.game.flags.bookOne = true;
+  VL.earned(app.game);
+  app.update(VL.noActions(), STEP);
+  assert.equal(app.sceneId, 'play');
+  assert.equal(app.saveConflict, false);
+  assert.equal(JSON.parse(backing.getItem(VL.slotKey(0))).flags.bookOne, true, 'the game is saved again');
+});
+
+test('a read that throws is a failed save that keeps trying, not a conflict', () => {
+  const { VL } = loadGame();
+  addFixtureWorld(VL);
+  const { app, backing } = titleApp(VL);
+  newGameTo(VL, app, 'Kai');
+  const working = backing.getItem;
+  backing.getItem = blocked;
+  app.game.flags.bookOne = true;
+  VL.earned(app.game);
+  app.update(VL.noActions(), STEP);
+  assert.equal(app.sceneId, 'play');
+  assert.equal(app.saveConflict, false);
+  assert.equal(app.saveFailed, true);
+  assert.equal(app.game.dirty, true, 'still dirty, so the write is retried');
+  backing.getItem = working;
+  app.update(VL.noActions(), STEP);
+  assert.equal(app.saveFailed, false);
+  assert.equal(JSON.parse(backing.getItem(VL.slotKey(0))).flags.bookOne, true, 'the retry wrote it');
+});
+
+test('deleting from a stale card refreshes the title instead of deleting what another window saved there', () => {
+  const { VL, document } = loadGame();
+  const backing = memoryStorage();
+  const storage = VL.createStorage(backing);
+  VL.saveSlot(storage, 0, VL.newGame({ name: 'Kai' }));
+  const app = VL.createApp({ storage });
+  press(VL, app, 'erase');
+  assert.ok(drawnText(VL, document, app).some((s) => s.includes('Kai') && /delete/i.test(s)));
+  // Another window plays on in that slot while the dialog is open.
+  VL.saveSlot(storage, 0, VL.newGame({ name: 'Zed' }));
+  press(VL, app, 'left');
+  press(VL, app, 'confirm');
+  assert.equal(app.title.confirmDelete, false, 'the dialog closes');
+  assert.equal(VL.readSlot(storage, 0).summary.name, 'Zed', 'the newer save is kept');
+  assert.equal(app.title.slots[0].summary.name, 'Zed', 'the card shows what is really there');
+  press(VL, app, 'erase');
+  press(VL, app, 'left');
+  press(VL, app, 'confirm');
+  assert.equal(VL.readSlot(storage, 0).status, 'empty', 'deleting what the card shows works');
+});
+
+test('a slot card with more than ten hearts shows one heart and a count instead of overlapping rows', () => {
+  const { VL, document } = loadGame();
+  const storage = VL.createStorage(memoryStorage());
+  const kai = VL.newGame({ name: 'Kai' });
+  kai.maxHp = 24;
+  VL.saveSlot(storage, 0, kai);
+  const robin = VL.newGame({ name: 'Robin' });
+  robin.maxHp = 20;
+  VL.saveSlot(storage, 1, robin);
+  const app = VL.createApp({ storage });
+  const sprites = [];
+  const texts = [];
+  const { drawSprite, text } = VL.ART;
+  VL.ART.drawSprite = (ctx, name, x, y, ...rest) => {
+    sprites.push({ name, x, y });
+    return drawSprite(ctx, name, x, y, ...rest);
+  };
+  VL.ART.text = (ctx, str, x, y, ...rest) => {
+    texts.push(String(str));
+    return text(ctx, str, x, y, ...rest);
+  };
+  VL.render(document.createElement('canvas').getContext('2d'), app, 0);
+  VL.ART.drawSprite = drawSprite;
+  VL.ART.text = text;
+  const hearts = sprites.filter((s) => s.name === 'heart-full');
+  const inCard = (card) => hearts.filter((h) => h.y >= 44 + card * 28 && h.y < 44 + (card + 1) * 28);
+  assert.equal(inCard(0).length, 1, 'twelve hearts: one heart');
+  assert.ok(texts.includes('x12'), 'and the count');
+  assert.equal(inCard(1).length, 10, 'ten hearts still draw as a row');
+  for (const h of hearts) assert.ok(h.y + 6 <= 44 + Math.floor((h.y - 44) / 28) * 28 + 24, `heart at y ${h.y} stays inside its card`);
+});
+
+test('the intro is a black screen whose weathering fades letter pixels but never erases them', () => {
+  const { VL, document } = loadGame();
+  const { app } = titleApp(VL);
+  newGameTo(VL, app, 'Ash', 0, 'intro');
+  wait(VL, app, 2); // the first line has fully faded in
+  let alpha = 1;
+  const base = document.createElement('canvas').getContext('2d');
+  const ctx = new Proxy({}, {
+    get: (_, property) => (property === 'globalAlpha' ? alpha : base[property]),
+    set: (_, property, value) => {
+      if (property === 'globalAlpha') alpha = value;
+      return true;
+    },
+  });
+  const rects = [];
+  const { rect } = VL.ART;
+  VL.ART.rect = (c, name, x, y, w, h) => {
+    rects.push({ name, x, y, w, h, alpha: c.globalAlpha });
+    return rect(c, name, x, y, w, h);
+  };
+  VL.render(ctx, app, 2);
+  VL.ART.rect = rect;
+  const { width, height } = VL.TUNING;
+  assert.ok(rects.some((r) => r.x === 0 && r.y === 0 && r.w === width && r.h === height && VL.PALETTE[r.name] === '#000000'), 'a black screen (design)');
+  const weathering = rects.filter((r) => r.w === 1 && r.h === 1);
+  assert.ok(weathering.length > 20, 'the lines are weathered');
+  for (const r of weathering) assert.ok(r.alpha > 0 && r.alpha <= 0.6, `a weathering pixel only dims the letter (alpha ${r.alpha})`);
+});
+
+test('the pause menu says Continue starts at the last save point when Save & Quit is chosen', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const { app } = titleApp(VL);
+  newGameTo(VL, app, 'Robin');
+  press(VL, app, 'pause');
+  const hint = (strings) => strings.some((s) => /last save point/i.test(s));
+  assert.equal(hint(drawnText(VL, document, app)), false, 'not while Resume is chosen');
+  press(VL, app, 'down');
+  assert.equal(hint(drawnText(VL, document, app)), true);
+  app.storage = VL.createStorage(null);
+  assert.equal(hint(drawnText(VL, document, app)), false, 'nothing is saved with saving off');
+});
+
 test('fainting shows its screen, then respawns at the save point with full hearts and the earnings kept', () => {
   const { VL, document } = loadGame();
   addFixtureWorld(VL);

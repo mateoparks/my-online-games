@@ -34,8 +34,10 @@
         if (pressed.right) title.deleteChoice = 1;
         if (pressed.pause || pressed.erase) title.confirmDelete = false;
         else if (VL.confirmed(actions)) {
+          // Yes deletes only the save the card showed; one another window
+          // wrote since is shown instead.
           if (DELETE_OPTIONS[title.deleteChoice] === 'Yes') {
-            VL.deleteSlot(app.storage, title.cursor);
+            if (app.storage.read(VL.slotKey(title.cursor)) === title.slots[title.cursor].text) VL.deleteSlot(app.storage, title.cursor);
             title.slots = readSlots(app);
           }
           title.confirmDelete = false;
@@ -101,7 +103,13 @@
         const { name, hearts, books, finished } = slot.summary;
         VL.ART.text(ctx, name, CARD.x + 14, y + 4, { color: selected ? 'goldLight' : 'text' });
         if (finished) VL.ART.text(ctx, 'FINISHED', CARD.x + CARD.w - 8, y + 5, { size: 'small', align: 'right', color: 'goldLight' });
-        for (let h = 0; h < hearts; h += 1) VL.ART.drawSprite(ctx, 'heart-full', CARD.x + 14 + (h % 10) * 9, y + 14 + Math.floor(h / 10) * 5);
+        // One row fits ten hearts; past that, one heart and the count.
+        if (hearts > 10) {
+          VL.ART.drawSprite(ctx, 'heart-full', CARD.x + 14, y + 14);
+          VL.ART.text(ctx, `x${hearts}`, CARD.x + 23, y + 13, { color: 'text' });
+        } else {
+          for (let h = 0; h < hearts; h += 1) VL.ART.drawSprite(ctx, 'heart-full', CARD.x + 14 + h * 9, y + 14);
+        }
         VL.ART.text(ctx, `BOOKS ${books}`, CARD.x + CARD.w - 8, y + 15, { size: 'small', align: 'right', color: 'textDim' });
       });
 

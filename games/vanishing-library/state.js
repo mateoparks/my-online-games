@@ -38,6 +38,9 @@ VL.createGame = function createGame(options = {}) {
   for (const { id, fields, transient: isTransient } of VL.GAME_EXTENSIONS) {
     for (const [key, value] of Object.entries(fields(options))) {
       if (key in state || key in transient) throw new Error(`game extension ${id}: field ${key} already exists`);
+      // The transient list was learned from fields({}): a key that appears only
+      // for some options would be saved.
+      if (isTransient && !VL.TRANSIENT_FIELDS.includes(key)) throw new Error(`game extension ${id}: transient field ${key} must exist for every game`);
       (isTransient ? transient : state)[key] = value;
     }
   }

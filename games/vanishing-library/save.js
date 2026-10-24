@@ -21,6 +21,7 @@
   // `backing` is a localStorage-like object, or a function returning one (the
   // window's getter can itself throw when storage is blocked). A write/read/
   // remove probe decides `ok` once; private windows that refuse writes count as off.
+  // `read` is null for a missing key and undefined when the read itself failed.
   VL.createStorage = function createStorage(backing) {
     const store = attempt(() => (typeof backing === 'function' ? backing() : backing), null);
     const ok = Boolean(store) && attempt(() => {
@@ -31,7 +32,7 @@
     }, false);
     return {
       ok,
-      read: (key) => (ok ? attempt(() => store.getItem(key) ?? null, null) : null),
+      read: (key) => (ok ? attempt(() => store.getItem(key) ?? null, undefined) : null),
       write: (key, value) => ok && attempt(() => {
         store.setItem(key, value);
         return true;
@@ -84,15 +85,24 @@
 
   // Saved values over the defaults, recursing into plain objects so a key
   // added inside an existing object (inventory.paper) gets its default too.
-  // An object or array default whose saved value is another kind keeps the
-  // default: one field reset beats a whole save shown as Damaged.
-  function fill(defaults, saved) {
+  // An object or array on one side and another kind on the other keeps the
+  // default: one field reset beats a whole save shown as Damaged. Each reset's
+  // path goes in `resets`, which the fixture test reads: a kind change needs
+  // a migration (README). A null default takes any kind.
+  const kindOf = (value) => (Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value);
+  const structural = (value) => kindOf(value) === 'array' || kindOf(value) === 'object';
+
+  function fill(defaults, saved, resets, path) {
     if (saved === undefined) return defaults;
-    if (Array.isArray(defaults)) return Array.isArray(saved) ? saved : defaults;
+    if (kindOf(defaults) !== 'null' && kindOf(defaults) !== kindOf(saved) && (structural(defaults) || structural(saved))) {
+      resets.push(path);
+      return defaults;
+    }
     if (!isPlainObject(defaults)) return saved;
-    if (!isPlainObject(saved)) return defaults;
     const out = { ...defaults };
-    for (const [key, value] of Object.entries(saved)) out[key] = key in defaults ? fill(defaults[key], value) : value;
+    for (const [key, value] of Object.entries(saved)) {
+      out[key] = key in defaults ? fill(defaults[key], value, resets, path ? `${path}.${key}` : key) : value;
+    }
     return out;
   }
 
@@ -110,9 +120,10 @@
       if (!skip.has(key)) defaults[key] = fresh[key];
     }
     for (const key of skip) delete migrated[key];
-    const save = { ...fill(defaults, migrated), v: migrated.v };
+    const resets = [];
+    const save = { ...fill(defaults, migrated, resets, ''), v: migrated.v };
     if (!Number.isInteger(save.maxHp) || save.maxHp < 1) throw new Error('save has a bad maxHp');
-    return save;
+    return { save, resets };
   }
 
   // Where the hero reappears: the last save point touched, or the start when
@@ -131,7 +142,7 @@
     return state;
   }
 
-  VL.restoreGame = (raw) => stateFrom(normalizeSave(raw));
+  VL.restoreGame = (raw) => stateFrom(normalizeSave(raw).save);
 
   // ---------- slots ----------
 
@@ -155,16 +166,17 @@
 
   // `newer` is a save written by a newer page (a cached old page, or a class
   // laptop that has not reloaded): it is never damaged and is left alone.
+  // `text` is the slot as read, so the title can tell when it changed since.
   VL.readSlot = function readSlot(storage, slot) {
     const text = storage.read(VL.slotKey(slot));
-    if (text === null || text === undefined) return { status: 'empty' };
+    if (text === null || text === undefined) return { status: 'empty', text: null };
     try {
       const raw = JSON.parse(text);
-      if (isNewer(raw)) return { status: 'newer', v: raw.v };
-      const save = normalizeSave(raw);
-      return { status: 'ok', save, summary: VL.saveSummary(save) };
+      if (isNewer(raw)) return { status: 'newer', v: raw.v, text };
+      const { save, resets } = normalizeSave(raw);
+      return { status: 'ok', save, resets, summary: VL.saveSummary(save), text };
     } catch {
-      return { status: 'damaged' };
+      return { status: 'damaged', text };
     }
   };
 

@@ -37,6 +37,12 @@ test('createStorage probes the backing store and never throws afterwards', () =>
   // A store whose getter works but whose writes fail (quota, private mode) is off too.
   const readOnly = { ...memoryStorage(), setItem: blocked };
   assert.equal(VL.createStorage(readOnly).ok, false);
+  // A read that throws after boot (a corrupted store) is undefined, not null: nobody there, not "empty".
+  const flaky = memoryStorage();
+  const flakyStorage = VL.createStorage(flaky);
+  flaky.getItem = blocked;
+  assert.equal(flakyStorage.read('vanishing-library-x'), undefined);
+  assert.equal(VL.readSlot(flakyStorage, 0).status, 'empty');
   // The probe leaves nothing behind.
   const backing = memoryStorage();
   VL.createStorage(backing);
@@ -127,7 +133,7 @@ test('readSlot reports empty, ok with a summary, or damaged; a damaged slot can 
   addFixtureWorld(VL);
   const backing = memoryStorage();
   const storage = VL.createStorage(backing);
-  assert.deepEqual({ ...VL.readSlot(storage, 0) }, { status: 'empty' });
+  assert.deepEqual({ ...VL.readSlot(storage, 0) }, { status: 'empty', text: null });
   const state = VL.newGame({ name: 'Kai' });
   state.maxHp = 10;
   state.finished = true;
@@ -280,6 +286,27 @@ test('transient keys, hp and wrong-typed objects in a stored save take the fresh
   assert.deepEqual({ ...VL.loadSlot(storage, 2).inventory }, { wood: 0 });
 });
 
+test('a saved field whose kind changed without a migration takes the default and is reported, either way round', () => {
+  const { VL } = loadGame();
+  addFixtureWorld(VL);
+  // W5 saved inventory.wood as a number; a later item made it an object. Another item made coins a number.
+  VL.extendGame('inventory', () => ({ inventory: { wood: { count: 0, metal: false } } }));
+  VL.extendGame('coins', () => ({ coins: 0 }));
+  const storage = VL.createStorage(memoryStorage());
+  const savePoint = { area: 'test', screen: '0,0', tx: 8, ty: 2, facing: 'down' };
+  const old = { v: 1, name: 'Robin', maxHp: 8, flags: { a: true }, visited: {}, savePoint, inventory: { wood: 3 }, coins: { gold: 5 } };
+  storage.write(VL.slotKey(0), JSON.stringify(old));
+  const read = VL.readSlot(storage, 0);
+  assert.equal(read.status, 'ok');
+  assert.deepEqual([...read.resets].sort(), ['coins', 'inventory.wood'], 'every reset is named by path');
+  const game = VL.loadSlot(storage, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(game.inventory.wood)), { count: 0, metal: false });
+  assert.equal(game.coins, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(game.savePoint)), savePoint, 'a null default takes any kind');
+  VL.saveSlot(storage, 1, game);
+  assert.deepEqual([...VL.readSlot(storage, 1).resets], [], 'a save at the current shape resets nothing');
+});
+
 test('a field left undefined is not written and takes its default on load', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
@@ -313,6 +340,11 @@ test('every committed fixture loads through the real migrations and defaults', (
     const read = VL.readSlot(storage, 0);
     assert.equal(read.status, 'ok', `${file} reads ok`);
     assert.equal(read.summary.name, fixture.name, file);
+    // A field that silently took its default is the R2 failure: a kind change needs a migration.
+    assert.deepEqual([...read.resets], [], `${file}: a saved field changed kind without a migration`);
+    if (fixture.v === VL.saveVersion()) {
+      for (const [key, value] of Object.entries(fixture)) assert.deepEqual(JSON.parse(JSON.stringify(read.save[key])), value, `${file}: ${key} survives a load`);
+    }
     const game = VL.loadSlot(storage, 0);
     assert.ok(game, `${file} loads`);
     assert.equal(game.name, fixture.name);
@@ -344,6 +376,12 @@ test('extendGame with transient: true adds play state that is never saved and re
   assert.equal(loaded.inventory.wood, 2);
   VL.extendGame('again', () => ({ cooldown: 1 }));
   assert.throws(() => VL.createGame(), /cooldown/, 'a saved field cannot shadow a transient one');
+});
+
+test('a transient extension names the same fields for every game, or a key would leak into the save', () => {
+  const { VL } = loadGame();
+  VL.extendGame('aiming', (options) => (options.name ? { aim: null } : {}), { transient: true });
+  assert.throws(() => VL.newGame({ name: 'Kai' }), /aim/);
 });
 
 test('every saved field is JSON-safe, for a new game and after the playthrough', () => {

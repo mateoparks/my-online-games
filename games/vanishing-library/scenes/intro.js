@@ -13,7 +13,11 @@
   const WRAP_WIDTH = 232;
   const LINE_TOP = 52;
   const LINE_SPACING = 36;
-  const EROSION = 0.1;
+  // Weathering dims a share of the letter pixels rather than removing them,
+  // so an eaten crossbar cannot turn "where" into "whare".
+  const EROSION = 0.3;
+  const EROSION_ALPHA = 0.55;
+  VL.ART.addColors({ introBlack: '#000000' });
 
   VL.defineScene('intro', {
     enter(app) {
@@ -27,23 +31,24 @@
     },
 
     draw(ctx, app, t) {
-      const { width } = VL.TUNING;
+      const { width, height } = VL.TUNING;
       const elapsed = app.intro.t;
       const line = VL.ART.lineHeight('normal');
+      VL.ART.rect(ctx, 'introBlack', 0, 0, width, height);
       VL.INTRO_LINES.forEach((content, i) => {
         const alpha = VL.clamp((elapsed - i * lineDelay) / fade, 0, 1);
         if (alpha <= 0) return;
         const rows = VL.ART.wrapText(content, WRAP_WIDTH);
         ctx.save();
-        ctx.globalAlpha = alpha;
         rows.forEach((row, r) => {
           const y = LINE_TOP + i * LINE_SPACING + r * line;
+          ctx.globalAlpha = alpha;
           const w = VL.ART.text(ctx, row, width / 2, y, { align: 'center', color: 'white' });
-          // Weathering: stable noise eats pixels out of the letters.
+          ctx.globalAlpha = alpha * EROSION_ALPHA;
           const left = Math.round(width / 2 - w / 2);
           for (let py = 0; py < 7; py += 1) {
             for (let px = 0; px < w; px += 1) {
-              if (VL.ART.hash(left + px, y + py, i) < EROSION) VL.ART.rect(ctx, 'ink', left + px, y + py, 1, 1);
+              if (VL.ART.hash(left + px, y + py, i) < EROSION) VL.ART.rect(ctx, 'introBlack', left + px, y + py, 1, 1);
             }
           }
         });
