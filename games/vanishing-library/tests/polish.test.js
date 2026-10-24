@@ -3,7 +3,7 @@
 // guards, berries ahead of a diagonal NPC, the Hollow Oak crossfire, the
 // load-names scan and a flight's dip under the HUD.
 const assert = require('node:assert/strict');
-const { test, loadGame, memoryStorage, fakeDocument, fakeWindow, keyEvent } = require('./harness');
+const { test, loadGame, memoryStorage, fakeDocument, fakeWindow, keyEvent, playState, hold } = require('./harness');
 
 const STEP = 1 / 60;
 const press = (VL, app, action) => app.update(VL.actions({ pressed: [action] }), STEP);
@@ -80,6 +80,72 @@ test('name entry: ↑ or typing a letter on START goes back to the field', () =>
   type(VL, app, 'm');
   assert.equal(app.naming.onStart, false);
   assert.equal(app.naming.text, 'Sam');
+});
+
+// ---------- 2. corner assist ----------
+
+// A 1-tile gap in a wall row (5,3), a 1-tile gap in a wall column (8,6), and
+// the W5 snag: a wall row below with a gap at 6,10.
+function cornerWorld(VL) {
+  VL.addScreens('corners', {
+    '0,0': {
+      tiles: [
+        'TTTTTTTTTTTTTTTT',
+        'T..............T',
+        'T..............T',
+        'TTTTT.TTTTTTTTTT',
+        'T.......T......T',
+        'T.......T......T',
+        'T..............T',
+        'T.......T......T',
+        'T.......T......T',
+        'T..............T',
+        'TTTTTT.TTTTTTTTT',
+      ],
+      entities: [],
+    },
+  });
+}
+
+function cornerState(VL, x, y) {
+  cornerWorld(VL);
+  const state = playState(VL, { area: 'corners', screen: '0,0', tx: 1, ty: 1 });
+  state.player.x = x;
+  state.player.y = y;
+  return state;
+}
+
+test('corner assist: walking up into a 1-tile gap a few pixels off slides the hero into line', () => {
+  for (const off of [-9, -4, 4, 9]) {
+    const { VL } = loadGame();
+    const state = cornerState(VL, 5 * 16 + 8 + off, 4 * 16 + 12);
+    hold(VL, state, ['up'], 1);
+    assert.ok(state.player.y < 3 * 16, `${off} px off: through the gap (y ${state.player.y})`);
+  }
+});
+
+test('corner assist: walking right into a 1-tile gap in a wall column, a few pixels off', () => {
+  for (const off of [-5, 3, 5]) {
+    const { VL } = loadGame();
+    const state = cornerState(VL, 6 * 16 + 8, 6 * 16 + 12 + off);
+    hold(VL, state, ['right'], 1);
+    assert.ok(state.player.x > 9 * 16, `${off} px off: through the gap (x ${state.player.x})`);
+  }
+});
+
+test('corner assist: stopped flush above a wall row, the hero still walks sideways (the W5 snag)', () => {
+  const { VL } = loadGame();
+  const state = cornerState(VL, 6 * 16 + 8, 157);
+  hold(VL, state, ['left'], 0.5);
+  assert.ok(state.player.x < 5 * 16, `walked left (x ${state.player.x})`);
+});
+
+test('corner assist: a hero well off the gap stays square against the wall', () => {
+  const { VL } = loadGame();
+  const far = cornerState(VL, 5 * 16 + 8 + 12, 4 * 16 + 12);
+  hold(VL, far, ['up'], 0.5);
+  assert.equal(far.player.x, 5 * 16 + 20, 'no nudge from 12 px away');
+  assert.ok(Math.abs(far.player.y - (4 * 16 + 4)) < 1e-6, 'flush against the wall');
 });
 
 module.exports = { titleApp, press, type, STEP };

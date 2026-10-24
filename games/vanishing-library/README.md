@@ -514,6 +514,9 @@ holds the heart containers.
   a CSS size of 896×672, i.e. 3.5 CSS px per logical px. That is by design;
   crisp squares of device pixels are the point, not a whole-number CSS size.
 - `state.player.x/y` is the centre of the hero's feet box (`TUNING.heroBox`).
+- Corner assist (`systems/movement.js`): walking straight into a wall up to
+  `TUNING.cornerAssist` (6) px off an opening slides the hero sideways into
+  line, so 1-tile gaps and turns don't catch on trees.
 - The loop runs fixed `TUNING.step` slices; real time per frame is capped at
   `TUNING.maxFrame` and every update also clamps `dt` to `TUNING.maxDt`. On
   displays faster than the step rate, presses stay latched until a frame that
