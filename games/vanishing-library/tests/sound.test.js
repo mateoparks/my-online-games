@@ -1,7 +1,7 @@
 // W21 sound: the named-effect API, gesture gating, missing WebAudio, the
 // persisted mute toggle and its on-canvas indicator.
 const assert = require('node:assert/strict');
-const { test, loadGame, addFixtureWorld, playState, playApp, hold, fakeWindow, keyEvent } = require('./harness');
+const { test, loadGame, addFixtureWorld, playState, playApp, hold, fakeWindow, keyEvent, memoryStorage } = require('./harness');
 
 const STARTER = ['step', 'bump', 'swing', 'hit', 'hurt', 'pickup', 'shell', 'door', 'popup', 'menuMove', 'menuSelect', 'faint', 'cluck'];
 const MUTE_KEY = 'vanishing-library-muted';
@@ -133,20 +133,6 @@ function reachesDestination(n, seen = new Set()) {
   if (seen.has(n)) return false;
   seen.add(n);
   return n.outputs.some((next) => reachesDestination(next, seen));
-}
-
-function memoryStorage(initial = {}) {
-  const data = { ...initial };
-  return {
-    data,
-    getItem: (key) => (key in data ? data[key] : null),
-    setItem: (key, value) => {
-      data[key] = String(value);
-    },
-    removeItem: (key) => {
-      delete data[key];
-    },
-  };
 }
 
 // A loaded game with sound installed on a window that has WebAudio, already
@@ -380,7 +366,7 @@ test('N toggles mute, persisted under vanishing-library-muted', () => {
   const press = keyEvent('KeyN');
   win.dispatch('keydown', press);
   assert.equal(VL.SOUND.muted, true);
-  assert.equal(storage.data[MUTE_KEY], '1');
+  assert.equal(storage.map.get(MUTE_KEY), '1');
   assert.equal(press.prevented, true);
   const before = played(log);
   assert.equal(VL.sfx('swing'), false, 'muted effects do not play');
@@ -388,7 +374,7 @@ test('N toggles mute, persisted under vanishing-library-muted', () => {
   log.context.currentTime += 1;
   win.dispatch('keydown', keyEvent('KeyN'));
   assert.equal(VL.SOUND.muted, false);
-  assert.equal(storage.data[MUTE_KEY], '0');
+  assert.equal(storage.map.get(MUTE_KEY), '0');
   assert.ok(played(log) > before, 'unmuting plays a confirmation');
 });
 

@@ -314,15 +314,25 @@
   });
 
   // In the HUD's gap between the shell count and the hand slots; the note
-  // covers that gap too, so it never hides the play field.
+  // covers that gap too, so it never hides the play field. A scene whose top
+  // strip holds text (the title) gives `soundIndicator: { x, y }` instead,
+  // and the note then sits to the icon's left.
   const ICON = { x: 184, y: 4 };
 
   VL.SOUND.drawIndicator = function drawIndicator(ctx, app, t) {
-    if (VL.SOUND.muted) VL.ART.drawSprite(ctx, 'icon-sound-off', ICON.x, ICON.y);
+    const spot = app.scene?.soundIndicator || ICON;
+    if (VL.SOUND.muted) VL.ART.drawSprite(ctx, 'icon-sound-off', spot.x, spot.y);
     if (!note) return;
     if (note.from === null) note.from = t;
     if (t - note.from > NOTE_SECONDS) {
       note = null;
+      return;
+    }
+    if (spot !== ICON) {
+      const w = VL.ART.measureText(note.text, 'normal');
+      const x = spot.x - 4 - w;
+      VL.ART.rect(ctx, 'hud', x - 3, spot.y - 2, w + 6, VL.ART.lineHeight('normal') + 3);
+      VL.ART.text(ctx, note.text, x, spot.y, { color: 'text' });
       return;
     }
     const layout = VL.ART.HUD_LAYOUT;

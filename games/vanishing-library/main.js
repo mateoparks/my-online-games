@@ -3,7 +3,8 @@ VL.boot = function boot(doc, win) {
   const canvas = doc.getElementById('game');
   const screen = VL.createScreen(canvas, doc);
   const input = VL.createKeyboardInput(win, doc);
-  const app = VL.createApp();
+  // The storage getter itself throws when a browser blocks site data.
+  const app = VL.createApp({ storage: VL.createStorage(() => win.localStorage) });
   const gutter = 16;
 
   function fit() {

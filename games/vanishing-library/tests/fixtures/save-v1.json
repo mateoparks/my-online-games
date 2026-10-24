@@ -1,0 +1,10 @@
+{
+  "v": 1,
+  "name": "Robin",
+  "rngState": 123456789,
+  "maxHp": 8,
+  "flags": { "chest_hut": true },
+  "visited": { "overworld:1,1": true, "hut:0,0": true },
+  "savePoint": { "area": "hut", "screen": "0,0", "tx": 3, "ty": 2, "facing": "down" },
+  "finished": false
+}

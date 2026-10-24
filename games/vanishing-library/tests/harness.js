@@ -242,6 +242,17 @@ function addFixtureWorld(VL) {
   });
 }
 
+// A localStorage look-alike that keeps strings in memory (`map` for inspection).
+function memoryStorage(initial = {}) {
+  const map = new Map(Object.entries(initial));
+  return {
+    map,
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => map.set(key, String(value)),
+    removeItem: (key) => map.delete(key),
+  };
+}
+
 function playState(VL, place) {
   const state = VL.createGame();
   VL.place(state, place);
@@ -284,5 +295,5 @@ const keyEvent = (code, extra = {}) => ({
 module.exports = {
   test, testCount, read, directory,
   fakeContext, fakeCanvas, fakeDocument, fakeWindow,
-  loadGame, addFixtureWorld, playState, playApp, hold, holdUntil, heroTile, keyEvent,
+  loadGame, addFixtureWorld, memoryStorage, playState, playApp, hold, holdUntil, heroTile, keyEvent,
 };

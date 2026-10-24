@@ -75,8 +75,8 @@ function createDrive(VL, initialApp, reload) {
     get state() {
       return app.game;
     },
-    // A player reloading the page: the hook saves, builds a fresh app and
-    // loads the save. W2 owns saving, so it supplies the hook (pass `reload`
+    // A player reloading the page: the hook builds a fresh app and loads the
+    // save (without saving first, so a forgotten VL.earned shows). W2 owns saving, so it supplies the hook (pass `reload`
     // to createPlaythrough, or define VL.reloadApp once saves exist).
     reload() {
       const hook = reload || VL.reloadApp;

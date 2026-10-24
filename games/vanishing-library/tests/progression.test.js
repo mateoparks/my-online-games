@@ -122,7 +122,7 @@ test('every lock cites a section of the design doc and every planned lock names 
 
 test('milestones are locks in story order, from the start to the ending', () => {
   const { VL } = loadGame();
-  assert.equal(VL.MILESTONES[0], 'start');
+  assert.deepEqual([...VL.MILESTONES.slice(0, 2)], ['named', 'start']);
   assert.equal(VL.MILESTONES.at(-1), 'ending');
   assert.equal(new Set(VL.MILESTONES).size, VL.MILESTONES.length);
   for (const id of VL.MILESTONES) assert.ok(VL.LOCKS[id], `milestone ${id} is a lock`);
@@ -136,7 +136,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 97);
+  assert.equal(Object.keys(VL.LOCKS).length, 98);
 });
 
 test('implemented place locks name screens that exist', () => {
@@ -153,9 +153,9 @@ test('implemented place locks name screens that exist', () => {
 test('VL.progress lists the locks a live game has reached', () => {
   const { VL } = loadGame();
   const state = VL.newGame();
-  assert.deepEqual([...VL.progress(state)], ['start', 'beach']);
+  assert.deepEqual([...VL.progress(state)], ['named', 'start', 'beach']);
   VL.place(state, { area: 'hut', screen: '0,0', tx: 7, ty: 5 });
-  assert.deepEqual([...VL.progress(state)], ['start', 'hutInside', 'beach']);
+  assert.deepEqual([...VL.progress(state)], ['named', 'start', 'hutInside', 'beach']);
 });
 
 // ---------- the solver on the shipped table ----------
@@ -604,7 +604,7 @@ test('playthrough: steps cover a prefix of the milestones and drive the real gam
   const { VL } = loadGame();
   const play = createPlaythrough(VL);
   const drivable = play.drivable();
-  assert.ok(drivable.length >= 1 && drivable[0] === 'start', 'steps start at the start');
+  assert.ok(drivable.length >= 2 && drivable[0] === 'named' && drivable[1] === 'start', 'steps start at the title');
   const gap = VL.MILESTONES[drivable.length];
   if (gap) assert.equal(VL.LOCKS[gap].reached, undefined, `implemented milestone ${gap} has no playthrough steps`);
   const drive = play.playTo(drivable.at(-1));
@@ -640,7 +640,10 @@ test('drive.until reports where the hero is stuck', () => {
 test('drive.reload swaps in the app a reload hook returns, and says what is missing without one', () => {
   const { VL } = loadGame();
   const { drive } = createPlaythrough(VL);
+  const shipped = VL.reloadApp;
+  delete VL.reloadApp;
   assert.throws(() => drive.reload(), /drive\.reload needs a reload hook \(W2\)/);
+  VL.reloadApp = shipped;
   const { playApp } = require('./harness');
   let reloads = 0;
   const reloaded = createPlaythrough(VL, {

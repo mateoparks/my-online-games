@@ -99,6 +99,7 @@ VL.addScreens('hut', {
     ],
     entities: [
       { type: 'door', x: 7, y: 9, to: { area: 'overworld', screen: '1,1', tx: 8, ty: 4, facing: 'down' } },
+      { type: 'savePoint', x: 2, y: 2 },
     ],
   },
 });
