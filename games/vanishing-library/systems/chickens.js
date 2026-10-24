@@ -501,7 +501,10 @@
     const plan = VL.planFlight(state);
     const start = heroGlobal(state);
     const [sx, sy] = screenXY(player.screen);
-    const n = plan.land || plan.reach;
+    let n = plan.land || plan.reach;
+    // A dip on the top row would hide the hero and the tired chicken under
+    // the HUD; dip a row in (still over the gap) when there is one.
+    if (!plan.land && plan.over && plan.dy < 0) n = Math.min(n, Math.max(1, plan.ty - 1));
     const target = VL.tileCenter(plan.tx + plan.dx * n, plan.ty + plan.dy * n);
     const to = { x: sx * T.width + target.x, y: sy * playHeight() + target.y };
     const dist = Math.hypot(to.x - start.x, to.y - start.y);
@@ -549,6 +552,8 @@
     }
   }
 
+  const CARRY_TOP = 17;
+
   function liftFor(flight) {
     const L = T.chickenFlightLift;
     const ramp = 0.18;
@@ -580,6 +585,9 @@
       moveHero(state, flight.from.x + (flight.to.x - flight.from.x) * k, flight.from.y + (flight.to.y - flight.from.y) * k);
     }
     player.lift = Math.max(0, liftFor(flight));
+    // Near the top edge a flight that dips stays low enough for the chicken
+    // overhead to show below the HUD (it is drawn CARRY_TOP px above the feet).
+    if (flight.plan.over) player.lift = Math.min(player.lift, Math.max(0, player.y - CARRY_TOP));
     if (state.transition) return;
     if (flight.t >= flight.dur) nextPhase(state, flight);
   }

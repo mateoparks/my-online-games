@@ -402,4 +402,64 @@ test('the Hollow Oak spitters are on different rows, so no tile is in both lines
   assert.notEqual(rows[0], rows[1]);
 });
 
+// ---------- 8. a flight's dip at a top-edge chasm stays in view ----------
+
+// Feet to the top of a carried chicken (art/hero.js and VL.drawChicken).
+// The chasm runs to the top edge: rows 0 and 1, or row 0 only when the hero
+// stands on row 1.
+const CARRY_TOP = 17;
+
+function topChasm(VL, heroRow) {
+  VL.addScreens('topChasm', {
+    '0,0': {
+      tiles: [
+        'TTTTTVVVTTTTTTTT',
+        heroRow === 2 ? 'T....VVV.......T' : 'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'TTTTTTTTTTTTTTTT',
+      ],
+      entities: [{ type: 'chicken', spot: 'w24TopHen', x: 6, y: heroRow + 1 }],
+    },
+  });
+  const state = playState(VL, { area: 'topChasm', screen: '0,0', tx: 6, ty: heroRow, facing: 'up' });
+  state.popups.seen.controls = true;
+  return state;
+}
+
+function flyAndWatch(VL, state) {
+  assert.equal(VL.startFlight(state), true);
+  let lowest = Infinity;
+  for (let t = 0; t < 5 && state.player.flight; t += STEP) {
+    VL.updateWorld(state, VL.noActions(), STEP);
+    if (state.player.flight) lowest = Math.min(lowest, state.player.y - state.player.lift);
+  }
+  assert.equal(state.player.flight, null, 'the flight ended');
+  return lowest;
+}
+
+test('a dip at a chasm on the top edge happens a row in, with the chicken overhead in view', () => {
+  const { VL } = loadGame();
+  const state = topChasm(VL, 2);
+  const plan = VL.planFlight(state);
+  assert.equal(plan.over, 'chasm');
+  assert.equal(plan.reach, 2, 'the chasm runs to the top edge');
+  const lowest = flyAndWatch(VL, state);
+  assert.ok(lowest >= CARRY_TOP, `the chicken's top stays below the HUD (${lowest})`);
+  assert.deepEqual([VL.heroTile(state).tx, VL.heroTile(state).ty], [6, 2], 'back where he took off');
+});
+
+test('from the row under the top-edge chasm the dip keeps the hero in view', () => {
+  const { VL } = loadGame();
+  const state = topChasm(VL, 1);
+  const lowest = flyAndWatch(VL, state);
+  assert.ok(lowest >= 10, `the hero's head stays below the HUD (${lowest})`);
+});
+
 module.exports = { titleApp, press, type, STEP };

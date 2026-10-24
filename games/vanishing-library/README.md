@@ -884,7 +884,9 @@ spots. Tests: `tests/chickens.test.js`.
   stop it. It lands on the farthest open tile before that, with the chicken
   still in hand; when there is none it goes out as far as it can, splashes
   down (water) or tires (chasm), and flaps the hero back to exactly where he
-  took off, so a flight never strands him. Facing a wall it is a hop in
+  took off, so a flight never strands him. Going up, that dip stops a row
+  short of the top edge when it can, and it flies low there, so the HUD never
+  hides the hero and the tired chicken. Facing a wall it is a hop in
   place. `VL.planFlight(state)` is the rule. The flight is `player.flight`;
   movement and the hands stand still while it is set, `player.lift` raises
   the hero, and crossing a screen edge mid-air starts the slide and the
