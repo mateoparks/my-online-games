@@ -260,7 +260,12 @@ Over the world, give text `shadow: 'outline'`. `VL.ART.measureText`,
 `VL.ART.wrapText(str, width, size)` and `VL.ART.missingGlyphs(str, size)` help
 with layout; a content test should check its strings with `missingGlyphs`
 (characters the font lacks are drawn as `?`). The font has letters, digits,
-`.,!?'":;-+=()/&%*<>`, arrows `←→↑↓`, `♥` (not small), and `␣` (the space bar).
+`.,!?'":;-+=()/&%*<>`, arrows `←→↑↓`, `♥` (not small), `␣` (the space bar),
+and accented letters for names: `á à â ä ã é è ê ë í ì î ï ó ò ô ö õ ú ù û ü
+ñ ç`, their capitals, and `¡ ¿`. A glyph may be `{ rows, rise }`: its first
+`rise` rows sit above the cell, so an accent on a capital uses the line gap
+above (lower case rises 1px, capitals 3px). Name entry takes any character the
+font has, so a new glyph is typeable at once.
 
 **HUD and popups.** `VL.ART.drawHud` draws hearts (from `hp`/`maxHp`), the
 whole-shell count and the main-hand (Space) and off-hand (D) slots. The file
@@ -461,7 +466,12 @@ events: title → Enter on an empty slot → "Robin" typed → Enter → the int
 S → play, with the slot saved; Esc, Save & Quit back to the title; a reload
 that still lists Robin, a muted title (N, then N again) and a continue at full
 hearts (screenshots `title.png`, `name.png`, `intro.png`, `pause.png`,
-`title-saved.png`, `title-muted.png`). It runs for 60 s at most. A test file
+`title-saved.png`, `title-muted.png`). Then W9's people, with real keys:
+"Zoë" typed into name entry (with `ë`), S next to Nell and Gran (as
+"Élodie"), a long line over two pages, and the shop's "not enough" and Yes/No
+(`w9-name-entry.png`, `w9-conversation.png`, `w9-name-accent.png`,
+`w9-paged-1.png`, `w9-paged-2.png`, `w9-shop.png`, `w9-shop-ask.png`). It runs
+for 60 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
 ## Overworld map
@@ -561,6 +571,86 @@ start only where a chicken can be carried from its spot, and checks that
 with any set of keys every tile you reach leads back to the hut (R1). Moving
 a find or opening a gap in the map fails there. The browser smoke saves every screen as
 `map-<region>-<x>_<y>.png`.
+
+## NPCs and dialogue
+
+`talk.js` (core) holds people and their words, `entities/npc.js` the entity,
+looks and wandering, `scenes/dialogue.js` the conversation, and
+`regions/townsfolk.js` the placeholder townsfolk (placed in `town.js`).
+
+- **Placing:** `{ type: 'npc', id: 'nell', x, y, wander? }` in a screen's
+  entities. `VL.defineNpc('nell', { name, look, talk = id, wander = 0 })` says
+  who it is; `wander` is how many tiles from where it stands it may stroll (0
+  stands still). An entity's own `wander` or `talk` overrides the definition.
+- **Looks:** `VL.defineNpcLook('librarian', { head: 'short' | 'hat' | 'bun',
+  colors: { hair, hairLight, top, topDark, topLight, legs, hat, hatLight } })`
+  makes the 12×14 sprites `npc-<look>-<facing>-<0|1|2>` like the hero's. Built
+  in: `elder`, `fisher`, `gardener`, `townsfolk`.
+- **Wandering:** one step at a time, off the screen's edge rows, never onto a
+  wall, another entity or the hero, and never while the hero is close (so a kid
+  can walk up and talk). Each visit's copy has its own seeded random numbers:
+  wandering never shifts `state.rngState`. NPCs are `solid` (W5's entity
+  collision). `tests/npcs-dialogue.test.js` checks that no placed NPC can
+  wander onto a tile that cuts its screen in two (R1); place new ones in open
+  ground.
+- **Talking:** S facing an NPC calls its `onInteract`, which turns it to the
+  hero and opens the `dialogue` scene. World code has no app, so it asks for a
+  scene with `VL.requestScene(state, id, data)` (transient), opened after the
+  step if play is still the scene.
+- **Dialogue as data:** `VL.defineDialogue('nell', [{ when, say, set, shop }])`.
+  The first entry whose `when` holds is spoken; keep a last entry with no
+  `when` (the content test fails without one, or with an entry after it).
+  Conditions, all of which must hold: `flag`, `notFlag` (flag ids in
+  `state.flags`), `progress`, `notProgress` (lock ids from `VL.LOCKS`, reached
+  now), `item`, `notItem` (`VL.hasItem`), `has: { shells: 10 }` (at least),
+  `test: (state) => …`. A value may be one id or a list (all of them). A
+  misspelt condition throws at load; an unknown lock or shop, and words the
+  font can't draw, are listed by `VL.dialogueProblems()`, which the test keeps
+  empty.
+- **Words:** `say` is a string or a list; each string starts a new page and a
+  long one runs on over as many 4-line pages as it needs. `{name}` is the
+  hero's name (`VL.fillName`). The text types out (`talkCharsPerSecond`); S,
+  Space or Enter finishes the page, the next press turns it, Esc ends the talk.
+- **Remembering:** `set: 'met:gran'` sets flags (earned, so saved) as the talk
+  starts; a first-meeting line is `when: { notFlag: 'met:gran' }, set:
+  'met:gran'`. Talking adds no saved field of its own.
+- **A shop after talking:** `shop: 'store'` opens that shop when the last page
+  closes.
+
+## Shops
+
+`shop.js` (core) holds the rules and `scenes/shop.js` the on-canvas counter:
+a list of offers with their prices, a cursor (up/down, wrapping onto Leave),
+S/Space/Enter to pick, a Yes/No question, and "Not enough shells!" (the price
+flashes) when the purse is short. Esc backs out of the question, then leaves.
+
+```js
+VL.defineShop('store', {
+  title: 'General Store',
+  greeting: 'Have a look around, {name}.',
+  offers: [
+    { id: 'paper', name: 'Paper', icon: 'item-paper', cost: { shells: 2 }, gain: { paper: 1 }, about: 'For maps.' },
+    { id: 'woodSword', name: 'Wood Sword', cost: { wood: 3 }, give: (state) => VL.giveItem(state, 'woodSword'),
+      soldOut: (state) => VL.hasItem(state, 'woodSword') },
+    { id: 'sellBerry', name: 'Sell a berry', cost: { berries: 1 }, gain: { shells: 1 }, hidden: (state) => false },
+  ],
+});
+VL.openShop(state, 'store');   // from an entity; or `shop: 'store'` on a dialogue entry
+```
+
+- `cost` and `gain` are resources (`state.inventory`, spent and added with
+  `VL.addResource`); `give(state)` hands over anything else. A buy pays every
+  cost or none, then earns (saves) and pushes `{ type: 'bought', offer }`.
+- An offer that gains shells is a **trade** ("Trade 5 wood for 1 shell?", the
+  price column shows `5 wood → 1` and the shell icon); anything else is bought. `verb`
+  overrides. `soldOut(state)` greys it out, `hidden(state)` leaves it off,
+  `thanks` replaces "Thank you!".
+- Resource names in the UI come from `VL.defineCurrency(kind, { one, many, icon })`
+  (shells, wood, ore, berries, broken shells, paper and ink are defined); an
+  `icon` sprite is drawn after the number. A shop naming a resource the
+  inventory doesn't have throws at load.
+- Rules for tests: `VL.shortfall`, `VL.buyOffer` (`{ ok }` or `{ ok: false,
+  reason: 'soldOut' | 'notEnough', kind }`), `VL.priceText`, `VL.shopOffers`.
 
 ## Progression: locks, keys, the solver and the playthrough
 

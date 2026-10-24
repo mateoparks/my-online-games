@@ -379,7 +379,7 @@ test('the world waits while the NPC talks, and the dialogue box keeps one size',
 test('a dialogue entry with `shop` opens that shop when the talk ends', () => {
   const { VL } = loadGame();
   talkWorld(VL);
-  VL.defineShop('stall', { title: 'Stall', offers: [{ id: 'paper', name: 'Paper', cost: { shells: 2 }, gain: { paper: 1 } }] });
+  VL.defineShop('stall', { title: 'Stall', offers: [{ id: 'paper', name: 'Paper', cost: { shells: 2 }, gain: { ore: 1 } }] });
   defineTester(VL, [{ say: 'Take a look!', shop: 'stall' }]);
   const app = talkApp(VL);
   press(VL, app, 'interact');
@@ -471,11 +471,11 @@ function shopWorld(VL) {
     title: 'Test Shop',
     greeting: 'Welcome, {name}!',
     offers: [
-      { id: 'paper', name: 'Paper', cost: { shells: 2 }, gain: { paper: 1 }, about: 'For maps and copies.' },
+      { id: 'paper', name: 'Paper', cost: { shells: 2 }, gain: { ore: 1 }, about: 'For maps and copies.' },
       { id: 'sword', name: 'Wood Sword', cost: { wood: 3 }, give: (state) => { state.flags.gotSword = true; }, soldOut: (state) => Boolean(state.flags.gotSword) },
       { id: 'hidden', name: 'Secret', cost: { shells: 1 }, gain: { berries: 1 }, hidden: (state) => !state.flags.secret },
       { id: 'trade', name: 'Shell', cost: { wood: 5 }, gain: { shells: 1 } },
-      { id: 'combo', name: 'Fancy', cost: { shells: 3, wood: 1 }, gain: { paper: 2 } },
+      { id: 'combo', name: 'Fancy', cost: { shells: 3, wood: 1 }, gain: { ore: 2 } },
     ],
   });
 }
@@ -484,7 +484,7 @@ test('shop rules: prices, what is short, sold out, and a buy pays every cost or 
   const { VL } = loadGame();
   shopWorld(VL);
   const state = VL.newGame();
-  withPurse(VL, state, { shells: 4, wood: 0, paper: 0, berries: 0 });
+  withPurse(VL, state, { shells: 4, wood: 0, ore: 0, berries: 0 });
   const shop = VL.SHOPS.testShop;
   const offer = (id) => shop.offers.find((o) => o.id === id);
   assert.deepEqual(VL.shopOffers(state, shop).map((o) => o.id), ['paper', 'sword', 'trade', 'combo']);
@@ -504,7 +504,7 @@ test('shop rules: prices, what is short, sold out, and a buy pays every cost or 
 
   state.dirty = false;
   assert.equal(VL.buyOffer(state, offer('paper')).ok, true);
-  assert.deepEqual([state.inventory.shells, state.inventory.paper], [2, 1]);
+  assert.deepEqual([state.inventory.shells, state.inventory.ore], [2, 1]);
   assert.equal(state.dirty, true, 'a buy is earned, so it saves');
   assert.ok(state.events.some((e) => e.type === 'bought' && e.offer === 'paper'));
 
@@ -525,10 +525,10 @@ test('shop definitions are checked: costs, duplicate ids, and a shop with no off
   assert.throws(make('b', [{ id: 'x', name: 'X', cost: {} }]), /cost/);
   assert.throws(make('c', [{ id: 'x', name: 'X', cost: { shells: 0 } }]), /cost/);
   assert.throws(make('d', [{ id: 'x', name: 'X', cost: { shells: 1.5 } }]), /cost/);
-  assert.throws(make('e', [{ id: 'x', name: 'X', cost: { shells: 1 }, gain: { paper: 1 } }, { id: 'x', name: 'Y', cost: { shells: 1 }, gain: { paper: 1 } }]), /twice/);
+  assert.throws(make('e', [{ id: 'x', name: 'X', cost: { shells: 1 }, gain: { ore: 1 } }, { id: 'x', name: 'Y', cost: { shells: 1 }, gain: { ore: 1 } }]), /twice/);
   assert.throws(make('f', [{ id: 'x', name: 'X', cost: { shells: 1 } }]), /gives nothing/);
-  make('g', [{ id: 'x', name: 'X', cost: { shells: 1 }, gain: { paper: 1 } }])();
-  assert.throws(make('g', [{ id: 'x', name: 'X', cost: { shells: 1 }, gain: { paper: 1 } }]), /already defined/);
+  make('g', [{ id: 'x', name: 'X', cost: { shells: 1 }, gain: { ore: 1 } }])();
+  assert.throws(make('g', [{ id: 'x', name: 'X', cost: { shells: 1 }, gain: { ore: 1 } }]), /already defined/);
 });
 
 function shopApp(VL, amounts) {
@@ -571,7 +571,7 @@ test('shop scene: not enough says so and buys nothing; enough asks, and Yes buys
     sounds.push(name);
     return true;
   };
-  const app = shopApp(VL, { shells: 1, wood: 0, paper: 0 });
+  const app = shopApp(VL, { shells: 1, wood: 0, ore: 0 });
   const view = app.shopView;
   press(VL, app, 'interact');
   assert.equal(view.mode, 'browse');
@@ -589,7 +589,7 @@ test('shop scene: not enough says so and buys nothing; enough asks, and Yes buys
   assert.equal(app.game.inventory.shells, 5);
   press(VL, app, 'interact');
   press(VL, app, 'interact');
-  assert.deepEqual([app.game.inventory.shells, app.game.inventory.paper], [3, 1]);
+  assert.deepEqual([app.game.inventory.shells, app.game.inventory.ore], [3, 1]);
   assert.equal(view.note.bad, false);
   assert.ok(sounds.includes('shell'));
 });
@@ -616,7 +616,7 @@ test('shop scene: a trade asks as a trade, sold out says so, and Esc backs out t
 
 test('shop scene draws the offers, their prices, the purse and the note', () => {
   const { VL } = loadGame();
-  const app = shopApp(VL, { shells: 1, wood: 2, paper: 0 });
+  const app = shopApp(VL, { shells: 1, wood: 2, ore: 0 });
   press(VL, app, 'interact');
   const strings = [];
   const original = VL.ART.text;

@@ -32,6 +32,10 @@
       if (!amounts(offer.cost)) throw new Error(`shop ${id}: offer ${offer.id} needs a cost of whole amounts above 0`);
       if (offer.gain !== undefined && !amounts(offer.gain)) throw new Error(`shop ${id}: offer ${offer.id} has a bad gain`);
       if (!offer.gain && !offer.give) throw new Error(`shop ${id}: offer ${offer.id} gives nothing`);
+      // Shops are defined after the inventory's resource list, so a misspelt kind fails at load.
+      for (const kind of [...Object.keys(offer.cost), ...Object.keys(offer.gain || {})]) {
+        if (VL.RESOURCE_KINDS && !VL.RESOURCE_KINDS.includes(kind)) throw new Error(`shop ${id}: offer ${offer.id} uses unknown resource ${kind}`);
+      }
     }
     VL.SHOPS[id] = { id, ...shop };
   };
