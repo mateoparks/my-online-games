@@ -346,6 +346,7 @@
         spot('hiddenBookSealed', 1, 3, 'trunk', 'W11'),
         spot('chickenSquare', 10, 8, 'chicken', 'W7', 'chickens'),
         { type: 'npc', id: 'gran', x: 5, y: 8 },
+        { type: 'npc', id: 'librarianWife', x: 6, y: 3 },
       ],
     },
     // The blacksmith by the river; the east road leaves past the bridge.
@@ -390,6 +391,7 @@
         spot('bookChickenAlmanac', 3, 3, 'trunk', 'W11'),
         spot('bookDragons', 14, 1, 'trunk', 'W11'),
         { type: 'npc', id: 'nell', x: 11, y: 6 },
+        { type: 'npc', id: 'chickenKid', x: 13, y: 3 },
       ],
     },
     // The river meets the sea.

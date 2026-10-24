@@ -34,7 +34,8 @@ below exist to keep their diffs in different files:
   other**: use only earlier sections (`core`, `art`) at load time, and talk to
   other files in your section through the registries at run time. The one
   exception is `art.js`, which stays first in `art` and which every other art
-  file may use. The test
+  file may use. One more: `regions/library.js` stays after `regions/finds.js`,
+  whose book locks it claims (it throws on load otherwise). The test
   checks that every listed file exists, nothing is listed twice and `main.js`
   is last. To remove a file, delete it as well as its manifest line: a union
   merge keeps both sides of overlapping edits, so a line another branch
@@ -963,6 +964,10 @@ VL.openShop(state, 'store');   // from an entity; or `shop: 'store'` on a dialog
   overrides. `soldOut(state)` greys it out, `hidden(state)` leaves it off,
   `refuse(state)` returns why not right now ("Bring me pages first!", shown in
   place of a price check) or null, `thanks` replaces "Thank you!".
+- `VL.RESOURCE_CAPS[kind] = { most(state), full }` gives a resource a ceiling
+  (the shell purse): an offer whose gain would overflow it is refused with
+  `full` before anything is paid. `VL.offerRefusal(state, offer)` is that check
+  plus the offer's own `refuse`; the scene and `VL.buyOffer` both use it.
 - Resource names in the UI come from `VL.defineCurrency(kind, { one, many, icon })`
   (shells, wood, ore, berries, broken shells, paper and ink are defined); an
   `icon` sprite is drawn after the number. A shop naming a resource the
@@ -1023,6 +1028,96 @@ shops. Fixture: `tests/fixtures/save-v1-W10.json`.
   gear locks (owned now). All keep the planned rules. `paper`, like W5's
   `berries`, marks the source, not the stock: it stays reached when the paper
   is spent or the shockwave takes it, while lost gear reads as lost.
+
+## Library
+
+`systems/library.js` holds the rules (books, returning, readings, rewards,
+the thief, the purse), `regions/library.js` the words and people (every
+book's title and reading, the librarian, his wife, Pip the lost-chicken kid,
+the hints), the library's inside and the progression claims,
+`entities/library-finds.js` what goes on the map (trunks, books in bushes,
+pages, the stage, the trapdoor, the shelves), and `scenes/reading.js` and
+`scenes/puppet-show.js` the two scenes. Tests: `tests/library.test.js`.
+Fixture: `tests/fixtures/save-v1-W11.json`.
+
+- **Saved:** `state.library` is `{ returned, read, gone, trips, lastTripAt,
+  stolen: { trips, bosses }, noticed }`: books returned ever (in order), the
+  ones the librarian has read, the ones the thief took back since, and the
+  thief's bookkeeping. Rewards are flags `reward:<id>`; the purse, the boots
+  and the Scriptorium key are items. A book found is `found:<id>`
+  (`VL.markFound`), like any find.
+- **Books:** `VL.defineBook(id, { kind: 'generic' | 'titled' | 'sealed',
+  title, color, blurb | reading, icon, read(state) })`. Ten untitled books
+  (a funny line each when handed in), six titled ones and the sealed
+  Scriptorium Register (17 on the map). A later item that hands out books
+  (the Bookworm's bundle, W14; the hoard, W19) defines its own with
+  `VL.defineBook` and calls `VL.findBook(state, id)` (found, a message, the
+  first-book popup, earned). W10's buried book and W14's rock books only call
+  `VL.markFound` with the spot id; the book is already defined here.
+- **Finding:** a `bookTrunk` (solid; S opens it once) or a `bushBook` (a
+  corner of red peeks out of the leaves; cut or pull the bush, then walk onto
+  the book). `VL.booksCarried(state)` lists books found and not yet returned.
+- **Returning:** S at the librarian's desk (a counter, W10's `counters`
+  system) with books carried hands them all in (`VL.returnBooks`): the count
+  (`VL.booksReturned`, the slot card's book number) only ever goes up. Then the
+  `librarian` system plays the visit's beats one scene at a time while the
+  hero is in the library: his words about the untitled books, a `reading`
+  scene for each titled one not yet read (`VL.nextReading`), then any reward
+  due (`VL.pendingReward`). Every beat is state, so a reload part way through
+  picks up at the next talk ("Now, where were we?").
+- **Readings and effects:** a reading ends (by its last page or Esc) with
+  `VL.finishReading(state, id)`: read for good, then the book's effect. The
+  Tide Tables raise `VL.digChance` to 60% (W10 reads the lock); the Smith's
+  Ledger swaps in the smith's cheaper metal offers and marks the Woods ore;
+  the Herbalist's Notes mark the three berry bushes: both through
+  `VL.mapMarks(state)` (`{ kind: 'berries' | 'ore', area, screen, tx, ty }`)
+  for W12's drawn map. The Primer lets W12 draw the map while
+  `VL.primerOnShelf(state)`. A Child's Book of Dragons points at the Mirror
+  Shield. The Chicken Keeper's Almanac sets `flags.chickenAlmanacRead` (W7's
+  long flight) and its popup tells about F. The sealed book gives the
+  Scriptorium key (`VL.hasItem(state, 'scriptoriumKey')`, for W14's door).
+- **Rewards:** `TUNING.libraryRewards` (5 the Big Shell Purse, 10 a heart
+  container, 15 the Swiftfoot Boots), books returned ever. The purse raises
+  `TUNING.shellCap` (99 whole shells) to `shellCapPurse` (999); the
+  `shellPurse` system trims anything over (a drop, a dig) and says who might
+  help; a shop trade at the cap is refused instead ("Your purse is full!",
+  `VL.RESOURCE_CAPS.shells`), so no wood or berry is lost. The boots
+  carry `speed: TUNING.swiftfootSpeed` on their item and `VL.heroSpeed(state)`
+  (`systems/movement.js`) uses the fastest worn item. Worn items never fill a hand.
+- **The thief:** `VL.applyThefts(state)` runs as the hero walks into the
+  library (the shelves' `prepare`). Each return trip since the last visit
+  costs `libraryTheftPerTrip` books and each dungeon boss beaten
+  (`d1Boss`..`d4Boss`) `libraryTheftPerBoss`, oldest first, never the latest
+  trip's books, never a book the librarian has yet to read, and never the
+  Primer before `d3Boss`; after it the Primer goes first and `primerTaken`
+  is reached. Story events only: coming back after a week changes nothing.
+  Every book has its own place on the shelves (`VL.shelfPlace`), and a taken
+  one leaves a dusty gap; the librarian notices once ("I was sure I put a
+  book right here").
+- **Hints:** `VL.nextMilestone(state)` is the first story beat not reached,
+  and `VL.LIBRARY_HINTS[beat]` the librarian's nudge (variants with `when`:
+  the Almanac at the highlands, the dragon book before the shield). A test
+  keeps a hint for every milestone, so a new beat needs its hint.
+- **His wife, Mrs. Fenwick** (at the puppet stage in the square):
+  `VL.wifeStage(state)` counts how many of `TUNING.wifeStages` (3, 7, 12
+  books) are passed. Her greetings get shorter; from stage 2 her second talk
+  in a visit (`room.wifeTalked`) is `VL.WIFE_MISDIRECTION[beat]` when there
+  is one: plausible, wrong, and contradicted by her husband. S facing a stage
+  tile plays `VL.PUPPET_SHOWS[stage]` in the `puppetShow` scene: beats of
+  words and puppets (`cast`: where each stands, 0..1 across the stage;
+  `move`: hop, shake, run, fly). The meddling young hero, Nosy Ned, appears
+  from stage 2. The trapdoor in front of the stage (`trapdoor` entity, tile
+  `Z`) only answers S with a message until W20 opens it.
+- **The lost chicken:** Pip in the harbour asks about Henrietta (W7's lost
+  chicken on the cliffs). Talking to Pip while she is with the hero (carried
+  or following) takes her home for good (`VL.takeChicken`, `found:lostChicken`)
+  and gives a page (`VL.findPage`, `found:pageLostChicken`, which the bindery
+  counts). The field pages `pageFieldA`/`pageFieldB` are `page` pickups.
+- **Locks claimed:** `library`, `puppetStage` (places), every book (untitled
+  and sealed: returned; titled: read), `scriptoriumKey`, `shellPurse`,
+  `heartLibrary`, `swiftfootBoots`, `lostChicken`, `pageLostChicken`,
+  `primerTaken`. All keep the planned rules.
+- **Sounds:** `booksReturned` and a finished reading play `libraryChime`.
 
 ## Dungeons (W13)
 

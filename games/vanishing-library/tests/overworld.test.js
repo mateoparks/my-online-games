@@ -347,7 +347,7 @@ test('the design\'s placements: books, pages, hearts, ore, entrances and town do
     'library', 'shop', 'paperMill', 'bindery', 'blacksmith', 'puppetStage', 'trapdoorOpen', 'chickens', 'lostChicken',
   ]) assert.ok(locks.has(id), `${id} has a spot`);
   // Pages, hearts and the Woods ore are W8's claims, reached once picked up
-  // at their spot. A book only counts once returned: its lock stays W11's.
+  // at their spot. A book only counts once returned (W11), a titled one once read.
   const state = VL.newGame();
   for (const id of ['pageFieldA', 'pageFieldB', 'heartFieldA', 'heartFieldB', 'oreWoods']) {
     assert.equal(VL.LOCKS[id].reached(state), false, id);
@@ -355,8 +355,13 @@ test('the design\'s placements: books, pages, hearts, ore, entrances and town do
     assert.equal(VL.LOCKS[id].reached(state), true, id);
   }
   for (const lock of [...generic, ...['hiddenBookSealed', 'bookChickenAlmanac', 'bookPrimer'].map((id) => VL.LOCKS[id])]) {
-    assert.equal(lock.reached, undefined, `${lock.id} is not claimed`);
-    assert.equal(lock.by, 'W11', `${lock.id} is planned for W11`);
+    assert.equal(lock.by, 'W11', `${lock.id} is W11's`);
+    const game = VL.newGame();
+    VL.markFound(game, lock.id);
+    assert.equal(lock.reached(game), false, `${lock.id} found is not yet returned`);
+    VL.returnBooks(game);
+    VL.finishReading(game, lock.id);
+    assert.equal(lock.reached(game), true, `${lock.id} returned`);
   }
 });
 
@@ -495,6 +500,8 @@ test('render smoke: every overworld screen draws on a fake canvas, every tile st
 test('the hero walks with real input from the hut to every region open today', () => {
   const { VL } = loadGame();
   const { drive } = createPlaythrough(VL);
+  // A page on the way opens its popup (W11); this walk is about the paths.
+  for (const id of ['pageFieldA', 'pageFieldB']) VL.markFound(drive.state, id);
   const stops = [
     { screen: '2,0', tx: 3, ty: 4 }, // the trapdoor's edge, town square
     { screen: '2,-3', tx: 8, ty: 7 }, // the lake shore

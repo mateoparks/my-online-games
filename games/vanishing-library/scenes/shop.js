@@ -36,7 +36,7 @@
       VL.sfx('nope');
       return;
     }
-    const refusal = offer.refuse?.(game);
+    const refusal = VL.offerRefusal(game, offer);
     if (refusal) {
       say(view, VL.popupText(refusal, game), true);
       VL.sfx('nope');

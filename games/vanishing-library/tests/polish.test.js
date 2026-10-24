@@ -148,6 +148,21 @@ test('corner assist: a hero well off the gap stays square against the wall', () 
   assert.ok(Math.abs(far.player.y - (4 * 16 + 4)) < 1e-6, 'flush against the wall');
 });
 
+test('corner assist with the Swiftfoot Boots: the same gaps, and still no reach past 6 px', () => {
+  for (const off of [-9, -4, 4, 9]) {
+    const { VL } = loadGame();
+    const state = cornerState(VL, 5 * 16 + 8 + off, 4 * 16 + 12);
+    state.items.swiftfootBoots = true;
+    hold(VL, state, ['up'], 1);
+    assert.ok(state.player.y < 3 * 16, `${off} px off: through the gap (y ${state.player.y})`);
+  }
+  const { VL } = loadGame();
+  const far = cornerState(VL, 5 * 16 + 8 + 12, 4 * 16 + 12);
+  far.items.swiftfootBoots = true;
+  hold(VL, far, ['up'], 0.5);
+  assert.equal(far.player.x, 5 * 16 + 20, 'no nudge from 12 px away');
+});
+
 // ---------- 3. menu sounds ----------
 
 function recordSfx(VL) {

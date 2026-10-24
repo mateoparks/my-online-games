@@ -181,11 +181,12 @@ test('saving and reading with blocked storage fails softly', () => {
 
 test('the slot summary reads books through a source the owning item plugs in once', () => {
   const { VL } = loadGame();
-  VL.extendGame('library', () => ({ books: ['a', 'b', 'c'] }));
-  const save = VL.serializeSave(VL.newGame());
-  assert.equal(VL.saveSummary(save).books, 0, 'no source yet');
-  VL.slotSource('books', (s) => s.books.length);
-  assert.equal(VL.saveSummary(save).books, 3);
+  const game = VL.newGame();
+  assert.equal(VL.saveSummary(VL.serializeSave(game)).books, 0);
+  // The library (W11) plugs in the books returned ever.
+  game.library.returned.push('a', 'b', 'c');
+  assert.equal(VL.saveSummary(VL.serializeSave(game)).books, 3);
+  assert.equal(VL.saveSummary({ ...VL.serializeSave(game), library: undefined }).books, 0, 'a save from before the library');
   assert.throws(() => VL.slotSource('books', () => 0), /books/);
   assert.throws(() => VL.slotSource('shells', () => 0), /shells/);
 });
@@ -277,7 +278,7 @@ test('transient keys, hp and wrong-typed objects in a stored save take the fresh
   const { VL } = loadGame();
   addFixtureWorld(VL);
   VL.extendGame('satchel', () => ({ satchel: { wood: 0 } }));
-  VL.extendGame('library', () => ({ books: [] }));
+  VL.extendGame('bookPile', () => ({ books: [] }));
   const backing = memoryStorage();
   const storage = VL.createStorage(backing);
   const base = { v: 1, name: 'X', maxHp: 6, flags: {}, visited: {} };

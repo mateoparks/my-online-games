@@ -42,6 +42,7 @@ VL.FILES = {
     'systems/economy.js',
     'systems/digging.js',
     'systems/dungeon.js',
+    'systems/library.js',
   ],
 
   entities: [
@@ -71,6 +72,7 @@ VL.FILES = {
     'entities/boss-key.js',
     'entities/dungeon-map.js',
     'entities/warp.js',
+    'entities/library-finds.js',
   ],
 
   regions: [
@@ -85,6 +87,7 @@ VL.FILES = {
     'regions/finds.js',
     'regions/townsfolk.js',
     'regions/buildings.js',
+    'regions/library.js',
   ],
 
   dungeons: [
@@ -104,6 +107,8 @@ VL.FILES = {
     'scenes/popup.js',
     'scenes/equipment.js',
     'scenes/dungeon-map.js',
+    'scenes/reading.js',
+    'scenes/puppet-show.js',
   ],
 
   boot: [

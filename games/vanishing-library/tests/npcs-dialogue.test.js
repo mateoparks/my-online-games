@@ -379,18 +379,18 @@ test('gifts are checked: an unknown kind fails at definition, and later items ad
 
 test('later items add conditions and put their lines ahead of an NPC\'s own', () => {
   const { VL } = loadGame();
-  VL.defineCondition('books', (state, least) => (state.testBooks || 0) >= least);
-  assert.throws(() => VL.defineCondition('books', () => true), /already defined/);
-  VL.defineDialogue('librarian', [{ when: { books: 5 }, say: 'Five!' }, { say: 'Welcome.' }]);
-  VL.addDialogue('librarian', [{ when: { flag: 'shockwave' }, say: 'Did you feel that?' }]);
+  VL.defineCondition('testBooks', (state, least) => (state.testBooks || 0) >= least);
+  assert.throws(() => VL.defineCondition('testBooks', () => true), /already defined/);
+  VL.defineDialogue('testKeeper', [{ when: { testBooks: 5 }, say: 'Five!' }, { say: 'Welcome.' }]);
+  VL.addDialogue('testKeeper', [{ when: { flag: 'shockwave' }, say: 'Did you feel that?' }]);
   assert.throws(() => VL.addDialogue('nobody', [{ say: 'x' }]), /no dialogue nobody/);
-  assert.throws(() => VL.addDialogue('librarian', [{ when: { book: 1 }, say: 'x' }]), /unknown condition book/);
+  assert.throws(() => VL.addDialogue('testKeeper', [{ when: { book: 1 }, say: 'x' }]), /unknown condition book/);
   const state = VL.newGame();
-  assert.equal(VL.pickDialogue(state, 'librarian').say, 'Welcome.');
+  assert.equal(VL.pickDialogue(state, 'testKeeper').say, 'Welcome.');
   state.testBooks = 5;
-  assert.equal(VL.pickDialogue(state, 'librarian').say, 'Five!');
+  assert.equal(VL.pickDialogue(state, 'testKeeper').say, 'Five!');
   state.flags.shockwave = true;
-  assert.equal(VL.pickDialogue(state, 'librarian').say, 'Did you feel that?');
+  assert.equal(VL.pickDialogue(state, 'testKeeper').say, 'Did you feel that?');
 });
 
 test('S on an NPC only talks: a bush or berry bush the hero half faces is left alone', () => {
