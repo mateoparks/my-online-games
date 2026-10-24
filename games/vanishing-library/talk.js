@@ -148,6 +148,16 @@
 
   // Content checks for tests/npcs-dialogue.test.js: everything a typo or a
   // reordered entry would break without an error at run time.
+  // A gift is given once when its entry stops matching after it: its own
+  // `set` flags are all in its `notFlag`, or the item it gives is in `notItem`.
+  function giftGuarded(entry) {
+    const set = [].concat(entry.set || []);
+    const notFlag = [].concat(entry.when?.notFlag || []);
+    if (set.length && set.every((flag) => notFlag.includes(flag))) return true;
+    const item = entry.give.item;
+    return Boolean(item) && [].concat(entry.when?.notItem || []).includes(item);
+  }
+
   VL.dialogueProblems = function dialogueProblems() {
     const problems = [];
     const sample = { name: 'Ñandú Élodïe' };
@@ -155,7 +165,10 @@
       const open = entries.findIndex((entry) => !entry.when || Object.keys(entry.when).length === 0);
       if (open === -1) problems.push(`${id}: no entry without conditions, so it can fall silent`);
       else if (open < entries.length - 1) problems.push(`${id}: entry ${open + 2} can never be picked (entry ${open + 1} always matches)`);
-      for (const entry of entries) {
+      entries.forEach((entry, i) => {
+        if (entry.give && !entry.repeat && !giftGuarded(entry)) {
+          problems.push(`${id}: entry ${i + 1} gives a gift without a guard (its own set flags in when.notFlag, or repeat: true)`);
+        }
         for (const lock of [].concat(entry.when?.progress || [], entry.when?.notProgress || [])) {
           if (!VL.LOCKS[lock]) problems.push(`${id}: unknown lock ${lock}`);
         }
@@ -168,7 +181,7 @@
         }
         const missing = VL.ART.missingGlyphs([].concat(entry.say).map((text) => VL.popupText(text, sample)).join(' '));
         if (missing.length) problems.push(`${id}: the font cannot draw ${missing.join(' ')}`);
-      }
+      });
     }
     for (const npc of Object.values(VL.NPCS)) {
       if (!VL.DIALOGUES[npc.talk]) problems.push(`npc ${npc.id}: no dialogue ${npc.talk}`);

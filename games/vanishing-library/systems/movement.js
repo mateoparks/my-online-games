@@ -2,13 +2,15 @@
 // screen-edge crossings with a slide, and stand hooks for entities such as doors.
 (() => {
   const DIRECTIONS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+  VL.tune({ cornerAssist: 6 });
 
   function blocked(state, x, y) {
     const { w, h } = VL.TUNING.heroBox;
     return VL.isBlocked(state.player.area, state.player.screen, x, y, w, h, state.room);
   }
 
-  // Sub-pixel steps so the hero stops flush against a wall instead of short of it.
+  // Sub-pixel steps so the hero stops flush against a wall instead of short
+  // of it. Returns the distance it could not move.
   function moveAxis(state, axis, amount) {
     const player = state.player;
     const direction = Math.sign(amount);
@@ -21,6 +23,32 @@
       player.x = x;
       player.y = y;
       remaining -= Math.abs(step);
+    }
+    return remaining;
+  }
+
+  // Zelda-style corner assist: walking straight into a wall a few pixels off
+  // an opening (a 1-tile gap, a corner, the next row's edge under the feet
+  // box) slides the hero sideways into line instead of stopping him.
+  function cornerAssist(state, axis, direction, amount) {
+    const player = state.player;
+    const other = axis === 'x' ? 'y' : 'x';
+    const freeAt = (offset, ahead) => {
+      const spot = { x: player.x, y: player.y };
+      spot[other] += offset;
+      spot[axis] += ahead;
+      return !blocked(state, spot.x, spot.y);
+    };
+    for (let d = 0.5; d <= VL.TUNING.cornerAssist; d += 0.5) {
+      for (const sign of [-1, 1]) {
+        if (!freeAt(sign * d, direction)) continue;
+        let clear = true;
+        for (let k = 0.5; k < d && clear; k += 0.5) clear = freeAt(sign * k, 0);
+        if (clear) {
+          moveAxis(state, other, sign * Math.min(amount, d));
+          return;
+        }
+      }
     }
   }
 
@@ -95,8 +123,10 @@
         dy *= Math.SQRT1_2;
       }
       const speed = VL.TUNING.heroSpeed * dt;
-      moveAxis(state, 'x', dx * speed);
-      moveAxis(state, 'y', dy * speed);
+      const stuckX = moveAxis(state, 'x', dx * speed);
+      const stuckY = moveAxis(state, 'y', dy * speed);
+      if (dy === 0 && stuckX > 0) cornerAssist(state, 'x', dx, stuckX);
+      if (dx === 0 && stuckY > 0) cornerAssist(state, 'y', dy, stuckY);
       crossEdges(state);
       if (!state.transition) standHooks(state);
     },
