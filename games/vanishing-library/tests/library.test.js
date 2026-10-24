@@ -11,11 +11,17 @@ const { test, loadGame, playApp, memoryStorage, read, fakeContext } = require('.
 const STEP = 1 / 60;
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
-function setup({ storage = false } = {}) {
+// `slotText` starts from that save in slot 1 instead of a new game.
+function setup({ storage = false, slotText = null } = {}) {
   const { VL } = loadGame();
   VL.sfx = () => true;
   let app;
-  if (storage) {
+  if (slotText) {
+    const store = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: slotText }));
+    app = VL.createApp({ storage: store });
+    app.startGame(VL.loadSlot(store, 0), 0);
+    app.setScene('play');
+  } else if (storage) {
     app = VL.createApp({ storage: VL.createStorage(memoryStorage()) });
     app.startGame(VL.newGame({ name: 'Robin' }), 0, { fresh: true });
     app.save();
@@ -441,6 +447,19 @@ test('the Cartographer\'s Primer stays until Dungeon 3 is beaten, then goes firs
   assert.ok(VL.bookRead(game, 'bookPrimer'), 'what a book gave is kept');
 });
 
+test('after Dungeon 3, a Primer handed in but not yet read stays until he has read it', () => {
+  const { VL } = loadGame();
+  const game = VL.newGame();
+  VL.defineLock('d3Boss', { ...VL.LOCKS.d3Boss, reached: () => true });
+  find(VL, game, ['bookPrimer']);
+  VL.returnBooks(game);
+  // A Save & Quit before the reading, then back into the library.
+  VL.applyThefts(game);
+  assert.ok(VL.primerOnShelf(game), 'never a book he has yet to read');
+  VL.finishReading(game, 'bookPrimer');
+  assert.deepEqual(plain(VL.applyThefts(game)), ['bookPrimer'], 'read, it goes on the next visit');
+});
+
 test('the librarian notices a missing book once', () => {
   const t = setup();
   const { VL } = t;
@@ -663,6 +682,28 @@ test('the save fixture with library progress loads with nothing reset', () => {
   assert.deepEqual(plain(game.library), fixture.library);
   assert.ok(VL.hasItem(game, 'scriptoriumKey'));
   assert.ok(VL.LOCKS.bookTideTables.reached(game));
+});
+
+test('a save naming books this game doesn\'t know, or missing part of the library, still plays', () => {
+  const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W11.json'), 'utf8'));
+  fixture.library.returned.push('bookRenamedLater');
+  fixture.library.read.push('bookRenamedLater');
+  const t = setup({ slotText: JSON.stringify(fixture) });
+  const { VL } = t;
+  assert.equal(VL.booksReturned(t.game), 6, 'an unknown book still counts');
+  t.leaveAndEnterLibrary();
+  assert.ok(t.game.room.entities.some((e) => e.type === 'libraryShelf'), 'the shelves draw from the known books');
+  t.visitLibrarian();
+  assert.equal(VL.booksReturned(t.game), 6);
+  assert.equal(VL.nextReading(t.game), null, 'only known books are read');
+
+  const partial = { ...fixture, flags: { 'met:fenwick': true }, library: { returned: ['bookRiverside', 'bookPrimer'] } };
+  const p = setup({ slotText: JSON.stringify(partial) });
+  assert.deepEqual(plain(p.game.library.read), [], 'missing fields take their defaults');
+  p.leaveAndEnterLibrary();
+  p.visitLibrarian();
+  assert.ok(VL.bookRead(p.game, 'bookPrimer'), 'the Primer is read on the next talk');
+  assert.equal(VL.booksReturned(p.game), 2);
 });
 
 test('progress in the library survives a reload at any point of a visit', () => {

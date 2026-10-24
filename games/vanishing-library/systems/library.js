@@ -197,7 +197,7 @@
     const taken = [];
     const afterD3 = reached(state, 'd3Boss');
     if (afterD3) {
-      if (VL.primerOnShelf(state)) taken.push('bookPrimer');
+      if (VL.primerOnShelf(state) && VL.bookRead(state, 'bookPrimer')) taken.push('bookPrimer');
       state.flags.primerTaken = true;
     }
     const older = library.returned.slice(0, library.lastTripAt);
