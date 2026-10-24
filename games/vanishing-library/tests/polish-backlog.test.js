@@ -2,7 +2,7 @@
 // loose page, a faint while carrying a chicken, corner assist around people,
 // a grace after a popup, and Delete with saving off.
 const assert = require('node:assert/strict');
-const { test, loadGame, playApp, fakeDocument } = require('./harness');
+const { test, loadGame, playApp, fakeDocument, memoryStorage } = require('./harness');
 
 // ---------- 1. the tally never promises a reward he is about to give ----------
 
@@ -200,3 +200,40 @@ for (const [kind, close] of Object.entries(graceCases)) {
     assert.equal(game.hp, hp - 1, 'then the enemy is real again');
   });
 }
+
+// ---------- 6. with saving off, the title offers no Delete ----------
+
+function drawnStrings(VL, app) {
+  const strings = [];
+  const original = VL.ART.text;
+  VL.ART.text = (ctx, str, ...rest) => {
+    strings.push(String(str));
+    return original(ctx, str, ...rest);
+  };
+  VL.render(fakeDocument().createElement('canvas').getContext('2d'), app, 0);
+  VL.ART.text = original;
+  return strings;
+}
+
+test('with saving off, the title neither shows Backspace: Delete nor opens the Delete question', () => {
+  const { VL } = loadGame();
+  const backing = memoryStorage();
+  const saved = VL.createApp({ storage: VL.createStorage(backing) });
+  saved.startGame(VL.newGame({ name: 'Robin' }), 0, { fresh: true });
+  saved.save();
+  backing.setItem(VL.slotKey(1), '{not json');
+  const full = { getItem: backing.getItem, setItem() { throw new Error('QuotaExceededError'); }, removeItem: backing.removeItem };
+  const app = VL.createApp({ storage: VL.createStorage(full) });
+  assert.equal(app.title.slots[0].status, 'ok');
+  assert.equal(app.title.slots[1].status, 'damaged');
+  const text = drawnStrings(VL, app);
+  assert.ok(!text.some((s) => /DELETE/.test(s)), `no Delete hint: ${text.filter((s) => /DELETE/.test(s))}`);
+  assert.ok(text.includes('SAVING IS OFF IN THIS BROWSER'));
+  for (const slot of [0, 1]) {
+    app.title.cursor = slot;
+    app.update(VL.actions({ pressed: ['erase'] }), 1 / 60);
+    assert.equal(app.title.confirmDelete, false, `no Delete question on slot ${slot + 1}`);
+  }
+  const working = VL.createApp({ storage: VL.createStorage(backing) });
+  assert.ok(drawnStrings(VL, working).some((s) => /BACKSPACE: DELETE/.test(s)), 'with saving on, the hint stays');
+});

@@ -590,7 +590,9 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   throws. With `storage.ok` false, the title and pause menus say
   "Saving is off in this browser" and everything still plays. When only the
   probe's write fails (storage already full at load), reads still work, so
-  the saved slots list and continue as usual, with nothing written.
+  the saved slots list and continue as usual, with nothing written. Delete
+  is not offered then (no hint, Backspace does nothing), since nothing can
+  be removed.
 - **What is saved:** every field of the game state except
   `VL.TRANSIENT_FIELDS` (`time`, `player`, `room`, `transition`, `events`,
   `dirty`, `fainted`, plus anything added with
