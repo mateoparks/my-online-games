@@ -146,8 +146,8 @@
   };
 
   // S tries the tile ahead first, then the ones the hero half faces, so a
-  // hero standing a little off the chest still opens it. One thing per press:
-  // an entity, else berries, else (bare-handed) one bush.
+  // hero standing a little off the chest still opens it. One thing per press,
+  // tile by tile: an entity or berries there, else (bare-handed) one bush.
   VL.interact = function interact(state) {
     const tiles = VL.facingTiles(state);
     for (const { tx, ty } of tiles) {
@@ -156,8 +156,8 @@
         VL.ENTITIES[entity.type].onInteract(state, entity);
         return true;
       }
+      if (VL.pickBerries(state, tx, ty)) return true;
     }
-    if (tiles.some(({ tx, ty }) => VL.pickBerries(state, tx, ty))) return true;
     if (isSword(VL.heldItem(state, 'mainHand'))) return false;
     return tiles.some(({ tx, ty }) => VL.pullBush(state, tx, ty));
   };

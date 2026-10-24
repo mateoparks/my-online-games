@@ -363,9 +363,9 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   (the shovel) are still to come (W10).
 - **Hands (`systems/hands.js`):** Space uses the main-hand item and D the
   off-hand one; `hold` runs every step the key is held (the shield sets
-  `state.player.shield`). S calls `VL.interact`: an entity's `onInteract` on
-  the tiles the hero faces (`VL.facingTiles(state)`: straight ahead first,
-  then the ones half overlapped), else a berry bush, else a bare-hand pull of
+  `state.player.shield`). S calls `VL.interact`: tile by tile over the tiles the hero faces
+  (`VL.facingTiles(state)`: straight ahead first, then the ones half
+  overlapped), an entity's `onInteract` or a berry bush there, else a bare-hand pull of
   one bush when no sword is in the main hand. Space with an empty main hand
   pulls too. Entities match by integer tile (`e.x/e.y`). A sword swing (`VL.swing`) sets `state.player.swing` for
   `TUNING.swingSeconds` and pushes `{ type: 'swing', item, hand, tiles }`; it
@@ -809,9 +809,9 @@ looks and wandering, `scenes/dialogue.js` the conversation, and
   `tests/npcs-dialogue.test.js` checks that no placed NPC starts beside a thing
   or can stand where it cuts its screen in two (R1); place new ones in open
   ground.
-- **Talking:** S goes through W5's `VL.interact`: an NPC on any tile the hero
-  faces or half faces wins, and that press does nothing else (no bush pulled,
-  no berries picked). Its `onInteract` turns it to the hero and opens the
+- **Talking:** S goes through W5's `VL.interact`: an NPC straight ahead, or on
+  a half-faced tile with no berry bush straight ahead, wins, and that press
+  does nothing else (no bush pulled, no berries picked). Its `onInteract` turns it to the hero and opens the
   `dialogue` scene. World code has no app, so it asks for a scene with
   `VL.requestScene(state, id, data)` (transient), opened after the step; play
   holds back a popup queued in the same step until the scene closes.
@@ -824,7 +824,9 @@ looks and wandering, `scenes/dialogue.js` the conversation, and
   `test: (state) => …`. A value may be one id or a list (all of them). A
   misspelt condition throws at load; an unknown lock, shop, item or resource,
   and words the font can't draw, are listed by `VL.dialogueProblems()`, which
-  the test keeps empty. A later item adds its own condition with
+  the test keeps empty. So is a `give` entry with no guard (its own `set`
+  flags all in its `notFlag`, or the item it gives in its `notItem`); a gift
+  meant to repeat says `repeat: true`. A later item adds its own condition with
   `VL.defineCondition('books', (state, least) => …)` (then `when: { books: 10 }`).
 - **Lines from another item:** `VL.addDialogue('gran', entries)` puts entries
   ahead of the NPC's own (later story first), so W16's shockwave lines live in

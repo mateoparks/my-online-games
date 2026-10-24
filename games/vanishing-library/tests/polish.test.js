@@ -309,4 +309,60 @@ test('N held through Enter does not keep typing into the name', () => {
   assert.equal(input.poll().typed, 'nn', 'a fresh press types and repeats again');
 });
 
+// ---------- 6. gifts must be guarded; S picks the berries straight ahead ----------
+
+test('dialogue problems: a gift that can be handed over again and again is reported', () => {
+  const { VL } = loadGame();
+  VL.defineDialogue('farm', [{ say: 'Wood for you, every time!', give: { wood: 2 } }]);
+  VL.defineDialogue('halfGuarded', [
+    { when: { notFlag: 'gave:a' }, say: 'x', set: ['gave:a', 'gave:b'], give: { wood: 1 } },
+    { say: 'z' },
+  ]);
+  VL.defineDialogue('guarded', [
+    { when: { notFlag: 'gave:wood' }, say: 'x', set: 'gave:wood', give: { wood: 2 } },
+    { when: { notItem: 'woodSword' }, say: 'y', give: { item: 'woodSword' } },
+    { say: 'z' },
+  ]);
+  VL.defineDialogue('meantToRepeat', [{ say: 'Have a berry.', give: { berries: 1 }, repeat: true }]);
+  const problems = VL.dialogueProblems().join('\n');
+  assert.match(problems, /farm: entry 1 gives a gift without a guard/);
+  assert.match(problems, /halfGuarded: entry 1 gives a gift without a guard/);
+  assert.doesNotMatch(problems, /guarded: entry/);
+  assert.doesNotMatch(problems, /meantToRepeat/);
+});
+
+test('S at a berry bush straight ahead picks berries, even with a person on the half-faced tile', () => {
+  const { VL } = loadGame();
+  VL.defineNpc('picker', { name: 'Pip', look: 'townsfolk' });
+  VL.defineDialogue('picker', [{ say: 'Hi!' }]);
+  VL.addScreens('berries', {
+    '0,0': {
+      tiles: [
+        'TTTTTTTTTTTTTTTT',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T......Y.......T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'TTTTTTTTTTTTTTTT',
+      ],
+      entities: [{ type: 'npc', id: 'picker', x: 8, y: 4 }],
+    },
+  });
+  const state = playState(VL, { area: 'berries', screen: '0,0', tx: 7, ty: 5, facing: 'up' });
+  state.player.x += 5;
+  const reach = VL.facingTiles(state).map(({ tx, ty }) => `${tx},${ty}`);
+  assert.deepEqual([...reach], ['7,4', '8,4']);
+  assert.equal(VL.interact(state), true);
+  assert.ok(state.inventory.berries > 0, 'berries picked');
+  assert.equal(state.sceneRequest, null, 'no talk');
+  // With the bush picked, the next S talks to Pip.
+  VL.interact(state);
+  assert.equal(state.sceneRequest?.id, 'dialogue');
+});
+
 module.exports = { titleApp, press, type, STEP };
