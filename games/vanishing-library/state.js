@@ -19,20 +19,21 @@ VL.createGame = function createGame(options = {}) {
     flags: {},
     visited: {},
   };
-  for (const { id, fields } of VL.GAME_EXTENSIONS) {
-    for (const [key, value] of Object.entries(fields(options))) {
-      if (key in state) throw new Error(`game extension ${id}: field ${key} already exists`);
-      state[key] = value;
-    }
-  }
-  return Object.assign(state, {
-    // Transient from here down (never saved).
+  const transient = {
     time: 0,
     player: { area: null, screen: null, x: 0, y: 0, facing: 'down', moving: false },
     room: null,
     transition: null,
     events: [],
-  });
+  };
+  for (const { id, fields } of VL.GAME_EXTENSIONS) {
+    for (const [key, value] of Object.entries(fields(options))) {
+      if (key in state || key in transient) throw new Error(`game extension ${id}: field ${key} already exists`);
+      state[key] = value;
+    }
+  }
+  // Extension fields sit above this line so they are part of the saved state.
+  return Object.assign(state, transient);
 };
 
 VL.newGame = function newGame(options) {

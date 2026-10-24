@@ -29,7 +29,7 @@ VL.createKeyboardInput = function createKeyboardInput(win, doc) {
   const held = new Set();
   const pressed = new Set();
   const textFields = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
-  const buttons = new Set(['BUTTON', 'A']);
+  const buttons = new Set(['BUTTON']);
 
   function clear() {
     held.clear();
@@ -43,8 +43,9 @@ VL.createKeyboardInput = function createKeyboardInput(win, doc) {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const tag = event.target?.tagName;
     if (textFields.has(tag)) return;
-    // Space activates a focused header link or the theme toggle, so it is
-    // theirs; the toggle keeps focus after a click, so arrows must still play.
+    // Space activates the focused theme toggle, so it is the toggle's (links
+    // activate on Enter, so Space still swings on a focused header link); the
+    // toggle keeps focus after a click, so arrows must still play.
     if (buttons.has(tag) && action === 'mainHand') return;
     event.preventDefault();
     if (event.repeat || held.has(action)) return;
@@ -53,7 +54,13 @@ VL.createKeyboardInput = function createKeyboardInput(win, doc) {
   });
 
   // No modifier check here: a key released while Cmd is down must still clear.
+  // macOS Chrome drops the keyup of other keys while Cmd is held, so releasing
+  // Cmd clears everything rather than leave the hero walking.
   win.addEventListener('keyup', (event) => {
+    if (event.key === 'Meta') {
+      held.clear();
+      return;
+    }
     const action = VL.actionForKey(event);
     if (action) held.delete(action);
   });

@@ -34,7 +34,10 @@ below exist to keep their diffs in different files:
   other**: use only earlier sections (`core`, `art`) at load time, and talk to
   other files in your section through the registries at run time. The test
   checks that every listed file exists, nothing is listed twice and `main.js`
-  is last; a union merge that went wrong fails there.
+  is last. To remove a file, delete it as well as its manifest line: a union
+  merge keeps both sides of overlapping edits, so a line another branch
+  touched nearby can come back, and only a missing file makes that fail the
+  "exists" check.
 - **Never edit `config.js`, `state.js` or `tiles.js`** to add things. From your
   own file use `VL.tune({ crabSpeed: 40 })` for tuning numbers,
   `VL.extendGame('inventory', (options) => ({ inventory: {} }))` for saved
@@ -124,14 +127,23 @@ so both must keep working whatever the start scene is.
 
 - Logical canvas 256×192: a 16px HUD strip over a 16×11 grid of 16px tiles.
   Play-area pixel coordinates start below the HUD; `render.js` translates.
+- The canvas shows every logical pixel as a whole number of **device** pixels
+  (`VL.fitScale`), the largest that fits, and refits on a window resize or a
+  `devicePixelRatio` change (window moved to another monitor). On a 1× display
+  that is the design's whole-number CSS scale (3× = 768×576 on a small laptop).
+  On a 2× display it is not always: 1280×800 gives 7 device px per logical px,
+  a CSS size of 896×672, i.e. 3.5 CSS px per logical px. That is by design;
+  crisp squares of device pixels are the point, not a whole-number CSS size.
 - `state.player.x/y` is the centre of the hero's feet box (`TUNING.heroBox`).
 - The loop runs fixed `TUNING.step` slices; real time per frame is capped at
   `TUNING.maxFrame` and every update also clamps `dt` to `TUNING.maxDt`. On
   displays faster than the step rate, presses stay latched until a frame that
   runs a step, so no tap is lost.
-- Keys clear on window blur and when the tab hides. Modifier chords
-  (Cmd/Ctrl/Alt) are left to the browser; Space on a focused header control
-  belongs to that control.
+- Keys clear on window blur, when the tab hides, and when Cmd is released
+  (macOS Chrome drops the keyup of other keys while Cmd is held). Modifier
+  chords (Cmd/Ctrl/Alt) are left to the browser; Space on the focused theme
+  toggle belongs to the toggle (links activate on Enter, so Space still swings
+  on a focused header link).
 
 ## Testing
 
@@ -152,6 +164,9 @@ every registered scene; a scene whose `enter` needs data exports `smokeData`.
 The browser smoke loads `index.html` from `file://` in headless Chrome and
 fails on any console error or uncaught exception. At each of two window sizes it
 checks the integer scale, that the page does not scroll, switches to the play
-scene, holds ArrowRight through real key events and checks the hero moved, then
-saves a screenshot. It then resizes the window without reloading and checks the
-scale follows. It runs for 60 s at most.
+scene, holds an arrow towards open ground through real key events and checks
+the hero moved, then saves a screenshot. It then walks the hero over the first
+open edge of the start area and checks the slide pans the way the hero walked
+with the hero on the canvas throughout, and resizes the window without
+reloading and checks the scale follows. It runs for 60 s at most. A test file
+that runs no tests, and an `async` test function, both fail the node run.

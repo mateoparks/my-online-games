@@ -80,6 +80,13 @@ test('game keys stop page scrolling but leave the header controls usable', () =>
   win.dispatch('keydown', arrowOnButton);
   assert.equal(arrowOnButton.prevented, true);
   assert.equal(input.poll().held.left, true);
+  win.dispatch('keyup', keyEvent('ArrowLeft'));
+  // Links activate on Enter, not Space, so Space on a focused header link still swings.
+  const onLink = keyEvent('Space', { target: { tagName: 'A' } });
+  win.dispatch('keydown', onLink);
+  assert.equal(onLink.prevented, true);
+  assert.equal(input.poll().pressed.mainHand, true, 'a link does not own Space');
+  win.dispatch('keyup', keyEvent('Space'));
   const inField = keyEvent('ArrowLeft', { target: { tagName: 'INPUT' } });
   win.dispatch('keydown', inField);
   assert.equal(inField.prevented, false);
@@ -102,6 +109,11 @@ test('modifier chords are left to the browser, but the release still clears the 
   assert.equal(input.poll().held.right, true);
   win.dispatch('keyup', keyEvent('ArrowRight', { metaKey: true }));
   assert.equal(input.poll().held.right, false, 'released while a modifier is down still clears');
+  // macOS Chrome never sends that keyup while Cmd is held; releasing Cmd must clear instead.
+  win.dispatch('keydown', keyEvent('ArrowRight'));
+  assert.equal(input.poll().held.right, true);
+  win.dispatch('keyup', keyEvent('MetaLeft', { key: 'Meta' }));
+  assert.equal(input.poll().held.right, false, 'releasing Cmd clears held keys');
 });
 
 test('letter keys also match by key name for other keyboard layouts', () => {

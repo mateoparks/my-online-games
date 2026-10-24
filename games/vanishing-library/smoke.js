@@ -1,8 +1,9 @@
 // Headless-Chrome smoke over the DevTools protocol (Node's built-in WebSocket,
 // no dependencies). Loads index.html from file://, fails on any console error
 // or uncaught exception, checks the integer scale at two window sizes and on a
-// live resize, walks the hero with real key events, and saves a screenshot of
-// each size. Run: node games/vanishing-library/smoke.js --out <dir>
+// live resize, walks the hero with real key events, checks a screen slide pans
+// the right way, and saves a screenshot of each size.
+// Run: node games/vanishing-library/smoke.js --out <dir>
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -21,6 +22,7 @@ const sizes = [
   { width: 1600, height: 1000, theme: 'light' },
 ];
 const walkMs = 300;
+const slideMs = 700; // ~13 px to the edge, then the 350 ms slide
 const timeoutMs = 60000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -80,8 +82,60 @@ const pageInfo = `(() => {
     bottom: rect.bottom, innerWidth, innerHeight, backing: canvas.width,
     scrollY, scrollHeight: document.scrollingElement.scrollHeight,
     scene: VL.app.sceneId, startScene: VL.START_SCENE,
-    heroX: VL.app.game ? VL.app.game.player.x : null, screen: VL.app.game ? VL.app.game.player.screen : null,
+    heroX: VL.app.game ? VL.app.game.player.x : null, heroY: VL.app.game ? VL.app.game.player.y : null,
+    screen: VL.app.game ? VL.app.game.player.screen : null,
   });
+})()`;
+
+// The arrow whose next tile (and preferably the one after) is open ground, so
+// the walk doesn't depend on which way the real start spot faces.
+const openDirection = `(() => {
+  const game = VL.app.game;
+  const { tx, ty } = VL.heroTile(game);
+  const { cols, rows } = VL.TUNING;
+  const inside = (x, y) => x >= 0 && x < cols && y >= 0 && y < rows;
+  let best = null;
+  for (const [dir, dx, dy] of [['Right', 1, 0], ['Left', -1, 0], ['Down', 0, 1], ['Up', 0, -1]]) {
+    let run = 0;
+    while (run < 2 && inside(tx + dx * (run + 1), ty + dy * (run + 1)) && !VL.isSolidAt(game.player.area, game.player.screen, tx + dx * (run + 1), ty + dy * (run + 1))) run += 1;
+    if (!best || run > best.run) best = { dir, dx, dy, run };
+  }
+  return JSON.stringify(best);
+})()`;
+
+// Puts a new game on the first open edge crossing of the start area and logs
+// where the renderer draws each screen and the hero while the slide runs.
+const slideSetup = `(() => {
+  const { cols, rows } = VL.TUNING;
+  const area = VL.START.area;
+  const dirs = { Left: [-1, 0], Right: [1, 0], Up: [0, -1], Down: [0, 1] };
+  for (const key of Object.keys(VL.AREAS[area].screens)) {
+    for (const [dir, [dx, dy]] of Object.entries(dirs)) {
+      for (let i = 0; i < (dx ? rows : cols); i += 1) {
+        const tx = dx ? (dx < 0 ? 0 : cols - 1) : i;
+        const ty = dy ? (dy < 0 ? 0 : rows - 1) : i;
+        if (VL.isSolidAt(area, key, tx, ty) || VL.isSolidAt(area, key, tx + dx, ty + dy)) continue;
+        VL.app.game = VL.newGame();
+        VL.app.setScene('play');
+        VL.place(VL.app.game, { area, screen: key, tx, ty });
+        document.getElementById('game').focus();
+        window.__slideDraws = [];
+        const drawScreen = VL.drawScreen;
+        VL.drawScreen = function (ctx, screenArea, screenKey, ox, oy, ...rest) {
+          const slide = VL.app.game.transition;
+          if (slide) window.__slideDraws.push({ k: slide.t / slide.duration, screen: screenKey, x: ox, y: oy });
+          return drawScreen.call(this, ctx, screenArea, screenKey, ox, oy, ...rest);
+        };
+        const drawHero = VL.ART.drawHero;
+        VL.ART.drawHero = function (ctx, player, x, y, t) {
+          if (VL.app.game.transition) window.__slideDraws.push({ hero: true, x, y });
+          return drawHero.call(this, ctx, player, x, y, t);
+        };
+        return JSON.stringify({ dir, dx, dy, from: key, to: VL.neighborKey(key, dx, dy), tx, ty });
+      }
+    }
+  }
+  return null;
 })()`;
 
 async function main() {
@@ -131,7 +185,13 @@ async function main() {
       new Promise((r) => setTimeout(() => r('stalled'), 2000)),
     ])`)) === 'ok';
     const info = async () => JSON.parse(await evaluate(pageInfo));
-    const key = (type, code, keyCode) => call('Input.dispatchKeyEvent', { type, key: code, code, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode });
+    const keyCodes = { ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40 };
+    const key = (type, code) => call('Input.dispatchKeyEvent', { type, key: code, code, windowsVirtualKeyCode: keyCodes[code], nativeVirtualKeyCode: keyCodes[code] });
+    const holdArrow = async (dir, ms) => {
+      await key('keyDown', `Arrow${dir}`);
+      await sleep(ms);
+      await key('keyUp', `Arrow${dir}`);
+    };
 
     for (const size of sizes) {
       const label = `${size.width}x${size.height}-${size.theme}`;
@@ -153,18 +213,19 @@ async function main() {
       if (page.scene !== page.startScene) problems.push(`started in scene ${page.scene}, expected ${page.startScene}`);
 
       // Real key events reach the game: switch to play on a new game (whatever
-      // the start scene) and hold ArrowRight from the start spot, which faces open ground.
+      // the start scene) and walk from the start spot towards open ground.
+      // (A page scroll from an un-prevented arrow can't show here because the
+      // page has nothing to scroll; the node input test pins preventDefault.)
       await evaluate('VL.app.game = VL.newGame(); VL.app.setScene("play"); document.getElementById("game").focus()');
       const before = await info();
-      await key('keyDown', 'ArrowRight', 39);
-      await sleep(walkMs);
-      await key('keyUp', 'ArrowRight', 39);
+      const walk = JSON.parse(await evaluate(openDirection));
+      if (!walk.run) problems.push('no open tile next to the start spot');
+      await holdArrow(walk.dir, walkMs);
       if (!(await settle())) problems.push('animation frames stopped after the key events');
       const after = await info();
-      const moved = after.heroX - before.heroX;
+      const moved = (after.heroX - before.heroX) * walk.dx + (after.heroY - before.heroY) * walk.dy;
       if (after.scene !== 'play' || !after.screen) problems.push(`scene ${after.scene}, screen ${after.screen}`);
-      if (!(moved >= 8)) problems.push(`ArrowRight for ${walkMs} ms moved the hero ${moved} px`);
-      if (after.scrollY !== 0) problems.push(`the arrow key scrolled the page to ${after.scrollY}`);
+      if (!(moved >= 8)) problems.push(`Arrow${walk.dir} for ${walkMs} ms moved the hero ${moved} px`);
       const shot = path.join(outDir, `${label}.png`);
       const { data } = await call('Page.captureScreenshot', { format: 'png' });
       fs.writeFileSync(shot, Buffer.from(data, 'base64'));
@@ -178,6 +239,36 @@ async function main() {
       failures += 1;
       console.log(`FAIL the larger window should get a larger scale (${results.map((r) => r.page.scale).join(' vs ')})`);
     }
+
+    // A screen slide on the real canvas: the new screen must enter from the
+    // edge the hero crossed, the old one leave through the far edge, and the
+    // hero stay on the canvas throughout. A reversed slide fails here.
+    errors.length = 0;
+    const slideProblems = [];
+    const slide = JSON.parse(await evaluate(slideSetup));
+    if (!slide) {
+      slideProblems.push(`no open edge between two screens of ${await evaluate('VL.START.area')}`);
+    } else {
+      await holdArrow(slide.dir, slideMs);
+      if (!(await settle())) slideProblems.push('animation frames stopped during the slide');
+      const draws = JSON.parse(await evaluate('JSON.stringify(window.__slideDraws)'));
+      const landed = await info();
+      const axis = slide.dx ? 'x' : 'y';
+      const sign = slide.dx || slide.dy;
+      const span = slide.dx ? 256 : 176;
+      const mid = draws.filter((d) => !d.hero && d.k > 0.1 && d.k < 0.9);
+      const incoming = mid.filter((d) => d.screen === slide.to);
+      const outgoing = mid.filter((d) => d.screen === slide.from);
+      if (landed.screen !== slide.to) slideProblems.push(`walking ${slide.dir} from ${slide.from} landed on ${landed.screen}, expected ${slide.to}`);
+      if (incoming.length < 3 || outgoing.length < 3) slideProblems.push(`only ${incoming.length}/${outgoing.length} mid-slide frames of the new/old screen were drawn`);
+      for (const d of incoming) if (!(Math.sign(d[axis]) === sign && Math.abs(d[axis]) < span)) slideProblems.push(`new screen ${slide.to} drawn at ${d.x},${d.y} at ${d.k.toFixed(2)}: it should enter from the ${slide.dir.toLowerCase()} edge`);
+      for (const d of outgoing) if (!(Math.sign(d[axis]) === -sign && Math.abs(d[axis]) < span)) slideProblems.push(`old screen ${slide.from} drawn at ${d.x},${d.y} at ${d.k.toFixed(2)}: it should leave through the far edge`);
+      for (const d of draws.filter((h) => h.hero)) if (!(d.x >= -1 && d.x <= 256 && d.y >= -1 && d.y <= 176)) slideProblems.push(`hero drawn off the canvas at ${d.x},${d.y} during the slide`);
+      slideProblems.push(...errors);
+    }
+    if (slideProblems.length) failures += 1;
+    console.log(`${slideProblems.length ? 'FAIL' : 'ok  '} slide ${slide ? `${slide.dir.toLowerCase()} from ${slide.from} to ${slide.to}` : ''}`);
+    for (const problem of [...new Set(slideProblems)].slice(0, 6)) console.log(`     ${problem}`);
 
     // The live resize listener: shrink the window without reloading.
     errors.length = 0;

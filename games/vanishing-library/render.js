@@ -35,11 +35,13 @@ VL.drawWorld = function drawWorld(ctx, state, t) {
   ctx.translate(0, hudHeight);
   const slide = state.transition;
   if (slide) {
+    // The camera pans the way the hero walked: the new screen starts one
+    // screen over on that side and slides in, the old one slides out the far side.
     const k = VL.smoothstep(Math.min(1, slide.t / slide.duration));
     const [dx, dy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[slide.dir];
-    ox = -dx * (1 - k) * width;
-    oy = -dy * (1 - k) * playHeight;
-    VL.drawScreen(ctx, slide.from.area, slide.from.screen, dx * k * width, dy * k * playHeight, t);
+    ox = dx * (1 - k) * width;
+    oy = dy * (1 - k) * playHeight;
+    VL.drawScreen(ctx, slide.from.area, slide.from.screen, -dx * k * width, -dy * k * playHeight, t);
   }
   VL.drawScreen(ctx, player.area, player.screen, ox, oy, t, state.room.entities);
   VL.ART.drawHero(ctx, player, Math.round(ox + player.x), Math.round(oy + player.y), t);

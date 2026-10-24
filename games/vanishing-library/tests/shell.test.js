@@ -53,7 +53,7 @@ test('README documents the layout contract', () => {
 
 // ---------- display ----------
 
-test('fitScale picks the largest whole-number scale that fits, never below 1', () => {
+test('fitScale picks the largest whole number of device pixels per logical pixel, never below 1', () => {
   const { VL } = loadGame();
   assert.equal(VL.fitScale(1024, 700), 3);
   assert.equal(VL.fitScale(1600, 900), 4);
@@ -74,7 +74,7 @@ test('the screen buffer is 256×192 and presents at the integer scale', () => {
   assert.equal(document.canvas.dataset.scale, '3');
   screen.fit(1024, 700, 2);
   assert.equal(document.canvas.width, 256 * 7);
-  assert.equal(document.canvas.style.width, '896px', 'CSS size is device pixels over dpr');
+  assert.equal(document.canvas.style.width, '896px', 'CSS size is device pixels over dpr (3.5 CSS px per logical px here)');
   screen.present();
   assert.equal(document.canvas.getContext().calls.drawImage, 1);
 });
@@ -171,6 +171,13 @@ test('boot wires the canvas, fits on resize, and runs frames', () => {
   window.innerHeight = 1000;
   window.dispatch('resize');
   assert.equal(document.canvas.dataset.scale, '4');
+  // Moving the window to a 2× monitor changes devicePixelRatio with no resize.
+  assert.deepEqual(window.mediaQueries.map((q) => q.media), ['(resolution: 1dppx)']);
+  window.devicePixelRatio = 2;
+  window.mediaQueries.at(-1).change();
+  assert.equal(document.canvas.dataset.scale, '9', 'refits in device pixels on a pixel-ratio change');
+  assert.equal(document.canvas.style.width, `${(256 * 9) / 2}px`);
+  assert.equal(window.mediaQueries.at(-1).media, '(resolution: 2dppx)', 'watches the new ratio next');
   assert.equal(window.frames.length, 1);
   window.frames.shift()();
   assert.ok(document.canvas.getContext().calls.drawImage >= 1, 'a frame presented the buffer');

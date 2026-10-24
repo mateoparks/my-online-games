@@ -13,7 +13,8 @@ let failed = 0;
 
 function test(name, fn) {
   try {
-    fn();
+    // Tests are synchronous: a promise would be counted ✓ before it settled.
+    if (typeof fn()?.then === 'function') throw new Error('tests are synchronous; do not use an async test function');
     passed += 1;
     console.log(`✓ ${name}`);
   } catch (error) {
@@ -22,6 +23,8 @@ function test(name, fn) {
     console.log(error.stack);
   }
 }
+
+const testCount = () => passed + failed;
 
 // One summary whether game.test.js ran every file or a single file ran directly.
 process.on('exit', () => {
@@ -97,6 +100,7 @@ function fakeDocument() {
 function fakeWindow(overrides = {}) {
   const listeners = new Map();
   const frames = [];
+  const mediaQueries = [];
   return {
     innerWidth: 1024,
     innerHeight: 768,
@@ -104,6 +108,22 @@ function fakeWindow(overrides = {}) {
     scrollY: 0,
     now: 0,
     frames,
+    mediaQueries,
+    // Each query records its listeners; a test fires `change` on the last one.
+    matchMedia(media) {
+      const query = {
+        media,
+        listeners: [],
+        addEventListener(type, listener) {
+          if (type === 'change') query.listeners.push(listener);
+        },
+        change() {
+          for (const listener of query.listeners.splice(0)) listener({ matches: false });
+        },
+      };
+      mediaQueries.push(query);
+      return query;
+    },
     performance: {
       now() {
         return this.now;
@@ -262,7 +282,7 @@ const keyEvent = (code, extra = {}) => ({
 });
 
 module.exports = {
-  test, read, directory,
+  test, testCount, read, directory,
   fakeContext, fakeCanvas, fakeDocument, fakeWindow,
   loadGame, addFixtureWorld, playState, playApp, hold, holdUntil, heroTile, keyEvent,
 };

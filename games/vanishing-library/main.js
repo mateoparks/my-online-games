@@ -11,8 +11,19 @@ VL.boot = function boot(doc, win) {
     screen.fit(win.innerWidth - gutter * 2, win.innerHeight - top - gutter, win.devicePixelRatio || 1);
   }
 
+  // A window dragged to a monitor with another pixel density changes
+  // devicePixelRatio without a resize; a resolution media query sees it.
+  function watchPixelRatio() {
+    const query = win.matchMedia?.(`(resolution: ${win.devicePixelRatio || 1}dppx)`);
+    query?.addEventListener('change', () => {
+      fit();
+      watchPixelRatio();
+    }, { once: true });
+  }
+
   fit();
   win.addEventListener('resize', fit);
+  watchPixelRatio();
   canvas.addEventListener('click', () => canvas.focus());
 
   const loop = VL.createLoop({
