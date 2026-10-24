@@ -311,6 +311,7 @@ test('a shrub can win: pulling on the last half heart faints you, and you wake w
   assert.equal(t.game.hp, 0);
   assert.equal(t.game.fainted.cause, 'shrub');
   assert.equal(t.app.sceneId, 'fainted');
+  assert.ok(t.sounds.includes('faint'), 'fainting is heard');
   assert.match(VL.faintLine('shrub'), /shrub/);
   t.hold([], 1);
   t.press('interact');
@@ -465,6 +466,19 @@ test('the first ore lump glints in the shallows by the hut and is picked up once
   assert.deepEqual(plain(t.game.popups.queue), ['ore']);
   VL.place(t.game, { area: 'overworld', screen: '1,1', tx: 8, ty: 5 });
   assert.equal(entitiesOf(t.game, 'ore').length, 0, 'taken for good');
+});
+
+test('a second lump hides in the Woods dead end, off the true path, without the water', () => {
+  const t = setup();
+  const { VL } = t;
+  const spot = VL.SPOTS.oreWoods;
+  const lump = VL.getScreen(spot.area, spot.screen).entities.find((e) => e.type === 'ore');
+  assert.deepEqual([lump.id, lump.x, lump.y, Boolean(lump.wet)], ['oreWoods', spot.x, spot.y, false]);
+  VL.place(t.game, { area: spot.area, screen: spot.screen, tx: spot.x - 1, ty: spot.y });
+  t.hold(['right'], 0.3);
+  assert.equal(t.game.inventory.ore, 1);
+  assert.ok(VL.LOCKS.oreWoods.reached(t.game));
+  assert.equal(VL.LOCKS.oreShallows.reached(t.game), false, 'each lump is its own find');
 });
 
 // ---------- popups ----------

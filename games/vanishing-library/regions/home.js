@@ -25,7 +25,9 @@ VL.addScreens('overworld', {
       'T..............T',
       'TTTTTTTT....TTTT',
     ],
-    entities: [],
+    entities: [
+      { type: 'spot', id: 'bookMeadowRock', x: 7, y: 3, how: 'rock', by: 'W14', lock: 'bookMeadowRock' },
+    ],
   },
   '1,0': {
     tiles: [
@@ -68,9 +70,9 @@ VL.addScreens('overworld', {
       'T......HHHH....T',
       'T......HHHH....T',
       'T......HDHH....T',
-      '........P......T',
-      '........P......T',
-      '....B...P..B...T',
+      '........P.......',
+      '........PPPPPPPP',
+      '....B...P..B....',
       'ssssssssssssssss',
       'ssssssssssssssst',
       'wwwwwwwwwwwwwwwo',
@@ -81,7 +83,7 @@ VL.addScreens('overworld', {
       { type: 'sign', x: 10, y: 4, text: 'Home. Step on the lantern inside to save your adventure.' },
       { type: 'shell', x: 3, y: 8 },
       { type: 'shell', x: 13, y: 7 },
-      { type: 'ore', id: 'oreShallows', x: 12, y: 9 },
+      { type: 'spot', id: 'oreShallows', x: 12, y: 9, how: 'pickup', by: 'W5', lock: 'oreShallows' },
     ],
   },
 });
