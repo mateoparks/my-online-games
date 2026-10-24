@@ -208,6 +208,43 @@ test('a pot marked respawn is back on its spot a few seconds after it is taken; 
   assert.ok(u.find('pot', { x: 2, y: 8 }), 'and is back next visit');
 });
 
+test('a respawning pot waits while any part of the hero stands on its spot, so it never lands inside him', () => {
+  const t = setup({ where: scr('2,0', 6, 2, 'left') });
+  const { VL } = t;
+  t.press('interact');
+  t.hold(['down'], 0.3);
+  t.press('interact');
+  t.hold([], 1);
+  assert.equal(t.find('pot', { x: 5, y: 2 }), undefined);
+  // Centre on the tile below the spot, the top of his box still over it.
+  const { tile, heroBox } = VL.TUNING;
+  Object.assign(t.game.player, { x: 5 * tile + tile / 2, y: 3 * tile + heroBox.h / 2 - 1, facing: 'down' });
+  assert.equal(VL.heroTile(t.game).ty, 3);
+  t.hold([], VL.TUNING.potRespawnSeconds + 1);
+  assert.equal(t.find('pot', { x: 5, y: 2 }), undefined, 'the pot waits');
+  t.until((game) => !VL.heroBoxOverlaps(game, 5, 2), 1, ['right']);
+  t.hold([], 0.1);
+  assert.ok(t.find('pot', { x: 5, y: 2 }), 'and it comes back once he is clear');
+});
+
+test('no respawning pot sits in a doorway or on the tile just inside one', () => {
+  const { VL } = loadGame();
+  const app = VL.createApp();
+  app.game = VL.newGame({ name: 'Robin' });
+  for (const screen of ['1,0', '0,0', '1,-1', '2,-1', '2,0', '3,0', '1,-2']) {
+    VL.place(app.game, { area: 'scriptorium', screen, tx: 7, ty: 5 });
+    const room = app.game.room;
+    const doorways = [];
+    for (const e of room.entities) if (['door', 'lockedDoor'].includes(e.type)) doorways.push([e.x, e.y]);
+    const { cols, rows } = VL.TUNING;
+    for (let x = 0; x < cols; x += 1) for (const y of [0, rows - 1]) if (!VL.tileInfo('scriptorium', VL.tileAt('scriptorium', screen, x, y, room)).solid) doorways.push([x, y]);
+    for (let y = 0; y < rows; y += 1) for (const x of [0, cols - 1]) if (!VL.tileInfo('scriptorium', VL.tileAt('scriptorium', screen, x, y, room)).solid) doorways.push([x, y]);
+    for (const p of room.entities.filter((e) => e.type === 'pot' && e.respawn)) {
+      for (const [x, y] of doorways) assert.ok(Math.abs(p.x - x) + Math.abs(p.y - y) > 1, `pot (${p.x},${p.y}) in ${screen} is clear of the doorway at (${x},${y})`);
+    }
+  }
+});
+
 test('holding something, F never starts a chicken flight and S never talks or opens', () => {
   const t = setup({ where: ow('2,0', 7, 5, 'down') });
   t.game.room.entities.push({ type: 'pot', x: 7, y: 6 });

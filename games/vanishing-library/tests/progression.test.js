@@ -340,6 +340,37 @@ test('broken: small keys spent on the wrong door first', () => {
   assert.deepEqual(tableProblems(VL, later, ['start', 'wave', 'ending']), ['after wave, doorB needs 1 k but a player who spent k on everything else first has 0']);
 });
 
+test('broken: a key spent on a door before an event stays spent after it', () => {
+  const { VL } = loadGame();
+  const milestones = ['start', 'wave', 'ending'];
+  // Two keys, either of which opens door 1 before the wave, so neither key is forced on its own.
+  // After the wave the last key can be wasted on an optional door 3, and door 2 hides the next key.
+  const alternatives = {
+    start: { type: 'place' },
+    key1: { type: 'item', needs: ['start'], supplies: { k: 1 } }, key2: { type: 'item', needs: ['start'], supplies: { k: 1 } },
+    door1: { needs: ['start'], consumes: { k: 1 } }, wave: { type: 'event', needs: ['door1'], gives: ['post'] },
+    door2: { needs: ['post'], consumes: { k: 1 } }, key3: { type: 'item', needs: ['door2'], supplies: { k: 1 } },
+    door3: { needs: ['post'], consumes: { k: 1 }, optional: true }, ending: { needs: ['door2'] },
+  };
+  assert.deepEqual(tableProblems(VL, alternatives, milestones), ['after wave, door2 needs 1 k but a player who spent k on everything else first has 0']);
+  // The same debt when the door is listed before its only key.
+  const doorFirst = {
+    start: { type: 'place' },
+    door1: { needs: ['start'], consumes: { k: 1 } }, key1: { type: 'item', needs: ['start'], supplies: { k: 1 } },
+    wave: { type: 'event', needs: ['door1'], gives: ['post'] },
+    door2: { needs: ['post'], consumes: { k: 1 } }, key2: { type: 'item', needs: ['door2'], supplies: { k: 1 } }, ending: { needs: ['door2'] },
+  };
+  assert.ok(tableProblems(VL, doorFirst, milestones).some((p) => p.startsWith('door2 is unreachable')), 'no key is left for door 2');
+  // A key and door used up before the wave ask for nothing after it.
+  const usedUp = {
+    start: { type: 'place' },
+    key1: { type: 'item', needs: ['start'], supplies: { k: 1 } }, door1: { needs: ['start'], consumes: { k: 1 } },
+    wave: { type: 'event', needs: ['door1'], gives: ['post'] }, ending: { needs: ['post'] },
+  };
+  assert.deepEqual(tableProblems(VL, usedUp, milestones), []);
+  assert.equal(solveTable(VL, usedUp, milestones).stages[1].counts.k, 0);
+});
+
 test('broken: a counter that is both counted and consumed is refused', () => {
   const { VL } = loadGame();
   const rules = {

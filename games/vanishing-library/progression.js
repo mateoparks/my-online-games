@@ -234,7 +234,10 @@
         disabled.add(rule.id);
         for (const key of grants(rule)) keys.add(key);
         for (const [counter, n] of Object.entries(rule.supplies)) startCounts[counter] = (startCounts[counter] || 0) + n;
-        for (const [counter, n] of Object.entries(rule.consumes)) startCounts[counter] = Math.max(0, (startCounts[counter] || 0) - n);
+        // No clamp: a door used up before the event carries its key as a debt
+        // that cancels a key source still left enabled (one the closure saw as
+        // avoidable, since it does not deduct spending, or listed after the door).
+        for (const [counter, n] of Object.entries(rule.consumes)) startCounts[counter] = (startCounts[counter] || 0) - n;
       }
       // Worst case for a counter the lost gear was made from: every source
       // found so far was collected and as much as possible went into that gear.
@@ -267,8 +270,9 @@
     // A required lock that spends a counter must still be affordable when the
     // player has spent that counter on everything else reachable first (the
     // small-key softlock: the only key used on the door that hides the next).
-    // A lock used up before an event (disabled) was paid for in that stage's
-    // start counts, so it neither needs nor takes a counter again.
+    // A lock used up before an event (disabled) carries what it spent in that
+    // stage's start counts (as a debt if need be), so it neither needs nor
+    // takes a counter again.
     function spendingProblems(stage) {
       const found = [];
       for (const rule of rules) {

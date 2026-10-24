@@ -86,6 +86,8 @@ test('the Scriptorium door: shut without the librarian\'s key (S and walking int
   assert.equal(t.app.sceneId, 'play', 'once per visit');
   t.game.items.scriptoriumKey = true;
   t.place({ area: 'overworld', screen: '2,-2', tx: 8, ty: 4, facing: 'up' });
+  assert.equal(VL.interact(t.game), false, 'an open door leaves S to whatever else is in front');
+  assert.equal(t.game.message, null);
   assert.equal(VL.LOCKS.scriptoriumEntered.reached(t.game), false);
   t.until((g) => g.player.area === 'scriptorium', 1, ['up']);
   assert.deepEqual([t.game.player.screen, VL.heroTile(t.game).tx, VL.heroTile(t.game).ty], ['1,0', 7, 9]);
@@ -93,6 +95,25 @@ test('the Scriptorium door: shut without the librarian\'s key (S and walking int
   // And out again by the mat.
   t.until((g) => g.player.area === 'overworld', 1, ['down']);
   assert.deepEqual([t.game.player.screen, VL.heroTile(t.game).tx, VL.heroTile(t.game).ty], ['2,-2', 8, 4]);
+});
+
+test('the gallery block: a sign beside it says how to undo a wrong push, and stepping out and back in does', () => {
+  const t = setup({ where: scr('0,0', 9, 8, 'down') });
+  const { VL } = t;
+  t.press('interact');
+  const popup = VL.currentPopup(t.game);
+  assert.match(popup.text, /Step out of the room and back in/);
+  assert.deepEqual(plain(VL.ART.missingGlyphs(popup.title + popup.text)), []);
+  assert.ok(!VL.ART.popupLayout({ title: popup.title, text: popup.text }).overflow);
+  t.close();
+  // A wrong push (up) leaves the block off the plate's row for the rest of the visit.
+  Object.assign(t.game.player, VL.tileCenter(11, 9), { facing: 'up' });
+  const block = t.find('pushBlock');
+  t.until(() => !block.slide && block.y === 7, 1.5, ['up']);
+  t.until(() => VL.heroTile(t.game).tx === 15, 3, ['up', 'right']);
+  t.until(() => t.game.player.screen === '1,0', 1, ['right']);
+  t.until(() => t.game.player.screen === '0,0', 1.5, ['left']);
+  assert.deepEqual([t.find('pushBlock').x, t.find('pushBlock').y], [11, 8], 'back where it started');
 });
 
 test('the statue by the entrance saves and is where a faint wakes the hero', () => {
@@ -167,6 +188,7 @@ test('the solver: a key used up before an event is not asked for again after it 
   assert.ok(report.stages.length > 1, 'the shockwave is a stage');
   const after = report.stages[1];
   for (const id of ['d1KeyA', 'd1DoorA']) assert.ok([...after.disabled].includes(id), `${id} is used up before the shockwave`);
+  assert.equal(after.counts['smallKey:scriptorium'], 0, 'both keys were spent before the shockwave');
   assert.deepEqual([...report.problems].filter((p) => p.includes('smallKey:scriptorium')), []);
   // Still caught before an event: a door that wastes the only key.
   const table = Object.fromEntries(Object.entries(VL.LOCKS).map(([id, lock]) => [id, { ...lock, needs: lock.needs.slice(), consumes: { ...lock.consumes }, supplies: { ...lock.supplies } }]));
@@ -196,7 +218,7 @@ test('the Bookworm burrows, rumbles, rears up and dives on a readable beat, harm
     t.game.hp = t.game.maxHp;
   }
   assert.deepEqual(seen.slice(0, 5).map((s) => s.mode), ['under', 'rumble', 'up', 'down', 'under']);
-  for (const s of seen) assert.equal(s.harmful, s.mode === 'up' && s.harmful, `${s.mode} ${s.harmful}`);
+  for (const s of seen) assert.equal(s.harmful, s.mode === 'up', `${s.mode} ${s.harmful}`);
   assert.deepEqual([seen[1].at.tx, seen[1].at.ty], [7, 5], 'first up at its own hole');
   // Every hole it uses is a hole tile.
   for (const s of seen) assert.ok(t.VL.tileInfo('scriptorium', t.VL.getScreen('scriptorium', '1,-2').tiles[s.at.ty][s.at.tx]).hole);
@@ -226,7 +248,7 @@ test('a sword bounces off its paper armour; three thrown pots beat it, and it is
   VL.hitEnemy(t.game, worm, 2, { x: worm.cx, y: worm.cy + 20 });
   assert.equal(worm.hits, 0, 'a sword does not count');
   assert.equal(worm.hp, VL.ENEMIES.bookworm.hp);
-  assert.match(t.game.dungeonNote.text, /too tough for a sword/);
+  assert.equal(t.game.dungeonNote.text, 'Too tough for a sword! Something heavy, perhaps?', 'says what does work, too');
   for (let i = 0; i < VL.TUNING.bookwormHits; i += 1) {
     t.until(() => worm.mode === 'up', 8);
     worm.struckBy = 'throw';
@@ -369,8 +391,8 @@ test('every word the Scriptorium says fits its box and its font', () => {
     const book = VL.BOOKS[id];
     assert.deepEqual(plain(VL.ART.missingGlyphs(`${book.title} ${book.blurb}`)), [], id);
   }
-  assert.deepEqual(plain(VL.ART.missingGlyphs('Its paper armour is too tough for a sword!', 'small')), []);
-  assert.ok(VL.ART.measureText('Its paper armour is too tough for a sword!', 'small') <= VL.TUNING.width - 8);
+  assert.deepEqual(plain(VL.ART.missingGlyphs('Too tough for a sword! Something heavy, perhaps?', 'small')), []);
+  assert.ok(VL.ART.measureText('Too tough for a sword! Something heavy, perhaps?', 'small') <= VL.TUNING.width - 8);
 });
 
 test('render smoke: every Scriptorium room draws, and the Bookworm in each of its moods', () => {

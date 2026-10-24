@@ -132,7 +132,7 @@
     const tiles = VL.facingTiles(state);
     for (let i = 0; i < tiles.length; i += 1) {
       const { tx, ty } = tiles[i];
-      const entity = room.entities.find((e) => e.x === tx && e.y === ty && (VL.ENTITIES[e.type]?.liftable || VL.ENTITIES[e.type]?.onInteract));
+      const entity = room.entities.find((e) => e.x === tx && e.y === ty && (VL.ENTITIES[e.type]?.liftable || VL.takesS(state, e)));
       if (entity) {
         const kind = VL.ENTITIES[entity.type].liftable;
         if (!kind) return false;
@@ -248,10 +248,9 @@
   function updateRespawns(state) {
     const room = state.room;
     if (!room.respawns?.length) return;
-    const hero = VL.heroTile(state);
     room.respawns = room.respawns.filter(({ entity, at }) => {
       if (state.time < at) return true;
-      const busy = (hero.tx === entity.x && hero.ty === entity.y) || room.entities.some((e) => e.x === entity.x && e.y === entity.y && (e.solid || VL.ENTITIES[e.type]?.solid || VL.isEnemy(e)));
+      const busy = VL.heroBoxOverlaps(state, entity.x, entity.y) || room.entities.some((e) => e.x === entity.x && e.y === entity.y && (e.solid || VL.ENTITIES[e.type]?.solid || VL.isEnemy(e)));
       if (busy) return true;
       room.entities.push({ ...entity });
       return false;

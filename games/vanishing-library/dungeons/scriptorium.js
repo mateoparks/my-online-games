@@ -174,6 +174,7 @@
         { type: 'copyable', x: 7, y: 1, copy: 'woodsMapCopy', look: 'mural' },
         { type: 'pushBlock', x: 11, y: 8 },
         { type: 'pressurePlate', id: 'd1PlateGallery', x: 12, y: 8, latch: true, weight: 'block' },
+        { type: 'sign', x: 9, y: 9, title: 'A note from the scribes', text: 'Pushed the block the wrong way? Step out of the room and back in, and it will be back where it started.' },
         { type: 'shutter', id: 'd1ShutterGallery', x: 4, y: 6, open: { plate: 'd1PlateGallery' } },
         { type: 'smallKey', id: 'd1KeyA', x: 4, y: 5, lock: 'd1KeyA' },
         { type: 'slime', x: 9, y: 3 },
@@ -316,23 +317,6 @@
     to: { area: 'scriptorium', screen: '1,0', tx: 7, ty: 9, facing: 'up' },
     needs: 'scriptoriumKey',
     locked: 'The great door is locked. A wax seal is pressed into the keyhole: the same seal as on a book, perhaps?',
-  });
-
-  // Walking into a door that needs a key says why, once per visit.
-  VL.defineSystem('keyedDoors', {
-    order: 42,
-    update(state, actions) {
-      const player = state.player;
-      if (!actions.held[player.facing] || player.lifted || player.carrying || player.flight || state.message) return;
-      const ahead = VL.facingTile(state);
-      const door = state.room.entities.find((e) => e.type === 'door' && e.solid && e.x === ahead.tx && e.y === ahead.ty);
-      if (!door || door.told) return;
-      const { w, h } = VL.TUNING.heroBox;
-      const [dx, dy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[player.facing];
-      if (!VL.isBlocked(player.area, player.screen, player.x + dx * 0.5, player.y + dy * 0.5, w, h, state.room)) return;
-      door.told = true;
-      VL.showMessage(state, { text: door.locked });
-    },
   });
 
   // ---------- the treasure ----------

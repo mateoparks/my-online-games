@@ -113,7 +113,8 @@ state. More hooks:
 
 - `solid: true` blocks the hero on its tile (and the playthrough's pathing).
 - `onInteract(state, entity)` runs when S is pressed facing its tile (a chest, a
-  sign, later an NPC).
+  sign, later an NPC). An optional `takesS(state, entity)` returning false
+  leaves the press to whatever else is in front (an open door; `VL.takesS`).
 - `prepare(state, copy)` runs on each fresh copy as the hero enters the screen:
   set it up from saved state (`copy.opened = …`) or return `false` to leave it
   out of the visit (an ore lump already taken).
@@ -1219,8 +1220,10 @@ Tests: `tests/lifting.test.js`.
   **boulder** is gone for good: `VL.saveTile` (W13) writes its `P`, so it
   stays lifted through a reload and shows on the drawn map. A pot with
   `respawn` sits back on its spot `TUNING.potRespawnSeconds` after it was
-  taken (puzzle rooms and the boss room never run out); a plain one is back
-  on the next visit.
+  taken (puzzle rooms and the boss room never run out), once nothing stands
+  on the spot, not even part of the hero's box (`VL.heroBoxOverlaps`); a
+  plain one is back on the next visit. No respawning pot sits in or just
+  inside a doorway (tested).
 - **Holding:** `player.lifted` (`{ kind, since, t }`, play state) is drawn
   over the hero's head. The `lifting` system (order 15, before the stage,
   the counters, the hands and the chickens) **spends** the presses it uses:
@@ -1265,8 +1268,12 @@ through to the Bookworm, two canyon boulders lifted).
 - **The way in:** the `scriptoriumDoor` spot is a `door` with
   `needs: 'scriptoriumKey'` and `locked` words: such a door is solid without the item
   (`passable` for the pathfinder), S says its words, and walking into it says
-  them once per visit (the `keyedDoors` system). With the librarian's key it
-  is an ordinary door.
+  them once per visit (the `keyedDoors` system in `entities/door.js`, for
+  every door with `needs`). With the librarian's key it is an ordinary door,
+  and S facing it is left to whatever else is there.
+- **The gallery block** keeps Zelda's once-per-visit rule (a free block could
+  be shoved into the east doorway); a sign beside it says to step out and
+  back in after a wrong push.
 - **The order:** key A (block onto the gallery's plate) opens door A, behind
   which the big chest holds the Lifting Gloves (mid-dungeon); only then can
   the rocks in the entrance's east corridor and the vault's south corridor be
@@ -1297,8 +1304,11 @@ through to the Bookworm, two canyon boulders lifted).
   adds `d1KeyA`, `d1DoorA`, `d1KeyB`, `d1DoorB`, `d1BossKey`, `d1BossDoor`.
   Ids are `d1…` (and `heartD1`, `oreScriptorium`).
 - **Solver note:** a one-time lock used up before an event (the doors here,
-  before the shockwave) is paid for in that stage's start counts, so the
-  spending check no longer asks for its key again after the event.
+  before the shockwave) carries its key in that stage's start counts, as a
+  debt when need be (a count may go below 0), so the spending check no longer
+  asks for its key again after the event, and a key source left enabled (the
+  closure doesn't deduct spending, so `d1KeyB` looks avoidable) is cancelled
+  rather than counted twice.
 - **Pathfinder note:** `tests/playthrough.js` also reads this visit's tile
   changes on the hero's screen (a lifted rock), so `walkTo` goes through a
   corridor once its rock is lifted.
@@ -1399,7 +1409,8 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
 - **Pressure plates:** `{ type: 'pressurePlate', id, x, y, latch = false,
   weight? }` is `down` while the hero stands on it or something that weighs
   sits on it: any entity type that says `weighsPlate: true` in its definition
-  (a push block; W14's pots add the flag in their own file), judged by its
+  (a push block; W14's pots don't, since a pot is lifted and every throw
+  shatters, so it never comes to rest on a plate), judged by its
   body's tile when it has one. `weight: 'block'` ignores the hero, so a block
   puzzle cannot be skipped by standing on the plate (the sample's plate).
   `latch: true` saves the first press for good, so the shutter it opens stays
@@ -1491,8 +1502,8 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
    (`lock: 'id'`); a door across an edge has its twin on the other screen
    (or `oneWay: true`, which only holds if no loop of rooms and no warp
    reaches the far room another way); a block puzzle's plate says
-   `weight: 'block'` so standing on it is not a solution; a pot or anything
-   else that should press a plate gets `weighsPlate: true` in its own entity
+   `weight: 'block'` so standing on it is not a solution; anything that
+   should press a plate gets `weighsPlate: true` in its own entity
    definition. Wherever the hero can appear (beside an opening, on the
    statue step, where a door or warp lands him) he must have a way out
    before he pushes anything.
