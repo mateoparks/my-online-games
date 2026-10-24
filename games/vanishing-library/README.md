@@ -753,7 +753,11 @@ that runs no tests, and an `async` test function, both fail the node run.
   finish the glide on the far screen. The lengths are W7's `VL.tune` in
   `systems/chickens.js`, and `tests/overworld.test.js` reads them from
   `VL.TUNING`, so retuning them is checked against the map (see
-  [Chickens](#chickens)).
+  [Chickens](#chickens)). A carried chicken goes everywhere, through doors
+  too, so in a dungeon (W13, W17–W19) a gap the puzzle depends on must not
+  be `flyOver` (`V`, `W`), or the dungeon takes the chicken at its door;
+  otherwise a chicken from town flies over the puzzle and W3's solver
+  won't see it.
 - **Decor** (`{ type: 'decor', art, x, y }`) draws scenery bigger than a tile
   (buildings, the lighthouse, the water wheel, signboards) over solid
   footprint tiles (`x` grass, `y` water, `G` woods floor). Register a painter
@@ -859,7 +863,9 @@ spots. Tests: `tests/chickens.test.js`.
   facing direction. A throw stops short of anything solid and the screen's
   edge, flies over water and chasms, and a chicken that comes down on one
   splashes and flaps back to where it was thrown from. While carrying, the
-  hands do nothing else (Space does not swing, S does not talk or pull).
+  hands do nothing else (Space does not swing, S does not pull), except that
+  S facing a townsperson talks instead of throwing, chicken still in hand:
+  that is how the lost chicken is carried back to its kid (W11).
 - **Flight (F, a secret):** F next to a chicken (within `chickenReach` px),
   or holding one, and the chicken carries the hero the way he faces. It looks
   along the line for `VL.chickenFlightTiles(state) + 1` tiles: water and
@@ -893,7 +899,9 @@ spots. Tests: `tests/chickens.test.js`.
 - **The lost chicken** (`lost: true`, spot `lostChicken`): once lifted it
   stays with the hero (`state.chickenFollower`, transient): thrown or set
   down, it trots after him and turns up behind him on every screen he
-  enters. For W11's kid: `VL.chickenWithHero(state, id)` says whether it is
+  enters. Followers, chickens flapping home and swarm birds go straight
+  through walls, water and chasms on purpose (they are never solid and never
+  carry the hero), so don't "fix" them into solid entities. For W11's kid: `VL.chickenWithHero(state, id)` says whether it is
   with the hero, `VL.takeChicken(state, id)` takes it away, and
   `VL.markFound(state, 'lostChicken')` keeps it off its spot for good.
 - **Saved:** nothing. Carrying, flights, the follower and the swarm are play

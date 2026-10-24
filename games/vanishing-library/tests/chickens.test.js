@@ -140,6 +140,15 @@ test('chickens wander near home on open ground, peck and cluck, without touching
   assert.ok(sounds.includes('cluck'), 'it clucks now and then');
 });
 
+test('a chicken\'s first pause is within the idle range, like every later one', () => {
+  const { VL, app } = setup();
+  for (let i = 0; i < 40; i += 1) {
+    const c = { type: 'chicken', spot: `idle${i}`, x: 1 + (i % 12), y: 1 + (i % 8) };
+    VL.setUpChicken(app.game, c);
+    assert.ok(c.idle >= VL.TUNING.chickenIdleMin && c.idle <= VL.TUNING.chickenIdleMax, `${c.idle}`);
+  }
+});
+
 // ---------- lift and throw ----------
 
 test('S facing a chicken lifts it over the hero\'s head; the same press never throws it', () => {
@@ -194,7 +203,7 @@ test('a chicken thrown into water splashes and flutters back to land: never lost
   assert.ok(app.game.room.entities.includes(hen));
 });
 
-test('while carrying, S throws instead of talking or pulling, and Space does not swing', () => {
+test('while carrying, S throws instead of pulling, and Space does not swing', () => {
   const { VL, app, press, withChicken } = setup();
   VL.giveItem(app.game, 'woodSword');
   app.game.popups.queue.length = 0;
@@ -204,6 +213,19 @@ test('while carrying, S throws instead of talking or pulling, and Space does not
   press('mainHand');
   assert.ok(!app.game.player.swing, 'no swing with a chicken overhead');
   assert.equal(app.game.hp, hp);
+});
+
+test('carrying a chicken up to a townsperson, S talks instead of throwing it at them (the lost chicken goes home this way)', () => {
+  const { VL, app, press, withChicken } = setup();
+  VL.defineNpc('henKid', { name: 'Pip', look: 'townsfolk' });
+  VL.defineDialogue('henKid', [{ say: 'My chicken!' }]);
+  const hen = withChicken(5, 2, 'right');
+  press('interact');
+  app.game.room.entities.push({ type: 'npc', id: 'henKid', x: 6, y: 2 });
+  press('interact');
+  assert.equal(app.sceneId, 'dialogue');
+  assert.equal(app.game.player.carrying, hen, 'still in hand');
+  assert.ok(!app.game.room.entities.includes(hen), 'not thrown');
 });
 
 // ---------- flight ----------

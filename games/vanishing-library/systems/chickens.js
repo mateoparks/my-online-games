@@ -164,7 +164,7 @@
     c.rngState = Math.floor(VL.ART.hash(c.x, c.y, salt) * 0x100000000) >>> 0;
     const feet = VL.tileCenter(c.x, c.y);
     Object.assign(c, { px: feet.x, py: feet.y, z: 0, home: { x: c.x, y: c.y }, mode: 'idle', peck: 0, facing: VL.random(c) < 0.5 ? 'left' : 'right' });
-    c.idle = T.chickenIdleMin + VL.random(c) * T.chickenIdleMax;
+    c.idle = T.chickenIdleMin + VL.random(c) * (T.chickenIdleMax - T.chickenIdleMin);
   };
 
   // ---------- lift and throw ----------
@@ -186,6 +186,11 @@
     state.events.push({ type: 'chickenLift' });
     return true;
   };
+
+  function townspersonAhead(state) {
+    const tiles = VL.facingTiles(state);
+    return room(state).entities.find((e) => e.type === 'npc' && tiles.some(({ tx, ty }) => e.x === tx && e.y === ty));
+  }
 
   function throwChicken(state) {
     const player = state.player;
@@ -595,7 +600,12 @@
       bringFollower(state);
       if (player.flight) updateFlight(state, dt);
       else if (actions.pressed.fly) VL.startFlight(state);
-      else if (actions.pressed.interact && player.carrying && player.carrying.since !== state.time) throwChicken(state);
+      else if (actions.pressed.interact && player.carrying && player.carrying.since !== state.time) {
+        // Facing a townsperson, S talks: the design's "carry it back" to the kid.
+        const person = townspersonAhead(state);
+        if (person) VL.ENTITIES.npc.onInteract(state, person);
+        else throwChicken(state);
+      }
 
       for (const event of state.events) {
         if (event.type !== 'swing') continue;
