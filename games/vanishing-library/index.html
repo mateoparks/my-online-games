@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e9f7ed">
+  <title>The Vanishing Library | Arcade Current</title>
+  <script src="../../assets/theme.js"></script>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="game.css">
+</head>
+<body class="game-page">
+  <header class="site-header game-header">
+    <a class="back" href="../../index.html">&larr; All games</a>
+    <a class="brand" href="../../index.html">Arcade Current</a>
+    <button class="theme-toggle" type="button" aria-label="Switch color theme">
+      <span class="theme-icon" aria-hidden="true">☀</span>
+      <span class="theme-icon" aria-hidden="true">☾</span>
+      <span class="theme-thumb" aria-hidden="true"></span>
+    </button>
+  </header>
+  <main>
+    <canvas id="game" width="256" height="192" tabindex="0" aria-label="The Vanishing Library game screen"></canvas>
+  </main>
+  <script src="manifest.js"></script>
+  <script>
+    // Classic scripts, in manifest order, so the page works from file://.
+    for (const src of VL.scriptFiles()) {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = false;
+      document.body.appendChild(script);
+    }
+  </script>
+</body>
+</html>

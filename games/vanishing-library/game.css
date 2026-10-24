@@ -1,0 +1,21 @@
+/* The canvas picks its own size (the largest whole number of device pixels
+   per logical pixel that fits; see README "Engine notes"), so
+   this game's main is not capped at the site's 960px. The 1rem padding is the
+   gutter main.js fits the canvas inside; a larger one makes the page scroll. */
+.game-page main {
+  max-width: none;
+  padding: 1rem;
+}
+
+#game {
+  display: block;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  background: #000;
+  box-shadow: 0 14px 30px var(--shadow);
+}
+
+#game:focus-visible {
+  outline: 3px solid var(--aqua-bright);
+  outline-offset: 4px;
+}
