@@ -38,6 +38,8 @@ VL.FILES = {
     'systems/foliage.js',
     'systems/hands.js',
     'systems/combat.js',
+    'systems/economy.js',
+    'systems/digging.js',
   ],
 
   entities: [
@@ -69,6 +71,7 @@ VL.FILES = {
     'regions/highlands.js',
     'regions/finds.js',
     'regions/townsfolk.js',
+    'regions/buildings.js',
   ],
 
   dungeons: [

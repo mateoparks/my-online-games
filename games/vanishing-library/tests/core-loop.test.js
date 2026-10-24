@@ -91,7 +91,7 @@ const entitiesOf = (game, type) => game.room.entities.filter((e) => e.type === t
 test('a new game has an empty inventory, no items, empty hands and no popups seen', () => {
   const { VL } = loadGame();
   const game = VL.newGame();
-  assert.deepEqual(plain(game.inventory), { wood: 0, shells: 0, brokenShells: 0, berries: 0, ore: 0 });
+  assert.deepEqual(plain(game.inventory), { wood: 0, shells: 0, brokenShells: 0, berries: 0, ore: 0, paper: 0, ink: 0 });
   assert.deepEqual(plain(game.items), {});
   assert.deepEqual(plain(game.hands), { mainHand: null, offHand: null });
   assert.deepEqual(plain(game.popups), { seen: {}, queue: [] });

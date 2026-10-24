@@ -24,7 +24,6 @@ function squatters(VL) {
 
 const LEDGER = {
   W7: ['chickenCoop', 'chickenGap', 'chickenHighlands', 'chickenLair', 'chickenLedge', 'chickenRiverside', 'chickenSquare', 'lostChicken'],
-  W10: ['binderyDoor', 'blacksmithDoor', 'bookBeachBuried', 'paperMillDoor', 'shopDoor'],
   W11: [
     'bookChickenAlmanac', 'bookCliffRoad', 'bookDragons', 'bookEastRoad', 'bookHerbalist', 'bookLighthouse', 'bookPrimer',
     'bookRiverside', 'bookSmithsLedger', 'bookTideTables', 'bookWoods', 'hiddenBookSealed', 'libraryDoor', 'pageFieldA',
