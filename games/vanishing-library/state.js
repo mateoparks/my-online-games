@@ -9,6 +9,18 @@ VL.extendGame = function extendGame(id, fields) {
   VL.GAME_EXTENSIONS.push({ id, fields });
 };
 
+// Play state that is never saved (save.js strips these fields).
+const transientState = () => ({
+  time: 0,
+  player: { area: null, screen: null, x: 0, y: 0, facing: 'down', moving: false },
+  room: null,
+  transition: null,
+  events: [],
+  dirty: false,
+  fainted: null,
+});
+VL.TRANSIENT_FIELDS = Object.keys(transientState());
+
 VL.createGame = function createGame(options = {}) {
   const { name = 'Hero', seed = 1 } = options;
   const state = {
@@ -19,13 +31,7 @@ VL.createGame = function createGame(options = {}) {
     flags: {},
     visited: {},
   };
-  const transient = {
-    time: 0,
-    player: { area: null, screen: null, x: 0, y: 0, facing: 'down', moving: false },
-    room: null,
-    transition: null,
-    events: [],
-  };
+  const transient = transientState();
   for (const { id, fields } of VL.GAME_EXTENSIONS) {
     for (const [key, value] of Object.entries(fields(options))) {
       if (key in state || key in transient) throw new Error(`game extension ${id}: field ${key} already exists`);

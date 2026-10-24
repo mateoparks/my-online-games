@@ -1,0 +1,459 @@
+// Scenes (W2): title and slots, on-canvas name entry, the intro, pause with
+// Save & Quit, autosave, fainting; and the typed-text input they need.
+const assert = require('node:assert/strict');
+const { test, read, loadGame, addFixtureWorld, fakeDocument, fakeWindow, keyEvent } = require('./harness');
+
+function memoryStorage() {
+  const map = new Map();
+  return {
+    map,
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => map.set(key, String(value)),
+    removeItem: (key) => map.delete(key),
+  };
+}
+
+const blocked = () => {
+  throw new Error('blocked');
+};
+const throwingStorage = { getItem: blocked, setItem: blocked, removeItem: blocked };
+
+const STEP = 1 / 60;
+const press = (VL, app, action) => app.update(VL.actions({ pressed: [action] }), STEP);
+const type = (VL, app, typed) => app.update(VL.actions({ typed }), STEP);
+const wait = (VL, app, seconds, held = []) => {
+  for (let t = 0; t < seconds - 1e-9; t += STEP) app.update(VL.actions({ held }), STEP);
+};
+
+// An app with a memory store, on the title screen.
+function titleApp(VL, backing = memoryStorage()) {
+  return { app: VL.createApp({ storage: VL.createStorage(backing) }), backing };
+}
+
+// Drives title → name → intro → play for a new game in slot `slot`.
+function newGameTo(VL, app, name, slot = 0, stopAt = 'play') {
+  for (let i = 0; i < slot; i += 1) press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'name');
+  type(VL, app, name);
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'intro');
+  if (stopAt === 'intro') return;
+  wait(VL, app, 1);
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'play');
+}
+
+// Records every string the kit draws during a draw.
+function drawnText(VL, document, app, t = 0) {
+  const strings = [];
+  const original = VL.ART.text;
+  VL.ART.text = (ctx, str, ...rest) => {
+    strings.push(String(str));
+    return original(ctx, str, ...rest);
+  };
+  const ctx = document.createElement('canvas').getContext('2d');
+  VL.render(ctx, app, t);
+  VL.ART.text = original;
+  return strings;
+}
+
+// ---------- input: Enter, Backspace, typed text ----------
+
+test('Enter confirms, Backspace and Delete erase, and typed text is collected per poll', () => {
+  const { VL } = loadGame();
+  const win = fakeWindow();
+  const input = VL.createKeyboardInput(win, fakeDocument());
+  assert.ok(VL.ACTIONS.includes('confirm') && VL.ACTIONS.includes('erase'));
+  win.dispatch('keydown', keyEvent('Enter'));
+  assert.equal(input.poll().pressed.confirm, true);
+  win.dispatch('keyup', keyEvent('Enter'));
+  win.dispatch('keydown', keyEvent('NumpadEnter', { key: 'Enter' }));
+  assert.equal(input.poll().pressed.confirm, true);
+  win.dispatch('keyup', keyEvent('NumpadEnter', { key: 'Enter' }));
+  for (const code of ['Backspace', 'Delete']) {
+    const event = keyEvent(code);
+    win.dispatch('keydown', event);
+    assert.equal(event.prevented, true, `${code} is prevented`);
+    assert.equal(input.poll().pressed.erase, true, code);
+    win.dispatch('keyup', keyEvent(code));
+  }
+  for (const key of ['R', 'o', 'b', ' ', '1', '!']) win.dispatch('keydown', keyEvent(`Key${key.toUpperCase()}`, { key }));
+  win.dispatch('keydown', keyEvent('KeyB', { key: 'b', repeat: true }));
+  win.dispatch('keydown', keyEvent('Backspace'));
+  win.dispatch('keydown', keyEvent('Backspace', { repeat: true }));
+  const actions = input.poll();
+  assert.equal(actions.typed, 'Rob 1!b\b\b', 'repeats type again; Backspace types \\b');
+  assert.equal(input.poll().typed, '', 'cleared by the poll');
+  win.dispatch('keydown', keyEvent('ArrowLeft'));
+  win.dispatch('keydown', keyEvent('Escape'));
+  win.dispatch('keydown', keyEvent('ShiftLeft', { key: 'Shift' }));
+  assert.equal(input.poll().typed, '', 'only printable characters are typed');
+});
+
+test('typed text leaves modifier chords, text fields and the header controls alone', () => {
+  const { VL } = loadGame();
+  const win = fakeWindow();
+  const input = VL.createKeyboardInput(win, fakeDocument());
+  win.dispatch('keydown', keyEvent('KeyR', { key: 'r', metaKey: true }));
+  win.dispatch('keydown', keyEvent('KeyR', { key: 'r', target: { tagName: 'INPUT' } }));
+  win.dispatch('keydown', keyEvent('Space', { key: ' ', target: { tagName: 'BUTTON' } }));
+  assert.equal(input.poll().typed, '');
+  // Enter activates a focused button or link, so it is theirs, not a confirm.
+  for (const tagName of ['BUTTON', 'A']) {
+    const enter = keyEvent('Enter', { target: { tagName } });
+    win.dispatch('keydown', enter);
+    assert.equal(enter.prevented, false, `${tagName} keeps Enter`);
+    assert.equal(input.poll().pressed.confirm, false, `${tagName} keeps Enter`);
+    win.dispatch('keyup', keyEvent('Enter'));
+  }
+  const onCanvas = keyEvent('Enter', { target: { tagName: 'CANVAS' } });
+  win.dispatch('keydown', onCanvas);
+  assert.equal(onCanvas.prevented, true);
+  assert.equal(input.poll().pressed.confirm, true);
+});
+
+test('actions carry typed text; heldOnly drops it', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.noActions().typed, '');
+  const actions = VL.actions({ typed: 'ab', pressed: ['confirm'] });
+  assert.equal(actions.typed, 'ab');
+  assert.equal(VL.heldOnly(actions).typed, '');
+  assert.equal(VL.confirmed(VL.actions({ pressed: ['confirm'] })), true);
+  assert.equal(VL.confirmed(VL.actions({ pressed: ['interact'] })), true);
+  assert.equal(VL.confirmed(VL.actions({ pressed: ['mainHand'] })), true);
+  assert.equal(VL.confirmed(VL.actions({ pressed: ['offHand'] })), false);
+});
+
+// ---------- the start ----------
+
+test('the game starts on the title screen with the app holding its storage', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.START_SCENE, 'title');
+  const bare = VL.createApp();
+  assert.equal(bare.sceneId, 'title');
+  assert.equal(bare.game, null);
+  assert.equal(bare.slot, null);
+  assert.equal(bare.storage.ok, false, 'no storage given: saving is off');
+  const { app } = titleApp(VL);
+  assert.equal(app.storage.ok, true);
+});
+
+test('new game: slot → typed name → intro → play, saved as soon as it is named', () => {
+  const { VL } = loadGame();
+  const { app, backing } = titleApp(VL);
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'name');
+  type(VL, app, 'Robin');
+  assert.equal(app.naming.text, 'Robin');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'intro');
+  assert.equal(app.game.name, 'Robin');
+  assert.equal(app.slot, 0);
+  assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).name, 'Robin', 'the slot holds the new game');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'intro', 'a press in the first moments does not skip');
+  wait(VL, app, 1);
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'play');
+  assert.equal(app.game.player.area, VL.START.area, 'the hero stands outside the hut');
+});
+
+test('name entry: 12 characters at most, backspace, only characters the font has, Hero by default', () => {
+  const { VL } = loadGame();
+  const { app } = titleApp(VL);
+  press(VL, app, 'confirm');
+  type(VL, app, 'Bartholomew Quill');
+  assert.equal(app.naming.text, 'Bartholomew ');
+  type(VL, app, '\b\b\b\b\b');
+  assert.equal(app.naming.text, 'Barthol');
+  type(VL, app, 'é€');
+  assert.equal(app.naming.text, 'Barthol', 'characters the font cannot draw are ignored');
+  type(VL, app, '\b\b\b\b\b\b\b\b\b\b');
+  assert.equal(app.naming.text, '');
+  // Game keys are letters here: S and E type nothing and do nothing.
+  press(VL, app, 'interact');
+  press(VL, app, 'equipment');
+  press(VL, app, 'mainHand');
+  assert.equal(app.sceneId, 'name');
+  assert.equal(app.game, null);
+  type(VL, app, '   ');
+  press(VL, app, 'confirm');
+  assert.equal(app.game.name, 'Hero', 'blank name defaults');
+  assert.equal(app.sceneId, 'intro');
+});
+
+test('name entry trims spaces and Esc goes back to the title without a game', () => {
+  const { VL } = loadGame();
+  const { app, backing } = titleApp(VL);
+  press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  assert.equal(app.naming.slot, 1);
+  type(VL, app, ' Kai ');
+  press(VL, app, 'pause');
+  assert.equal(app.sceneId, 'title');
+  assert.equal(app.game, null);
+  assert.equal(app.title.cursor, 1, 'back on the slot that was chosen');
+  assert.equal(backing.map.size, 0);
+  press(VL, app, 'confirm');
+  type(VL, app, ' Kai ');
+  press(VL, app, 'confirm');
+  assert.equal(app.game.name, 'Kai');
+  assert.equal(app.slot, 1);
+});
+
+test('the intro shows the three weathered lines, then plays on its own', () => {
+  const { VL, document } = loadGame();
+  assert.equal(VL.INTRO_LINES.length, 3);
+  assert.equal(VL.INTRO_LINES.join(' '), 'In a world where books mysteriously disappear, one brave adventurer has set out to save his culture from oblivion...');
+  for (const line of VL.INTRO_LINES) {
+    assert.deepEqual([...VL.ART.missingGlyphs(line)], [], line);
+    assert.ok(VL.ART.wrapText(line, 232).length <= 2, 'each line fits in two rows');
+  }
+  const { app } = titleApp(VL);
+  newGameTo(VL, app, 'Ash', 0, 'intro');
+  const early = drawnText(VL, document, app, 0.1);
+  assert.equal(early.some((s) => s.includes('oblivion')), false, 'the last line is not up yet');
+  wait(VL, app, VL.INTRO.lineDelay * 2 + VL.INTRO.fade + 0.1);
+  const late = drawnText(VL, document, app, 8);
+  assert.ok(late.some((s) => s.includes('oblivion')), 'the last line has faded in');
+  wait(VL, app, VL.INTRO.total);
+  assert.equal(app.sceneId, 'play', 'the intro ends by itself');
+});
+
+// ---------- title and slots ----------
+
+test('the title lists the three slots with name, hearts and books, Empty or Damaged', () => {
+  const { VL, document } = loadGame();
+  const backing = memoryStorage();
+  const storage = VL.createStorage(backing);
+  const kai = VL.newGame({ name: 'Kai' });
+  kai.maxHp = 10;
+  VL.saveSlot(storage, 1, kai);
+  backing.setItem(VL.slotKey(2), '{broken');
+  const app = VL.createApp({ storage });
+  assert.deepEqual([...app.title.slots.map((s) => s.status)], ['empty', 'ok', 'damaged']);
+  const strings = drawnText(VL, document, app);
+  assert.ok(strings.some((s) => /Empty/i.test(s)));
+  assert.ok(strings.some((s) => s.includes('Kai')));
+  assert.ok(strings.some((s) => /Damaged/i.test(s)));
+  assert.ok(strings.some((s) => /books/i.test(s)));
+  assert.ok(!strings.some((s) => /saving is off/i.test(s)), 'no storage note when saving works');
+});
+
+test('title cursor moves and wraps; a damaged slot cannot be started; a saved one continues at full hearts', () => {
+  const { VL } = loadGame();
+  const backing = memoryStorage();
+  const storage = VL.createStorage(backing);
+  const kai = VL.newGame({ name: 'Kai' });
+  kai.hp = 1;
+  kai.flags.chest = true;
+  VL.touchSavePoint(kai, { area: 'hut', screen: '0,0', tx: 3, ty: 2 });
+  VL.saveSlot(storage, 1, kai);
+  backing.setItem(VL.slotKey(2), '{broken');
+  const app = VL.createApp({ storage });
+  assert.equal(app.title.cursor, 0);
+  press(VL, app, 'up');
+  assert.equal(app.title.cursor, 2, 'wraps upwards');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'title', 'a damaged slot does not start');
+  assert.equal(app.game, null);
+  press(VL, app, 'down');
+  assert.equal(app.title.cursor, 0, 'wraps downwards');
+  press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'play');
+  assert.equal(app.slot, 1);
+  assert.equal(app.game.name, 'Kai');
+  assert.equal(app.game.hp, app.game.maxHp);
+  assert.equal(app.game.flags.chest, true);
+  assert.equal(app.game.player.area, 'hut');
+});
+
+test('deleting a slot asks first, defaults to No, and erases on Yes', () => {
+  const { VL, document } = loadGame();
+  const backing = memoryStorage();
+  const storage = VL.createStorage(backing);
+  VL.saveSlot(storage, 0, VL.newGame({ name: 'Kai' }));
+  backing.setItem(VL.slotKey(1), '{broken');
+  const app = VL.createApp({ storage });
+  press(VL, app, 'erase');
+  assert.equal(app.title.confirmDelete, true);
+  assert.ok(drawnText(VL, document, app).some((s) => s.includes('Kai') && /delete/i.test(s)), 'asks by name');
+  press(VL, app, 'confirm');
+  assert.equal(app.title.confirmDelete, false);
+  assert.equal(VL.readSlot(storage, 0).status, 'ok', 'No is the default');
+  press(VL, app, 'erase');
+  press(VL, app, 'pause');
+  assert.equal(app.title.confirmDelete, false, 'Esc cancels');
+  assert.equal(VL.readSlot(storage, 0).status, 'ok');
+  press(VL, app, 'erase');
+  press(VL, app, 'left');
+  press(VL, app, 'confirm');
+  assert.equal(VL.readSlot(storage, 0).status, 'empty');
+  assert.equal(app.title.slots[0].status, 'empty', 'the list refreshes');
+  press(VL, app, 'erase');
+  assert.equal(app.title.confirmDelete, false, 'nothing to delete on an empty slot');
+  press(VL, app, 'down');
+  press(VL, app, 'erase');
+  assert.equal(app.title.confirmDelete, true, 'a damaged slot can be deleted');
+  press(VL, app, 'right');
+  press(VL, app, 'left');
+  press(VL, app, 'confirm');
+  assert.equal(app.title.slots[1].status, 'empty');
+});
+
+// ---------- play: autosave, pause, fainting ----------
+
+test('earning anything in play autosaves to the slot and flashes Saved', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const { app, backing } = titleApp(VL);
+  newGameTo(VL, app, 'Robin');
+  const game = app.game;
+  VL.place(game, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
+  game.flags.chest = true;
+  const before = backing.getItem('vanishing-library-slot-1');
+  wait(VL, app, 0.2);
+  assert.equal(backing.getItem('vanishing-library-slot-1'), before, 'nothing saves until something is earned');
+  VL.earned(game);
+  app.update(VL.noActions(), STEP);
+  assert.equal(game.dirty, false);
+  assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).flags.chest, true);
+  assert.ok(drawnText(VL, document, app, app.time).some((s) => /saved/i.test(s)), 'the Saved flash');
+  wait(VL, app, 3);
+  assert.ok(!drawnText(VL, document, app, app.time).some((s) => /saved/i.test(s)), 'the flash fades');
+  // A save point is an earning too: stand on one.
+  VL.AREAS.test.screens['0,0'].entities.push({ type: 'savePoint', x: 8, y: 1 });
+  VL.place(game, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
+  wait(VL, app, 0.3, ['up']);
+  const saved = JSON.parse(backing.getItem('vanishing-library-slot-1'));
+  assert.deepEqual([saved.savePoint.tx, saved.savePoint.ty], [8, 1]);
+});
+
+test('Esc pauses: the world freezes, Resume continues, Save & Quit saves and returns to the title', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const { app, backing } = titleApp(VL);
+  newGameTo(VL, app, 'Robin');
+  const game = app.game;
+  VL.place(game, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
+  press(VL, app, 'pause');
+  assert.equal(app.sceneId, 'pause');
+  const x = game.player.x;
+  wait(VL, app, 0.5, ['right']);
+  assert.equal(game.player.x, x, 'paused');
+  assert.ok(drawnText(VL, document, app).some((s) => /resume/i.test(s)));
+  press(VL, app, 'pause');
+  assert.equal(app.sceneId, 'play', 'Esc resumes');
+  press(VL, app, 'pause');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'play', 'Resume is the first choice');
+  game.flags.chest = true;
+  press(VL, app, 'pause');
+  press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'title');
+  assert.equal(app.game, null);
+  assert.equal(app.slot, null);
+  assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).flags.chest, true, 'Save & Quit saved');
+  assert.equal(app.title.slots[0].summary.name, 'Robin', 'the title shows the saved game');
+});
+
+test('fainting shows its screen, then respawns at the save point with full hearts and the earnings kept', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const { app, backing } = titleApp(VL);
+  newGameTo(VL, app, 'Robin');
+  const game = app.game;
+  VL.touchSavePoint(game, { area: 'room', screen: '0,0', tx: 7, ty: 5 });
+  VL.place(game, { area: 'test', screen: '1,0', tx: 8, ty: 2 });
+  game.flags.chest = true;
+  VL.earned(game);
+  app.update(VL.noActions(), STEP);
+  let seen = 0;
+  VL.defineSystem('spy', { update: (state, actions) => { if (actions.pressed.interact) seen += 1; } });
+  VL.faint(game, 'shrub');
+  app.update(VL.noActions(), STEP);
+  assert.equal(app.sceneId, 'fainted');
+  assert.ok(drawnText(VL, document, app).some((s) => /shrub/i.test(s)), 'names the cause');
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'fainted', 'a press in the first moments is ignored');
+  wait(VL, app, 1);
+  press(VL, app, 'interact');
+  assert.equal(app.sceneId, 'play');
+  assert.equal(seen, 0, 'the confirming press never reaches the world');
+  assert.equal(game.hp, game.maxHp);
+  assert.equal(game.player.area, 'room');
+  assert.equal(game.flags.chest, true);
+  assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).flags.chest, true, 'earnings were already saved');
+});
+
+test('with storage blocked the game still plays and the title says saving is off', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const app = VL.createApp({ storage: VL.createStorage(throwingStorage) });
+  assert.ok(drawnText(VL, document, app).some((s) => /saving is off/i.test(s)));
+  newGameTo(VL, app, 'Ash');
+  VL.place(app.game, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
+  VL.earned(app.game);
+  app.update(VL.noActions(), STEP);
+  assert.equal(app.game.dirty, false);
+  const x = app.game.player.x;
+  wait(VL, app, 0.3, ['right']);
+  assert.ok(app.game.player.x > x, 'still playable');
+  press(VL, app, 'pause');
+  assert.ok(drawnText(VL, document, app).some((s) => /saving is off/i.test(s)), 'the pause menu says so too');
+  press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'title');
+});
+
+test('a finished game shows as finished on its slot and continues from its last save', () => {
+  const { VL } = loadGame();
+  const backing = memoryStorage();
+  const storage = VL.createStorage(backing);
+  const hero = VL.newGame({ name: 'Robin' });
+  VL.touchSavePoint(hero, { area: 'hut', screen: '0,0', tx: 3, ty: 2 });
+  hero.finished = true;
+  VL.saveSlot(storage, 0, hero);
+  const app = VL.createApp({ storage });
+  assert.equal(app.title.slots[0].summary.finished, true);
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'play');
+  assert.equal(app.game.player.area, 'hut');
+});
+
+test('every string the new scenes draw is in the font', () => {
+  const { VL } = loadGame();
+  addFixtureWorld(VL);
+  const backing = memoryStorage();
+  const storage = VL.createStorage(backing);
+  VL.saveSlot(storage, 1, VL.newGame({ name: 'Kai' }));
+  backing.setItem(VL.slotKey(2), '{broken');
+  const strings = [];
+  const original = VL.ART.text;
+  VL.ART.text = (ctx, str, x, y, options = {}) => {
+    strings.push({ str: String(str), size: options.size || 'normal' });
+    return original(ctx, str, x, y, options);
+  };
+  const ctx = fakeDocument().createElement('canvas').getContext('2d');
+  const app = VL.createApp({ storage });
+  for (const scene of ['title', 'name', 'intro', 'pause', 'fainted']) {
+    if (!app.game) app.game = VL.newGame({ name: 'Kai' });
+    app.setScene(scene, scene === 'name' ? { slot: 0 } : undefined);
+    if (scene === 'name') app.naming.text = 'Kai';
+    if (scene === 'title') app.title.confirmDelete = true;
+    for (const t of [0, 1, 5, 12]) VL.render(ctx, app, t);
+  }
+  VL.ART.text = original;
+  assert.ok(strings.length > 20);
+  for (const { str, size } of strings) assert.deepEqual([...VL.ART.missingGlyphs(str, size)], [], str);
+});
+
+test('README documents the scenes and the typed input', () => {
+  const readme = read('README.md');
+  for (const word of ['scenes/title.js', "'title'", 'actions.typed', 'confirm', 'erase', 'Save & Quit', 'fainted']) {
+    assert.ok(readme.includes(word), `README mentions ${word}`);
+  }
+});

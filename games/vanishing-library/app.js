@@ -10,12 +10,16 @@ VL.defineScene = function defineScene(id, scene) {
   VL.SCENES[id] = { id, ...scene };
 };
 
-VL.createApp = function createApp() {
+// `storage` comes from VL.createStorage; without one, saving is off.
+VL.createApp = function createApp({ storage } = {}) {
   const app = {
     sceneId: null,
     scene: null,
     game: null,
+    slot: null,
+    storage: storage || VL.createStorage(null),
     time: 0,
+    savedAt: null,
     setScene(id, data) {
       const scene = VL.SCENES[id];
       if (!scene) throw new Error(`unknown scene ${id}`);
@@ -30,6 +34,27 @@ VL.createApp = function createApp() {
     },
     draw(ctx, t) {
       VL.render(ctx, app, t);
+    },
+    startGame(game, slot) {
+      app.game = game;
+      app.slot = slot;
+      app.savedAt = null;
+    },
+    // Writes the game to its slot. A game without a slot (tests, the smoke)
+    // or with storage off just drops the dirty mark.
+    save() {
+      const game = app.game;
+      if (!game) return false;
+      game.dirty = false;
+      if (app.slot === null) return false;
+      const ok = VL.saveSlot(app.storage, app.slot, game);
+      if (ok) app.savedAt = app.time;
+      return ok;
+    },
+    quit() {
+      app.game = null;
+      app.slot = null;
+      app.setScene(VL.START_SCENE);
     },
   };
   app.setScene(VL.START_SCENE);
