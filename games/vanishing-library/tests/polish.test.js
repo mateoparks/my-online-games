@@ -215,4 +215,32 @@ test('menu sounds: pause, its quit dialog, fainted and the conflict screen', () 
   assert.deepEqual(played.splice(0), ['menuSelect'], 'conflict');
 });
 
+// ---------- 4. storage full when the page loads ----------
+
+test('storage full at boot: saving is off, but the saved slots still list and continue', () => {
+  const { VL } = loadGame();
+  const backing = memoryStorage();
+  const first = titleApp(VL, backing);
+  press(VL, first, 'confirm');
+  type(VL, first, 'Robin');
+  press(VL, first, 'confirm');
+  const full = {
+    getItem: backing.getItem,
+    setItem() {
+      throw new Error('QuotaExceededError');
+    },
+    removeItem: backing.removeItem,
+  };
+  const storage = VL.createStorage(full);
+  assert.equal(storage.ok, false, 'the boot probe could not write');
+  const app = VL.createApp({ storage });
+  assert.equal(app.title.slots[0].status, 'ok', 'Robin is not shown as Empty');
+  assert.equal(app.title.slots[0].summary.name, 'Robin');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'play', 'Continue works');
+  assert.equal(app.game.name, 'Robin');
+  assert.equal(app.save(), false, 'nothing is written');
+  assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).name, 'Robin', 'the save is untouched');
+});
+
 module.exports = { titleApp, press, type, STEP };

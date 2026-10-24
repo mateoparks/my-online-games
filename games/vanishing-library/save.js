@@ -30,9 +30,15 @@
       store.removeItem(VL.STORAGE_PROBE_KEY);
       return read;
     }, false);
+    // A store that is full at boot fails the probe's write but still reads,
+    // so the saves already there list (and continue) with saving off.
+    const readable = ok || (Boolean(store) && attempt(() => {
+      store.getItem(VL.STORAGE_PROBE_KEY);
+      return true;
+    }, false));
     return {
       ok,
-      read: (key) => (ok ? attempt(() => store.getItem(key) ?? null, undefined) : null),
+      read: (key) => (readable ? attempt(() => store.getItem(key) ?? null, undefined) : null),
       write: (key, value) => ok && attempt(() => {
         store.setItem(key, value);
         return true;

@@ -559,7 +559,9 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   whether storage works. `VL.createStorage(backing)` wraps `localStorage`
   (or a function returning it, since the getter itself can throw) and never
   throws. With `storage.ok` false, the title and pause menus say
-  "Saving is off in this browser" and everything still plays.
+  "Saving is off in this browser" and everything still plays. When only the
+  probe's write fails (storage already full at load), reads still work, so
+  the saved slots list and continue as usual, with nothing written.
 - **What is saved:** every field of the game state except
   `VL.TRANSIENT_FIELDS` (`time`, `player`, `room`, `transition`, `events`,
   `dirty`, `fainted`, plus anything added with
