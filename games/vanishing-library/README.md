@@ -49,7 +49,8 @@ below exist to keep their diffs in different files:
   `defineScene`, `defineTileset`, `addScreens`), so a clash between two lanes
   fails the test run instead of silently dropping one side.
   `tests/load-names.test.js` also scans every manifest file for
-  `VL.define<Kind>('name'` and names both files when two define the same
+  `VL.define<Kind>('name'` and `VL.ART.define<Kind>('name'` (an enemy counts
+  as an entity) and names both files when two define the same
   name, so pick names that say whose they are (`henSquawk`, not `squawk`).
 - **Tests go in a new `tests/<item>.test.js`**, never appended to an existing
   one (see Testing).
