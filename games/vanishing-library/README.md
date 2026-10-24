@@ -384,7 +384,8 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
 - **When a write fails** (the browser ran out of space after boot), the game
   stays dirty and every step retries; play shows "COULD NOT SAVE" and Save &
   Quit stays on the pause menu with the note until a write succeeds
-  (`app.saveFailed`). **Two windows on one slot:** the app remembers the
+  (`app.saveFailed`); pressing Save & Quit again asks "Quit without
+  saving?" (No first), so a kid is never stuck. **Two windows on one slot:** the app remembers the
   slot's text as it last read or wrote it (a new game's baseline is "empty"),
   and a write that finds a different save there refuses, so the newer
   progress is never overwritten; the stale window goes to the `conflict`

@@ -476,6 +476,91 @@ test('a failed write keeps the game dirty, says so on the canvas, retries, and S
   assert.equal(app.sceneId, 'title', 'Save & Quit works again');
 });
 
+test('when saving keeps failing, a second Save & Quit asks to quit without saving, No by default', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const { app, backing } = titleApp(VL);
+  newGameTo(VL, app, 'Kai');
+  const game = app.game;
+  VL.place(game, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
+  const working = backing.setItem;
+  let writes = 0;
+  backing.setItem = () => {
+    writes += 1;
+    throw new Error('QuotaExceededError');
+  };
+  game.flags.chest = true;
+  VL.earned(game);
+  press(VL, app, 'pause');
+  const asking = () => drawnText(VL, document, app).some((s) => /quit without saving/i.test(s));
+  assert.equal(asking(), false, 'not asked before Save & Quit');
+  press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'pause', 'the first press only tries to save');
+  assert.equal(asking(), false, 'one press never asks');
+  press(VL, app, 'confirm');
+  assert.equal(asking(), true, 'the second press asks');
+  const dialog = drawnText(VL, document, app);
+  assert.ok(dialog.some((s) => /grown-up/i.test(s)), 'tells the kid who can help');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'pause', 'No is the default: an accidental press does not quit');
+  assert.equal(asking(), false, 'No goes back to the pause menu');
+  assert.equal(app.game, game);
+  assert.equal(game.dirty, true, 'and keeps retrying');
+  const before = writes;
+  app.update(VL.noActions(), STEP);
+  assert.ok(writes > before, 'retried');
+  // Esc in the dialog is No too, and does not leave the pause menu.
+  press(VL, app, 'confirm');
+  assert.equal(asking(), true, 'asks again straight away after a failed try');
+  press(VL, app, 'pause');
+  assert.equal(app.sceneId, 'pause');
+  assert.equal(asking(), false);
+  // Yes quits to the title without writing.
+  press(VL, app, 'confirm');
+  press(VL, app, 'left');
+  backing.setItem = working;
+  const stored = backing.getItem('vanishing-library-slot-1');
+  let wrote = false;
+  backing.setItem = (...args) => {
+    wrote = true;
+    return working(...args);
+  };
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'title');
+  assert.equal(app.game, null);
+  assert.equal(wrote, false, 'Yes does not write');
+  assert.equal(backing.getItem('vanishing-library-slot-1'), stored);
+  assert.equal(app.title.slots[0].summary.name, 'Kai', 'the last good save is still there');
+});
+
+test('when saving works, a second Save & Quit press never asks to quit without saving', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const { app } = titleApp(VL);
+  newGameTo(VL, app, 'Robin');
+  press(VL, app, 'pause');
+  press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'title', 'one press saves and quits');
+  // A failing first try that then succeeds quits normally on the second press.
+  const { app: app2, backing } = titleApp(VL);
+  newGameTo(VL, app2, 'Ash');
+  const working = backing.setItem;
+  backing.setItem = () => {
+    throw new Error('full');
+  };
+  VL.earned(app2.game);
+  press(VL, app2, 'pause');
+  press(VL, app2, 'down');
+  press(VL, app2, 'confirm');
+  assert.equal(app2.sceneId, 'pause');
+  backing.setItem = working;
+  press(VL, app2, 'confirm');
+  assert.equal(app2.sceneId, 'title', 'saved this time: no question');
+  assert.ok(!drawnText(VL, document, app2).some((s) => /quit without saving/i.test(s)));
+});
+
 test('an earning in any scene is saved the same step, not only in play', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
@@ -781,6 +866,7 @@ test('every string the new scenes draw is in the font', () => {
     app.setScene(scene, scene === 'name' ? { slot: 0 } : undefined);
     if (scene === 'name') app.naming.text = 'Kai';
     if (scene === 'title') app.title.confirmDelete = true;
+    if (scene === 'pause') app.pause.askQuit = true;
     for (const t of [0, 1, 5, 12]) VL.render(ctx, app, t);
   }
   VL.ART.text = original;

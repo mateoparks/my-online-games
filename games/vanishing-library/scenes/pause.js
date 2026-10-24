@@ -3,7 +3,9 @@
 (() => {
   VL.ART.addColors({ pauseShade: '#1b1b2480' });
   VL.PAUSE_OPTIONS = ['Resume', 'Save & Quit'];
+  const QUIT_OPTIONS = ['Yes', 'No'];
   const BOX = { x: 40, y: 40, w: 176, h: 112 };
+  const DIALOG = { x: 36, y: 64, w: 184, h: 52 };
   // Space is not mentioned until the player holds a main-hand item (design: Controls).
   const controls = (state) => [
     '↑↓←→ MOVE    S: TALK, PICK UP',
@@ -14,12 +16,23 @@
 
   VL.defineScene('pause', {
     enter(app) {
-      app.pause = { cursor: 0 };
+      // quitChoice indexes QUIT_OPTIONS; No is the default.
+      app.pause = { cursor: 0, triedQuit: false, askQuit: false, quitChoice: 1 };
     },
 
     update(app, actions) {
       const pause = app.pause;
       const { pressed } = actions;
+      if (pause.askQuit) {
+        if (pressed.left) pause.quitChoice = 0;
+        if (pressed.right) pause.quitChoice = 1;
+        if (pressed.pause || pressed.erase) pause.askQuit = false;
+        else if (VL.confirmed(actions)) {
+          pause.askQuit = false;
+          if (QUIT_OPTIONS[pause.quitChoice] === 'Yes') app.quit();
+        }
+        return;
+      }
       if (pressed.pause) {
         app.setScene('play');
         return;
@@ -33,6 +46,12 @@
       // With saving off there is nothing to write; a write that fails keeps
       // the player here with the note rather than quitting as if it saved.
       if (app.save() || !app.storage.ok) app.quit();
+      else if (app.saveFailed) {
+        // A kid must never be stuck behind full storage: after one failed
+        // try, Save & Quit offers to quit without saving (No first).
+        if (pause.triedQuit) Object.assign(pause, { askQuit: true, quitChoice: 1 });
+        pause.triedQuit = true;
+      }
     },
 
     draw(ctx, app, t) {
@@ -53,6 +72,19 @@
       controls(app.game).forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 58 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
       if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'goldLight' });
       else if (app.saveFailed) VL.ART.text(ctx, 'COULD NOT SAVE. STILL TRYING', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'heartLight' });
+      if (app.pause.askQuit) {
+        const mid = VL.TUNING.width / 2;
+        VL.ART.drawBox(ctx, DIALOG.x, DIALOG.y, DIALOG.w, DIALOG.h);
+        VL.ART.text(ctx, 'Quit without saving?', mid, DIALOG.y + 8, { align: 'center', color: 'goldLight', shadow: 'boxShade' });
+        VL.ART.text(ctx, 'ASK A GROWN-UP TO FREE UP SPACE', mid, DIALOG.y + 22, { size: 'small', align: 'center', color: 'textDim' });
+        QUIT_OPTIONS.forEach((option, i) => {
+          const x = mid - 36 + i * 56;
+          const y = DIALOG.y + 36;
+          const chosen = i === app.pause.quitChoice;
+          if (chosen) VL.ART.text(ctx, '→', x - 12, y, { color: 'goldLight' });
+          VL.ART.text(ctx, option, x, y, { color: chosen ? 'goldLight' : 'text' });
+        });
+      }
     },
   });
 })();
