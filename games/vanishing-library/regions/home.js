@@ -1,5 +1,5 @@
-// Home beach and the hut: a small starter corner of the overworld. W8 lays
-// out the real map; keep open edges matching between neighbours.
+// Home beach and the hut: a placeholder starter corner of the overworld
+// (engine tests use their own fixture area, so this can be replaced freely).
 VL.defineArea('overworld', { tileset: 'base' });
 VL.defineArea('hut', { tileset: 'base' });
 

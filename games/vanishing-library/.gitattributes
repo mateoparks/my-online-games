@@ -1,0 +1,4 @@
+# Two branches appending files to the same manifest section merge cleanly
+# (both lines kept, no conflict markers). Safe because order within a section
+# never matters; see README.md "Layout".
+manifest.js merge=union

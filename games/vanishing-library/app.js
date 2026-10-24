@@ -2,10 +2,11 @@
 // { enter(app, data), update(app, actions, dt), draw(ctx, app, t) }.
 VL.SCENES = {};
 
-// W2 points this at its title scene once that exists.
+// The scene file that owns the first screen (the title) reassigns this.
 VL.START_SCENE = 'play';
 
 VL.defineScene = function defineScene(id, scene) {
+  if (VL.SCENES[id]) throw new Error(`scene ${id} is already defined`);
   VL.SCENES[id] = { id, ...scene };
 };
 

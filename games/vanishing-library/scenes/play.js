@@ -1,5 +1,5 @@
-// The play scene: the world updates and is drawn. W2 wraps it with title,
-// pause and popups by switching scenes.
+// The play scene: the world updates and is drawn. Title, pause and popups are
+// other scenes that switch to and from this one.
 VL.defineScene('play', {
   enter(app) {
     if (!app.game) app.game = VL.newGame();

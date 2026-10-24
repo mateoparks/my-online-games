@@ -3,6 +3,7 @@
 VL.SYSTEMS = [];
 
 VL.defineSystem = function defineSystem(id, system) {
+  if (VL.SYSTEMS.some((other) => other.id === id)) throw new Error(`system ${id} is already defined`);
   const entry = { id, order: 100, ...system };
   const index = VL.SYSTEMS.findIndex((other) => other.order > entry.order);
   VL.SYSTEMS.splice(index === -1 ? VL.SYSTEMS.length : index, 0, entry);

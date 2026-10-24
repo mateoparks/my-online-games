@@ -1,5 +1,5 @@
-// Keyboard → Actions. Physical key codes first, so WASD-free play works on
-// any layout; key names as a fallback for browsers without `code`.
+// Keyboard → Actions. Physical key codes first, so the letter keys sit in the
+// same place on any layout; key names as a fallback for browsers without `code`.
 VL.KEYS = {
   ArrowUp: 'up',
   ArrowDown: 'down',
@@ -28,7 +28,8 @@ VL.actionForKey = (event) => VL.KEYS[event.code] || VL.KEY_NAMES[(event.key || '
 VL.createKeyboardInput = function createKeyboardInput(win, doc) {
   const held = new Set();
   const pressed = new Set();
-  const controls = new Set(['BUTTON', 'A', 'INPUT', 'TEXTAREA', 'SELECT']);
+  const textFields = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+  const buttons = new Set(['BUTTON', 'A']);
 
   function clear() {
     held.clear();
@@ -38,14 +39,20 @@ VL.createKeyboardInput = function createKeyboardInput(win, doc) {
   win.addEventListener('keydown', (event) => {
     const action = VL.actionForKey(event);
     if (!action) return;
-    // Game keys must not scroll the page, but the header's links and the
-    // theme toggle keep their keyboard behaviour.
-    if (!controls.has(event.target?.tagName)) event.preventDefault();
+    // Browser shortcuts (Cmd/Ctrl+S, Alt+…) stay the browser's.
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const tag = event.target?.tagName;
+    if (textFields.has(tag)) return;
+    // Space activates a focused header link or the theme toggle, so it is
+    // theirs; the toggle keeps focus after a click, so arrows must still play.
+    if (buttons.has(tag) && action === 'mainHand') return;
+    event.preventDefault();
     if (event.repeat || held.has(action)) return;
     held.add(action);
     pressed.add(action);
   });
 
+  // No modifier check here: a key released while Cmd is down must still clear.
   win.addEventListener('keyup', (event) => {
     const action = VL.actionForKey(event);
     if (action) held.delete(action);

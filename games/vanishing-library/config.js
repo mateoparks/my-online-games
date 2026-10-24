@@ -16,3 +16,13 @@ VL.TUNING = {
   maxFrame: 0.1,
   slideSeconds: 0.35,
 };
+
+// Each system file adds its own numbers here instead of editing this file;
+// a name two lanes both pick is an error, not a silent override.
+VL.tune = function tune(values) {
+  for (const [key, value] of Object.entries(values)) {
+    if (key in VL.TUNING) throw new Error(`tuning ${key} is already defined`);
+    VL.TUNING[key] = value;
+  }
+  return VL.TUNING;
+};

@@ -1,8 +1,9 @@
 /* The canvas picks its own size (largest whole-number scale that fits), so
-   this game's main is not capped at the site's 960px. */
+   this game's main is not capped at the site's 960px. The 1rem padding is the
+   gutter main.js fits the canvas inside; a larger one makes the page scroll. */
 .game-page main {
   max-width: none;
-  padding: 1rem 1rem 1.5rem;
+  padding: 1rem;
 }
 
 #game {

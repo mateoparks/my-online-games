@@ -21,6 +21,7 @@ VL.addScreens = function addScreens(areaId, screens) {
 
 // Entity types: { onStand(state, entity), draw(ctx, entity, x, y, t), ... }.
 VL.defineEntity = function defineEntity(type, hooks) {
+  if (VL.ENTITIES[type]) throw new Error(`entity ${type} is already defined`);
   VL.ENTITIES[type] = hooks;
 };
 

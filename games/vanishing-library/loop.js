@@ -11,11 +11,15 @@ VL.createLoop = function createLoop({ poll, update, draw, now, raf, step = VL.TU
     const t = now() / 1000;
     accumulated += last === null ? step : Math.min(t - last, maxFrame);
     last = t;
-    let actions = poll();
-    while (accumulated >= step - 1e-9) {
-      update(actions, step);
-      actions = VL.heldOnly(actions);
-      accumulated -= step;
+    // Polling consumes presses, so on displays faster than the step rate
+    // (frames with no step) leave them latched for the next frame that steps.
+    if (accumulated >= step - 1e-9) {
+      let actions = poll();
+      while (accumulated >= step - 1e-9) {
+        update(actions, step);
+        actions = VL.heldOnly(actions);
+        accumulated -= step;
+      }
     }
     draw(t);
     raf(frame);

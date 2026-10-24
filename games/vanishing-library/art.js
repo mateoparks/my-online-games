@@ -1,5 +1,5 @@
-// Placeholder look until W4 brings the art kit. Everything the renderer draws
-// goes through VL.ART, so W4 can replace this file without touching render.js.
+// Placeholder look. Everything the renderer draws goes through VL.ART, so the
+// art kit can replace this file without touching render.js.
 VL.ART = {};
 
 VL.ART.tileColor = function tileColor(info) {
