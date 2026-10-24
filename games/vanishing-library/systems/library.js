@@ -284,7 +284,7 @@
     const count = VL.booksReturned(state);
     const next = VL.nextRewardAt(state);
     let tally = `That makes ${count} ${count === 1 ? 'book' : 'books'} back on the shelves!`;
-    if (next !== null) tally += ` Bring me ${next - count} more and I'll have something special for you.`;
+    if (next !== null && !VL.pendingReward(state)) tally += ` Bring me ${next - count} more and I'll have something special for you.`;
     return [...lines, tally];
   };
 
@@ -338,7 +338,14 @@
   VL.findPage = function findPage(state, id) {
     if (VL.spotFound(state, id)) return false;
     VL.markFound(state, id);
-    VL.showPopup(state, 'pageFound');
+    if (!VL.showPopup(state, 'pageFound')) {
+      const pages = VL.loosePages(state);
+      const need = VL.pagesToBind();
+      VL.showMessage(state, {
+        title: 'Another loose page!',
+        text: pages >= need ? `That makes ${pages} of the ${need} pages Miss Quill needs. Off to the bindery!` : `That makes ${pages} of the ${need} pages Miss Quill needs.`,
+      });
+    }
     state.events.push({ type: 'pickup', kind: 'page' });
     VL.earned(state);
     return true;

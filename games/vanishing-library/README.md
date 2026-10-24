@@ -4,6 +4,25 @@ A top-down pixel-art adventure for Arcade Current. Static files only: open
 `index.html` from disk or any static server. The design record lives outside
 the repo (`docs/vanishing-library-design.md` is git-ignored, local only).
 
+## Controls
+
+Keyboard only for now (laptop or desktop).
+
+| Key | What it does |
+|---|---|
+| Arrow keys | Walk |
+| S | Pick up, talk, read, open chests, pick berries, throw what you carry |
+| Space | Use the item in your main hand (a sword, the slingshot, ...) |
+| D | Use the item in your off hand (a shield, ...) |
+| E | Equipment: choose what goes in each hand |
+| M | The map, once you have one (the world map, or a dungeon's map) |
+| N | Sound on or off |
+| Esc | Pause, or Save & Quit |
+
+Two-handed tools work with Space or D. The first time you play, a popup
+teaches the arrows, S and E; Esc lists every key you can use so far. Some
+friends in the world may teach you a trick or two of their own.
+
 ## Layout
 
 Every script is a classic `<script>` that attaches to the global `VL`.
@@ -457,6 +476,9 @@ holds the heart containers.
   `VL.spawnEnemy` starts at once. A test walks onto every open entry of every
   enemy screen and stands still for 1.5 s unhurt, so place new enemies far
   enough in.
+- **After a popup or a talk:** closing one back to play gives the hero
+  `TUNING.popupGraceSeconds` (0.8 s) of `invuln` without the hurt flash
+  (`VL.graceAfterPopup`), since the world froze mid-attack under it.
 - **Enemies:** `VL.defineEnemy(type, { tuning, body: { w, h }, size, flies,
   rooted, faint, drops?, setup(state, e), think(state, e, dt), harmful(e),
   onHit, onTouch, draw(ctx, e, cx, cy, t) })` also defines the entity type,
@@ -568,7 +590,9 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   throws. With `storage.ok` false, the title and pause menus say
   "Saving is off in this browser" and everything still plays. When only the
   probe's write fails (storage already full at load), reads still work, so
-  the saved slots list and continue as usual, with nothing written.
+  the saved slots list and continue as usual, with nothing written. Delete
+  is not offered then (no hint, Backspace does nothing), since nothing can
+  be removed.
 - **What is saved:** every field of the game state except
   `VL.TRANSIENT_FIELDS` (`time`, `player`, `room`, `transition`, `events`,
   `dirty`, `fainted`, plus anything added with
@@ -935,7 +959,9 @@ spots. Tests: `tests/chickens.test.js`.
   with the hero, `VL.takeChicken(state, id)` takes it away, and
   `VL.markFound(state, 'lostChicken')` keeps it off its spot for good.
 - **Saved:** nothing. Carrying, flights, the follower and the swarm are play
-  state; a reload puts every chicken back at its spot.
+  state; a reload puts every chicken back at its spot. A faint does the
+  same (`VL.onFaint`, hooks run inside `VL.faint`): the hero drops what he
+  carries and the follower goes home, so his hands are free on waking.
 - **Locks claimed:** `chickens` (a screen with a town chicken visited),
   `chickenFlightShort` (with `chickens`), `chickenFlightLong` (with
   `chickens` and `chickenAlmanacRead`).
