@@ -530,6 +530,17 @@ that runs no tests, and an `async` test function, both fail the node run.
   included (`chickenLair` east of the last chasm). W7 keeps a chicken at
   each spot (it respawns there if carried off or lost), so nowhere becomes
   one-way.
+- **Flight contract (for W7):** a flight's length is the width of the gap
+  it clears, not the distance moved. A long flight (`chickenFlightLong`, 4)
+  clears a 4-tile gap and lands 5 tiles from take-off; a short one
+  (`chickenFlightShort`, 2) clears a 2-tile gap and lands 3 away. Both
+  highland chasms are exactly 4 wide (no margin), and both straddle a screen
+  edge (-1,-2 into -1,-3 and -2,-4 into -1,-4), so a flight crosses the edge
+  mid-air: the screen slide must carry the hero and the chicken through and
+  finish the glide on the far screen. The lengths live in `VL.TUNING`
+  (`config.js` today); W7 moves them into its own `VL.tune` call (delete the
+  `config.js` lines), and `tests/overworld.test.js` reads them from
+  `VL.TUNING`, so retuning them is checked against the map.
 - **Decor** (`{ type: 'decor', art, x, y }`) draws scenery bigger than a tile
   (buildings, the lighthouse, the water wheel, signboards) over solid
   footprint tiles (`x` grass, `y` water, `G` woods floor). Register a painter
@@ -541,7 +552,7 @@ that runs no tests, and an `async` test function, both fail the node run.
 
 `tests/overworld.test.js` walks the whole map tile by tile with any set of
 keys (walking, bushes, gloves on rocks, the raft on deep water, chicken
-flight of 2 or 4 tiles over `flyOver` tiles anywhere; the gate keys are read
+flight over `flyOver` gaps as wide as `VL.TUNING.chickenFlightShort`/`Long`, anywhere; the gate keys are read
 from the tiles and regions) and checks that every
 region and spot opens exactly when its lock's needs say: reachable with the
 gate keys the table gives by then, and not reachable without any one gate or

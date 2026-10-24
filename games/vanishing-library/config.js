@@ -15,6 +15,11 @@ VL.TUNING = {
   maxDt: 0.05,
   maxFrame: 0.1,
   slideSeconds: 0.35,
+
+  // Tiles of gap a chicken flight clears (README "Flight contract"). W7 owns
+  // these and moves them into its own VL.tune call; the overworld test reads them.
+  chickenFlightShort: 2,
+  chickenFlightLong: 4,
 };
 
 // Each system file adds its own numbers here instead of editing this file;

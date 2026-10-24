@@ -6,6 +6,22 @@
 const assert = require('node:assert/strict');
 const { test, loadGame } = require('./harness');
 
+// Entities sharing a tile with a spot nobody has filled: a lane that placed
+// its own entity there instead of calling VL.fillSpot, so the find would
+// exist twice once the spot is filled.
+function squatters(VL) {
+  const found = [];
+  for (const id of VL.unfilledSpots()) {
+    const spot = VL.SPOTS[id];
+    for (const entity of VL.getScreen(spot.area, spot.screen).entities) {
+      if (entity.x === spot.x && entity.y === spot.y && !(entity.type === 'spot' && entity.id === id)) {
+        found.push(`${entity.type} ${entity.id || ''} on spot ${id}`.replace('  ', ' '));
+      }
+    }
+  }
+  return found;
+}
+
 const LEDGER = {
   W5: ['oreShallows', 'oreWoods'],
   W6: ['heartFieldA', 'heartFieldB'],
@@ -38,4 +54,15 @@ test('every spot is owned by a later item, never W8 itself', () => {
     const n = Number(spot.by.slice(1));
     assert.ok(n >= 5 && n <= 23 && n !== 8, `${spot.id} by ${spot.by}`);
   }
+});
+
+test('nothing but its filler sits on an unfilled spot', () => {
+  assert.deepEqual(squatters(loadGame().VL), []);
+});
+
+test('the squatter check catches an entity placed on a spot instead of filling it', () => {
+  const { VL } = loadGame();
+  const spot = VL.SPOTS.oreShallows;
+  VL.getScreen(spot.area, spot.screen).entities.push({ type: 'ore', id: 'oreShallows', x: spot.x, y: spot.y });
+  assert.deepEqual(squatters(VL), ['ore oreShallows on spot oreShallows']);
 });

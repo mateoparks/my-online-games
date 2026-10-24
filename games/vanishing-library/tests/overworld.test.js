@@ -5,15 +5,13 @@ const { test, read, loadGame, fakeDocument } = require('./harness');
 const { createPlaythrough } = require('./playthrough');
 
 const AREA = 'overworld';
-// Flight lengths are the design's starting ideas (§ Chickens: about 2 tiles,
-// 4 with the Almanac).
-const FLIGHT = { chickenFlightShort: 2, chickenFlightLong: 4 };
+const FLIGHT_KEYS = ['chickenFlightShort', 'chickenFlightLong'];
 const HOWS = ['door', 'trunk', 'bush', 'rock', 'buried', 'pickup', 'chicken', 'stage', 'trapdoor'];
 
 // Keys that open tiles or regions, read from the map: gate tiles, rocks
 // (gloves), deep water (the raft), soft gates and chicken flight.
 function gateKeys(VL) {
-  const keys = new Set(Object.keys(FLIGHT));
+  const keys = new Set(FLIGHT_KEYS);
   for (const info of Object.values(VL.TILESETS.base)) {
     if (info.gate) keys.add(info.gate);
     if (info.rock) keys.add('liftingGloves');
@@ -24,6 +22,9 @@ function gateKeys(VL) {
 }
 
 const shared = loadGame().VL;
+// Gap widths a flight clears, read from the game (README "Flight contract"),
+// so W7 retuning them is checked against the map.
+const FLIGHT = Object.fromEntries(FLIGHT_KEYS.map((key) => [key, shared.TUNING[key]]));
 const GATES = gateKeys(shared);
 
 function world(VL) {
@@ -190,6 +191,10 @@ function checkLocation(VL, label, lockId, reached, uncovers = []) {
 }
 
 // ---------- the map ----------
+
+test('flight lengths are whole tiles read from VL.TUNING (README "Flight contract")', () => {
+  for (const key of FLIGHT_KEYS) assert.ok(Number.isInteger(FLIGHT[key]) && FLIGHT[key] > 0, `VL.TUNING.${key} = ${FLIGHT[key]}`);
+});
 
 test('the overworld has 30–45 screens, each in exactly one region', () => {
   const VL = shared;
