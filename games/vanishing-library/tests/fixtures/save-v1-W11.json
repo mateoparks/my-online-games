@@ -1,0 +1,69 @@
+{
+  "v": 1,
+  "name": "Robin",
+  "rngState": 1,
+  "maxHp": 6,
+  "flags": {
+    "met:fenwick": true,
+    "met:wife": true,
+    "found:hiddenBookSealed": true,
+    "found:bookRiverside": true,
+    "found:bookTideTables": true,
+    "found:bookCliffRoad": true,
+    "found:bookChickenAlmanac": true
+  },
+  "visited": {
+    "overworld:1,1": true,
+    "library:0,0": true,
+    "overworld:2,0": true
+  },
+  "savePoint": null,
+  "finished": false,
+  "inventory": {
+    "wood": 0,
+    "shells": 0,
+    "brokenShells": 0,
+    "berries": 0,
+    "ore": 0,
+    "paper": 0,
+    "ink": 0
+  },
+  "items": {
+    "scriptoriumKey": true
+  },
+  "hands": {
+    "mainHand": null,
+    "offHand": null
+  },
+  "popups": {
+    "seen": {
+      "scriptoriumKey": true,
+      "tideTablesRead": true,
+      "firstBook": true
+    },
+    "queue": []
+  },
+  "library": {
+    "returned": [
+      "bookRiverside",
+      "hiddenBookSealed",
+      "bookTideTables",
+      "bookCliffRoad",
+      "bookChickenAlmanac"
+    ],
+    "read": [
+      "hiddenBookSealed",
+      "bookTideTables"
+    ],
+    "gone": [
+      "bookRiverside"
+    ],
+    "trips": 2,
+    "lastTripAt": 3,
+    "stolen": {
+      "trips": 2,
+      "bosses": 0
+    },
+    "noticed": 1
+  }
+}

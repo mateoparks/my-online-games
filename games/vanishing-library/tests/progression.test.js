@@ -48,15 +48,15 @@ test('defineLock registers a lock with defaults and rejects an implemented dupli
 
 test('a later item claims a planned lock by defining it with a reached predicate', () => {
   const { VL } = loadGame();
-  assert.equal(VL.LOCKS.scriptoriumKey.reached, undefined, 'scriptoriumKey is planned until W11');
-  assert.equal(VL.LOCKS.scriptoriumKey.by, 'W11');
-  const claimed = VL.defineLock('scriptoriumKey', {
-    type: 'item', needs: ['hiddenBookSealed', 'library'],
-    doc: '§ The path through the game, 1', reached: (state) => Boolean(state.flags.key),
+  assert.equal(VL.LOCKS.liftingGloves.reached, undefined, 'liftingGloves is planned until W14');
+  assert.equal(VL.LOCKS.liftingGloves.by, 'W14');
+  const claimed = VL.defineLock('liftingGloves', {
+    type: 'item', needs: ['scriptoriumEntered'],
+    doc: '§ The path through the game, 2', reached: (state) => Boolean(state.flags.gloves),
   });
-  assert.equal(VL.LOCKS.scriptoriumKey, claimed);
-  assert.equal(claimed.reached({ flags: { key: true } }), true);
-  assert.throws(() => VL.defineLock('scriptoriumKey', { doc: '§ Controls', reached: () => true }), /already implemented/);
+  assert.equal(VL.LOCKS.liftingGloves, claimed);
+  assert.equal(claimed.reached({ flags: { gloves: true } }), true);
+  assert.throws(() => VL.defineLock('liftingGloves', { doc: '§ Controls', reached: () => true }), /already implemented/);
 });
 
 test('a claim that changes the planned rule must say why (replan), so a loosened gate shows in the diff', () => {
@@ -623,8 +623,8 @@ test('playthrough: a step that does not reach its milestone fails, and steps are
     steps: { start() {}, hutInside: (drive) => drive.walkTo({ area: 'hut', screen: '0,0', tx: 2, ty: 2 }) },
   });
   assert.equal(good.playTo('hutInside').state.player.area, 'hut');
-  const planned = createPlaythrough(VL, { milestones: ['start', 'scriptoriumKey'], steps: { start() {}, scriptoriumKey() {} } });
-  assert.throws(() => planned.playTo('scriptoriumKey'), /scriptoriumKey is planned/);
+  const planned = createPlaythrough(VL, { milestones: ['start', 'liftingGloves'], steps: { start() {}, liftingGloves() {} } });
+  assert.throws(() => planned.playTo('liftingGloves'), /liftingGloves is planned/);
   const { step } = require('./playthrough');
   assert.throws(() => step('start', () => {}), /steps for milestone start are already registered/);
 });

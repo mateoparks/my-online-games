@@ -23,11 +23,6 @@ function squatters(VL) {
 }
 
 const LEDGER = {
-  W11: [
-    'bookChickenAlmanac', 'bookCliffRoad', 'bookDragons', 'bookEastRoad', 'bookHerbalist', 'bookLighthouse', 'bookPrimer',
-    'bookRiverside', 'bookSmithsLedger', 'bookTideTables', 'bookWoods', 'hiddenBookSealed', 'libraryDoor', 'pageFieldA',
-    'pageFieldB', 'puppetStage', 'trapdoor',
-  ],
   W14: ['bookHighlands', 'bookLakeShore', 'bookMeadowRock', 'bookScriptoriumRock', 'scriptoriumDoor'],
   W15: ['hollowOakDoor'],
   W17: ['oreLakeIsland', 'shipwreckHatch'],

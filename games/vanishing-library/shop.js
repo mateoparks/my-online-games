@@ -64,11 +64,24 @@
   // anything else is bought.
   VL.offerVerb = (offer) => offer.verb || (offer.gain && 'shells' in offer.gain ? 'Trade' : 'Buy');
 
+  // Resources with a ceiling, from later files: kind -> { most(state), full }.
+  // A trade that would overflow one is turned away before anything is paid.
+  VL.RESOURCE_CAPS = {};
+
+  // Why the offer can't be taken right now (its own `refuse`, or no room), or null.
+  VL.offerRefusal = function offerRefusal(state, offer) {
+    const own = offer.refuse?.(state);
+    if (own) return own;
+    const over = Object.entries(offer.gain || {}).find(([kind, n]) => VL.RESOURCE_CAPS[kind]
+      && VL.purse(state, kind) - (offer.cost[kind] || 0) + n > VL.RESOURCE_CAPS[kind].most(state));
+    return over ? VL.RESOURCE_CAPS[over[0]].full : null;
+  };
+
   // Pays every cost or none. { ok } or { ok: false, reason: 'soldOut' |
   // 'refused' (with text) | 'notEnough' (with kind) }.
   VL.buyOffer = function buyOffer(state, offer) {
     if (offer.soldOut?.(state)) return { ok: false, reason: 'soldOut' };
-    const refusal = offer.refuse?.(state);
+    const refusal = VL.offerRefusal(state, offer);
     if (refusal) return { ok: false, reason: 'refused', text: refusal };
     const kind = VL.shortfall(state, offer.cost);
     if (kind) return { ok: false, reason: 'notEnough', kind };
