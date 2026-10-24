@@ -520,15 +520,16 @@ holds the heart containers.
   runs a step, so no tap is lost.
 - Keys clear on window blur, when the tab hides, and when Cmd is released
   (macOS Chrome drops the keyup of other keys while Cmd is held). Modifier
-  chords (Cmd/Ctrl/Alt) are left to the browser; Space on the focused theme
-  toggle belongs to the toggle (links activate on Enter, so Space still swings
-  on a focused header link).
+  chords (Cmd/Ctrl/Alt) are left to the browser. Enter and Space on a header
+  control reached with Tab belong to it (links activate on Enter, so Space
+  still swings on a focused header link); on one that only has focus from a
+  mouse click, they are the game's and focus moves to the canvas.
 
 ## Scenes and menus
 
 `VL.START_SCENE` is `'title'` (`scenes/title.js`). A new player goes title
 (three slots) → `name` (typed into a field on the canvas, 12 characters,
-"Hero" when left blank) → `intro` (the three weathered lines; S, Space or
+"Hero" when left blank; Enter, or ↓ to START and S, Space or Enter) → `intro` (the three weathered lines; S, Space or
 Enter skips after half a second) → `play`. From play, Esc opens `pause`
 (Resume, Save & Quit, the controls); hearts running out opens `fainted`,
 where a press respawns the hero; `conflict` (another window saved this slot)

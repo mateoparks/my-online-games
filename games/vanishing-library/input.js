@@ -37,9 +37,14 @@ VL.createKeyboardInput = function createKeyboardInput(win, doc) {
   const pressed = new Set();
   let typed = '';
   const textFields = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
-  // A focused header control keeps the keys that activate it (the theme
-  // toggle keeps focus after a click, so arrows and letters must still play).
+  // A header control reached with Tab keeps the keys that activate it. One
+  // that only has focus because it was clicked (the theme toggle keeps focus
+  // after a click) does not: a kid's next Enter or Space is for the game.
   const controlKeys = { BUTTON: new Set(['mainHand', 'confirm']), A: new Set(['confirm']) };
+  let focusFromPointer = false;
+  doc.addEventListener('pointerdown', () => {
+    focusFromPointer = true;
+  }, true);
 
   function clear() {
     held.clear();
@@ -49,11 +54,16 @@ VL.createKeyboardInput = function createKeyboardInput(win, doc) {
 
   win.addEventListener('keydown', (event) => {
     // Browser shortcuts (Cmd/Ctrl+S, Alt+…) stay the browser's.
+    if (event.key === 'Tab') focusFromPointer = false;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const tag = event.target?.tagName;
     if (textFields.has(tag)) return;
     const action = VL.actionForKey(event);
-    if (action && controlKeys[tag]?.has(action)) return;
+    if (action && controlKeys[tag]?.has(action)) {
+      if (!focusFromPointer) return;
+      // Off the control, so the keyup (Space activates on keyup) cannot click it.
+      doc.getElementById('game')?.focus();
+    }
     const key = event.key || '';
     // Typed text keeps key repeat (holding Backspace clears a name).
     if (key === 'Backspace' || key === 'Delete') typed += '\b';
