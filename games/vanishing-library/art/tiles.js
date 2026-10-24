@@ -5,11 +5,7 @@
 (() => {
   const { rect, color } = VL.ART;
 
-  const styleName = (info) => (info ? VL.ART.tileStyleFor(info) : null);
-  const grassy = (info) => {
-    const style = styleName(info);
-    return Boolean(style && (style.name === 'grass' || style.under === 'grass'));
-  };
+  const grassy = (info) => Boolean(info) && VL.ART.groundOf(info).name === 'grass';
   const SIDES = [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]];
 
   // A ragged band `depth` px into the tile along one side, in `name`.

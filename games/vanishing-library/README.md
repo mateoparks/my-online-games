@@ -72,7 +72,7 @@ add new ones with `VL.extendTileset`.
 Create `dungeons/<name>.js`, give it its own area and, if needed, tileset:
 
 ```js
-VL.defineTileset('scriptorium', { '#': { solid: true, wall: true }, '.': { floor: true } });
+VL.defineTileset('scriptorium', { '#': { solid: true, wall: true, art: 'wallInside' }, '.': { floor: true, art: 'floor' } });
 VL.defineArea('scriptorium', { tileset: 'scriptorium' });
 VL.addScreens('scriptorium', { '0,0': { tiles, entities } });
 ```
@@ -131,6 +131,15 @@ Everything on the canvas is drawn by code through `VL.ART`, in the approved
 "modern pixel art" look: dark 1px outlines on characters, a rich fixed
 palette, soft drop shadows, a warm light from the top-left and a vignette,
 and small animations. Draw with the kit so every item looks like one game.
+The test `R6: no game file outside art.js draws with raw colours or canvas
+text` fails on a hex colour (outside `VL.ART.addColors`), `rgb(`/`hsl(`,
+`fillText`/`strokeText` or `ctx.font =` in any file in `manifest.js`.
+
+**Where an item's art goes.** An item's sprites, tile styles and colours live
+in its own file (the system, entity, region, dungeon or scene file that uses
+them), defined at load time; the `art` section loads first, so the kit is
+ready. `art.js` and `art/*.js` belong to the kit: don't add to them, so two
+lanes never edit the same art file (a test pins the `art` section's files).
 The `artSheet` scene shows every piece (`VL.app.setScene('artSheet')` in the
 console, left/right to page); the browser smoke saves each page as
 `art-<n>.png`.
@@ -180,15 +189,22 @@ VL.ART.drawSprite(ctx, 'crab', x, y);                     // (x, y) = top-left o
   point is the centre of the feet box (`state.player.x/y`), boots ending 3px
   below it. The hero set is `hero-<down|up|left|right>-<0|1|2>` (stand, walk
   A, walk B); `VL.ART.heroFrame(player, t)` picks one.
-- Shared sprites so far: `heart-full|half|empty`, `icon-shell`,
+- The kit's own shared sprites: `heart-full|half|empty`, `icon-shell`,
   `pickup-shell` (with `VL.ART.drawSparkle`), `chicken`, `item-sword-wood`,
-  `item-shield-wood`. An item in a HUD hand slot is drawn with
-  `item-<item id>`.
+  `item-shield-wood`. For everything defined so far, page through the art
+  sheet or run `Object.keys(VL.ART.SPRITES)`. An item in a HUD hand slot is
+  drawn with `item-<item id>` (a missing one shows `?`).
 
 **Tiles.** A tile's look comes from a tile style, picked from its legend entry:
 `art: 'name'` names one directly, otherwise the highest-`priority` style whose
-`when` flag the entry has (`water`, `sand`, `bush`, ...). A region with its own
-tiles adds styles from its own file:
+`when` flag the entry has (`water`, `sand`, `bush`, ...). `when` flags are for
+the base set's shared terrain only: **every tile character added after the
+base set, in `base` or a new tileset, names its look with `art:`** (the test
+`every tile character added after the base set names its look with art`
+checks), so a dungeon's `{ solid: true, wall: true }` can't turn into the
+hut's roof. Two styles with the same `when` and `priority` throw, and so does
+a tile whose flags tie two styles. A region with its own tiles adds styles
+from its own file:
 
 ```js
 VL.extendTileset('base', { '%': { solid: true, ore: true, art: 'ore' } });
@@ -197,6 +213,11 @@ VL.ART.defineTileStyle('ore', {
   raised(ctx, cell, t) { VL.ART.drawSprite(ctx, 'tile-ore', cell.x, cell.y + 4); },
 });
 ```
+
+Props such as trees, rocks and bushes draw grass under themselves (`under`).
+A legend entry's `ground` picks another floor, e.g.
+`'r': { solid: true, rock: true, art: 'rock', ground: 'sand' }` for a beach
+rock; an unknown name throws when it is first drawn.
 
 A style has up to three passes, each run for the whole screen before the
 next: `ground` (the floor of the tile), `shadow`, then `raised` (anything

@@ -268,13 +268,19 @@
       });
       glyphs[ch] = { width: rows[0].length, runs };
     }
+    if (font.base) {
+      const base = VL.ART.FONTS[font.base];
+      if (!base) throw new Error(`font ${id}: no font ${font.base} to scale`);
+      VL.ART.FONTS[id] = { ...base, scale: font.scale, lineHeight: font.lineHeight };
+      return;
+    }
     VL.ART.FONTS[id] = { scale: 1, gap: 1, ...font, glyphs };
   };
 
   function fontOf(size) {
     const font = VL.ART.FONTS[size];
     if (!font) throw new Error(`no font ${size}`);
-    return font.base ? { ...VL.ART.FONTS[font.base], scale: font.scale, lineHeight: font.lineHeight } : font;
+    return font;
   }
 
   function glyphOf(font, ch) {
@@ -363,26 +369,63 @@
 
   VL.ART.TILE_STYLES = {};
 
+  // Looked up for every tile every frame, so cached per legend entry.
+  let chosen = new WeakMap();
+
   // A style draws one tile kind in three passes over the whole screen: `ground`
   // for every tile first, then `shadow`, then `raised` (trees, bushes, walls),
   // so shadows and canopies can spill onto the next tile. `when: 'water'`
   // matches tiles whose legend entry has that flag (highest `priority` wins);
   // a legend entry's own `art: 'name'` picks a style directly. `under` names a
-  // style whose ground is drawn first (grass under a bush).
+  // style whose ground is drawn first (grass under a bush); a legend entry's
+  // `ground: 'sand'` overrides it. Equal priorities throw: manifest order
+  // changes with union merges, so it must never decide a look.
   VL.ART.defineTileStyle = function defineTileStyle(name, style) {
-    if (VL.ART.TILE_STYLES[name]) throw new Error(`tile style ${name} is already defined`);
-    VL.ART.TILE_STYLES[name] = { name, priority: 0, ...style };
+    const styles = VL.ART.TILE_STYLES;
+    if (styles[name]) throw new Error(`tile style ${name} is already defined`);
+    const entry = { name, priority: 0, ...style };
+    const twin = entry.when && Object.values(styles).find((other) => other.when === entry.when && other.priority === entry.priority);
+    if (twin) throw new Error(`tile styles ${name} and ${twin.name} both match '${entry.when}' at priority ${entry.priority}`);
+    styles[name] = entry;
+    chosen = new WeakMap();
     return name;
   };
 
-  VL.ART.tileStyleFor = function tileStyleFor(info) {
+  function chooseStyle(info) {
     const styles = VL.ART.TILE_STYLES;
-    if (info?.art) return styles[info.art] || styles.missing;
+    if (info.art) return styles[info.art] || styles.missing;
     let best = null;
+    let tie = null;
     for (const style of Object.values(styles)) {
-      if (style.when && info?.[style.when] && (!best || style.priority > best.priority)) best = style;
+      if (!style.when || !info[style.when]) continue;
+      if (!best || style.priority > best.priority) {
+        best = style;
+        tie = null;
+      } else if (style.priority === best.priority) tie = style;
     }
+    if (tie) throw new Error(`tile styles ${best.name} and ${tie.name} tie for a tile with both flags; give it art: '<style>'`);
     return best || styles.missing;
+  }
+
+  VL.ART.tileStyleFor = function tileStyleFor(info) {
+    if (!info) return VL.ART.TILE_STYLES.missing;
+    let style = chosen.get(info);
+    if (!style) {
+      style = chooseStyle(info);
+      chosen.set(info, style);
+    }
+    return style;
+  };
+
+  // The style whose ground is the tile's floor: grass under a bush, sand under
+  // a beach rock, or the tile's own style.
+  VL.ART.groundOf = function groundOf(info) {
+    const style = VL.ART.tileStyleFor(info);
+    const name = info?.ground || style.under;
+    if (!name) return style;
+    const ground = VL.ART.TILE_STYLES[name];
+    if (!ground) throw new Error(`tile style ${style.name}: ${info?.ground ? 'ground' : 'under'} names no tile style ${name}`);
+    return ground;
   };
 
   // Something the hero can walk in that still reads as water.
@@ -421,7 +464,8 @@
       }
     }
     for (const { style, cell } of cells) {
-      if (style.under) VL.ART.TILE_STYLES[style.under].ground(ctx, cell, t);
+      const ground = VL.ART.groundOf(cell.info);
+      if (ground !== style) ground.ground(ctx, cell, t);
       style.ground?.(ctx, cell, t);
     }
     for (const { style, cell } of cells) style.shadow?.(ctx, cell, t);

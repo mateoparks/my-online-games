@@ -2,8 +2,7 @@
 // the HUD strip; a screen slide draws the old and new screens offset.
 VL.render = function render(ctx, app, t) {
   const { width, height } = VL.TUNING;
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, width, height);
+  VL.ART.rect(ctx, 'ink', 0, 0, width, height);
   app.scene.draw(ctx, app, t);
 };
 

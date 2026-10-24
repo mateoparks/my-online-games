@@ -50,7 +50,11 @@
     if (!item) return;
     text(ctx, slot.label, slot.x + 2, slotY + 2, { size: 'small', color: 'textDim' });
     const id = `item-${item}`;
-    if (!VL.ART.SPRITES[id]) return;
+    // A missing sprite shows, like the missing tile style, instead of an empty slot.
+    if (!VL.ART.SPRITES[id]) {
+      text(ctx, '?', slot.x + 14, slotY + 3, { color: 'text', align: 'center' });
+      return;
+    }
     const sprite = VL.ART.sprite(id);
     VL.ART.drawSprite(ctx, id, slot.x + 14 - Math.floor(sprite.w / 2), slotY + Math.floor((slotH - sprite.h) / 2));
   }

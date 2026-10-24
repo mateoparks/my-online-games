@@ -2,7 +2,8 @@
 // style choice and shore edges, hero frames, HUD model, popups, and the
 // art sheet scene.
 const assert = require('node:assert/strict');
-const { test, read, loadGame, addFixtureWorld, playApp, fakeDocument } = require('./harness');
+const vm = require('node:vm');
+const { test, read, loadGame, addFixtureWorld, playApp, fakeDocument, fakeWindow } = require('./harness');
 
 // A context that records the colour of every pixel filled with fillRect.
 function pixelContext() {
@@ -366,7 +367,149 @@ test('README has the art kit style guide', () => {
   }
 });
 
-test('the art section loads art.js first; other art files only use it', () => {
+// ---------- rules every later item is held to (README "Art kit") ----------
+
+// Hex colours outside VL.ART.addColors, CSS colour functions, and canvas text.
+function r6Breaks(source) {
+  const code = source.replace(/VL\.ART\.addColors\(\{[^}]*\}\)/g, '');
+  const rules = [
+    [/['"`]#[0-9a-fA-F]{3,8}['"`]/, 'a hex colour (use a palette name)'],
+    [/\b(rgba?|hsla?)\(/, 'a CSS colour (use a palette name)'],
+    [/\b(fillText|strokeText)\b/, 'canvas text (use VL.ART.text)'],
+    [/\.font\s*=/, 'a canvas font (use VL.ART.text)'],
+  ];
+  return rules.filter(([pattern]) => pattern.test(code)).map(([, what]) => what);
+}
+
+test('R6: no game file outside art.js draws with raw colours or canvas text', () => {
+  assert.deepEqual(r6Breaks("ctx.fillStyle = '#ff0000'; ctx.fillText('hi', 0, 0); ctx.font = '8px x'; c = 'rgb(1,2,3)';").length, 4);
+  assert.deepEqual(r6Breaks("VL.ART.addColors({ moss: '#2a4a2a', mossDark: '#1a3a1a' }); VL.defineTileset('x', { '#': {} });"), []);
   const { VL } = loadGame();
+  for (const file of VL.scriptFiles().filter((name) => name !== 'art.js')) {
+    assert.deepEqual(r6Breaks(read(file)), [], file);
+  }
+});
+
+const BASE_TILES = '.,sPTRBYWwXHD#_m';
+
+test('tile styles: a tie between matching styles is an error, never load order', () => {
+  const { VL } = loadGame();
+  assert.throws(() => VL.ART.defineTileStyle('sea', { when: 'water', priority: 50, ground() {} }), /sea and water both match 'water' at priority 50/);
+  VL.ART.defineTileStyle('deep', { when: 'deep', priority: 50, ground() {} });
+  assert.throws(() => VL.ART.tileStyleFor({ deep: true, water: true }), /tile styles (water and deep|deep and water) tie/);
+  const entry = { glimmer: true };
+  assert.equal(VL.ART.tileStyleFor(entry).name, 'missing');
+  VL.ART.defineTileStyle('glimmer', { when: 'glimmer', priority: 5, ground() {} });
+  assert.equal(VL.ART.tileStyleFor(entry).name, 'glimmer', 'a new style is seen by an entry looked up before');
+});
+
+test('every tile character added after the base set names its look with art', () => {
+  const { VL } = loadGame();
+  for (const [id, legend] of Object.entries(VL.TILESETS)) {
+    for (const [ch, info] of Object.entries(legend)) {
+      if (id === 'base' && BASE_TILES.includes(ch)) continue;
+      assert.ok(info.art, `${id} '${ch}' needs art: '<style>'`);
+    }
+  }
+});
+
+const SAND = (VL) => [VL.PALETTE.sand, VL.PALETTE.sandDark, VL.PALETTE.sandLight];
+
+test('props draw the ground their legend entry names, and sand beside them gets no grass fringe', () => {
+  const { VL } = loadGame();
+  const map = { '0,0': { solid: true, rock: true, ground: 'sand' }, '1,0': VL.TILESETS.base.s };
+  const ctx = pixelContext();
+  VL.ART.drawTiles(ctx, (tx, ty) => map[`${tx},${ty}`] ?? null, 0, 0, 0);
+  assert.ok(SAND(VL).includes(ctx.at(0, 0)), 'sand under the rock');
+  for (let y = 0; y < 16; y += 1) assert.ok(SAND(VL).includes(ctx.at(16, y)), `no grass fringe at 16,${y}`);
+  const plain = pixelContext();
+  VL.ART.drawTiles(plain, (tx, ty) => (tx === 0 && ty === 0 ? VL.TILESETS.base.R : null), 0, 0, 0);
+  assert.ok([VL.PALETTE.grass, VL.PALETTE.grassAlt, VL.PALETTE.grassDark, VL.PALETTE.grassLight].includes(plain.at(0, 0)), 'grass by default');
+});
+
+test('a style or entry naming a missing ground style says which', () => {
+  const { VL } = loadGame();
+  VL.ART.defineTileStyle('bad', { under: 'nope', ground() {} });
+  assert.throws(() => VL.ART.drawTiles(pixelContext(), () => ({ art: 'bad' }), 0, 0, 0), /tile style bad: under names no tile style nope/);
+  assert.throws(() => VL.ART.drawTiles(pixelContext(), () => ({ rock: true, ground: 'snow' }), 0, 0, 0), /tile style rock: ground names no tile style snow/);
+});
+
+test('water draws foam on the sides that meet land and none on water sides', () => {
+  const { VL } = loadGame();
+  const ctx = pixelContext();
+  const map = { '0,0': VL.TILESETS.base.W, '1,0': VL.TILESETS.base.s, '0,1': VL.TILESETS.base.W };
+  VL.ART.drawTiles(ctx, (tx, ty) => map[`${tx},${ty}`] ?? null, 0, 0, 0);
+  const foam = [VL.PALETTE.foam, VL.PALETTE.foamDark];
+  for (let y = 0; y < 16; y += 1) assert.equal(ctx.at(15, y), VL.PALETTE.foam, `east edge 15,${y}`);
+  for (let i = 0; i < 16; i += 1) {
+    assert.ok(!foam.includes(ctx.at(0, i)), `west (off the world) 0,${i}`);
+    assert.ok(!foam.includes(ctx.at(i, 15)) || i >= 12, `south (water) ${i},15`);
+  }
+});
+
+test('HUD: more than 10 hearts wrap to a second row inside the strip', () => {
+  const { VL } = loadGame();
+  const ctx = pixelContext();
+  const hearts = [...VL.ART.hudModel({ hp: 24, maxHp: 24 }).hearts];
+  assert.equal(hearts.length, 12);
+  VL.ART.drawHudModel(ctx, { hearts, shells: 0, mainHand: null, offHand: null });
+  const { heartX } = VL.ART.HUD_LAYOUT;
+  const light = VL.PALETTE.heartLight;
+  const rows = new Set([...ctx.pixels].filter(([key, color]) => color === light && Number(key.split(',')[0]) === heartX + 1).map(([key]) => Number(key.split(',')[1])));
+  assert.equal(rows.size, 4, 'two rows of hearts, two highlight pixels each');
+  const red = [...ctx.pixels].filter(([, color]) => color === VL.PALETTE.heart).map(([key]) => Number(key.split(',')[1]));
+  assert.ok(Math.max(...red) < VL.TUNING.hudHeight - 1 && Math.min(...red) >= 0, 'inside the strip');
+});
+
+test('HUD: an item with no item-<id> sprite draws a "?" instead of nothing', () => {
+  const { VL } = loadGame();
+  const inner = (item) => {
+    const ctx = pixelContext();
+    VL.ART.drawHudModel(ctx, { hearts: [], shells: 0, mainHand: item, offHand: null });
+    const { slots, slotY } = VL.ART.HUD_LAYOUT;
+    return [...ctx.pixels].filter(([key, color]) => {
+      const [x, y] = key.split(',').map(Number);
+      return color === VL.PALETTE.text && x > slots[0].x + 7 && x < slots[0].x + 22 && y > slotY && y < slotY + 13;
+    }).length;
+  };
+  assert.ok(inner('no-such-item') > 0);
+});
+
+test('render lights the area with its own mood', () => {
+  const { VL, document } = loadGame();
+  VL.ART.setAreaLight('hut', 'indoor');
+  const moods = [];
+  const original = VL.ART.drawLight;
+  VL.ART.drawLight = (ctx, mood, ...rest) => {
+    moods.push(mood);
+    return original(ctx, mood, ...rest);
+  };
+  const app = playApp(VL);
+  VL.place(app.game, { area: 'hut', screen: '0,0', tx: 7, ty: 6 });
+  VL.render(document.createElement('canvas').getContext('2d'), app, 0);
+  assert.deepEqual(moods, ['indoor']);
+});
+
+test('each art/*.js file loads with only the core section and art.js before it', () => {
+  const { VL } = loadGame();
+  for (const file of VL.FILES.art.slice(1)) {
+    const context = vm.createContext({ console, document: fakeDocument(), window: fakeWindow() });
+    vm.runInContext(read('manifest.js'), context);
+    for (const before of [...VL.FILES.core, 'art.js', file]) vm.runInContext(read(before), context, { filename: before });
+  }
   assert.equal(VL.FILES.art[0], 'art.js');
+});
+
+test('the art section holds only the kit; items define their art in their own files', () => {
+  const { VL } = loadGame();
+  assert.deepEqual([...VL.FILES.art], ['art.js', 'art/font.js', 'art/tiles.js', 'art/hero.js', 'art/sprites.js', 'art/ui.js']);
+  const readme = read('README.md');
+  assert.ok(readme.includes('in its own file'), 'README states where an item puts its sprites');
+});
+
+test('the art sheet is a dev scene: no game file switches to it', () => {
+  const { VL } = loadGame();
+  for (const file of VL.scriptFiles().filter((name) => name !== 'scenes/art-sheet.js')) {
+    assert.ok(!read(file).includes('artSheet'), `${file} mentions artSheet`);
+  }
 });
