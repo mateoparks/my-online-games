@@ -10,6 +10,14 @@ VL.defineScene = function defineScene(id, scene) {
   VL.SCENES[id] = { id, ...scene };
 };
 
+// World code has no app: it asks for a scene (a talk, a shop) and the app
+// opens it after the step. Play holds back a popup queued in the same step,
+// so only fainting in that step (no longer in play) drops the request.
+VL.extendGame('sceneRequest', () => ({ sceneRequest: null }), { transient: true });
+VL.requestScene = function requestScene(state, id, data) {
+  state.sceneRequest = { id, data };
+};
+
 // `storage` comes from VL.createStorage; without one, saving is off.
 VL.createApp = function createApp({ storage } = {}) {
   const app = {
@@ -36,6 +44,11 @@ VL.createApp = function createApp({ storage } = {}) {
       dt = Math.min(dt, VL.TUNING.maxDt);
       app.time += dt;
       app.scene.update(app, actions, dt);
+      const request = app.game?.sceneRequest;
+      if (request) {
+        app.game.sceneRequest = null;
+        if (app.sceneId === 'play') app.setScene(request.id, request.data);
+      }
       // Autosave in every scene (a shop or a reward is earned outside play);
       // a failed write leaves the game dirty, so this is also the retry.
       if (app.game?.dirty) app.save();

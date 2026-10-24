@@ -272,7 +272,12 @@ Over the world, give text `shadow: 'outline'`. `VL.ART.measureText`,
 `VL.ART.wrapText(str, width, size)` and `VL.ART.missingGlyphs(str, size)` help
 with layout; a content test should check its strings with `missingGlyphs`
 (characters the font lacks are drawn as `?`). The font has letters, digits,
-`.,!?'":;-+=()/&%*<>`, arrows `←→↑↓`, `♥` (not small), and `␣` (the space bar).
+`.,!?'":;-+=()/&%*<>`, arrows `←→↑↓`, `♥` (not small), `␣` (the space bar),
+and accented letters for names: `á à â ä ã å æ é è ê ë í ì î ï ó ò ô ö õ ø ú ù
+û ü ý ÿ ñ ç`, their capitals, and `¡ ¿`. A glyph may be `{ rows, rise }`: its
+first `rise` rows sit above the cell, so an accent on a capital uses the line
+gap above (lower case rises 1px, capitals 2-3px). Name entry takes any character the
+font has, so a new glyph is typeable at once.
 
 **HUD and popups.** `VL.ART.drawHud` draws hearts (from `hp`/`maxHp`), the
 whole-shell count and the main-hand (Space) and off-hand (D) slots. The file
@@ -559,7 +564,12 @@ and a continue at full hearts (screenshots `title.png`, `name.png`,
 sword and shield land in the hands), E for the equipment screen, Space on a
 bush (it must be cut) and S at a berry bush (`w5-hut.png`,
 `w5-chest-popup.png`, `w5-equipment.png`, `w5-bush-cut.png`,
-`w5-bush-after.png`, `w5-berry-bush.png`, `w5-berries-picked.png`). It runs
+`w5-bush-after.png`, `w5-berry-bush.png`, `w5-berries-picked.png`). Then W9's
+people, with real keys: "Zoë" typed into name entry (with `ë`), S next to Nell
+and Gran (as "Élodie"), a long line over two pages, and the shop's "not
+enough" and Yes/No (`w9-name-entry.png`, `w9-conversation.png`,
+`w9-name-accent.png`, `w9-paged-1.png`, `w9-paged-2.png`, `w9-shop.png`,
+`w9-shop-ask.png`). It runs
 for 60 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
@@ -660,6 +670,110 @@ start only where a chicken can be carried from its spot, and checks that
 with any set of keys every tile you reach leads back to the hut (R1). Moving
 a find or opening a gap in the map fails there. The browser smoke saves every screen as
 `map-<region>-<x>_<y>.png`.
+
+## NPCs and dialogue
+
+`talk.js` (core) holds people and their words, `entities/npc.js` the entity,
+looks and wandering, `scenes/dialogue.js` the conversation, and
+`regions/townsfolk.js` the placeholder townsfolk (placed in `town.js`).
+
+- **Placing:** `{ type: 'npc', id: 'nell', x, y, wander? }` in a screen's
+  entities. `VL.defineNpc('nell', { name, look, talk = id, wander = 0 })` says
+  who it is; `wander` is how many tiles from where it stands it may stroll (0
+  stands still). An entity's own `wander` or `talk` overrides the definition.
+- **Looks:** `VL.defineNpcLook('librarian', { head: 'short' | 'hat' | 'bun',
+  colors: { hair, hairLight, top, topDark, topLight, legs, hat, hatLight } })`
+  makes the 12×14 sprites `npc-<look>-<facing>-<0|1|2>` like the hero's. Built
+  in: `elder`, `fisher`, `gardener`, `townsfolk`.
+- **Wandering:** one step at a time, off the screen's edge rows, never onto a
+  wall (this visit's tiles, so a cut bush is open), another entity or the hero,
+  never onto a tile beside a thing that isn't a person (so no one stands on the
+  only way up to a chest, sign or door), and never while the hero is close (so
+  a kid can walk up and talk). `VL.npcMayStand(room, npc, tx, ty)` is the rule.
+  Each visit's copy has its own seeded random numbers: wandering never shifts
+  `state.rngState`. NPCs are `solid`: the hero can't walk through one.
+  `tests/npcs-dialogue.test.js` checks that no placed NPC starts beside a thing
+  or can stand where it cuts its screen in two (R1); place new ones in open
+  ground.
+- **Talking:** S goes through W5's `VL.interact`: an NPC on any tile the hero
+  faces or half faces wins, and that press does nothing else (no bush pulled,
+  no berries picked). Its `onInteract` turns it to the hero and opens the
+  `dialogue` scene. World code has no app, so it asks for a scene with
+  `VL.requestScene(state, id, data)` (transient), opened after the step; play
+  holds back a popup queued in the same step until the scene closes.
+- **Dialogue as data:** `VL.defineDialogue('nell', [{ when, say, set, give, shop }])`.
+  The first entry whose `when` holds is spoken; keep a last entry with no
+  `when` (the content test fails without one, or with an entry after it).
+  Conditions, all of which must hold: `flag`, `notFlag` (flag ids in
+  `state.flags`), `progress`, `notProgress` (lock ids from `VL.LOCKS`, reached
+  now), `item`, `notItem` (`VL.hasItem`), `has: { shells: 10 }` (at least),
+  `test: (state) => …`. A value may be one id or a list (all of them). A
+  misspelt condition throws at load; an unknown lock, shop, item or resource,
+  and words the font can't draw, are listed by `VL.dialogueProblems()`, which
+  the test keeps empty. A later item adds its own condition with
+  `VL.defineCondition('books', (state, least) => …)` (then `when: { books: 10 }`).
+- **Lines from another item:** `VL.addDialogue('gran', entries)` puts entries
+  ahead of the NPC's own (later story first), so W16's shockwave lines live in
+  W16's file.
+- **Words:** `say` is a string or a list; each string starts a new page and a
+  long one runs on over as many 4-line pages as it needs. `{name}` is the
+  hero's name (`VL.popupText`, shared with popups). The text types out
+  (`talkCharsPerSecond`); S, Space or Enter finishes the page, a fresh press
+  turns it (holding a key never skips), Esc ends the talk.
+- **Remembering and giving:** when the talk ends, by the last page or by Esc,
+  the entry's `set` flags are set and its `give` handed over together, and both
+  are earned (saved) as one, so a closed tab never keeps the flag and loses the
+  gift. `give: { item: 'shellPurse', wood: 2 }` gives items (`VL.giveItem`, its
+  popup follows the talk) and resources (`VL.addResource`); a later item adds a
+  kind with `VL.defineGift('heartContainer', (state, n) => …)`. An unknown kind
+  throws at load. A found page is a flag: `set` it. Guard a gift so it is given
+  once, and keep the NPC's other lines after it:
+  ```js
+  VL.defineDialogue('helper', [
+    { when: { progress: 'shockwave', notFlag: 'gave:helperWood' }, say: 'Take this wood, {name}.', set: 'gave:helperWood', give: { wood: 2 } },
+    { say: 'Mind the cracks in the road.' },
+  ]);
+  ```
+  A first-meeting line is `when: { notFlag: 'met:gran' }, set: 'met:gran'`.
+  Talking adds no saved field of its own.
+- **A shop after talking:** `shop: 'store'` opens that shop when the last page
+  closes (after the entry's flags and gifts).
+
+## Shops
+
+`shop.js` (core) holds the rules and `scenes/shop.js` the on-canvas counter:
+a list of offers with their prices, a cursor (up/down, wrapping onto Leave),
+S/Space/Enter to pick, a Yes/No question, and "Not enough shells!" (the price
+flashes) when the purse is short. Esc backs out of the question, then leaves.
+
+```js
+VL.defineShop('store', {
+  title: 'General Store',
+  greeting: 'Have a look around, {name}.',
+  offers: [
+    { id: 'paper', name: 'Paper', icon: 'item-paper', cost: { shells: 2 }, gain: { paper: 1 }, about: 'For maps.' },
+    { id: 'woodSword', name: 'Wood Sword', cost: { wood: 3 }, give: (state) => VL.giveItem(state, 'woodSword'),
+      soldOut: (state) => VL.hasItem(state, 'woodSword') },
+    { id: 'sellBerry', name: 'Sell a berry', cost: { berries: 1 }, gain: { shells: 1 }, hidden: (state) => false },
+  ],
+});
+VL.openShop(state, 'store');   // from an entity; or `shop: 'store'` on a dialogue entry
+```
+
+- `cost` and `gain` are resources (`state.inventory`, spent and added with
+  `VL.addResource`); `give(state)` hands over anything else. A buy pays every
+  cost or none, then earns (saves) and pushes `{ type: 'bought', offer }`.
+- An offer that gains shells is a **trade** ("Trade 5 wood for 1 shell?", the
+  price column shows `5 wood → 1` and the shell icon); anything else is bought. `verb`
+  overrides. `soldOut(state)` greys it out, `hidden(state)` leaves it off,
+  `refuse(state)` returns why not right now ("Bring me pages first!", shown in
+  place of a price check) or null, `thanks` replaces "Thank you!".
+- Resource names in the UI come from `VL.defineCurrency(kind, { one, many, icon })`
+  (shells, wood, ore, berries, broken shells, paper and ink are defined); an
+  `icon` sprite is drawn after the number. A shop naming a resource the
+  inventory doesn't have throws at load.
+- Rules for tests: `VL.shortfall`, `VL.buyOffer` (`{ ok }` or `{ ok: false,
+  reason: 'soldOut' | 'refused' | 'notEnough', text, kind }`), `VL.priceText`, `VL.shopOffers`.
 
 ## Progression: locks, keys, the solver and the playthrough
 

@@ -248,21 +248,24 @@
 
   VL.ART.FONTS = {};
 
-  // glyphs: { ch: rows } with '#' for ink. A font with `base` reuses another's
-  // glyphs at `scale`; `upper: true` draws lower case with the capitals.
+  // glyphs: { ch: rows } with '#' for ink, or { rows, rise } for a glyph whose
+  // first `rise` rows sit above the cell (an accent on a capital). A font with
+  // `base` reuses another's glyphs at `scale`; `upper: true` draws lower case
+  // with the capitals.
   VL.ART.defineFont = function defineFont(id, font) {
     if (VL.ART.FONTS[id]) throw new Error(`font ${id} is already defined`);
     const glyphs = {};
-    for (const [ch, rows] of Object.entries(font.glyphs || {})) {
+    for (const [ch, glyph] of Object.entries(font.glyphs || {})) {
+      const { rows, rise = 0 } = Array.isArray(glyph) ? { rows: glyph } : glyph;
       if (rows.some((row) => row.length !== rows[0].length)) throw new Error(`font ${id}: glyph '${ch}' rows differ in width`);
-      if (rows.length > font.cell) throw new Error(`font ${id}: glyph '${ch}' is taller than the ${font.cell}px cell`);
+      if (rows.length - rise > font.cell) throw new Error(`font ${id}: glyph '${ch}' is taller than the ${font.cell}px cell`);
       const runs = [];
       rows.forEach((row, y) => {
         for (let x = 0; x < row.length; x += 1) {
           if (row[x] !== '#') continue;
           let end = x;
           while (row[end + 1] === '#') end += 1;
-          runs.push({ x, y, w: end - x + 1 });
+          runs.push({ x, y: y - rise, w: end - x + 1 });
           x = end;
         }
       });
