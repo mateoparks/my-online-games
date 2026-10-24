@@ -285,6 +285,65 @@ test('a pond wider than the long flight splashes too, and a chasm makes the chic
   assert.deepEqual(tileOf(), [3, 9], 'and back');
 });
 
+test('one tile back from a gap, a flight lands on the edge tile (no splash), and a second F crosses', () => {
+  const { app, withChicken, tileOf, fly, sounds } = setup();
+  withChicken(2, 3, 'right');
+  fly();
+  assert.deepEqual(tileOf(), [3, 3], 'short: onto the edge of the 2-tile pond');
+  fly();
+  assert.deepEqual(tileOf(), [6, 3], 'then over it');
+  app.game.flags.chickenAlmanacRead = true;
+  withChicken(2, 4, 'right');
+  fly();
+  assert.deepEqual(tileOf(), [3, 4], 'long: onto the edge of the 4-tile pond');
+  fly();
+  assert.deepEqual(tileOf(), [8, 4], 'then over it');
+  assert.ok(!sounds.includes('dunk'), 'never a splash');
+});
+
+// Ponds with islands: row 2 is .WW.WW. (the far shore 6 away), row 4 is
+// .WW.W. (the far shore 5 away).
+function addIsles(VL) {
+  VL.addScreens('isle', {
+    '0,0': {
+      tiles: [
+        'TTTTTTTTTTTTTTTT',
+        'T..............T',
+        'T.WW.WW........T',
+        'T..............T',
+        'T.WW.W.........T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'TTTTTTTTTTTTTTTT',
+      ],
+      entities: [{ type: 'chicken', spot: 'isleHen', x: 10, y: 8 }],
+    },
+  });
+}
+
+test('a flight over an island lands on the farthest open tile in reach: the island, or the far shore', () => {
+  for (const almanac of [false, true]) {
+    const { VL, app, inFront, tileOf, fly, sounds } = setup();
+    addIsles(VL);
+    app.game.flags.chickenAlmanacRead = almanac;
+    const from = (ty) => {
+      app.game.player.carrying = null;
+      VL.place(app.game, { area: 'isle', screen: '0,0', tx: 1, ty, facing: 'right' });
+      inFront('isleHen');
+    };
+    from(2);
+    fly();
+    assert.deepEqual(tileOf(), [4, 2], `almanac ${almanac}: onto the island, the far shore out of reach`);
+    from(4);
+    fly();
+    assert.deepEqual(tileOf(), almanac ? [6, 4] : [4, 4], `almanac ${almanac}: as far as it reaches`);
+    assert.ok(!sounds.includes('dunk'), `almanac ${almanac}: never a splash`);
+  }
+});
+
 test('a solid in the way: the flight lands before it, or hops in place against it', () => {
   const { app, withChicken, fly, tileOf, step, press } = setup();
   app.game.flags.chickenAlmanacRead = true;
@@ -352,8 +411,9 @@ function overworld() {
   const flyFrom = (screen, tx, ty, facing, almanac = true) => {
     app.game.flags.chickenAlmanacRead = almanac;
     VL.place(app.game, { area: 'overworld', screen, tx, ty, facing });
-    const hen = app.game.room.entities.find((e) => e.type === 'chicken');
-    Object.assign(hen, { px: app.game.player.x + 4, py: app.game.player.y, x: tx, y: ty, mode: 'idle', idle: 99 });
+    // A chicken still in hand from the last flight carries him again.
+    const hen = app.game.player.carrying ? null : app.game.room.entities.find((e) => e.type === 'chicken');
+    if (hen) Object.assign(hen, { px: app.game.player.x + 4, py: app.game.player.y, x: tx, y: ty, mode: 'idle', idle: 99 });
     app.update(VL.actions({ pressed: ['fly'] }), STEP);
     assert.ok(app.game.player.flight, `took off from ${screen}`);
     for (let i = 0; i < 60 * 8 && app.game.player.flight; i += 1) step();
@@ -375,6 +435,16 @@ test('flight contract: the short flight falls short of the highlands and brings 
   const { flyFrom } = overworld();
   assert.deepEqual([...flyFrom('-1,-2', 7, 3, 'up', false)], ['-1,-2', 7, 3]);
   assert.deepEqual([...flyFrom('-2,-4', 12, 4, 'right', false)], ['-2,-4', 12, 4]);
+});
+
+test('flight contract: from one tile back, the long flight lands on the clifftop edge, and a second F crosses', () => {
+  const { flyFrom } = overworld();
+  assert.deepEqual([...flyFrom('-1,-3', 7, 8, 'down')], ['-1,-3', 7, 9], 'onto the edge above the ledge');
+  assert.deepEqual([...flyFrom('-1,-3', 7, 9, 'down')], ['-1,-2', 7, 3], 'then down to the ledge');
+  assert.deepEqual([...flyFrom('-2,-4', 11, 4, 'right')], ['-2,-4', 12, 4], 'onto the edge of the last chasm');
+  assert.deepEqual([...flyFrom('-2,-4', 12, 4, 'right')], ['-1,-4', 1, 4], 'then over to the lair side');
+  assert.deepEqual([...flyFrom('-1,-4', 2, 4, 'left')], ['-1,-4', 1, 4], 'back west: onto the lair-side edge');
+  assert.deepEqual([...flyFrom('-1,-4', 1, 4, 'left')], ['-2,-4', 12, 4], 'then over');
 });
 
 // ---------- chickens stay at their spots ----------

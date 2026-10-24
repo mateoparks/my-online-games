@@ -424,6 +424,7 @@
   // Looks along the flight: `land` is the farthest tile it can set the hero
   // down on, `reach` the farthest it gets before a wall (water and chasms are
   // flown over, anything else solid stops it, and so does the world's edge).
+  // `over` (what it dips into) is set only when there is nowhere to land.
   VL.planFlight = function planFlight(state, facing = state.player.facing) {
     const [dx, dy] = DIRS[facing] || DIRS.down;
     const { tx, ty } = VL.heroTile(state);
@@ -445,7 +446,7 @@
       reach = n;
       over = info.water ? 'water' : 'chasm';
     }
-    return { dx, dy, tx, ty, land, reach, over: land === reach ? null : over };
+    return { dx, dy, tx, ty, land, reach, over: land ? null : over };
   };
 
   function nearestChicken(state) {
