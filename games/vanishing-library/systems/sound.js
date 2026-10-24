@@ -6,9 +6,16 @@
 
   const MUTE_STORAGE = 'vanishing-library-muted';
   const WAVES = ['sine', 'square', 'sawtooth', 'triangle', 'noise'];
-  // Events that count as user activation for autoplay. touchstart and Escape
-  // do not, and creating a context on them only earns a console warning.
+  // Events that count as user activation for autoplay (HTML "activation-triggering
+  // input event"). Anything else, such as touchstart, Escape or a touch's
+  // pointerdown, starts the context suspended with a console warning.
   const GESTURES = ['keydown', 'mousedown', 'pointerdown', 'pointerup', 'touchend', 'click'];
+  const activates = (type, event) => {
+    if (type === 'keydown') return event.key !== 'Escape';
+    if (type === 'pointerdown') return event.pointerType === 'mouse';
+    if (type === 'pointerup') return event.pointerType !== 'mouse';
+    return true;
+  };
   const NOTE_SECONDS = 1.5;
   const SILENT = 0.0001; // exponential ramps cannot reach 0
 
@@ -127,7 +134,8 @@
         audio.context = ctx;
         audio.master = master;
       }
-      if (audio.context.state === 'suspended') audio.context.resume()?.catch?.(() => {});
+      // 'interrupted' is Safari's state after a phone call or Siri.
+      if (!['running', 'closed'].includes(audio.context.state)) audio.context.resume()?.catch?.(() => {});
     } catch {
       audio.failed = true;
       audio.context = null;
@@ -185,12 +193,12 @@
     const mine = { win, Context: win.AudioContext || win.webkitAudioContext || null, context: null, master: null, noise: null, failed: false, storage };
     audio = mine;
     note = null;
+    for (const found of Object.values(EFFECTS)) found.last = -Infinity;
     VL.SOUND.muted = readMuted(storage);
     for (const type of GESTURES) {
       win.addEventListener(type, (event) => {
-        if (audio !== mine) return;
+        if (audio !== mine || !activates(type, event)) return;
         if (type === 'keydown') {
-          if (event.key === 'Escape') return;
           if (isMuteKey(event)) {
             event.preventDefault?.();
             VL.SOUND.unlock();
@@ -218,7 +226,7 @@
     { wave: 'noise', dur: 0.05, vol: 0.2, filter: { type: 'lowpass', freq: 500 } },
   ], { gap: 0.3 });
   VL.defineSfx('swing', [
-    { wave: 'noise', dur: 0.14, vol: 0.4, attack: 0.02, filter: { type: 'bandpass', freq: 600, to: 2400, q: 1.5 } },
+    { wave: 'noise', dur: 0.18, vol: 1, attack: 0.03, filter: { type: 'bandpass', freq: 500, to: 2600, q: 0.8 } },
   ], { gap: 0.08 });
   VL.defineSfx('hit', [
     { wave: 'square', freq: 260, to: 90, dur: 0.1, vol: 0.28 },
@@ -246,7 +254,7 @@
     { wave: 'square', freq: 523, at: 0, dur: 0.07, vol: 0.16 },
     { wave: 'square', freq: 784, at: 0.07, dur: 0.12, vol: 0.16 },
   ]);
-  VL.defineSfx('menuMove', [{ wave: 'square', freq: 880, dur: 0.035, vol: 0.12 }], { gap: 0.03 });
+  VL.defineSfx('menuMove', [{ wave: 'square', freq: 880, dur: 0.05, vol: 0.2 }], { gap: 0.03 });
   VL.defineSfx('menuSelect', [
     { wave: 'square', freq: 660, at: 0, dur: 0.05, vol: 0.16 },
     { wave: 'square', freq: 990, at: 0.05, dur: 0.09, vol: 0.16 },
@@ -305,7 +313,8 @@
     rows: speaker.map((row, y) => row.slice(0, 6) + ['...', '...', 'x.x', '.x.', 'x.x', '...', '...'][y]),
   });
 
-  // In the HUD's gap between the shell count and the hand slots.
+  // In the HUD's gap between the shell count and the hand slots; the note
+  // covers that gap too, so it never hides the play field.
   const ICON = { x: 184, y: 4 };
 
   VL.SOUND.drawIndicator = function drawIndicator(ctx, app, t) {
@@ -316,13 +325,13 @@
       note = null;
       return;
     }
-    const { width, hudHeight } = VL.TUNING;
-    const w = VL.ART.measureText(note.text, 'normal') + 26;
-    const x = width - w - 4;
-    const y = hudHeight + 4;
-    VL.ART.drawBox(ctx, x, y, w, 18);
-    VL.ART.drawSprite(ctx, VL.SOUND.muted ? 'icon-sound-off' : 'icon-sound', x + 6, y + 5);
-    VL.ART.text(ctx, note.text, x + 18, y + 5, { color: 'text' });
+    const layout = VL.ART.HUD_LAYOUT;
+    const left = layout.shellX + 10 + VL.ART.measureText('000', 'normal');
+    const right = layout.slots[0].x;
+    const w = VL.ART.measureText(note.text, 'normal');
+    // A HUD-coloured patch, so the note also reads on scenes without a HUD.
+    VL.ART.rect(ctx, 'hud', left + 1, 0, right - left - 2, VL.TUNING.hudHeight - 1);
+    VL.ART.text(ctx, note.text, left + Math.floor((right - left - w) / 2), layout.shellY - 1, { color: 'text' });
   };
 
   if (typeof window !== 'undefined' && window.addEventListener) VL.SOUND.install(window);

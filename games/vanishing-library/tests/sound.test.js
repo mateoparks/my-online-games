@@ -200,6 +200,24 @@ test('effects stay gentle: a master volume below 0.4 and every voice at most ful
   }
 });
 
+// The loudest moment of an effect: the largest sum of voice volumes that sound
+// at the same time, times the master volume. Today's loudest is pickup's ~0.21.
+test('effects stay gentle: overlapping voices never add up past half scale', () => {
+  const { VL } = soundGame();
+  for (const [name, effect] of Object.entries(VL.SOUND.EFFECTS)) {
+    let loudest = 0;
+    for (const voice of effect.voices) {
+      const at = voice.at || 0;
+      const together = effect.voices.filter((other) => (other.at || 0) <= at && at < (other.at || 0) + other.dur);
+      loudest = Math.max(loudest, together.reduce((sum, other) => sum + other.vol, 0));
+    }
+    assert.ok(loudest * VL.TUNING.soundVolume <= 0.5, `${name} peaks at ${loudest} x ${VL.TUNING.soundVolume}`);
+  }
+  VL.defineSfx('tooLoud', [1, 2, 3].map(() => ({ wave: 'square', freq: 440, dur: 0.2, vol: 1 })));
+  const effect = VL.SOUND.EFFECTS.tooLoud;
+  assert.ok(effect.voices.reduce((sum, voice) => sum + voice.vol, 0) * VL.TUNING.soundVolume > 0.5, 'the check would catch a stack');
+});
+
 test('an unknown effect name is a programming error; a duplicate definition too', () => {
   const { VL } = loadGame();
   assert.throws(() => VL.sfx('swnig'), /unknown sound effect swnig/);
@@ -233,7 +251,7 @@ test('no AudioContext exists until a user gesture, and nothing plays before it',
   assert.equal(log.contexts, 0, 'playing does not create a context');
   win.dispatch('keydown', keyEvent('Escape'));
   assert.equal(log.contexts, 0, 'Escape is not a user activation in browsers');
-  win.dispatch('pointerdown', {});
+  win.dispatch('pointerdown', { pointerType: 'mouse' });
   assert.equal(log.contexts, 1);
   assert.equal(VL.sfx('swing'), true);
   win.dispatch('keydown', keyEvent('ArrowLeft'));
@@ -242,11 +260,23 @@ test('no AudioContext exists until a user gesture, and nothing plays before it',
 });
 
 test('every activation event unlocks: key, mouse, pointer, touch end, click', () => {
-  for (const type of ['keydown', 'mousedown', 'pointerdown', 'pointerup', 'touchend', 'click']) {
+  const events = [
+    ['keydown', keyEvent('KeyS')], ['mousedown', {}], ['pointerdown', { pointerType: 'mouse' }],
+    ['pointerup', { pointerType: 'touch' }], ['pointerup', { pointerType: 'pen' }], ['touchend', {}], ['click', {}],
+  ];
+  for (const [type, event] of events) {
     const { VL, win, log } = soundGame({ gesture: false });
-    win.dispatch(type, type === 'keydown' ? keyEvent('KeyS') : {});
-    assert.equal(log.contexts, 1, type);
+    win.dispatch(type, event);
+    assert.equal(log.contexts, 1, `${type} ${event.pointerType || ''}`);
     assert.equal(VL.sfx('pickup'), true, type);
+  }
+});
+
+test('a touch pointerdown or a mouse pointerup is not an activation, so no context is made on it', () => {
+  for (const [type, pointerType] of [['pointerdown', 'touch'], ['pointerdown', 'pen'], ['pointerup', 'mouse']]) {
+    const { win, log } = soundGame({ gesture: false });
+    win.dispatch(type, { pointerType });
+    assert.equal(log.contexts, 0, `${type} ${pointerType}`);
   }
 });
 
@@ -259,6 +289,26 @@ test('a suspended context is resumed on the next gesture and plays once running'
   assert.equal(log.resumes, 2);
   log.context.state = 'running';
   assert.equal(VL.sfx('hit'), true);
+});
+
+test('an interrupted context (Safari, after a call) is resumed too; a closed one is left alone', () => {
+  const audio = fakeAudio({ state: 'interrupted' });
+  const { win, log } = soundGame({ audio });
+  assert.equal(log.resumes, 1);
+  log.context.state = 'closed';
+  win.dispatch('keydown', keyEvent('KeyS'));
+  assert.equal(log.resumes, 1);
+});
+
+test('a re-install starts every effect gap afresh on the new context clock', () => {
+  const { VL, log } = soundGame();
+  log.context.currentTime = 50;
+  assert.equal(VL.sfx('menuMove'), true);
+  const audio = fakeAudio();
+  const win = fakeWindow({ AudioContext: audio.AudioContext, localStorage: memoryStorage() });
+  VL.SOUND.install(win);
+  win.dispatch('keydown', keyEvent('ArrowRight'));
+  assert.equal(VL.sfx('menuMove'), true, 'the old clock time does not hold the effect back');
 });
 
 test('a rejected resume is swallowed, not an unhandled rejection', () => {
@@ -507,6 +557,30 @@ test('toggling shows a short on-canvas note naming the key, then it goes away', 
   win.dispatch('keydown', keyEvent('KeyN'));
   VL.render(ctx, app, 60);
   assert.ok(seen.text.includes(VL.SOUND.NOTE.on));
+});
+
+test('the note sits in the HUD strip between the shell count and the hand slots, off the play field', () => {
+  const { VL, win, document } = soundGame();
+  const app = playApp(VL);
+  const ctx = document.createElement('canvas').getContext('2d');
+  const drawn = [];
+  const { text } = VL.ART;
+  VL.ART.text = (c, str, x, y, ...rest) => {
+    if (Object.values(VL.SOUND.NOTE).includes(str)) drawn.push({ str, x, y });
+    return text(c, str, x, y, ...rest);
+  };
+  const layout = VL.ART.HUD_LAYOUT;
+  const shellsEnd = layout.shellX + 10 + VL.ART.measureText('000', 'normal');
+  for (const muted of [true, false]) {
+    win.dispatch('keydown', keyEvent('KeyN'));
+    assert.equal(VL.SOUND.muted, muted);
+    drawn.length = 0;
+    VL.render(ctx, app, muted ? 10 : 20);
+    assert.equal(drawn.length, 1);
+    const [{ str, x, y }] = drawn;
+    assert.ok(y >= 0 && y + VL.ART.lineHeight('normal') <= VL.TUNING.hudHeight, `inside the HUD strip: ${y}`);
+    assert.ok(x > shellsEnd + 1 && x + VL.ART.measureText(str, 'normal') < layout.slots[0].x - 1, `between the shells and the slots: ${x}`);
+  }
 });
 
 test('the note text fits the font and names the N key', () => {
