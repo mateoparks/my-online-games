@@ -1,0 +1,45 @@
+{
+  "v": 1,
+  "name": "Robin",
+  "rngState": 3031720198,
+  "maxHp": 6,
+  "flags": {
+    "met:mabel": true,
+    "met:brannock": true,
+    "boughtPaper": true,
+    "dugShell": true,
+    "millTrade": true,
+    "found:bookBeachBuried": true
+  },
+  "visited": {
+    "overworld:1,1": true,
+    "blacksmith:0,0": true,
+    "shop:0,0": true,
+    "overworld:4,1": true
+  },
+  "savePoint": null,
+  "finished": false,
+  "inventory": {
+    "wood": 2,
+    "shells": 12,
+    "brokenShells": 4,
+    "berries": 0,
+    "ore": 1,
+    "paper": 3,
+    "ink": 1
+  },
+  "items": {
+    "woodShovel": true,
+    "woodSword": true
+  },
+  "hands": {
+    "mainHand": "woodShovel",
+    "offHand": "woodShovel"
+  },
+  "popups": {
+    "seen": {
+      "woodShovel": true
+    },
+    "queue": []
+  }
+}

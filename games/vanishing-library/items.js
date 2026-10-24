@@ -2,7 +2,7 @@
 // popups shown once (design: Resources and economy, Controls). Registries
 // only; the hands system, pickups and scenes use them. README "Core loop".
 (() => {
-  VL.RESOURCE_KINDS = ['wood', 'shells', 'brokenShells', 'berries', 'ore'];
+  VL.RESOURCE_KINDS = ['wood', 'shells', 'brokenShells', 'berries', 'ore', 'paper', 'ink'];
   VL.HANDS = ['mainHand', 'offHand'];
 
   VL.extendGame('inventory', () => ({
@@ -46,26 +46,40 @@
     return Boolean(state.items[id]);
   };
 
-  // A new item goes into an empty hand: the main hand first, a shield the off hand.
+  const twoHanded = (id) => Boolean(id && VL.ITEMS[id]?.twoHanded);
+
+  // A new item goes into an empty hand: the main hand first, a shield the off
+  // hand. A two-handed item (the shovel) fills both, so only when both are empty.
   VL.giveItem = function giveItem(state, id) {
     const item = VL.ITEMS[id];
     if (!item) throw new Error(`no item ${id}`);
     state.items[id] = true;
     VL.tidyHands(state);
-    const free = (item.prefers === 'offHand' ? ['offHand', 'mainHand'] : VL.HANDS).find((hand) => !state.hands[hand]);
-    if (free && !VL.HANDS.some((hand) => state.hands[hand] === id)) state.hands[free] = id;
+    const held = VL.HANDS.some((hand) => state.hands[hand] === id);
+    if (item.twoHanded) {
+      if (!held && VL.HANDS.every((hand) => !state.hands[hand])) for (const hand of VL.HANDS) state.hands[hand] = id;
+    } else {
+      const free = (item.prefers === 'offHand' ? ['offHand', 'mainHand'] : VL.HANDS).find((hand) => !state.hands[hand]);
+      if (free && !held) state.hands[free] = id;
+    }
     if (item.popup) VL.showPopup(state, id);
     VL.earned(state);
   };
 
   // Puts an item in a hand; it leaves the other hand if it was there. Choosing
-  // the item the hand already holds empties it.
+  // the item the hand already holds empties it. A two-handed item takes both
+  // hands (Space and D both use it), and anything put in either hand frees both.
   VL.setHand = function setHand(state, hand, id) {
     if (!VL.HANDS.includes(hand)) throw new Error(`no hand ${hand}`);
     const other = hand === 'mainHand' ? 'offHand' : 'mainHand';
     if (id !== null && state.hands[hand] === id) id = null;
-    if (id !== null && state.hands[other] === id) state.hands[other] = null;
-    state.hands[hand] = id;
+    if (twoHanded(id)) {
+      state.hands[hand] = id;
+      state.hands[other] = id;
+    } else {
+      if (twoHanded(state.hands[hand]) || (id !== null && state.hands[other] === id)) state.hands[other] = null;
+      state.hands[hand] = id;
+    }
     VL.earned(state);
   };
 

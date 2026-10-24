@@ -337,7 +337,7 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
 `entities/{chest,sign,pickups,ore}.js` and `scenes/{popup,equipment}.js` use them.
 
 - **Saved state:** `state.inventory` counts the resources (`wood`, `shells`
-  (whole shells, the money), `brokenShells`, `berries`, `ore`);
+  (whole shells, the money), `brokenShells`, `berries`, `ore`, `paper`, `ink`);
   `state.items` maps owned item ids to `true`; `state.hands` is
   `{ mainHand, offHand }` (item ids or null); `state.popups` is
   `{ seen, queue }`. Fixture: `tests/fixtures/save-v1-W5.json`. **Saved ids
@@ -359,8 +359,9 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   saved id only while the hero still has that item, so berries sold (W10) or
   an item taken away (W16) can never be shown or used from a hand. Anything
   that takes an item away calls `VL.tidyHands(state)` to clear the saved hand too. An item with
-  `count` (berries) is owned while the count is above 0. Two-handed items
-  (the shovel) are still to come (W10).
+  `count` (berries) is owned while the count is above 0. A `twoHanded` item
+  (the shovels) fills both hands, so Space and D both use it; putting anything
+  in either hand frees both, and `giveItem` equips it only when both are empty.
 - **Hands (`systems/hands.js`):** Space uses the main-hand item and D the
   off-hand one; `hold` runs every step the key is held (the shield sets
   `state.player.shield`). S calls `VL.interact`: an entity's `onInteract` on
@@ -669,12 +670,18 @@ people, with real keys: "Zoë" typed into name entry (with `ë`), S next to Nell
 and Gran (as "Élodie"), a long line over two pages, and the shop's "not
 enough" and Yes/No (`w9-name-entry.png`, `w9-conversation.png`,
 `w9-name-accent.png`, `w9-paged-1.png`, `w9-paged-2.png`, `w9-shop.png`,
-`w9-shop-ask.png`). Then W7's chickens, with real keys: S lifts the coop
-chicken and S throws it, F flies over the river, a long flight crosses the
-last highland chasm and its screen edge, a flight off the pier splashes down,
-and five sword hits bring the swarm (`w7-lift.png`, `w7-throw.png`,
-`w7-flight-short.png`, `w7-flight-long-edge.png`, `w7-splash.png`,
-`w7-swarm.png`). It runs for 90 s at most. A test file
+`w9-shop-ask.png`). Then W10's economy with real keys: walking into each
+building (`w10-<building>.png`), S across the mill counter and a 5 wood → 1
+shell trade (`w10-mill-shop.png`, `w10-trade-ask.png`, `w10-trade-done.png`),
+forging a metal sword (`w10-forge-ask.png`, `w10-forge.png`,
+`w10-forge-popup.png`) and digging up the beach book and a seeded shell
+(`w10-dig.png`, `w10-dig-book.png`, `w10-dig-shell.png`). Then W7's
+chickens, with real keys: S lifts the coop chicken and S throws it, F flies
+over the river, a long flight crosses the last highland chasm and its screen
+edge, a flight off the pier splashes down, and five sword hits bring the
+swarm (`w7-lift.png`, `w7-throw.png`, `w7-flight-short.png`,
+`w7-flight-long-edge.png`, `w7-splash.png`, `w7-swarm.png`). It runs
+for 120 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
 ## Overworld map
@@ -864,7 +871,7 @@ spots. Tests: `tests/chickens.test.js`.
   edge, flies over water and chasms, and a chicken that comes down on one
   splashes and flaps back to where it was thrown from. While carrying, the
   hands do nothing else (Space does not swing, S does not pull), except that
-  S facing a townsperson talks instead of throwing, chicken still in hand:
+  S facing a townsperson (or a shop counter, W10) talks instead of throwing, chicken still in hand:
   that is how the lost chicken is carried back to its kid (W11).
 - **Flight (F, a secret):** F next to a chicken (within `chickenReach` px),
   or holding one, and the chicken carries the hero the way he faces. It looks
@@ -949,6 +956,60 @@ VL.openShop(state, 'store');   // from an entity; or `shop: 'store'` on a dialog
   inventory doesn't have throws at load.
 - Rules for tests: `VL.shortfall`, `VL.buyOffer` (`{ ok }` or `{ ok: false,
   reason: 'soldOut' | 'refused' | 'notEnough', text, kind }`), `VL.priceText`, `VL.shopOffers`.
+
+## Economy (W10)
+
+`systems/economy.js` holds the rules, `systems/digging.js` the shovels and
+digging, and `regions/buildings.js` the four buildings, their keepers and
+shops. Fixture: `tests/fixtures/save-v1-W10.json`.
+
+- **One price table:** `VL.TUNING.prices` (paper, berries bought and sold, the
+  mill's 5 wood → 1 shell, wood gear, the shop's shovel, metal gear with and
+  without the Smith's Ledger, binding). Offers point at its entries, so
+  retuning a line retunes the counter. Every price and trade is in **whole**
+  shells; broken shells buy nothing (the shopkeeper says so).
+- **Buildings:** `VL.BUILDINGS` maps each area (`shop`, `paperMill`,
+  `blacksmith`, `bindery`, one `'0,0'` screen each, tileset `interior`) to its
+  door spot, the tile outside, its keeper and shop (`store`, `mill`,
+  `smithy`, `bookbinder`). The doors fill W8's spots; the place locks are
+  reached on entering. A counter is a tile (`counter: true`): S facing it
+  talks to the NPC across it, from any tile along the counter or at its
+  ends (the `counters` system, `VL.counterKeeper`), because NPCs may not
+  stand beside an entity. Each keeper's talk ends by opening their shop.
+- **The smith:** wood gear from wood; metal gear from 1 ore plus shells. Metal
+  is its own tier, not an upgrade (no wood piece needed); the wood offer is
+  hidden while the matching metal piece is owned. Every gear offer is sold
+  out while the hero owns that piece, so the smith re-forges only lost gear
+  (W3 known limit). `VL.smithsLedgerRead(state)` (the `bookSmithsLedger` lock
+  once W11 claims it) swaps in the cheaper metal offers (`metalSwordLedger`…).
+- **The bindery:** `VL.loosePages(state)` counts every lock that supplies
+  `pages` and is reached, so a page counts as soon as its item claims its
+  lock. With `VL.pagesToBind()` (5) pages, binding sets the flag
+  `pagesBound` (`VL.pagesBound`) and queues the `pagesBound` popup; W19 turns
+  that into the Climber's Almanac (claim `climbersAlmanac` with it).
+- **Digging:** `VL.dig(state, shovel)` digs the tile ahead and returns
+  `'blocked'`, `'find'`, `'secret'`, `'shell'` or `'empty'` (false while a dig is
+  under way). Sand takes any shovel, grass only the metal one (`digsDirt`).
+  A hole is the visit's tile (`VL.DIG_HOLES`, `@` sand, `*` grass, through
+  `VL.setRoomTile`), so it is gone on the next visit; **W14**, which owns saved
+  per-visit tile overrides, decides whether holes should persist. A whole shell
+  pops out as a `drop` with `VL.digChance` (`digChance` 40%,
+  `digChanceTideTables` 60% once `VL.tideTablesRead`, i.e. W11's
+  `bookTideTables` claim; `digDirtChance` on grass), rolled with the seeded
+  `VL.random`. A `{ type: 'buried', id, popup }` entity (the beach book, spot
+  `bookBeachBuried`) is dug up once: `VL.markFound`, so W11 counts it as found.
+  `VL.BURIED_SECRETS` are shell caches under the home fields' flowers for the
+  metal shovel (the smith hints at them).
+- **Stealing (easter egg):** Mabel turns to her shelves for
+  `shopTurnSeconds` every `shopTurnEvery`. S on the berry basket while her back
+  is turned pockets one berry and sets `shopThief`; she calls the hero Sticky
+  Fingers from then on and never turns her back again.
+- **Sounds:** events `dig` (`dig`) and `digBlocked` (`tink`).
+- **Locks claimed:** `shop`, `paperMill`, `blacksmith`, `bindery`, `buyBerries`,
+  `millShells`, `paper`, `digShells`, `buriedSecrets` (flags), and the six
+  gear locks (owned now). All keep the planned rules. `paper`, like W5's
+  `berries`, marks the source, not the stock: it stays reached when the paper
+  is spent or the shockwave takes it, while lost gear reads as lost.
 
 ## Progression: locks, keys, the solver and the playthrough
 

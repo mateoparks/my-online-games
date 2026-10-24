@@ -27,7 +27,7 @@ const sizes = [
 ];
 const walkMs = 300;
 const slideMs = 700; // ~13 px to the edge, then the 350 ms slide
-const timeoutMs = 90000;
+const timeoutMs = 120000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -766,6 +766,122 @@ async function main() {
       if (talkProblems.length) failures += 1;
       console.log(`${talkProblems.length ? 'FAIL' : 'ok  '} npcs and dialogue: name "Zoë", Nell, Gran to Élodie, ${pageCount} pages, shop, ${path.join(outDir, 'w9-*.png')}`);
       for (const problem of talkProblems) console.log(`     ${problem}`);
+    }
+
+    // W10, the town economy with real keys: walking into each building
+    // (w10-<building>.png), S across the mill counter and a 5 wood → 1 shell
+    // trade, forging a metal sword at the smithy, and digging up the buried
+    // book and a shell on the beach, saved as w10-*.png. A block of its own,
+    // so its names never clash with another check's.
+    {
+      errors.length = 0;
+      const econProblems = [];
+      const codes = { KeyS: [83, 's'], Enter: [13, 'Enter'], Escape: [27, 'Escape'], Space: [32, ' '], ArrowDown: [40, 'ArrowDown'], ArrowUp: [38, 'ArrowUp'] };
+      const send = (type, code) => {
+        const [vk, keyName] = codes[code];
+        return call('Input.dispatchKeyEvent', { type, key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+      };
+      const hit = async (code) => {
+        await send('keyDown', code);
+        await send('keyUp', code);
+        if (!(await settle())) econProblems.push(`animation frames stopped after ${code}`);
+      };
+      const shoot = async (name) => {
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      };
+      const read = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      // A new game in play at `where`, with `stuff` in the purse and `gear` in hand, popups read.
+      const stage = (where, stuff = {}, gear = []) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ${JSON.stringify(gear)}) VL.giveItem(g, id);
+        for (const [kind, n] of Object.entries(${JSON.stringify(stuff)})) VL.addResource(g, kind, n);
+        g.popups.queue.length = 0;
+        g.popups.seen.controls = true;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+      const scene = () => evaluate('VL.app.sceneId');
+      // S at the counter, then S through the keeper's words until the shop opens.
+      const talkToKeeper = async (building) => {
+        const at = await read(`VL.BUILDINGS.${building}.talkAt`);
+        await stage({ area: building, screen: '0,0', tx: at.tx, ty: at.ty, facing: 'up' }, building === 'paperMill' ? { wood: 7 } : { ore: 1, shells: 12 });
+        await hit('KeyS');
+        if ((await scene()) !== 'dialogue') econProblems.push(`S at the ${building} counter gave scene ${await scene()}`);
+        for (let i = 0; i < 12 && (await scene()) === 'dialogue'; i += 1) {
+          await sleep(120);
+          await hit('KeyS');
+        }
+        if ((await scene()) !== 'shop') econProblems.push(`talking at the ${building} counter did not open its shop`);
+      };
+
+      for (const building of ['shop', 'paperMill', 'blacksmith', 'bindery']) {
+        const outside = await read(`VL.BUILDINGS.${building}.outside`);
+        await stage({ area: 'overworld', screen: outside.screen, tx: outside.tx, ty: outside.ty + 1, facing: 'up' });
+        await holdArrow('Up', 600);
+        await sleep(300);
+        const area = await read('g.player.area');
+        if (area !== building) econProblems.push(`walking up into the ${building} door reached ${area}`);
+        await shoot(`w10-${building}`);
+      }
+
+      await talkToKeeper('paperMill');
+      await shoot('w10-mill-shop');
+      await hit('Enter');
+      if ((await evaluate('VL.app.shopView.mode')) !== 'ask') econProblems.push('Enter on the mill trade did not ask');
+      await shoot('w10-trade-ask');
+      await hit('Enter');
+      await sleep(100);
+      await shoot('w10-trade-done');
+      const traded = await read('[g.inventory.wood, g.inventory.shells]');
+      if (traded[0] !== 2 || traded[1] !== 1) econProblems.push(`the mill trade left wood and shells at ${traded}`);
+
+      await talkToKeeper('blacksmith');
+      for (let i = 0; i < 3; i += 1) await hit('ArrowDown');
+      await hit('Enter');
+      await shoot('w10-forge-ask');
+      await hit('Enter');
+      await sleep(100);
+      await shoot('w10-forge');
+      const forged = await read("[VL.hasItem(g, 'metalSword'), g.inventory.ore, g.inventory.shells]");
+      if (!forged[0] || forged[1] !== 0 || forged[2] !== 2) econProblems.push(`forging the metal sword gave ${forged}`);
+      await hit('Escape');
+      await sleep(300);
+      if ((await scene()) !== 'popup') econProblems.push(`leaving the smithy showed ${await scene()}, not the sword's popup`);
+      await shoot('w10-forge-popup');
+
+      const buried = await read('VL.SPOTS.bookBeachBuried');
+      await stage({ area: buried.area, screen: buried.screen, tx: buried.x - 1, ty: buried.y, facing: 'right' }, {}, ['woodShovel']);
+      await send('keyDown', 'Space');
+      await sleep(120);
+      await shoot('w10-dig');
+      await send('keyUp', 'Space');
+      await sleep(400);
+      if (!(await read("VL.spotFound(g, 'bookBeachBuried')"))) econProblems.push('Space with the shovel did not dig up the buried book');
+      await shoot('w10-dig-book');
+      await hit('KeyS');
+      // The dig under the popup finishes once play resumes.
+      await sleep(400);
+      // The next sand dig is seeded to turn up a whole shell.
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        for (let seed = 1; ; seed += 1) if (VL.random({ rngState: seed }) < VL.TUNING.digChance) { g.rngState = seed; break; }
+        g.player.facing = 'down';
+      })()`);
+      await hit('Space');
+      await sleep(350);
+      await shoot('w10-dig-shell');
+      const shell = await read("g.room.entities.some((e) => e.type === 'drop' && e.kind === 'shell')");
+      if (!shell) econProblems.push('the seeded dig turned up no shell');
+
+      econProblems.push(...errors);
+      if (econProblems.length) failures += 1;
+      console.log(`${econProblems.length ? 'FAIL' : 'ok  '} economy: 4 buildings, mill trade, forging, digging, ${path.join(outDir, 'w10-*.png')}`);
+      for (const problem of econProblems) console.log(`     ${problem}`);
     }
 
     // W7 chickens with real keys: S lifts the coop chicken and S throws it, F

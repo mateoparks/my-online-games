@@ -16,6 +16,10 @@
 
   const items = (app) => VL.equipmentItems(app.game);
 
+  // The keys that use an item: both for a two-handed one held in both hands.
+  VL.handMarks = (game, id) => VL.HANDS.filter((hand) => VL.heldItem(game, hand) === id)
+    .map((hand) => (hand === 'mainHand' ? '␣' : 'D')).join('');
+
   // The grid shows GRID.rows rows at a time and scrolls a row at a time to
   // keep the chosen item in view; arrows at its side say there is more.
   function scrollTo(view, count) {
@@ -97,8 +101,8 @@
         if (!item) continue;
         centred(ctx, `item-${item.icon}`, x + GRID.w / 2, y + GRID.h / 2);
         if (item.count) VL.ART.text(ctx, String(item.count(game)), x + GRID.w - 2, y + GRID.h - 7, { size: 'small', align: 'right', color: 'text', shadow: 'outline' });
-        const hand = VL.HANDS.find((h) => VL.heldItem(game, h) === item.id);
-        if (hand) VL.ART.text(ctx, hand === 'mainHand' ? '␣' : 'D', x + 2, y + 2, { size: 'small', color: 'goldLight' });
+        const marks = VL.handMarks(game, item.id);
+        if (marks) VL.ART.text(ctx, marks, x + 2, y + 2, { size: 'small', color: 'goldLight' });
       }
       const arrowX = GRID.x + GRID.cols * (GRID.w + GRID.gap) - 1;
       if (first > 0) arrow(ctx, arrowX, GRID.y + 2, true);

@@ -604,7 +604,8 @@
         // Facing a townsperson, S talks: the design's "carry it back" to the kid.
         const person = townspersonAhead(state);
         if (person) VL.ENTITIES.npc.onInteract(state, person);
-        else throwChicken(state);
+        // Across a counter, W10's counters system (order 19) has already talked.
+        else if (!VL.counterKeeper?.(state)) throwChicken(state);
       }
 
       for (const event of state.events) {

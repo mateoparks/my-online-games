@@ -15,6 +15,22 @@ const throwingStorage = { getItem: blocked, setItem: blocked, removeItem: blocke
 const fixturesDir = path.join(__dirname, 'fixtures');
 const readFixture = (file) => JSON.parse(fs.readFileSync(path.join(fixturesDir, file), 'utf8'));
 const fixtureV1 = () => readFixture('save-v1.json');
+// `loaded` cut down to the keys `saved` has, at every depth.
+const keptOf = (loaded, saved) => {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved) || !loaded || typeof loaded !== 'object') return loaded;
+  return Object.fromEntries(Object.keys(saved).map((key) => [key, keptOf(loaded[key], saved[key])]));
+};
+// Keys `loaded` has inside objects `saved` has, where the saved fixture has
+// none: each must be the fresh game's default, at every depth.
+const addedNotDefault = (loaded, saved, fresh, at = '') => {
+  const isObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+  if (!isObject(loaded) || !isObject(saved)) return [];
+  return Object.keys(loaded).flatMap((key) => {
+    const where = at ? `${at}.${key}` : key;
+    if (key in saved) return addedNotDefault(loaded[key], saved[key], fresh?.[key], where);
+    return JSON.stringify(loaded[key]) === JSON.stringify(fresh?.[key]) ? [] : [where];
+  });
+};
 const fixtureFiles = () => fs.readdirSync(fixturesDir).filter((name) => /^save-.*\.json$/.test(name)).sort();
 
 // ---------- storage ----------
@@ -342,8 +358,12 @@ test('every committed fixture loads through the real migrations and defaults', (
     assert.equal(read.summary.name, fixture.name, file);
     // A field that silently took its default is the R2 failure: a kind change needs a migration.
     assert.deepEqual([...read.resets], [], `${file}: a saved field changed kind without a migration`);
+    // Every saved value comes back; a nested field added since (paper in the
+    // inventory) may join it with its default.
     if (fixture.v === VL.saveVersion()) {
-      for (const [key, value] of Object.entries(fixture)) assert.deepEqual(JSON.parse(JSON.stringify(read.save[key])), value, `${file}: ${key} survives a load`);
+      for (const [key, value] of Object.entries(fixture)) assert.deepEqual(keptOf(JSON.parse(JSON.stringify(read.save[key])), value), value, `${file}: ${key} survives a load`);
+      const fresh = VL.serializeSave(VL.newGame({ name: fixture.name }));
+      assert.deepEqual(addedNotDefault(JSON.parse(JSON.stringify(read.save)), fixture, fresh), [], `${file}: fields added since load as their defaults`);
     }
     const game = VL.loadSlot(storage, 0);
     assert.ok(game, `${file} loads`);
