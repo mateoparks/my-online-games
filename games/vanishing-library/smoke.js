@@ -338,6 +338,38 @@ async function main() {
     console.log(`${artProblems.length ? 'FAIL' : 'ok  '} art sheet: ${pageCount} pages, ${path.join(outDir, 'art-*.png')}`);
     for (const problem of artProblems) console.log(`     ${problem}`);
 
+    // The overworld map (W8): every screen drawn on the real canvas with the
+    // hero standing on it, saved as map-<region>-<x>_<y>.png. A block of its
+    // own, so its names never clash with another check's.
+    {
+      errors.length = 0;
+      const mapProblems = [];
+      const screens = JSON.parse(await evaluate('JSON.stringify(Object.values(VL.REGIONS).flatMap((r) => r.screens.map((screen) => [r.id, screen])))'));
+      for (const [region, screen] of screens) {
+        const placed = await evaluate(`(() => {
+          const { cols, rows } = VL.TUNING;
+          for (let ty = rows - 2; ty > 0; ty -= 1) for (let tx = 1; tx < cols - 1; tx += 1) {
+            if (VL.isSolidAt('overworld', '${screen}', tx, ty)) continue;
+            VL.app.game = VL.newGame();
+            VL.app.setScene('play');
+            VL.place(VL.app.game, { area: 'overworld', screen: '${screen}', tx, ty });
+            return true;
+          }
+          return false;
+        })()`);
+        if (!placed) mapProblems.push(`no open tile to stand on in ${screen}`);
+        if (!(await settle())) mapProblems.push(`animation frames stopped on ${screen}`);
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `map-${region}-${screen.replace(',', '_')}.png`), Buffer.from(data, 'base64'));
+      }
+      mapProblems.push(...errors);
+      if (!(screens.length >= 30)) mapProblems.push(`only ${screens.length} overworld screens`);
+      if (mapProblems.length) failures += 1;
+      console.log(`${mapProblems.length ? 'FAIL' : 'ok  '} overworld: ${screens.length} screens drawn, ${path.join(outDir, 'map-*.png')}`);
+      for (const problem of mapProblems.slice(0, 6)) console.log(`     ${problem}`);
+    }
+
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();
   } finally {

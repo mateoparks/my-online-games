@@ -354,6 +354,68 @@ with the hero on the canvas throughout, and resizes the window without
 reloading and checks the scale follows. It runs for 60 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
+## Overworld map
+
+36 screens in the `overworld` area, one region per file in `regions/`
+(`home.js` holds the hut corner). North is up; the sea is south.
+
+```
+ y\x  -2    -1    0     1     2     3     4     5     6     7
+ -5         LAIR
+ -4   HL    HL                            highlands: chasms 4 tiles wide
+ -3   HL    HL                LAKE  ISLE  (long chicken flight)
+ -2         base              SCRP  RIVR              WOOD  WOOD  OAK
+ -1         CLF   CLF   CLF   LIBR  MILL              WOOD  WOOD  WOOD
+  0         CLF   home  home  SQRE  SMTH  cany  EAST
+  1         LGHT  beach HUT   HRBR  HRBR  TIDE  TIDE
+  2                                             WRCK
+```
+
+| Region (file) | Screens | Place lock | What opens it |
+|---|---|---|---|
+| `homeFields`, `beach` (`beach.js`) | home corner, tide pools | `beach` | nothing |
+| `town` (`town.js`) | library, mill, square, smithy, harbour, Scriptorium grounds, riverside | `town` | nothing |
+| `lake` (`lake.js`) | shore, open water + island | `lake` | town; the island needs `rafting` |
+| `canyon`, `eastRoad` (`east-road.js`) | the boulder canyon, the road | `eastRoad` | boulders `O`, `gate: 'liftingGloves'` |
+| `woods` (`woods.js`) | 6-screen maze, Hollow Oak at 7,-2 | `woods` | `softGate: 'woodsMapCopy'`; `VL.WOODS_ROUTE` is the way through (W15) |
+| `cliffs` (`cliffs.js`) | cliff road, lighthouse, cliff base | `cliffs` | town |
+| `highlands` (`highlands.js`) | 5 shelves up to the lair | `highlands` (W19) | hidden path `h`, `gate: 'climbersAlmanac'`, then 4-tile chasms |
+| `shipwreck` (`beach.js`) | the wreck offshore | `shipwreck` (W17) | `rafting` |
+
+- **Regions:** `VL.defineRegion(id, { screens, place, softGate })` tags
+  screens; `VL.regionOf(area, key)` and `VL.regionVisited(state, id)` read
+  them. A place lock W8 claims is reached on entering its region.
+- **Gate tiles** carry `gate: '<key>'` and stay solid until the item that
+  owns the key makes them passable (W14 lifts boulders, W19 opens the hidden
+  path). Rocks (`rock: true`) are liftable with the gloves and bushes are
+  always passable (bare hands), so neither is used as a wall between areas.
+- **Spots** are placement markers, `{ type: 'spot', id, x, y, how, lock }`,
+  for everything another item puts on the map: books, pages, hearts, ore,
+  chickens, building and dungeon doors, the stage and the trapdoor. `how`
+  is one of `door`, `trunk`, `search`, `bush`, `rock`, `buried`, `pickup`,
+  `chicken`, `stage`, `trapdoor`. The item swaps in its entity from its own
+  file with `VL.fillSpot(id, entity)` (it keeps the spot's x, y; either file
+  may load first) and calls `VL.markFound(state, id)` when the player gets the
+  find: W8's book, page, heart and ore locks are `reached` by
+  `VL.spotFound(state, id)`. `VL.SPOTS` lists them.
+- **Decor** (`{ type: 'decor', art, x, y }`) draws scenery bigger than a tile
+  (buildings, the lighthouse, the water wheel, signboards) over solid
+  footprint tiles (`x` grass, `y` water, `G` woods floor). Register a painter
+  with `VL.defineDecor(name, (ctx, x, y, t, entity) => {})`.
+- **New tile characters** (all in `base`): `b` bridge/pier, `q` stage, `Z`
+  trapdoor, `x` `y` `G` footprints, `e` reeds, `O` boulder, `f` woods floor,
+  `F` woods tree, `C` cliff, `h` hidden path, `V` chasm (`flyOver`), `:`
+  scree, `k` rock on scree.
+
+`tests/overworld.test.js` walks the whole map tile by tile with any set of
+keys (walking, bushes, gloves on rocks, the raft on deep water, chicken
+flight of 2 or 4 tiles over `flyOver` tiles anywhere) and checks that every
+region and spot opens exactly when its lock's needs say: reachable with the
+gate keys the table gives by then, and not reachable without any one gate or
+needed region even holding every other key. Moving a find or opening a gap
+in the map fails there. The browser smoke saves every screen as
+`map-<region>-<x>_<y>.png`.
+
 ## Progression: locks, keys, the solver and the playthrough
 
 `progression.js` holds the one table of everything that gates progress

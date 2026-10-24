@@ -34,10 +34,20 @@ VL.FILES = {
 
   entities: [
     'entities/door.js',
+    'entities/spot.js',
+    'entities/decor.js',
   ],
 
   regions: [
     'regions/home.js',
+    'regions/town.js',
+    'regions/beach.js',
+    'regions/lake.js',
+    'regions/east-road.js',
+    'regions/woods.js',
+    'regions/cliffs.js',
+    'regions/highlands.js',
+    'regions/finds.js',
   ],
 
   dungeons: [
