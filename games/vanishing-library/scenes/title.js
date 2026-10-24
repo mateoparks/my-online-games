@@ -19,6 +19,8 @@
   const readSlots = (app) => Array.from({ length: VL.SLOT_COUNT }, (_, slot) => VL.readSlot(app.storage, slot));
 
   VL.defineScene('title', {
+    // The top strip is the title text, so the mute icon sits on the water.
+    soundIndicator: { x: 243, y: 181 },
     enter(app, data) {
       // deleteChoice indexes DELETE_OPTIONS; No is the default.
       app.title = { cursor: data?.slot ?? 0, confirmDelete: false, deleteChoice: 1, slots: readSlots(app) };

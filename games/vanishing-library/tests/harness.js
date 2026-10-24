@@ -243,8 +243,8 @@ function addFixtureWorld(VL) {
 }
 
 // A localStorage look-alike that keeps strings in memory (`map` for inspection).
-function memoryStorage() {
-  const map = new Map();
+function memoryStorage(initial = {}) {
+  const map = new Map(Object.entries(initial));
   return {
     map,
     getItem: (key) => (map.has(key) ? map.get(key) : null),

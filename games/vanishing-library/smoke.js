@@ -3,7 +3,8 @@
 // or uncaught exception, checks the integer scale at two window sizes and on a
 // live resize, walks the hero with real key events, checks a screen slide pans
 // the right way, plays the real start (title, typed name, intro, pause, Save &
-// Quit, reload) and saves a screenshot of each size, scene and art sheet page.
+// Quit, reload), plays every sound effect and toggles the persisted mute, and
+// saves a screenshot of each size, scene and art sheet page.
 // Run: node games/vanishing-library/smoke.js --out <dir>
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
@@ -290,7 +291,7 @@ async function main() {
     // localStorage in this profile).
     errors.length = 0;
     const flowProblems = [];
-    const vk = { Enter: 13, Escape: 27, ArrowDown: 40, KeyS: 83 };
+    const vk = { Enter: 13, Escape: 27, ArrowDown: 40, KeyN: 78, KeyS: 83 };
     const tap = async (code, keyName = code) => {
       const event = { key: keyName, code, windowsVirtualKeyCode: vk[code], nativeVirtualKeyCode: vk[code] };
       await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
@@ -344,6 +345,12 @@ async function main() {
     await reload();
     const slot = JSON.parse(await evaluate('JSON.stringify(VL.app.title.slots[0])'));
     if (slot.status !== 'ok' || slot.summary.name !== 'Robin') flowProblems.push(`after the reload slot 1 is ${JSON.stringify(slot)}`);
+    // The mute icon and note on the title (no HUD): shot while muted, then unmuted again.
+    await tap('KeyN', 'n');
+    if ((await evaluate('VL.SOUND.muted')) !== true) flowProblems.push('N did not mute on the title');
+    await canvasShot('title-muted');
+    await tap('KeyN', 'n');
+    if ((await evaluate('VL.SOUND.muted')) !== false) flowProblems.push('N did not unmute on the title');
     await tap('Enter');
     await expectScene('play', 'Enter on the saved slot');
     const resumed = JSON.parse(await evaluate('JSON.stringify(VL.app.game ? [VL.app.game.name, VL.app.game.hp, VL.app.game.maxHp] : null)'));
@@ -352,6 +359,40 @@ async function main() {
     if (flowProblems.length) failures += 1;
     console.log(`${flowProblems.length ? 'FAIL' : 'ok  '} start flow: title, name "Robin", intro, play, pause, Save & Quit, reload, continue`);
     for (const problem of flowProblems) console.log(`     ${problem}`);
+
+    // Sound in a real browser: the arrow presses above unlocked WebAudio, every
+    // effect builds a graph the browser accepts, and the N mute survives a reload.
+    // A block of its own, so its names never clash with another check's.
+    {
+      errors.length = 0;
+      const soundProblems = [];
+      const sound = JSON.parse(await evaluate(`JSON.stringify({
+        state: VL.SOUND.contextState(), muted: VL.SOUND.muted,
+        silent: Object.keys(VL.SOUND.EFFECTS).filter((name) => !VL.sfx(name)),
+      })`));
+      if (sound.state !== 'running') soundProblems.push(`audio context ${sound.state} after real key presses`);
+      if (sound.muted) soundProblems.push('sound starts muted on a fresh profile');
+      if (sound.silent.length) soundProblems.push(`effects that did not play: ${sound.silent.join(', ')}`);
+      const muteKey = (type) => call('Input.dispatchKeyEvent', { type, key: 'n', code: 'KeyN', text: type === 'keyDown' ? 'n' : undefined, windowsVirtualKeyCode: 78, nativeVirtualKeyCode: 78 });
+      await muteKey('keyDown');
+      await muteKey('keyUp');
+      if (!(await settle())) soundProblems.push('animation frames stopped after the mute key');
+      const mutedNow = JSON.parse(await evaluate("JSON.stringify([VL.SOUND.muted, localStorage.getItem('vanishing-library-muted')])"));
+      if (mutedNow[0] !== true || mutedNow[1] !== '1') soundProblems.push(`N did not mute and save: ${mutedNow}`);
+      fs.writeFileSync(path.join(outDir, 'muted.png'), Buffer.from((await call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+      const soundReload = new Promise((resolve) => { loaded = resolve; });
+      await call('Page.reload');
+      await soundReload;
+      if (!(await settle())) soundProblems.push('animation frames stopped after the reload');
+      if ((await evaluate('VL.SOUND.muted')) !== true) soundProblems.push('mute was not restored after a reload');
+      await muteKey('keyDown');
+      await muteKey('keyUp');
+      if ((await evaluate("localStorage.getItem('vanishing-library-muted')")) !== '0') soundProblems.push('N did not unmute');
+      soundProblems.push(...errors);
+      if (soundProblems.length) failures += 1;
+      console.log(`${soundProblems.length ? 'FAIL' : 'ok  '} sound: context ${sound.state}, mute toggles and persists, ${path.join(outDir, 'muted.png')}`);
+      for (const problem of soundProblems) console.log(`     ${problem}`);
+    }
 
     // The art kit, page by page (scenes/art-sheet.js), cropped to the canvas:
     // the evidence for comparing with the approved mockup.

@@ -30,6 +30,7 @@ VL.FILES = {
 
   systems: [
     'systems/movement.js',
+    'systems/sound.js',
   ],
 
   entities: [

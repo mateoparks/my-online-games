@@ -297,6 +297,52 @@ test('a save from a newer game shows as needing a newer page: no delete, no star
   assert.equal(backing.getItem(VL.slotKey(0)), text, 'left exactly as it was');
 });
 
+test('the muted icon and its note sit under the shore on the title, not over the title text', () => {
+  const { VL, document } = loadGame();
+  assert.ok(VL.SCENES.title.soundIndicator, 'the title says where the sound indicator goes');
+  const app = VL.createApp({ storage: VL.createStorage(memoryStorage()) });
+  const sprites = [];
+  const texts = [];
+  const { drawSprite, text } = VL.ART;
+  VL.ART.drawSprite = (ctx, name, x, y, ...rest) => {
+    sprites.push({ name, x, y });
+    return drawSprite(ctx, name, x, y, ...rest);
+  };
+  VL.ART.text = (ctx, str, x, y, ...rest) => {
+    texts.push({ str: String(str), x, y });
+    return text(ctx, str, x, y, ...rest);
+  };
+  const ctx = document.createElement('canvas').getContext('2d');
+  VL.SOUND.toggleMute();
+  assert.equal(VL.SOUND.muted, true);
+  VL.render(ctx, app, 0.2);
+  VL.SOUND.drawIndicator(ctx, app, 0.2);
+  VL.ART.drawSprite = drawSprite;
+  VL.ART.text = text;
+  const icon = sprites.find((s) => s.name === 'icon-sound-off');
+  assert.ok(icon, 'the muted icon is drawn');
+  assert.ok(icon.y >= 140 && icon.y + 7 <= VL.TUNING.height && icon.x + 9 <= VL.TUNING.width, `icon at ${icon.x},${icon.y}`);
+  const note = texts.find((s) => s.str === VL.SOUND.NOTE.off);
+  assert.ok(note, 'the note is drawn');
+  assert.ok(note.y >= 140, `note at ${note.x},${note.y}`);
+  VL.SOUND.setMuted(false);
+});
+
+test('typing N in the name field types a letter; on the title N toggles mute', () => {
+  const { VL, window } = loadGame();
+  const app = VL.createApp({ storage: VL.createStorage(memoryStorage()) });
+  VL.app = app;
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'name');
+  window.dispatch('keydown', keyEvent('KeyN', { key: 'n' }));
+  assert.equal(VL.SOUND.muted, false, 'no mute while naming');
+  press(VL, app, 'pause');
+  assert.equal(app.sceneId, 'title');
+  window.dispatch('keydown', keyEvent('KeyN', { key: 'n' }));
+  assert.equal(VL.SOUND.muted, true, 'N mutes on the title');
+  VL.SOUND.setMuted(false);
+});
+
 test('deleting a slot asks first, defaults to No, and erases on Yes', () => {
   const { VL, document } = loadGame();
   const backing = memoryStorage();
