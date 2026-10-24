@@ -279,15 +279,22 @@
     shipwreck: 'WRECK',
   };
 
+  const NOT_HERE = 'Your world map only shows the land outside. In here, press M for a map of this place.';
+
   VL.defineItem('worldMap', {
     name: 'World Map',
     icon: 'world-map',
     about: 'Everywhere you have been. M opens it.',
     popup: { title: 'You drew your map!', text: 'Press M to look at it. It fills in by itself as you explore.' },
     use(state) {
-      VL.requestScene(state, 'worldMap', { mode: 'view' });
+      if (VL.inDungeon(state)) return VL.showMessage(state, { text: NOT_HERE });
+      return VL.requestScene(state, 'worldMap', { mode: 'view' });
     },
     menuUse(app) {
+      if (VL.inDungeon(app.game)) {
+        VL.showMessage(app.game, { text: NOT_HERE });
+        return 'bump';
+      }
       app.setScene('worldMap', { mode: 'view', back: 'equipment' });
       return null;
     },
@@ -358,9 +365,59 @@
     return null;
   }
 
+  // A screen as the map draws it: its tiles with the saved changes made to
+  // them (W13's VL.saveTile: a lifted boulder, an opened path) laid over.
+  VL.mapTiles = function mapTiles(state, key) {
+    const changes = state.tileChanges?.[`overworld:${key}`] || {};
+    const rows = VL.getScreen('overworld', key).tiles.map((row) => [...row]);
+    for (const [at, ch] of Object.entries(changes)) {
+      const [tx, ty] = parseKey(at);
+      if (rows[ty] && tx < rows[ty].length) rows[ty][tx] = ch;
+    }
+    return rows.map((row) => row.join(''));
+  };
+
+  const LABEL_H = 7;
+  const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+  // Map pixels (one per tile) from the map's top-left corner.
+  function mapPoint(key, tx, ty) {
+    const bounds = VL.mapBounds();
+    const [x, y] = parseKey(key);
+    return { x: (x - bounds.minX) * VL.TUNING.cols + tx, y: (y - bounds.minY) * VL.TUNING.rows + ty };
+  }
+
+  function spriteRect(id, key, tx, ty) {
+    const { w, h } = VL.ART.sprite(id);
+    const p = mapPoint(key, tx, ty);
+    return { x: p.x - Math.floor(w / 2), y: p.y - Math.floor(h / 2), w, h };
+  }
+
+  // A region's name plate goes on its visited screen nearest the region's
+  // middle, nudged until it covers no mark, the hero or another name.
+  function placeLabel(name, screens, blocked) {
+    const bounds = VL.mapBounds();
+    const mapW = (bounds.maxX - bounds.minX + 1) * VL.TUNING.cols;
+    const mapH = (bounds.maxY - bounds.minY + 1) * VL.TUNING.rows;
+    const w = VL.ART.measureText(name, 'small') + 2;
+    let first = null;
+    for (const key of screens) {
+      const corner = mapPoint(key, 0, 0);
+      for (const dy of [2, 0, 4, 1, 3, -4, 8, -7, 11]) {
+        for (const dx of [0, -3, 3, -6, 6, -9, 9, -12, 12]) {
+          const x = VL.clamp(Math.round(corner.x + VL.TUNING.cols / 2 - w / 2) + dx, 0, mapW - w);
+          const rect = { x, y: VL.clamp(corner.y + dy, 0, mapH - LABEL_H), w, h: LABEL_H };
+          if (!first) first = { ...rect, screen: key };
+          if (!blocked.some((b) => overlaps(rect, b))) return { ...rect, screen: key };
+        }
+      }
+    }
+    return first;
+  }
+
   // What the drawn map shows: overworld screens in the order first visited,
   // the Herbalist's (and Ledger's) marks, the hero, and the names of visited
-  // regions, each on its visited screen nearest the region's middle.
+  // regions with where their plates go (map pixels, see placeLabel).
   VL.mapView = function mapView(state) {
     const screens = Object.keys(state.visited)
       .filter((key) => key.startsWith('overworld:'))
@@ -369,12 +426,16 @@
     const marks = VL.mapMarks(state)
       .filter((mark) => mark.area === 'overworld')
       .map(({ kind, screen, tx, ty }) => ({ kind, screen, tx, ty }));
+    const hero = heroOnMap(state);
+    const blocked = marks.map((m) => spriteRect(m.kind === 'ore' ? 'icon-ore' : 'icon-berry', m.screen, m.tx, m.ty));
+    if (hero) {
+      const p = mapPoint(hero.screen, hero.tx, hero.ty);
+      blocked.push({ x: p.x - 2, y: p.y - 2, w: 5, h: 5 });
+    }
     const labels = [];
     for (const region of Object.values(VL.REGIONS)) {
       const name = region.id in VL.REGION_NAMES ? VL.REGION_NAMES[region.id] : region.id.toUpperCase();
       if (!name || region.area !== 'overworld') continue;
-      const seen = region.screens.filter((key) => screens.includes(key));
-      if (!seen.length) continue;
       const cells = region.screens.map(parseKey);
       const mx = cells.reduce((sum, [x]) => sum + x, 0) / cells.length;
       const my = cells.reduce((sum, [, y]) => sum + y, 0) / cells.length;
@@ -382,10 +443,13 @@
         const [x, y] = parseKey(key);
         return (x - mx) ** 2 + (y - my) ** 2;
       };
-      const at = seen.reduce((best, key) => (dist(key) < dist(best) ? key : best));
-      labels.push({ name, screen: at });
+      const seen = region.screens.filter((key) => screens.includes(key)).sort((a, b) => dist(a) - dist(b));
+      if (!seen.length) continue;
+      const label = { name, ...placeLabel(name, seen, blocked) };
+      labels.push(label);
+      blocked.push(label);
     }
-    return { screens, marks, labels, hero: heroOnMap(state) };
+    return { screens, marks, labels, hero };
   };
 
   // ---------- the M key ----------
@@ -403,8 +467,9 @@
         if (grind.t >= VL.TUNING.grindSeconds) state.player.grind = null;
       }
       if (state.hp <= 0) return;
+      if (VL.inDungeon(state)) return;
       if (!VL.hasItem(state, 'worldMap') && !state.popups.seen.mapReady && !VL.mapNeeds(state)) VL.showPopup(state, 'mapReady');
-      if (actions.pressed.map && !VL.inDungeon(state)) VL.openWorldMap(state);
+      if (actions.pressed.map) VL.openWorldMap(state);
     },
   });
 

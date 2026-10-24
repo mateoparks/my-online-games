@@ -41,12 +41,15 @@
     return 'mapGrass';
   }
 
-  // Runs of one ink per row, worked out once per screen (the map is static).
+  // Runs of one ink per row, worked out again only when a screen's tiles
+  // change (a saved change, VL.mapTiles).
   const runsCache = {};
-  function screenRuns(key) {
-    if (runsCache[key]) return runsCache[key];
+  function screenRuns(game, key) {
+    const tiles = VL.mapTiles(game, key);
+    const sig = tiles.join('/');
+    if (runsCache[key]?.sig === sig) return runsCache[key].runs;
     const runs = [];
-    VL.getScreen('overworld', key).tiles.forEach((row, ty) => {
+    tiles.forEach((row, ty) => {
       let start = 0;
       for (let tx = 1; tx <= row.length; tx += 1) {
         const ink = inkOf(VL.tileInfo('overworld', row[start]));
@@ -55,7 +58,7 @@
         start = tx;
       }
     });
-    runsCache[key] = runs;
+    runsCache[key] = { sig, runs };
     return runs;
   }
 
@@ -89,15 +92,12 @@
     const shown = view.mode === 'drawing' ? map.screens.slice(0, view.revealed) : map.screens;
     for (const key of shown) {
       const { x, y } = cell(key);
-      for (const run of screenRuns(key)) VL.ART.rect(ctx, run.ink, x + run.x, y + run.y, run.w, 1);
+      for (const run of screenRuns(game, key)) VL.ART.rect(ctx, run.ink, x + run.x, y + run.y, run.w, 1);
     }
     if (view.mode === 'drawing') return;
     for (const label of map.labels) {
-      const { x, y } = cell(label.screen);
-      const width = VL.ART.measureText(label.name, 'small');
-      const left = Math.round(x + TILES_X / 2 - width / 2);
-      VL.ART.rect(ctx, 'parchmentLight', left - 1, y + 2, width + 2, 7);
-      VL.ART.text(ctx, label.name, left, y + 3, { size: 'small', color: 'mapInk' });
+      VL.ART.rect(ctx, 'parchmentLight', ox + label.x, oy + label.y, label.w, label.h);
+      VL.ART.text(ctx, label.name, ox + label.x + 1, oy + label.y + 1, { size: 'small', color: 'mapInk' });
     }
     for (const mark of map.marks) {
       const { x, y } = cell(mark.screen);

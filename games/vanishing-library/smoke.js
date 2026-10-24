@@ -1183,6 +1183,16 @@ async function main() {
       await sleep(400);
       await picture('w12-map-explored');
       if (!(await look("VL.mapView(g).screens.includes('4,0')"))) inkProblems.push('a screen explored after drawing is not on the map');
+      await tapKey('KeyM');
+      const everything = "for (const key of Object.keys(VL.AREAS.overworld.screens)) g.visited['overworld:' + key] = true;"
+        + " g.library.returned.push('bookPrimer', 'bookHerbalist', 'bookSmithsLedger'); g.library.read.push('bookPrimer', 'bookHerbalist', 'bookSmithsLedger');"
+        + " g.popups.seen.mapReady = true; VL.giveItem(g, 'worldMap'); g.popups.queue.length = 0;";
+      await inkGame({ area: 'overworld', screen: '1,1', tx: 8, ty: 6 }, everything);
+      await tapKey('KeyM');
+      await sleep(400);
+      await picture('w12-map-full');
+      const full = await look("[VL.app.sceneId, VL.mapView(g).labels.length, VL.mapView(g).marks.length]");
+      if (full[0] !== 'worldMap' || !(full[1] >= 8) || !(full[2] > 0)) inkProblems.push(`the full map: ${full}`);
 
       inkProblems.push(...errors);
       if (inkProblems.length) failures += 1;

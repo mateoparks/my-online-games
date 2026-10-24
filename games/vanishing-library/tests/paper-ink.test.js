@@ -485,6 +485,105 @@ test('M opens the world map only outside dungeons: inside one it belongs to the 
   VL.dungeonOf = shipped;
 });
 
+test('inside a dungeon the world map opens from no key, and the "press M" popup waits', () => {
+  const t = setup();
+  const { VL } = t;
+  t.at(FIELD);
+  VL.giveItem(t.game, 'worldMap');
+  t.closePopups();
+  assert.equal(VL.heldItem(t.game, 'mainHand'), 'worldMap');
+  VL.dungeonOf = () => ({ id: 'testDungeon', area: 'overworld' });
+  t.press('mainHand');
+  assert.notEqual(t.app.sceneId, 'worldMap', 'not from its hand key');
+  assert.match(VL.currentPopup(t.game).text, /press M for a map of this place/);
+  t.closePopups();
+  t.app.setScene('play');
+  t.press('equipment');
+  t.app.equipment.cursor = VL.equipmentItems(t.game).findIndex((item) => item.id === 'worldMap');
+  t.press('interact');
+  assert.equal(t.app.sceneId, 'equipment', 'not from the equipment screen');
+  t.press('equipment');
+  t.closePopups();
+  const fresh = setup();
+  fresh.at(FIELD);
+  readPrimer(fresh.VL, fresh.game);
+  give(fresh.VL, fresh.game, { paper: 1, ink: 1 });
+  fresh.VL.dungeonOf = () => ({ id: 'testDungeon', area: 'overworld' });
+  fresh.wait(0.1);
+  assert.equal(fresh.VL.currentPopup(fresh.game), null, 'no "press M" inside a dungeon');
+  fresh.VL.dungeonOf = () => null;
+  fresh.wait(0.1);
+  assert.equal(fresh.VL.currentPopup(fresh.game)?.id, 'mapReady', 'it shows once he is back outside');
+});
+
+test('region names never cover a mark, the hero or each other, with everything visited and both books read', () => {
+  const t = setup();
+  const { VL } = t;
+  for (const key of Object.keys(VL.AREAS.overworld.screens)) t.game.visited[`overworld:${key}`] = true;
+  for (const book of ['bookHerbalist', 'bookSmithsLedger']) {
+    t.game.library.returned.push(book);
+    t.game.library.read.push(book);
+  }
+  const { cols, rows } = VL.TUNING;
+  const bounds = VL.mapBounds();
+  const at = (key, tx, ty) => {
+    const [x, y] = key.split(',').map(Number);
+    return { x: (x - bounds.minX) * cols + tx, y: (y - bounds.minY) * rows + ty };
+  };
+  const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const marks = VL.mapView(t.game).marks;
+  assert.ok(marks.some((m) => m.kind === 'ore') && marks.some((m) => m.kind === 'berries'));
+  const markRects = marks.map((m) => {
+    const sprite = VL.ART.sprite(m.kind === 'ore' ? 'icon-ore' : 'icon-berry');
+    const p = at(m.screen, m.tx, m.ty);
+    return { x: p.x - Math.floor(sprite.w / 2), y: p.y - Math.floor(sprite.h / 2), w: sprite.w, h: sprite.h };
+  });
+  // The hero stands where a plate would most like to go on every screen in turn.
+  for (const screen of Object.keys(VL.AREAS.overworld.screens)) {
+    t.at({ area: 'overworld', screen, tx: 8, ty: 4 });
+    const { labels, hero } = VL.mapView(t.game);
+    assert.ok(labels.length >= 8, labels.map((l) => l.name).join());
+    const p = at(hero.screen, hero.tx, hero.ty);
+    const heroRect = { x: p.x - 2, y: p.y - 2, w: 5, h: 5 };
+    labels.forEach((label, i) => {
+      for (const mark of markRects) assert.ok(!hit(label, mark), `${label.name} covers a mark (hero on ${screen})`);
+      assert.ok(!hit(label, heroRect), `${label.name} covers the hero on ${screen}`);
+      for (const other of labels.slice(i + 1)) assert.ok(!hit(label, other), `${label.name} covers ${other.name}`);
+      assert.ok(label.w >= VL.ART.measureText(label.name, 'small'), label.name);
+    });
+  }
+});
+
+test('the drawn map shows saved tile changes (VL.saveTile) and redraws when they change', () => {
+  const t = setup();
+  const { VL } = t;
+  t.at(FIELD);
+  VL.giveItem(t.game, 'worldMap');
+  t.closePopups();
+  const inks = () => {
+    const drawn = [];
+    const rect = VL.ART.rect;
+    VL.ART.rect = (c, color, ...rest) => {
+      drawn.push(`${color}@${rest.join(',')}`);
+      return rect(c, color, ...rest);
+    };
+    t.app.draw(fakeContext(), 0);
+    VL.ART.rect = rect;
+    return drawn.filter((d) => d.startsWith('map'));
+  };
+  t.press('map');
+  const before = inks();
+  assert.equal(VL.mapTiles(t.game, '1,1')[4][0], '.');
+  t.game.tileChanges = { 'overworld:1,1': { '0,4': 'W' } };
+  assert.equal(VL.mapTiles(t.game, '1,1')[4][0], 'W');
+  assert.equal(VL.getScreen('overworld', '1,1').tiles[4][0], '.', 'the screen itself is untouched');
+  const after = inks();
+  assert.notDeepEqual(after, before);
+  assert.ok(after.filter((d) => d.startsWith('mapWater')).length > before.filter((d) => d.startsWith('mapWater')).length);
+  t.game.tileChanges = {};
+  assert.deepEqual(inks(), before, 'and back again when the change goes');
+});
+
 test('M does nothing in the middle of a screen slide or once the hero has fainted', () => {
   const t = setup();
   const { VL } = t;

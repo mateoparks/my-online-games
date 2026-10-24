@@ -696,7 +696,8 @@ paper and ink with real keys: Space grinding a berry with the mortar
 `w12-copy-view.png`), M with no map (`w12-map-none.png`), M asking to draw
 (`w12-map-ask.png`), the map inking in and drawn with the Herbalist's marks
 (`w12-map-drawing.png`, `w12-map.png`) and a screen explored after
-(`w12-map-explored.png`). It runs
+(`w12-map-explored.png`), then the whole overworld with every mark
+(`w12-map-full.png`). It runs
 for 120 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
@@ -1134,8 +1135,10 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
 
 - **Saved:** nothing new. The tools, the map and the copies are items
   (`state.items`), ink and paper are resources, and the screens visited are
-  W1's `state.visited`. **A first visit to a screen is earned**
-  (`VL.enterScreen`), so a reload right after exploring keeps it on the map.
+  W1's `state.visited`. **A first visit to a screen is earned:**
+  `VL.enterScreen` marks its event `first`, and the `paperInk` system earns
+  it within the same step, so a reload right after exploring keeps it on the
+  map. A `VL.place` outside a step (a load, a respawn, a test) earns nothing.
 - **Ink:** the `mortarPestle` item (W14's Bookworm gives it with
   `VL.giveItem`) is a hand tool: its key, or S on the equipment screen,
   grinds one berry into `TUNING.inkPerBerry` ink (`VL.makeInk`), one grind
@@ -1153,7 +1156,9 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
   the Scriptorium, W15 decides what holding it changes in the maze. The design
   wants one or two copy puzzles at most.
 - **The world map:** M (outside dungeons; `VL.inDungeon(state)` is the one
-  branch point with W13, whose dungeon map owns M inside) calls
+  branch point with W13, whose dungeon map owns M inside; there the map's
+  hand key and S on the equipment screen only say so, and the `mapReady`
+  popup waits until he is outside) calls
   `VL.openWorldMap`. With no map, `VL.mapNeeds(state)` says why not (the
   Primer read and still on the shelf, then `TUNING.mapCost`); when nothing is
   missing, the `worldMap` scene asks first, `VL.makeWorldMap` spends the paper
@@ -1166,8 +1171,13 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
   (W11's `VL.mapMarks`: the berry bushes once the Herbalist's Notes are read,
   shown even on screens not visited yet, and the Woods ore after the Smith's
   Ledger), `labels` (`VL.REGION_NAMES` for visited regions; `null` leaves a
-  region unnamed) and `hero` (indoors, the door of the building he is in).
-  Each screen is a pixel per tile in map inks (`mapWater`, `mapTree`, ...).
+  region unnamed; each with its plate's `x, y, w, h` in map pixels, placed on
+  the region's visited screen nearest its middle and nudged off every mark,
+  the hero and the other names) and `hero` (indoors, the door of the building
+  he is in). Each screen is a pixel per tile in map inks (`mapWater`,
+  `mapTree`, ...) from `VL.mapTiles(state, key)`: its tiles with W13's saved
+  changes (`state.tileChanges`, `VL.saveTile`) laid over, so a lifted boulder
+  or an opened path shows on the map.
 - **Losing it:** `VL.loseWorldMap(state)` takes the map and empties a hand
   holding it, and earns; W16's shockwave calls it. The visits stay, so
   drawing it again (while the Primer is on the shelf) shows everything at once.
