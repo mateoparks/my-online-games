@@ -344,6 +344,9 @@ test('Esc pauses: the world freezes, Resume continues, Save & Quit saves and ret
   assert.ok(paused.some((s) => /resume/i.test(s)));
   assert.ok(paused.some((s) => /N: SOUND ON\/OFF/.test(s)), 'lists the sound key for W21');
   assert.ok(!paused.some((s) => /\bF\b/.test(s)), 'chicken flight stays a secret');
+  assert.ok(!paused.some((s) => s.includes('␣')), 'Space is not mentioned before a main-hand item');
+  VL.ART.hudSource('mainHand', () => 'sword-wood');
+  assert.ok(drawnText(VL, document, app).some((s) => s.includes('␣ MAIN HAND')), 'and is once the hero holds one');
   press(VL, app, 'pause');
   assert.equal(app.sceneId, 'play', 'Esc resumes');
   press(VL, app, 'pause');
