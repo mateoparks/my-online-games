@@ -215,9 +215,13 @@ VL.ART.defineTileStyle('ore', {
 ```
 
 Props such as trees, rocks and bushes draw grass under themselves (`under`).
-A legend entry's `ground` picks another floor, e.g.
-`'r': { solid: true, rock: true, art: 'rock', ground: 'sand' }` for a beach
-rock; an unknown name throws when it is first drawn.
+A legend entry's `ground` picks another floor: any style with a ground pass,
+matching what is around the prop. `'r': { solid: true, rock: true, art: 'rock',
+ground: 'sand' }` is a beach rock; `ground: 'shallow'` stands a rock in the
+shallows, and shores and foam then run round it as water. A name that is
+unknown, or has no ground pass, throws. The test `every prop in every area
+sits on a ground one of its neighbours shares` fails on a grass square on the
+beach or a sand square in the water.
 
 A style has up to three passes, each run for the whole screen before the
 next: `ground` (the floor of the tile), `shadow`, then `raised` (anything
@@ -248,7 +252,7 @@ Over the world, give text `shadow: 'outline'`. `VL.ART.measureText`,
 `VL.ART.wrapText(str, width, size)` and `VL.ART.missingGlyphs(str, size)` help
 with layout; a content test should check its strings with `missingGlyphs`
 (characters the font lacks are drawn as `?`). The font has letters, digits,
-`.,!?'":;-+=()/&%*<>`, arrows `←→↑↓`, `♥`, and `␣` (the space bar, small only).
+`.,!?'":;-+=()/&%*<>`, arrows `←→↑↓`, `♥` (not small), and `␣` (the space bar).
 
 **HUD and popups.** `VL.ART.drawHud` draws hearts (from `hp`/`maxHp`), the
 whole-shell count and the main-hand (Space) and off-hand (D) slots. The file

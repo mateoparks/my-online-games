@@ -384,6 +384,7 @@
     const styles = VL.ART.TILE_STYLES;
     if (styles[name]) throw new Error(`tile style ${name} is already defined`);
     const entry = { name, priority: 0, ...style };
+    if (entry.under && styles[entry.under] && !styles[entry.under].ground) throw new Error(`tile style ${name}: under names ${entry.under}, which has no ground pass`);
     const twin = entry.when && Object.values(styles).find((other) => other.when === entry.when && other.priority === entry.priority);
     if (twin) throw new Error(`tile styles ${name} and ${twin.name} both match '${entry.when}' at priority ${entry.priority}`);
     styles[name] = entry;
@@ -424,12 +425,16 @@
     const name = info?.ground || style.under;
     if (!name) return style;
     const ground = VL.ART.TILE_STYLES[name];
-    if (!ground) throw new Error(`tile style ${style.name}: ${info?.ground ? 'ground' : 'under'} names no tile style ${name}`);
+    const field = info?.ground ? 'ground' : 'under';
+    if (!ground) throw new Error(`tile style ${style.name}: ${field} names no tile style ${name}`);
+    if (!ground.ground) throw new Error(`tile style ${style.name}: ${field} names ${name}, which has no ground pass`);
     return ground;
   };
 
-  // Something the hero can walk in that still reads as water.
-  VL.ART.isWet = (info) => Boolean(info && (info.water || info.shallow));
+  // Water, or a prop standing in it (`ground: 'shallow'`), so shores and foam
+  // run round the prop instead of boxing it in.
+  const WET = new Set(['water', 'shallow']);
+  VL.ART.isWet = (info) => Boolean(info && (info.water || info.shallow || WET.has(VL.ART.groundOf(info).when)));
 
   // Sides of a wet tile that meet land. Off the world (null) counts as more water.
   VL.ART.wetEdges = function wetEdges(cell) {

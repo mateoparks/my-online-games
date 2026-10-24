@@ -115,7 +115,8 @@
     ground(ctx, cell, t) {
       rect(ctx, (cell.wx + cell.wy) % 2 ? 'waterAlt' : 'water', cell.x, cell.y, 16, 16);
       for (const [side, dx, dy] of SIDES) {
-        if (cell.near(dx, dy)?.shallow) band(ctx, cell, side, 'waterLight', 1, 1, 8);
+        const other = cell.near(dx, dy);
+        if (other && VL.ART.groundOf(other).when === 'shallow') band(ctx, cell, side, 'waterLight', 1, 1, 8);
       }
       ripples(ctx, cell, t, 'waterLight', 2, 6);
       foam(ctx, cell, t);

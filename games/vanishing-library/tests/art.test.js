@@ -125,7 +125,7 @@ test('text: unknown characters are reported and drawn as "?"', () => {
 
 test('text: every font covers letters, digits and common punctuation', () => {
   const { VL } = loadGame();
-  const normal = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?\'":;-+=()/&%*<>←→↑↓';
+  const normal = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?\'":;-+=()/&%*<>←→↑↓␣';
   assert.deepEqual([...VL.ART.missingGlyphs(normal)], []);
   assert.deepEqual([...VL.ART.missingGlyphs('ABCXYZ0123456789 .,!?:-+/\'()␣←→↑↓', 'small')], []);
 });
@@ -186,7 +186,10 @@ test('tile choice: art picks a style by name, higher priority wins, and gaps are
 test('every character of every shipped tileset has a tile style', () => {
   const { VL } = loadGame();
   for (const [id, legend] of Object.entries(VL.TILESETS)) {
-    for (const [ch, info] of Object.entries(legend)) assert.notEqual(VL.ART.tileStyleFor(info).name, 'missing', `${id} '${ch}'`);
+    for (const [ch, info] of Object.entries(legend)) {
+      assert.notEqual(VL.ART.tileStyleFor(info).name, 'missing', `${id} '${ch}'`);
+      assert.equal(typeof VL.ART.groundOf(info).ground, 'function', `${id} '${ch}' has a ground`);
+    }
   }
 });
 
@@ -371,19 +374,26 @@ test('README has the art kit style guide', () => {
 
 // Hex colours outside VL.ART.addColors, CSS colour functions, and canvas text.
 function r6Breaks(source) {
-  const code = source.replace(/VL\.ART\.addColors\(\{[^}]*\}\)/g, '');
+  const code = source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:\\])\/\/.*$/gm, '$1')
+    .replace(/VL\.ART\.addColors\(\s*\{[^}]*\}\s*\)/g, '');
   const rules = [
     [/['"`]#[0-9a-fA-F]{3,8}['"`]/, 'a hex colour (use a palette name)'],
     [/\b(rgba?|hsla?)\(/, 'a CSS colour (use a palette name)'],
+    [/\b(fillStyle|strokeStyle|shadowColor)\s*=\s*['"`]/, 'a colour literal (use VL.ART.color)'],
     [/\b(fillText|strokeText)\b/, 'canvas text (use VL.ART.text)'],
-    [/\.font\s*=/, 'a canvas font (use VL.ART.text)'],
+    [/\.font\s*=(?!=)/, 'a canvas font (use VL.ART.text)'],
   ];
   return rules.filter(([pattern]) => pattern.test(code)).map(([, what]) => what);
 }
 
 test('R6: no game file outside art.js draws with raw colours or canvas text', () => {
-  assert.deepEqual(r6Breaks("ctx.fillStyle = '#ff0000'; ctx.fillText('hi', 0, 0); ctx.font = '8px x'; c = 'rgb(1,2,3)';").length, 4);
+  assert.deepEqual(r6Breaks("ctx.fillStyle = '#ff0000'; ctx.fillText('hi', 0, 0); ctx.font = '8px x'; c = 'rgb(1,2,3)';").length, 5);
   assert.deepEqual(r6Breaks("VL.ART.addColors({ moss: '#2a4a2a', mossDark: '#1a3a1a' }); VL.defineTileset('x', { '#': {} });"), []);
+  assert.deepEqual(r6Breaks("ctx.fillStyle = 'white';"), ['a colour literal (use VL.ART.color)']);
+  assert.deepEqual(r6Breaks('ctx.strokeStyle = `#${hex}`;'), ['a colour literal (use VL.ART.color)']);
+  assert.deepEqual(r6Breaks("if (opts.font === 'large') x(); // not fillText\n/* nor ctx.font = 'x' */ VL.ART.addColors( { moss: '#2a4a2a' } );"), []);
   const { VL } = loadGame();
   for (const file of VL.scriptFiles().filter((name) => name !== 'art.js')) {
     assert.deepEqual(r6Breaks(read(file)), [], file);
@@ -432,6 +442,64 @@ test('a style or entry naming a missing ground style says which', () => {
   VL.ART.defineTileStyle('bad', { under: 'nope', ground() {} });
   assert.throws(() => VL.ART.drawTiles(pixelContext(), () => ({ art: 'bad' }), 0, 0, 0), /tile style bad: under names no tile style nope/);
   assert.throws(() => VL.ART.drawTiles(pixelContext(), () => ({ rock: true, ground: 'snow' }), 0, 0, 0), /tile style rock: ground names no tile style snow/);
+  assert.throws(() => VL.ART.groundOf({ rock: true, ground: 'tree' }), /tile style rock: ground names tree, which has no ground pass/);
+  assert.throws(() => VL.ART.defineTileStyle('stump', { under: 'tree', raised() {} }), /tile style stump: under names tree, which has no ground pass/);
+});
+
+test('a prop on a shallow ground reads as water: no foam ring, no sand square, and wet sand beside it', () => {
+  const { VL } = loadGame();
+  const rock = { solid: true, rock: true, art: 'rock', ground: 'shallow' };
+  const map = { '0,0': VL.TILESETS.base.w, '1,0': rock, '2,0': VL.TILESETS.base.s };
+  const lookup = (tx, ty) => map[`${tx},${ty}`] ?? null;
+  assert.equal(VL.ART.isWet(rock), true);
+  assert.equal(VL.ART.wetEdges({ near: (dx, dy) => lookup(0 + dx, 0 + dy) }).e, false, 'no foam on the shallows facing the rock');
+  const ctx = pixelContext();
+  VL.ART.drawTiles(ctx, lookup, 0, 0, 0);
+  const floor = [];
+  for (let y = 0; y < 16; y += 1) for (let x = 16; x < 32; x += 1) floor.push(ctx.at(x, y));
+  assert.ok(!floor.some((c) => SAND(VL).includes(c)), 'no sand drawn under the rock');
+  for (let y = 0; y < 16; y += 1) assert.equal(ctx.at(32, y), VL.PALETTE.sandWet, `wet sand edge 32,${y}`);
+});
+
+// A prop whose floor no neighbour shares shows as a square of the wrong ground:
+// grass on the beach, sand in the shallows. Neighbouring props don't count.
+function strandedProps(VL) {
+  const { cols, rows } = VL.TUNING;
+  const found = [];
+  for (const [areaId, area] of Object.entries(VL.AREAS)) {
+    for (const key of Object.keys(area.screens)) {
+      const info = (tx, ty) => {
+        const ch = VL.tileAt(areaId, key, tx, ty);
+        return ch === null ? null : VL.tileInfo(areaId, ch);
+      };
+      const isProp = (other) => VL.ART.groundOf(other) !== VL.ART.tileStyleFor(other);
+      for (let ty = 0; ty < rows; ty += 1) {
+        for (let tx = 0; tx < cols; tx += 1) {
+          const here = info(tx, ty);
+          if (!isProp(here)) continue;
+          const floors = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+            .map(([dx, dy]) => info(tx + dx, ty + dy))
+            .filter((other) => other && !isProp(other))
+            .map((other) => VL.ART.groundOf(other).name);
+          const ground = VL.ART.groundOf(here).name;
+          if (floors.length && !floors.includes(ground)) found.push(`${areaId} ${key} (${tx},${ty}) ${ground} among ${[...new Set(floors)]}`);
+        }
+      }
+    }
+  }
+  return found;
+}
+
+test('every prop in every area sits on a ground one of its neighbours shares', () => {
+  const probe = loadGame().VL;
+  probe.defineArea('probe', { tileset: 'base' });
+  probe.addScreens('probe', { '0,0': { tiles: ['sTsTs', 'wwwBw', ...Array(9).fill('')].map((row) => row.padEnd(16, 'W')), entities: [] } });
+  assert.deepEqual(strandedProps(probe).filter((line) => line.startsWith('probe')), [
+    'probe 0,0 (1,0) grass among sand,shallow',
+    'probe 0,0 (3,0) grass among sand',
+    'probe 0,0 (3,1) grass among shallow,water',
+  ]);
+  assert.deepEqual(strandedProps(loadGame().VL), []);
 });
 
 test('water draws foam on the sides that meet land and none on water sides', () => {
