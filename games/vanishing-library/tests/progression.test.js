@@ -83,9 +83,16 @@ test('an item splits a planned placeholder into its own locks without editing mi
   assert.ok(VL.LOCKS.hiddenBooks, 'a refused split leaves the placeholder');
   assert.throws(() => VL.splitLock('start', { a: part(1) }), /start is implemented, not a placeholder/);
   assert.throws(() => VL.splitLock('nothing', { a: part(1) }), /lock nothing does not exist/);
+  // A split can only share out the placeholder's counters: it cannot hand out the placeholder's own
+  // keys (that would loosen a gate without a replan) or counters the plan never promised.
+  assert.throws(() => VL.splitLock('woodsMural', { muralRoom: { type: 'place', needs: ['start'], gives: ['woodsMural'], doc: '§ The path through the game, 2', by: 'W14' } }), /woodsMural is not a placeholder \(it supplies no counter\); claim it with defineLock/);
+  assert.throws(() => VL.splitLock('hiddenBooks', { bookA: part(5), bookB: { ...part(5), gives: ['hiddenBooks'] } }), /part bookB gives hiddenBooks, which the placeholder stood for; claim it with defineLock and replan/);
+  assert.throws(() => VL.splitLock('hiddenBooks', { bookA: part(5), bookB: { ...part(5), supplies: { books: 5, ore: 1 } } }), /part bookB supplies ore, which hiddenBooks does not/);
   VL.splitLock('hiddenBooks', { bookUnderRock: part(4), bookInTrunk: part(6) });
   assert.equal(VL.LOCKS.hiddenBooks, undefined);
   assert.equal(VL.LOCKS.bookInTrunk.supplies.books, 6);
+  assert.throws(() => VL.defineLock('hiddenBooks', { ...part(1), reached: () => true }), /lock hiddenBooks was split into its parts/, 'a split id cannot come back with a looser rule');
+  assert.throws(() => VL.splitLock('oreWoods', { hiddenBooks: { type: 'item', needs: ['woods'], supplies: { ore: 1 }, doc: '§ Tools: two tiers', by: 'W8' } }), /lock hiddenBooks was split into its parts/);
   const report = VL.solveProgression();
   assert.deepEqual([...report.problems], []);
   assert.ok(report.stages[0].reached.includes('swiftfootBoots'), 'the 15-book reward still adds up');
@@ -164,6 +171,7 @@ test('the whole path solves: every milestone is reachable and nothing softlocks'
 test('the shockwave: everything lost can be regained before Dungeon 3, and ore comes 3 before and 3 after', () => {
   const { VL } = loadGame();
   const report = VL.solveProgression();
+  assert.deepEqual([...report.problems], [], 'a broken table has no stages to inspect');
   const shockwave = VL.LOCKS.shockwave;
   for (const key of ['woodSword', 'woodShield', 'woodShovel', 'metalSword', 'metalShield', 'metalShovel', 'worldMap', 'wood', 'paper', 'berries', 'ink', 'shells']) {
     assert.ok(shockwave.loses.includes(key), `the shockwave takes ${key}`);
@@ -187,7 +195,7 @@ test('the shockwave: everything lost can be regained before Dungeon 3, and ore c
 test('the Primer: only the drawn world map and the Primer are missable, and only after Dungeon 3', () => {
   const { VL } = loadGame();
   const report = VL.solveProgression();
-  assert.deepEqual({ ...report.missable }, { worldMap: 'primerTaken' }, 'the Primer itself is on the shelf until then, so only the drawing is missable');
+  assert.deepEqual({ ...report.missable }, { bookPrimer: 'primerTaken', worldMap: 'primerTaken' }, 'the Primer is on the shelf until then; afterwards neither the book nor the drawing can be had');
   assert.ok(report.stages[1].reached.includes('worldMap'), 'the map can be redrawn after the shockwave');
   assert.ok(!report.stages[2].reached.includes('worldMap'));
 });
@@ -206,8 +214,8 @@ test('broken: without bare hands, the helper\'s couple of wood is not enough to 
     assert.ok(problems.includes(`after shockwave, ${key} cannot be regained`), problems.join('\n'));
   }
   assert.ok(!problems.includes('after shockwave, berries cannot be regained'), 'berry bushes still give berries');
-  assert.ok(problems.includes('raft is unreachable'), 'the raft needs wood after the shockwave');
-  assert.ok(problems.includes('ending is unreachable'));
+  assert.ok(problems.includes('raft is unreachable: needs wood after shockwave'), 'the raft needs wood after the shockwave');
+  assert.ok(problems.includes('ending is unreachable: needs marionettes after shockwave'));
   assert.ok(problems.includes('oar is required but unreachable after shockwave'));
   assert.ok(!problems.includes('helperWood is unreachable'), 'the gift itself still happens; it just proves nothing');
   // Treating wood as a plain key is what hid this: then the gift "pays" for everything forever.
@@ -275,10 +283,10 @@ test('broken: two events available at once are checked in every order', () => {
   const deepReport = solveTable(VL, deep, ['start', 'a', 'b', 'c', 'ending'], { skippable: ['a'] });
   assert.deepEqual([...deepReport.orders].map((order) => [...order]), [['a', 'b', 'c'], ['b', 'a', 'c'], ['b', 'c']]);
   assert.deepEqual([...deepReport.problems], [
-    'after b then c, sword cannot be regained',
     'a is required but unreachable after b then c',
     'smith is required but unreachable after b then c',
     'ending is required but unreachable after b then c',
+    'after b then c, sword cannot be regained',
   ]);
 });
 
@@ -338,6 +346,26 @@ test('broken: a counter that is both counted and consumed is refused', () => {
     ending: { needs: ['almanac', 'atlas'] },
   };
   assert.deepEqual(tableProblems(VL, rules, ['start', 'ending']), ['counter pages is counted by atlas and consumed by almanac; a counter is one or the other']);
+  // Counters are scarce by definition: a place or a renewable source cannot hand them out.
+  const place = { start: {}, mine: { type: 'place', needs: ['start'], supplies: { ore: 1 } }, sword: { needs: ['start'], consumes: { ore: 1 } }, ending: { needs: ['sword'] } };
+  assert.deepEqual(tableProblems(VL, place, ['start', 'ending']), ['mine is a place but supplies ore; a place is access, not a possession']);
+  const renewable = { ...place, mine: { needs: ['start'], supplies: { ore: 1 }, renewable: true } };
+  assert.deepEqual(tableProblems(VL, renewable, ['start', 'ending']), ['mine is renewable but supplies ore; a counter is scarce']);
+});
+
+test('broken: an optional renewable lock that spends a counter would drain it', () => {
+  const { VL } = loadGame();
+  // Two keys, one door; a repeatable slot machine that eats a key is refused outright.
+  const rules = {
+    start: {}, key1: { needs: ['start'], supplies: { k: 1 } }, key2: { needs: ['start'], supplies: { k: 1 } },
+    slot: { needs: ['start'], consumes: { k: 1 }, renewable: true, optional: true },
+    door: { needs: ['start'], consumes: { k: 1 } }, ending: { needs: ['door'] },
+  };
+  assert.deepEqual(tableProblems(VL, rules, ['start', 'door', 'ending']), ['slot is optional and renewable but consumes k; a repeatable sink would drain it']);
+  // Known limit: a required renewable consumer (re-forging metal gear) is assumed to spend its
+  // counter once per stage, so the game must not let it repeat while the player still has the item.
+  const forge = { ...rules, slot: { needs: ['start'], consumes: { k: 1 }, renewable: true } };
+  assert.deepEqual(tableProblems(VL, forge, ['start', 'door', 'ending']), []);
 });
 
 test('a place that closes behind the player is modelled as an event, and then its contents are checked', () => {
@@ -348,7 +376,96 @@ test('a place that closes behind the player is modelled as an event, and then it
     ending: { needs: ['boss', 'bossKey'] },
   };
   const problems = tableProblems(VL, rules, ['start', 'boss', 'ending']);
-  assert.ok(problems.includes('bossKey is required but unreachable after boss'), problems.join('\n'));
+  assert.deepEqual(problems, ['ending is unreachable: needs bossKey after boss', 'bossKey is required but unreachable after boss'], 'the dungeon itself was forced, so sealing it is not a problem');
+  // Written as the README says, with nothing left inside, the recipe is clean.
+  const clean = {
+    start: {}, dungeon: { type: 'place', needs: ['start'] }, boss: { needs: ['dungeon'] },
+    seal: { type: 'event', needs: ['boss'], retires: ['dungeon'] }, ending: { needs: ['seal'] },
+  };
+  assert.deepEqual(tableProblems(VL, clean, ['start', 'boss', 'seal', 'ending']), []);
+  // The inner room is forced (the boss stands in it), but the compass in it is not: once the
+  // entrance seals, a player who left the compass behind is stuck. Access is worked out again
+  // after every event, so the inner room does not stay "held" through the seal.
+  const innerRoom = {
+    start: {}, dungeon: { type: 'place', needs: ['start'] }, innerRoom: { type: 'place', needs: ['dungeon'] },
+    compass: { type: 'item', needs: ['innerRoom'] }, boss: { needs: ['innerRoom'] },
+    seal: { type: 'event', needs: ['boss'], retires: ['dungeon'] },
+    door: { needs: ['seal', 'compass'] }, ending: { needs: ['door'] },
+  };
+  assert.deepEqual(tableProblems(VL, innerRoom, ['start', 'boss', 'seal', 'door', 'ending']), [
+    'door is unreachable: needs compass after seal',
+    'ending is unreachable: needs door after seal',
+    'compass is required but unreachable after seal',
+  ]);
+  // Marking the dungeon optional (the workaround for a false alarm) must not hide that.
+  const optionalDungeon = { ...innerRoom, dungeon: { type: 'place', needs: ['start'], optional: true } };
+  assert.ok(tableProblems(VL, optionalDungeon, ['start', 'boss', 'seal', 'door', 'ending']).includes('compass is required but unreachable after seal'));
+});
+
+test('broken: access opened by gear an event takes does not stay open', () => {
+  const { VL } = loadGame();
+  // The boat reaches the island; the only boatyard is on the island; the storm (at home, after the
+  // relic) takes the boat. The island was forced, but it is a place, not a possession.
+  const boat = {
+    start: {}, chest: { type: 'item', needs: ['start'], gives: ['boat'] },
+    island: { type: 'place', needs: ['boat'] }, relic: { type: 'item', needs: ['island'] },
+    boatyard: { needs: ['island'], gives: ['boat'], renewable: true },
+    storm: { type: 'event', needs: ['relic'], loses: ['boat'] },
+    cove: { type: 'place', needs: ['storm', 'boat'] }, ending: { needs: ['cove'] },
+  };
+  const problems = tableProblems(VL, boat, ['start', 'relic', 'storm', 'cove', 'ending']);
+  assert.ok(problems.includes('after storm, boat cannot be regained'), problems.join('\n'));
+  assert.ok(problems.includes('cove is unreachable: needs boat after storm'));
+  assert.ok(!problems.includes('island is required but unreachable after storm'), 'the island was forced before the storm');
+  // On the real table: a sword-cut hedge on the east road (W8) and the smith past the Woods (W10).
+  // After the shockwave the player has no sword, and the only smith is behind the hedge.
+  const table = copyTable(VL);
+  table.eastRoad.needs = ['town', 'liftingGloves', ['woodSword', 'metalSword']];
+  table.blacksmith.needs = ['woods'];
+  const real = problemsOf(VL, table);
+  for (const key of ['woodSword', 'metalSword', 'woodShield']) assert.ok(real.includes(`after shockwave, ${key} cannot be regained`), real.join('\n'));
+  assert.ok(real.includes('blacksmith is required but unreachable after shockwave'));
+  assert.ok(real.includes('d3Boss is unreachable: needs metalSword|woodSword after shockwave'));
+  assert.ok(!real.includes('eastRoad is required but unreachable after shockwave'), 'the road was forced before the shockwave');
+});
+
+test('a renewable source the event needed hands its gear out again afterwards', () => {
+  const { VL } = loadGame();
+  const rules = {
+    start: {}, swordShop: { needs: ['start'], gives: ['sword'], renewable: true },
+    boss: { needs: ['sword'] }, wave: { type: 'event', needs: ['boss'], loses: ['sword'] },
+    final: { needs: ['wave', 'sword'] }, ending: { needs: ['final'] },
+  };
+  const report = solveTable(VL, rules, ['start', 'boss', 'wave', 'final', 'ending']);
+  assert.deepEqual([...report.problems], []);
+  assert.deepEqual([...report.regained.wave], ['sword']);
+  assert.ok(!report.stages[1].keys.includes('swordShop'), 'a repeatable action is not a possession');
+});
+
+test('broken: retiring a renewable source, or a key one gives, stops it for good', () => {
+  const { VL } = loadGame();
+  const ferry = {
+    start: {}, ferry: { needs: ['start'], renewable: true },
+    wave: { type: 'event', needs: ['start'], retires: ['ferry'] },
+    island: { type: 'place', needs: ['wave', 'ferry'] }, ending: { needs: ['island'] },
+  };
+  assert.deepEqual(tableProblems(VL, ferry, ['start', 'wave', 'island', 'ending']), [
+    'island is unreachable: needs ferry after wave',
+    'ending is unreachable: needs island after wave',
+    'ferry is required but unreachable after wave',
+  ]);
+  const ticket = {
+    start: {}, ferryOffice: { needs: ['start'], gives: ['ferryTicket'], renewable: true },
+    wave: { type: 'event', needs: ['start'], retires: ['ferryTicket'] },
+    island: { type: 'place', needs: ['wave', 'ferryTicket'] }, ending: { needs: ['island'] },
+  };
+  const problems = tableProblems(VL, ticket, ['start', 'wave', 'island', 'ending']);
+  assert.ok(problems.includes('island is unreachable: needs ferryTicket after wave'), problems.join('\n'));
+  // A retired key is gone even for a player who never collected its one-time source: on the real
+  // table the Primer book itself cannot be found and returned once the thief has taken it.
+  const report = VL.solveProgression();
+  assert.ok(report.stages[2].disabled.includes('bookPrimer'));
+  assert.equal(report.missable.bookPrimer, 'primerTaken');
 });
 
 test('broken: a beat reachable without the one before it is a sequence break unless the design allows it', () => {
@@ -356,13 +473,22 @@ test('broken: a beat reachable without the one before it is a sequence break unl
   const rules = { start: {}, d1: { needs: ['start'] }, d2: { needs: ['start'] }, ending: { needs: ['d1', 'd2'] } };
   assert.deepEqual(tableProblems(VL, rules, ['start', 'd1', 'd2', 'ending']), ['milestone d2 is reachable without d1 (a sequence break; list d1 as skippable in defineMilestones if the design allows it)']);
   assert.deepEqual(tableProblems(VL, rules, ['start', 'd1', 'd2', 'ending'], { skippable: ['d1'] }), []);
+  // A skippable beat does not exempt the beat after it: that one is gated by the nearest beat that
+  // is not skippable.
+  const chain = { start: {}, a: { needs: ['start'] }, b: { needs: ['a'] }, c: { needs: ['start'] }, ending: { needs: ['c', 'b'] } };
+  assert.deepEqual(tableProblems(VL, chain, ['start', 'a', 'b', 'c', 'ending'], { skippable: ['b'] }), ['milestone c is reachable without a (a sequence break; list a as skippable in defineMilestones if the design allows it)']);
+  assert.deepEqual(tableProblems(VL, { ...chain, c: { needs: ['a'] } }, ['start', 'a', 'b', 'c', 'ending'], { skippable: ['b'] }), []);
   // On the real table: a shop that sells the Lifting Gloves lets the player skip Dungeon 1's gates.
   const table = copyTable(VL);
   table.buyGloves = { ...mk({ buyGloves: { type: 'item', needs: ['shop', 'shells'], gives: ['liftingGloves'], renewable: true } }).buyGloves, doc: '§ Resources and economy: Shop', by: 'W10' };
   const problems = problemsOf(VL, table);
   assert.ok(problems.includes('milestone d1Boss is reachable without liftingGloves (a sequence break; list liftingGloves as skippable in defineMilestones if the design allows it)'), problems.join('\n'));
   assert.ok(problems.includes('milestone liftingGloves is reachable without scriptoriumEntered (a sequence break; list scriptoriumEntered as skippable in defineMilestones if the design allows it)'), 'the gloves beat is met by the bought pair');
-  assert.deepEqual([...VL.SKIPPABLE_MILESTONES], ['chestGear', 'lakeIsland', 'shipwreck'], 'the chest can be skipped (the smith sells a sword); the island, the shipwreck and the lighthouse come in any order');
+  assert.deepEqual([...VL.SKIPPABLE_MILESTONES], ['chestGear', 'raft', 'lakeIsland', 'shipwreck'], 'the chest can be skipped (the smith sells a sword); the island, the shipwreck and the lighthouse come in any order');
+  // The lighthouse is gated by the shockwave (the Glowstone), not by the raft: with the raft a
+  // gate, the transitive check reports the lighthouse as a sequence break.
+  const raftGates = [...VL.solveProgression(copyTable(VL), VL.MILESTONES, { skippable: ['chestGear', 'lakeIsland', 'shipwreck'] }).problems];
+  assert.deepEqual(raftGates, ['milestone lighthouseEntered is reachable without raft (a sequence break; list raft as skippable in defineMilestones if the design allows it)']);
   const unknown = [...VL.solveProgression(copyTable(VL), VL.MILESTONES, { skippable: ['dragon'] }).problems];
   assert.deepEqual(unknown, ['skippable milestone dragon is not a milestone']);
 });
@@ -397,15 +523,21 @@ test('broken: a cycle makes milestones unreachable', () => {
   const table = copyTable(VL);
   table.scriptoriumKey.needs.push('d1Boss');
   const problems = problemsOf(VL, table);
-  assert.ok(problems.includes('scriptoriumKey is unreachable'), problems.join('\n'));
-  assert.ok(problems.includes('ending is unreachable'));
+  assert.ok(problems.includes('scriptoriumKey is unreachable: needs d1Boss'), problems.join('\n'));
+  assert.ok(problems.includes('scriptoriumEntered is unreachable: needs scriptoriumKey'));
+  assert.ok(problems[0].includes('is unreachable: needs '));
+  assert.ok(problems.includes('ending is unreachable: needs marionettes'));
+  // Root causes come first; the ore-spending fallout of the broken path comes after.
+  const firstSpend = problems.findIndex((text) => text.includes('spent ore'));
+  const lastUnreachable = problems.findLastIndex((text) => text.includes('is unreachable'));
+  assert.ok(firstSpend === -1 || firstSpend > lastUnreachable, problems.join('\n'));
 });
 
 test('broken: a sixth page, a dangling key and a counter nothing supplies are reported', () => {
   const { VL } = loadGame();
   const table = copyTable(VL);
   table.climbersAlmanac.count = { pages: 6 };
-  assert.ok(problemsOf(VL, table).includes('climbersAlmanac is unreachable'));
+  assert.ok(problemsOf(VL, table).includes('climbersAlmanac is unreachable: needs pages 6 (5 found) after shockwave then primerTaken'));
   const dangling = copyTable(VL);
   dangling.raft.needs.push('canoe');
   assert.deepEqual(problemsOf(VL, dangling), ['raft needs unknown key canoe']);
@@ -432,10 +564,9 @@ test('broken: a required item only reachable before an event, and a milestone li
   const i = milestones.indexOf('shockwave');
   [milestones[i], milestones[i + 1]] = [milestones[i + 1], milestones[i]];
   const order = [...VL.solveProgression(copyTable(VL), milestones).problems];
-  assert.deepEqual(order, [
-    'milestone shockwave is listed after raft but is reachable in an earlier stage',
-    'milestone shockwave is reachable without raft (a sequence break; list raft as skippable in defineMilestones if the design allows it)',
-  ]);
+  assert.deepEqual(order, ['milestone shockwave is listed after raft but is reachable in an earlier stage']);
+  const gated = [...VL.solveProgression(copyTable(VL), milestones, { skippable: ['chestGear', 'lakeIsland', 'shipwreck'] }).problems];
+  assert.ok(gated.includes('milestone shockwave is reachable without raft (a sequence break; list raft as skippable in defineMilestones if the design allows it)'), gated.join('\n'));
 });
 
 // ---------- the playthrough harness ----------
@@ -529,7 +660,7 @@ test('drive.reload swaps in the app a reload hook returns, and says what is miss
 
 test('README documents how an item registers locks and playthrough steps', () => {
   const readme = read('README.md');
-  for (const word of ['VL.defineLock', 'VL.solveProgression', 'tests/steps/', 'milestones.js', 'renewable', 'loses', 'reached', 'replan', 'VL.splitLock', 'VL.defineResources', 'skippable', 'drive.reload', 'retires']) {
+  for (const word of ['VL.defineLock', 'VL.solveProgression', 'tests/steps/', 'milestones.js', 'renewable', 'loses', 'reached', 'replan', 'VL.splitLock', 'VL.defineResources', 'skippable', 'drive.reload', 'retires', '...VL.LOCKS.woodSword', 'Known limits']) {
     assert.ok(readme.includes(word), `README mentions ${word}`);
   }
 });

@@ -179,7 +179,15 @@ design doc, every entry citing the design-doc section it comes from. A lock is
 registered with `VL.defineLock(id, rule)` **from the file that implements it**;
 `milestones.js` already has a *planned* entry (`by: 'W14'`) for each one, and an
 item claims it by defining the same id with a `reached` predicate. Defining an
-id that is already implemented throws, so two lanes cannot clash. Fields:
+id that is already implemented throws, so two lanes cannot clash. The claim
+keeps the planned rule, so the idiom is to spread it:
+
+```js
+VL.defineLock('woodSword', { ...VL.LOCKS.woodSword, reached: (state) => Boolean(state.inventory.woodSword) });
+```
+
+Field reference (not a copyable claim: this rule differs from the plan on
+purpose, and `reached`, `by` and `replan` never appear together):
 
 ```js
 VL.defineLock('liftingGloves', {
@@ -219,14 +227,19 @@ Rules of the table:
   books) is split from the item's own file with
   `VL.splitLock('hiddenBooks', { bookUnderRock: {...}, ... })`, which removes
   the placeholder and defines the parts; their `supplies` must add up to the
-  placeholder's, so the 5/10/15 book rewards keep adding up. No edit to
-  `milestones.js` is needed. (Moving an implemented placeholder such as the hut
-  is a one-line edit there.)
+  placeholder's, so the 5/10/15 book rewards keep adding up. A split only
+  shares out counters: the placeholder must supply one, the parts may not give
+  the placeholder's id or `gives` or supply a counter it did not, and the split
+  id can never be defined again (a looser single lock is a claim with
+  `replan`). No edit to `milestones.js` is needed. (Moving an implemented
+  placeholder such as the hut is a one-line edit there.)
 - **Milestones** (`VL.defineMilestones(ids, { skippable })`) are the story
   order, fixed in `milestones.js`; adding a beat is an edit there. Each beat
   gates the next: the solver fails when a beat is reachable without the one
-  before it, unless that one is listed as `skippable` (today: the chest, and
-  the island/shipwreck/lighthouse, which come in any order).
+  before it, unless that one is listed as `skippable`, in which case the
+  nearest earlier beat that is not skippable gates it instead (today: the
+  chest, and the raft/island/shipwreck/lighthouse, which come in any order
+  after the shockwave).
 
 `VL.progress(state)` lists the locks a live game has reached (hints can pick
 from it).
@@ -235,25 +248,46 @@ from it).
 runs in `tests/progression.test.js` over the whole table, planned entries
 included, so the full path is checked from day one. It computes everything
 obtainable, then applies each event (`shockwave`, `primerTaken`) as a new
-stage from the **worst-case player**: one holding only the keys the event
-cannot be reached without (plus what the event gives, minus what it takes),
-with every one-time source that fed something now lost treated as used up.
-When more than one event is available at once, **every order** is walked
-(`report.orders`); the story order is the one `report.stages` describes, and a
-problem found on another order names it (`… unreachable after thief`, `after b
-then c, sword cannot be regained`). It fails the run when a lock is
-unreachable, a required lock is unreachable after an event (in any order),
-something an event `loses` cannot be regained in the stage after it, a counter
-cannot cover what was lost (ore for metal gear) or its total demand (each loss
-costs it again), a required lock that **spends** a counter is unaffordable once
-the player has spent that counter on everything else reachable first (the
-small-key softlock: the only key used on the door that doesn't hide the next
-one), a counter is both counted and consumed, a key or counter is unknown, a
-claim differs from its plan, or the milestone order disagrees with the stages or
-hides a sequence break. Optional locks that an event cuts off are listed as
-`missable` (today: the drawn world map after Dungeon 3). Hearts and health are
-not modelled (dying keeps everything, so bare-hand bush pulls never softlock).
-Deliberately broken tables in the test show each failure.
+stage from the **worst-case player**: one holding only the *possessions* the
+event cannot be reached without (plus what the event gives, minus what it
+takes). Possessions are items, flags, events and what they gave; **access is
+never carried**: places, repeatable (renewable) actions and resources are
+worked out again from what the player holds, so a door opened by gear the
+event takes is shut again. A one-time source the player must have collected
+(forced, or it gave something now lost) is used up and the rest of what it gave
+is kept; any other one-time source is "not yet collected". A `retires` key is
+gone for good: every source of it, renewable or not, is disabled, and one the
+player was not forced to collect is simply gone. When more than one event is
+available at once, **every order** is walked (`report.orders`); the story order
+is the one `report.stages` describes, and a problem found on another order names
+it (`… unreachable after thief`, `after b then c, sword cannot be regained`).
+It fails the run when a lock is unreachable (the message names what is missing
+in the stage that comes closest), a required lock is not reachable at the end
+of some order unless the player was forced to reach it before an event on that
+order (so a dungeon that seals after its boss is fine, a compass left in it is
+not), something an event `loses` cannot be regained in the stage after it, a
+counter cannot cover what was lost (ore for metal gear) or its total demand
+(each loss costs it again), a required lock that **spends** a counter is
+unaffordable once the player has spent that counter on everything else
+reachable first (the small-key softlock: the only key used on the door that
+doesn't hide the next one), a counter is both counted and consumed or is
+supplied by a place or a renewable lock, an optional renewable lock consumes a
+counter, a key or counter is unknown, a claim differs from its plan, or the
+milestone order disagrees with the stages or hides a sequence break. Optional
+locks that an event cuts off are listed as `missable` (today: the Primer book
+and the drawn world map after Dungeon 3). Hearts and health are not modelled
+(dying keeps everything, so bare-hand bush pulls never softlock). Deliberately
+broken tables in the test show each failure.
+
+Known limits (each pinned by a test in `tests/progression.test.js`):
+
+- A required **renewable lock that consumes a counter** (re-forging metal gear)
+  is assumed to spend it once per stage. The game must not let it repeat while
+  the player still has the item: the smith re-forges only gear that was lost.
+- A loss is checked for regain **in the stage right after the event, on every
+  order**, never by going on to a later event first.
+- Problems for a table with a cycle are listed in table order, each naming its
+  unmet needs; in a cycle there is no single root cause.
 
 **The playthrough harness**, `tests/playthrough.js`, drives the real game
 (`app.update` with Actions, one step at a time) from a new game through the

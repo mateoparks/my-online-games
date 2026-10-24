@@ -6,6 +6,7 @@
 // Field reference and the solver's assumptions: README "Progression".
 (() => {
   VL.LOCKS = {};
+  VL.SPLIT_LOCKS = new Set();
   VL.MILESTONES = [];
   VL.SKIPPABLE_MILESTONES = [];
   VL.RESOURCES = new Set();
@@ -30,6 +31,7 @@
 
   VL.defineLock = function defineLock(id, lock) {
     const existing = VL.LOCKS[id];
+    if (VL.SPLIT_LOCKS.has(id)) throw new Error(`lock ${id} was split into its parts`);
     if (existing?.reached) throw new Error(`lock ${id} is already implemented`);
     if (typeof lock.doc !== 'string' || !lock.doc.startsWith('§ ')) throw new Error(`lock ${id} must cite its design-doc section (doc: '§ …')`);
     if (!lock.reached && !lock.by) throw new Error(`planned lock ${id} must name the item that implements it (by: 'W…')`);
@@ -50,18 +52,30 @@
   };
 
   // Replaces a planned placeholder (one line standing for several finds) with
-  // the real locks, from the item's own file. The parts must supply what the
-  // placeholder promised, so the book rewards keep adding up.
+  // the real locks, from the item's own file. A split only shares out the
+  // placeholder's counters: the parts must add up to what it promised, and may
+  // not hand out its keys (a looser gate goes through defineLock with replan).
   VL.splitLock = function splitLock(id, parts) {
     const placeholder = VL.LOCKS[id];
     if (!placeholder) throw new Error(`lock ${id} does not exist`);
     if (placeholder.reached) throw new Error(`lock ${id} is implemented, not a placeholder`);
-    for (const partId of Object.keys(parts)) if (VL.LOCKS[partId]) throw new Error(`lock ${partId} already exists`);
+    if (!Object.keys(placeholder.supplies).length) throw new Error(`lock ${id} is not a placeholder (it supplies no counter); claim it with defineLock`);
+    for (const [partId, part] of Object.entries(parts)) {
+      if (VL.LOCKS[partId]) throw new Error(`lock ${partId} already exists`);
+      if (VL.SPLIT_LOCKS.has(partId)) throw new Error(`lock ${partId} was split into its parts`);
+      for (const key of [partId, ...(part.gives || [])]) {
+        if (key === id || placeholder.gives.includes(key)) throw new Error(`part ${partId} gives ${key}, which the placeholder stood for; claim it with defineLock and replan`);
+      }
+      for (const counter of Object.keys(part.supplies || {})) {
+        if (!(counter in placeholder.supplies)) throw new Error(`part ${partId} supplies ${counter}, which ${id} does not`);
+      }
+    }
     for (const [counter, promised] of Object.entries(placeholder.supplies)) {
       const total = Object.values(parts).reduce((sum, part) => sum + (part.supplies?.[counter] || 0), 0);
       if (total !== promised) throw new Error(`lock ${id} supplies ${counter} ${promised} but its parts supply ${total}`);
     }
     delete VL.LOCKS[id];
+    VL.SPLIT_LOCKS.add(id);
     for (const [partId, part] of Object.entries(parts)) VL.defineLock(partId, part);
   };
 
@@ -104,6 +118,13 @@
       for (const counter of [...Object.keys(rule.count), ...Object.keys(rule.consumes)]) {
         if (!counters.has(counter)) problems.push(`${rule.id} uses counter ${counter} that nothing supplies`);
       }
+      for (const counter of Object.keys(rule.supplies)) {
+        if (rule.type === 'place') problems.push(`${rule.id} is a place but supplies ${counter}; a place is access, not a possession`);
+        else if (rule.renewable) problems.push(`${rule.id} is renewable but supplies ${counter}; a counter is scarce`);
+      }
+      for (const counter of Object.keys(rule.consumes)) {
+        if (rule.renewable && rule.optional) problems.push(`${rule.id} is optional and renewable but consumes ${counter}; a repeatable sink would drain it`);
+      }
     }
     for (const counter of counters) {
       const counting = rules.filter((rule) => rule.count[counter]);
@@ -130,26 +151,37 @@
     // What reaching a rule hands the player; a one-time gift of a resource is
     // left out (the worst-case player has spent it).
     const grants = (rule) => keysOf(rule).filter((key) => rule.renewable || !resources.has(key));
+    // Access rather than possession: places (and what being there gives) and
+    // repeatable actions. Never carried through an event; worked out again
+    // from what the player holds.
+    const access = new Set([
+      ...rules.filter((rule) => rule.type === 'place').flatMap(keysOf),
+      ...rules.filter((rule) => rule.renewable && rule.type !== 'item').map((rule) => rule.id),
+    ]);
+    const possession = (key) => !access.has(key) && !resources.has(key);
 
-    // Everything obtainable from `keys` without triggering an event. Events
-    // that become available are returned as `pending`; their gives and losses
-    // apply only once a stage applies them. Consumption is not deducted here
-    // (the spending and budget checks below cover it).
+    // Everything obtainable from `keys` without triggering an event: each rule
+    // not disabled fires once if its needs are met. Events that become
+    // available are returned as `pending`; their gives and losses apply only
+    // once a stage applies them. Consumption is not deducted here (the
+    // spending and budget checks below cover it).
     function closure(keys, startCounts, disabled) {
       const have = new Set(keys);
       const counts = { ...startCounts };
       const pending = [];
+      const fired = new Set();
       let changed = true;
       while (changed) {
         changed = false;
         for (const rule of rules) {
-          if (have.has(rule.id) || disabled.has(rule.id) || pending.includes(rule.id)) continue;
+          if (fired.has(rule.id) || disabled.has(rule.id) || pending.includes(rule.id)) continue;
           if (!satisfied(rule, have, counts)) continue;
           changed = true;
           if (rule.type === 'event') {
             pending.push(rule.id);
             continue;
           }
+          fired.add(rule.id);
           for (const key of grants(rule)) have.add(key);
           for (const [counter, n] of Object.entries(rule.supplies)) counts[counter] = (counts[counter] || 0) + n;
         }
@@ -174,6 +206,10 @@
       });
     }
 
+    // The stage after `event` fires, from the worst-case player: one holding
+    // only the possessions the event could not be reached without, plus what
+    // the event gives, minus what it takes. Access (places, repeatable
+    // actions, resources) is never carried; the closure works it out again.
     function applyEvent(stage, event) {
       const forced = forcedFor(stage, event.id);
       const lost = new Set([...event.loses, ...event.retires]);
@@ -183,28 +219,29 @@
       for (const rule of lostRules) for (const [counter, n] of Object.entries(rule.consumes)) demand[counter] = (demand[counter] || 0) + n;
       const spent = Object.keys(demand);
       const keys = new Set([...stage.keys, ...forced]);
-      for (const key of lost) keys.delete(key);
-      for (const key of grants(event)) keys.add(key);
       const startCounts = { ...stage.startCounts };
-      for (const rule of forced.map((id) => byId[id]).filter(Boolean)) {
+      const disabled = new Set([...stage.disabled, event.id]);
+      // A retired key is gone for good: nothing hands it out again.
+      for (const rule of rules) if (keysOf(rule).some((key) => event.retires.includes(key))) disabled.add(rule.id);
+      // One-time sources the player must have collected (forced, or fed
+      // something now lost) are used up; the rest of what they gave is kept.
+      // Other one-time sources are left as "not yet collected", the worse
+      // case (so a retired one that was not forced is simply gone).
+      for (const rule of rules) {
+        if (rule.renewable || rule.type === 'place' || stage.disabled.has(rule.id) || !stage.have.has(rule.id)) continue;
+        const fed = keysOf(rule).some((key) => event.loses.includes(key)) || Object.keys(rule.supplies).some((counter) => spent.includes(counter));
+        if (!fed && !forced.includes(rule.id)) continue;
+        disabled.add(rule.id);
+        for (const key of grants(rule)) keys.add(key);
         for (const [counter, n] of Object.entries(rule.supplies)) startCounts[counter] = (startCounts[counter] || 0) + n;
         for (const [counter, n] of Object.entries(rule.consumes)) startCounts[counter] = Math.max(0, (startCounts[counter] || 0) - n);
       }
       // Worst case for a counter the lost gear was made from: every source
       // found so far was collected and as much as possible went into that gear.
       for (const counter of spent) startCounts[counter] = Math.max(0, (stage.counts[counter] || 0) - demand[counter]);
-      // One-time sources already reached are used up if what they gave is now
-      // gone (the rest of what they gave is kept); sources of kept things are
-      // left as "not yet collected", the worse case.
-      const disabled = new Set(stage.disabled);
-      for (const rule of rules) {
-        if (!stage.have.has(rule.id) || rule.renewable) continue;
-        if (!keysOf(rule).some((key) => lost.has(key)) && !Object.keys(rule.supplies).some((counter) => spent.includes(counter))) continue;
-        disabled.add(rule.id);
-        for (const key of grants(rule)) if (!lost.has(key)) keys.add(key);
-        if (forced.includes(rule.id)) continue;
-        for (const [counter, n] of Object.entries(rule.supplies)) if (!spent.includes(counter)) startCounts[counter] = (startCounts[counter] || 0) + n;
-      }
+      for (const key of lost) keys.delete(key);
+      for (const key of grants(event)) keys.add(key);
+      for (const key of [...keys]) if (!possession(key)) keys.delete(key);
       return { event: event.id, forced, spent, demand, keys, startCounts, disabled, ...closure(keys, startCounts, disabled) };
     }
 
@@ -250,6 +287,43 @@
     const canonical = paths[0];
     const reachableIn = (stage, id) => stage.have.has(id) || stage.pending.includes(id);
     const orderOf = (path, i) => path.slice(1, i + 1).map((stage) => stage.event).join(' then ');
+    const stageOf = (id) => canonical.findIndex((stage) => reachableIn(stage, id));
+
+    // Never reachable: name what is missing in the stage that comes closest.
+    const unmetIn = (rule, stage) => [
+      ...rule.needs.filter((entry) => (Array.isArray(entry) ? !entry.some((key) => stage.have.has(key)) : !stage.have.has(entry))).map(need),
+      ...Object.entries({ ...rule.count, ...rule.consumes }).filter(([counter, n]) => (stage.counts[counter] || 0) < n).map(([counter, n]) => `${counter} ${n} (${stage.counts[counter] || 0} found)`),
+    ];
+    for (const rule of rules) {
+      if (stageOf(rule.id) !== -1) continue;
+      const unmet = canonical.map((stage, i) => ({ i, list: unmetIn(rule, stage) }));
+      const closest = unmet.reduce((best, entry) => (entry.list.length <= best.list.length ? entry : best));
+      const when = closest.i ? ` after ${orderOf(canonical, closest.i)}` : '';
+      report(`${rule.id} is unreachable: needs ${closest.list.join(', ')}${when}`);
+    }
+
+    // A required lock must be reachable at the end of every order, unless the
+    // player was forced to reach it before an event on that order (then it is
+    // behind them, and whatever it gave is carried). Optional ones that an
+    // event cuts off are listed as missable.
+    const regained = {};
+    const missable = {};
+    for (const stage of canonical.slice(1)) regained[stage.event] = byId[stage.event].loses.filter((key) => stage.have.has(key));
+    for (const path of paths) {
+      const story = path === canonical;
+      const end = path.at(-1);
+      const forced = new Set(path.flatMap((stage) => stage.forced));
+      for (const rule of rules) {
+        if (reachableIn(end, rule.id) || forced.has(rule.id) || stageOf(rule.id) === -1) continue;
+        const last = path.findLastIndex((stage) => reachableIn(stage, rule.id));
+        if (last === -1 && story) continue;
+        if (rule.optional) {
+          if (story) missable[rule.id] = path[last + 1].event;
+          continue;
+        }
+        report(`${rule.id} is required but unreachable after ${story ? path[last + 1].event : orderOf(path, path.length - 1)}`);
+      }
+    }
 
     for (const path of paths) {
       for (let i = 0; i < path.length; i += 1) {
@@ -263,30 +337,6 @@
           }
         }
         for (const text of spendingProblems(stage)) report(prefix + text);
-      }
-    }
-
-    const regained = {};
-    for (const stage of canonical.slice(1)) regained[stage.event] = byId[stage.event].loses.filter((key) => stage.have.has(key));
-    const stageOf = (id) => canonical.findIndex((stage) => reachableIn(stage, id));
-    const final = canonical.at(-1);
-    const missable = {};
-    for (const rule of rules) {
-      if (stageOf(rule.id) === -1) {
-        report(`${rule.id} is unreachable`);
-        continue;
-      }
-      if (reachableIn(final, rule.id)) continue;
-      const last = canonical.findLastIndex((stage) => reachableIn(stage, rule.id));
-      const cutBy = canonical[last + 1].event;
-      if (rule.optional) missable[rule.id] = cutBy;
-      else report(`${rule.id} is required but unreachable after ${cutBy}`);
-    }
-    // The other event orders must leave everything required reachable too.
-    for (const path of paths.slice(1)) {
-      const end = path.at(-1);
-      for (const rule of rules) {
-        if (!rule.optional && reachableIn(final, rule.id) && !reachableIn(end, rule.id)) report(`${rule.id} is required but unreachable after ${orderOf(path, path.length - 1)}`);
       }
     }
 
@@ -309,12 +359,15 @@
       }
       return true;
     };
+    // Each beat gates the next; a skippable beat passes that duty back to the
+    // nearest beat before it that is not skippable.
     for (let i = 1; i < milestones.length; i += 1) {
       const [earlier, later] = [milestones[i - 1], milestones[i]];
       if (stageOf(earlier) === -1 || stageOf(later) === -1) continue;
       if (stageOf(later) < stageOf(earlier)) report(`milestone ${later} is listed after ${earlier} but is reachable in an earlier stage`);
-      if (!skippable.includes(earlier) && reachableWithout(new Set([earlier]), later)) {
-        report(`milestone ${later} is reachable without ${earlier} (a sequence break; list ${earlier} as skippable in defineMilestones if the design allows it)`);
+      const gate = milestones.slice(0, i).reverse().find((id) => !skippable.includes(id));
+      if (gate && stageOf(gate) !== -1 && reachableWithout(new Set([gate]), later)) {
+        report(`milestone ${later} is reachable without ${gate} (a sequence break; list ${gate} as skippable in defineMilestones if the design allows it)`);
       }
     }
 

@@ -149,7 +149,7 @@
   ], {
     // Beats the next beat does not depend on: the smith sells a sword, so the
     // chest can be skipped; the island, the shipwreck and the lighthouse come
-    // in any order.
-    skippable: ['chestGear', 'lakeIsland', 'shipwreck'],
+    // in any order (so the raft gates the first two, not the lighthouse).
+    skippable: ['chestGear', 'raft', 'lakeIsland', 'shipwreck'],
   });
 })();
