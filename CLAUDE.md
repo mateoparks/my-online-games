@@ -36,7 +36,13 @@ tool, so they're imported here instead of copied:
   slug, for example `connect4-red-color`.
 - Support both themes by using the shared CSS tokens rather than hard-coded
   colors, and keep the pages keyboard-accessible.
-- Students read this code, so prefer clear, readable code over clever code.
+- Students play the games but don't read the code. The goal is to inspire them,
+  so aim for the most polished and fun result, not for teaching-style code.
+- Laptop/desktop with a keyboard is the target for now. Keep input handling
+  separate from game logic so touch controls can be added later; adapting a
+  game for tablet and phone is planned as a future lesson with the students.
+- Games with real complexity get a `game.test.js` Node test, plus a design
+  record in `docs/` when it helps.
 
 ## Testing
 
