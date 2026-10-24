@@ -174,6 +174,12 @@ test('name entry: 12 characters at most, backspace, only characters the font has
   assert.equal(app.sceneId, 'intro');
 });
 
+test('the name scene is text entry, so letter shortcuts (W21 mute on N) stay off while typing', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.SCENES.name.textEntry, true);
+  for (const id of ['title', 'intro', 'pause', 'fainted', 'play']) assert.equal(Boolean(VL.SCENES[id].textEntry), false, id);
+});
+
 test('name entry trims spaces and Esc goes back to the title without a game', () => {
   const { VL } = loadGame();
   const { app, backing } = titleApp(VL);
@@ -334,7 +340,10 @@ test('Esc pauses: the world freezes, Resume continues, Save & Quit saves and ret
   const x = game.player.x;
   wait(VL, app, 0.5, ['right']);
   assert.equal(game.player.x, x, 'paused');
-  assert.ok(drawnText(VL, document, app).some((s) => /resume/i.test(s)));
+  const paused = drawnText(VL, document, app);
+  assert.ok(paused.some((s) => /resume/i.test(s)));
+  assert.ok(paused.some((s) => /N: SOUND ON\/OFF/.test(s)), 'lists the sound key for W21');
+  assert.ok(!paused.some((s) => /\bF\b/.test(s)), 'chicken flight stays a secret');
   press(VL, app, 'pause');
   assert.equal(app.sceneId, 'play', 'Esc resumes');
   press(VL, app, 'pause');

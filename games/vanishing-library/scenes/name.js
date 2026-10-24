@@ -15,6 +15,8 @@
   const typeable = (ch) => ch >= ' ' && ch !== '\u007f' && VL.ART.missingGlyphs(ch).length === 0;
 
   VL.defineScene('name', {
+    // Typing goes into the field: letter shortcuts (such as N for mute) stay off here.
+    textEntry: true,
     enter(app, data) {
       app.naming = { slot: data?.slot ?? 0, text: '' };
     },

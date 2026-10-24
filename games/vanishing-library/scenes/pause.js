@@ -4,7 +4,7 @@
   VL.ART.addColors({ pauseShade: '#1b1b2480' });
   VL.PAUSE_OPTIONS = ['Resume', 'Save & Quit'];
   const BOX = { x: 40, y: 40, w: 176, h: 112 };
-  const CONTROLS = ['↑↓←→ MOVE    S: TALK, PICK UP', '␣ MAIN HAND    D: OFF HAND', 'E: EQUIPMENT    ESC: PAUSE'];
+  const CONTROLS = ['↑↓←→ MOVE    S: TALK, PICK UP', '␣ MAIN HAND    D: OFF HAND', 'E: EQUIPMENT    N: SOUND ON/OFF', 'ESC: BACK TO THE GAME'];
 
   VL.defineScene('pause', {
     enter(app) {
@@ -40,8 +40,8 @@
         if (chosen) VL.ART.text(ctx, '→', centre - 44, y, { color: 'goldLight' });
         VL.ART.text(ctx, option, centre - 32, y, { color: chosen ? 'goldLight' : 'text' });
       });
-      CONTROLS.forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 60 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
-      if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', centre, BOX.y + 94, { size: 'small', align: 'center', color: 'goldLight' });
+      CONTROLS.forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 56 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
+      if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'goldLight' });
     },
   });
 })();
