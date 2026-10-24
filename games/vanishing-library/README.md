@@ -316,3 +316,139 @@ open edge of the start area and checks the slide pans the way the hero walked
 with the hero on the canvas throughout, and resizes the window without
 reloading and checks the scale follows. It runs for 60 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
+
+## Progression: locks, keys, the solver and the playthrough
+
+`progression.js` holds the one table of everything that gates progress
+(`VL.LOCKS`) and `milestones.js` seeds it with the whole game's path from the
+design doc, every entry citing the design-doc section it comes from. A lock is
+registered with `VL.defineLock(id, rule)` **from the file that implements it**;
+`milestones.js` already has a *planned* entry (`by: 'W14'`) for each one, and an
+item claims it by defining the same id with a `reached` predicate. Defining an
+id that is already implemented throws, so two lanes cannot clash. The claim
+keeps the planned rule, so the idiom is to spread it:
+
+```js
+VL.defineLock('woodSword', { ...VL.LOCKS.woodSword, reached: (state) => Boolean(state.inventory.woodSword) });
+```
+
+Field reference (not a copyable claim: this rule differs from the plan on
+purpose, and `reached`, `by` and `replan` never appear together):
+
+```js
+VL.defineLock('liftingGloves', {
+  type: 'item',                       // place | item | flag | event
+  needs: ['scriptoriumEntered', ['woodSword', 'metalSword']],  // keys; an inner array is any-of
+  gives: ['heartD1'],                 // extra keys besides the id
+  supplies: { ore: 1 },               // counters; `count: { pages: 5 }` requires one, `consumes: { ore: 1 }` spends one
+                                      // (a counter is counted or consumed, never both)
+  renewable: true,                    // can be obtained again (bushes, shops, forging); default: one time
+  optional: true,                     // not needed for the ending (rewards, heart containers)
+  loses: [...], retires: [...],       // events only: keys taken; `loses` must be regainable, `retires` is for good
+  doc: '§ The path through the game, 2',
+  reached: (state) => Boolean(state.flags.gloves),   // implemented locks; planned ones give `by: 'W14'` instead
+  place: { area: 'scriptorium', screen: '0,0' },     // implemented places: the test checks the screen exists
+  replan: 'the gloves are sold too',  // only when the claim's rule differs from the plan (see below)
+});
+```
+
+Rules of the table:
+
+- **A claim keeps the planned rule.** The whole path was solved against the
+  plan, and a *loosened* claim (dropping a key from `needs`) is a sequence
+  break the solver cannot see, so `defineLock` throws when a claim's `type`,
+  `needs`, `gives`, `supplies`, `count`, `consumes`, `loses`, `retires`,
+  `renewable` or `optional` differ from the plan, unless the claim carries
+  `replan: '<why>'`. Every deviation then shows in the claiming item's diff.
+- **Anything that cannot be undone is an `event`** with `retires` (a room that
+  seals after its boss, a one-way drop, a thief emptying a shelf). A flag
+  cannot express "the things in here are gone now", so the solver would never
+  see what the player left behind.
+- **Resources** (`VL.defineResources([...])`; today wood, shells, broken
+  shells, paper, ink and berries) are keys that are *spent* by what uses them.
+  Only a **renewable** lock counts as giving one; a one-time gift (the helper's
+  couple of wood after the shockwave) is a top-up the worst-case player has
+  already spent. A resource with no renewable source fails the table.
+- **A placeholder that stands for several finds** (`hiddenBooks`, 10 generic
+  books) is split from the item's own file with
+  `VL.splitLock('hiddenBooks', { bookUnderRock: {...}, ... })`, which removes
+  the placeholder and defines the parts; their `supplies` must add up to the
+  placeholder's, so the 5/10/15 book rewards keep adding up. A split only
+  shares out counters: the placeholder must supply one, the parts may not give
+  the placeholder's id or `gives` or supply a counter it did not, and the split
+  id can never be defined again (a looser single lock is a claim with
+  `replan`). No edit to `milestones.js` is needed. (Moving an implemented
+  placeholder such as the hut is a one-line edit there.)
+- **Milestones** (`VL.defineMilestones(ids, { skippable })`) are the story
+  order, fixed in `milestones.js`; adding a beat is an edit there. Each beat
+  gates the next: the solver fails when a beat is reachable without the one
+  before it, unless that one is listed as `skippable`, in which case the
+  nearest earlier beat that is not skippable gates it instead (today: the
+  chest, and the raft/island/shipwreck/lighthouse, which come in any order
+  after the shockwave).
+
+`VL.progress(state)` lists the locks a live game has reached (hints can pick
+from it).
+
+**The solver**, `VL.solveProgression(locks?, milestones?, { resources, skippable }?)`,
+runs in `tests/progression.test.js` over the whole table, planned entries
+included, so the full path is checked from day one. It computes everything
+obtainable, then applies each event (`shockwave`, `primerTaken`) as a new
+stage from the **worst-case player**: one holding only the *possessions* the
+event cannot be reached without (plus what the event gives, minus what it
+takes). Possessions are items, flags, events and what they gave; **access is
+never carried**: places, repeatable (renewable) actions and resources are
+worked out again from what the player holds, so a door opened by gear the
+event takes is shut again. A one-time source the player must have collected
+(forced, or it gave something now lost) is used up and the rest of what it gave
+is kept; any other one-time source is "not yet collected". A `retires` key is
+gone for good: every source of it, renewable or not, is disabled, and one the
+player was not forced to collect is simply gone. When more than one event is
+available at once, **every order** is walked (`report.orders`); the story order
+is the one `report.stages` describes, and a problem found on another order names
+it (`… unreachable after thief`, `after b then c, sword cannot be regained`).
+It fails the run when a lock is unreachable (the message names what is missing
+in the stage that comes closest), a required lock is not reachable at the end
+of some order unless the player was forced to reach it before an event on that
+order (so a dungeon that seals after its boss is fine, a compass left in it is
+not), something an event `loses` cannot be regained in the stage after it, a
+counter cannot cover what was lost (ore for metal gear) or its total demand
+(each loss costs it again), a required lock that **spends** a counter is
+unaffordable once the player has spent that counter on everything else
+reachable first (the small-key softlock: the only key used on the door that
+doesn't hide the next one), a counter is both counted and consumed or is
+supplied by a place or a renewable lock, an optional renewable lock consumes a
+counter, a key or counter is unknown, a claim differs from its plan, or the
+milestone order disagrees with the stages or hides a sequence break. Optional
+locks that an event cuts off are listed as `missable` (today: the Primer book
+and the drawn world map after Dungeon 3). Hearts and health are not modelled
+(dying keeps everything, so bare-hand bush pulls never softlock). Deliberately
+broken tables in the test show each failure.
+
+Known limits (each pinned by a test in `tests/progression.test.js`):
+
+- A required **renewable lock that consumes a counter** (re-forging metal gear)
+  is assumed to spend it once per stage. The game must not let it repeat while
+  the player still has the item: the smith re-forges only gear that was lost.
+- A loss is checked for regain **in the stage right after the event, on every
+  order**, never by going on to a later event first.
+- Problems for a table with a cycle are listed in table order, each naming its
+  unmet needs; in a cycle there is no single root cause.
+
+**The playthrough harness**, `tests/playthrough.js`, drives the real game
+(`app.update` with Actions, one step at a time) from a new game through the
+milestones in order and checks each milestone's `reached`. Steps are data: an
+item adds `tests/steps/<item>.steps.js` exporting
+`(step) => { step('chestGear', (drive) => { ... }); }`, one step per milestone it
+implements. `drive.walkTo({ area, screen, tx, ty })` paths through open tiles,
+screen edges and doors with real held directions; `drive.press(action)`,
+`drive.hold(actions, seconds)`, `drive.until(pred, maxSeconds, held)` and
+`drive.state`/`drive.app` do the rest (a popup scene that swallows input shows
+up as a `not reached` error naming the scene). `drive.reload()` stands for the
+player reloading the page: it swaps in the app returned by the `reload(app)`
+hook given to `createPlaythrough` (or `VL.reloadApp`), which W2 supplies once
+saving exists (save, fresh `createApp`, load); until then it throws. The app
+itself is also injectable (`createPlaythrough(VL, { app })`), so the title
+screen and name entry can be driven from there. The test drives to the last
+milestone that has steps; the first milestone without steps must be planned,
+not implemented, so an item that implements a beat also scripts it.

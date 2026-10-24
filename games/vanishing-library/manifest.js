@@ -15,6 +15,8 @@ VL.FILES = {
     'screen.js',
     'loop.js',
     'save.js',
+    'progression.js',
+    'milestones.js',
   ],
 
   art: [
