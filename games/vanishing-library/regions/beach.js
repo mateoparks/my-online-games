@@ -64,7 +64,7 @@
     for (let i = 0; i < 7; i += 1) rect(ctx, 'leaf', x + 8 + i * 22, y + 55 + (i % 2), 3, 5);
   });
 
-  const spot = (id, x, y, how, lock = id) => ({ type: 'spot', id, x, y, how, lock });
+  const spot = (id, x, y, how, by, lock = id) => ({ type: 'spot', id, x, y, how, by, lock });
   const starfish = (x, y, dx, dy) => ({ type: 'decor', art: 'starfish', x, y, dx, dy });
 
   VL.addScreens('overworld', {
@@ -84,7 +84,7 @@
         'WWWWWWWWWWWWWWWW',
       ],
       entities: [
-        spot('bookBeachBuried', 7, 5, 'buried'),
+        spot('bookBeachBuried', 7, 5, 'buried', 'W10'),
         starfish(2, 6, 4, 6),
         starfish(11, 6, 2, 3),
       ],
@@ -105,7 +105,7 @@
         'WWWWWWWWWWWWWWWW',
       ],
       entities: [
-        spot('bookTideTables', 10, 5, 'trunk'),
+        spot('bookTideTables', 10, 5, 'trunk', 'W11'),
         starfish(4, 6, 6, 8),
       ],
     },
@@ -126,7 +126,7 @@
       ],
       entities: [
         { type: 'decor', art: 'wreck', x: 3, y: 4 },
-        spot('shipwreckHatch', 8, 5, 'door', 'shipwreck'),
+        spot('shipwreckHatch', 8, 5, 'door', 'W17', 'shipwreck'),
       ],
     },
   });

@@ -13,7 +13,7 @@ top to bottom:
 
 | Section | What lives there | Registers with |
 |---|---|---|
-| `core` | `config.js` (`VL.TUNING`), `util.js` (Actions, RNG), `tiles.js`, `world.js` (areas, screens, collision), `state.js`, `engine.js` (system pipeline, `enterScreen`), `app.js` (scenes), `screen.js` (integer scaling), `loop.js` (fixed step) | - |
+| `core` | `config.js` (`VL.TUNING`), `util.js` (Actions, RNG), `tiles.js`, `world.js` (areas, screens, collision), `spots.js` (spots, regions), `state.js`, `engine.js` (system pipeline, `enterScreen`), `app.js` (scenes), `screen.js` (integer scaling), `loop.js` (fixed step) | - |
 | `art` | the art kit: `art.js` (palette, sprites, fonts, tile styles, light) first, then `art/*.js` (fonts, base tiles, hero, small sprites, HUD and popups). Everything drawn goes through `VL.ART`; see [Art kit](#art-kit) | `VL.ART.*` |
 | `systems` | one file per gameplay system (`systems/movement.js`, later combat, chickens, ...) | `VL.defineSystem` |
 | `entities` | one file per entity type (`entities/door.js`, later chests, signs, ...) | `VL.defineEntity` |
@@ -466,17 +466,17 @@ that runs no tests, and an `async` test function, both fail the node run.
 
 ## Overworld map
 
-36 screens in the `overworld` area, one region per file in `regions/`
+41 screens in the `overworld` area, one region per file in `regions/`
 (`home.js` holds the hut corner). North is up; the sea is south.
 
 ```
  y\x  -2    -1    0     1     2     3     4     5     6     7
  -5         LAIR
  -4   HL    HL                            highlands: chasms 4 tiles wide
- -3   HL    HL                LAKE  ISLE  (long chicken flight)
- -2         base              SCRP  RIVR              WOOD  WOOD  OAK
- -1         CLF   CLF   CLF   LIBR  MILL              WOOD  WOOD  WOOD
-  0         CLF   home  home  SQRE  SMTH  cany  EAST
+ -3   HL    HL                LAKE  ISLE              wood  (long chicken flight)
+ -2         base              SCRP  RIVR  wood  WOOD  WOOD  OAK
+ -1         CLF   CLF   CLF   LIBR  MILL  wood  WOOD  WOOD  WOOD
+  0         CLF   home  home  SQRE  SMTH  cany  EAST  wood  wood
   1         LGHT  beach HUT   HRBR  HRBR  TIDE  TIDE
   2                                             WRCK
 ```
@@ -487,27 +487,49 @@ that runs no tests, and an `async` test function, both fail the node run.
 | `town` (`town.js`) | library, mill, square, smithy, harbour, Scriptorium grounds, riverside | `town` | nothing |
 | `lake` (`lake.js`) | shore, open water + island | `lake` | town; the island needs `rafting` |
 | `canyon`, `eastRoad` (`east-road.js`) | the boulder canyon, the road | `eastRoad` | boulders `O`, `gate: 'liftingGloves'` |
-| `woods` (`woods.js`) | 6-screen maze, Hollow Oak at 7,-2 | `woods` | `softGate: 'woodsMapCopy'`; `VL.WOODS_ROUTE` is the way through (W15) |
+| `woods` (`woods.js`) | 6-screen route (`WOOD`, Hollow Oak at 7,-2) and 5 wrong-turn screens (`wood`) | `woods` | `softGate: 'woodsMapCopy'`; `VL.WOODS_ROUTE` is the way through (W15) |
 | `cliffs` (`cliffs.js`) | cliff road, lighthouse, cliff base | `cliffs` | town |
 | `highlands` (`highlands.js`) | 5 shelves up to the lair | `highlands` (W19) | hidden path `h`, `gate: 'climbersAlmanac'`, then 4-tile chasms |
 | `shipwreck` (`beach.js`) | the wreck offshore | `shipwreck` (W17) | `rafting` |
 
 - **Regions:** `VL.defineRegion(id, { screens, place, softGate })` tags
   screens; `VL.regionOf(area, key)` and `VL.regionVisited(state, id)` read
-  them. A place lock W8 claims is reached on entering its region.
+  them. A place lock W8 claims is reached on entering its region (the
+  Woods: on reaching the Hollow Oak clearing, 7,-2).
+- **The Woods maze:** `VL.WOODS_ROUTE` lists the route screens in order.
+  `VL.WOODS_WRONG_EXITS` lists the three wrong exits (`{ from, side, back }`):
+  each leads into one or two look-alike screens that wind back to `back`, a
+  route screen no further in than `from`. Today they are plain loops; W15
+  decides what the copied map changes about them (the map enforces the
+  `softGate`).
 - **Gate tiles** carry `gate: '<key>'` and stay solid until the item that
   owns the key makes them passable (W14 lifts boulders, W19 opens the hidden
   path). Rocks (`rock: true`) are liftable with the gloves and bushes are
   always passable (bare hands), so neither is used as a wall between areas.
-- **Spots** are placement markers, `{ type: 'spot', id, x, y, how, lock }`,
-  for everything another item puts on the map: books, pages, hearts, ore,
-  chickens, building and dungeon doors, the stage and the trapdoor. `how`
-  is one of `door`, `trunk`, `search`, `bush`, `rock`, `buried`, `pickup`,
-  `chicken`, `stage`, `trapdoor`. The item swaps in its entity from its own
+- **Spots** (`spots.js`) are placement markers,
+  `{ type: 'spot', id, x, y, how, by, lock }`, for everything another item
+  puts on the map: books, pages, hearts, ore, chickens, building and dungeon
+  doors, the stage and the trapdoor. `how` is one of `door`, `trunk`, `bush`,
+  `rock`, `buried`, `pickup`, `chicken`, `stage`, `trapdoor`. `by` names the
+  item that fills it (required). That item swaps in its entity from its own
   file with `VL.fillSpot(id, entity)` (it keeps the spot's x, y; either file
-  may load first) and calls `VL.markFound(state, id)` when the player gets the
-  find: W8's book, page, heart and ore locks are `reached` by
-  `VL.spotFound(state, id)`. `VL.SPOTS` lists them.
+  may load first) and deletes the spot from the ledger in
+  `tests/spot-ledger.test.js`, which pins `VL.unfilledSpots()` by owner and
+  must be empty when the run finishes (W20). A container's owner fills it
+  with what lies inside: a book under a rock is W14's, a buried one W10's.
+- **Found vs returned:** the filling item calls `VL.markFound(state, id)`
+  when the player picks the thing up (`VL.spotFound(state, id)` reads it).
+  W8 claims the page, heart and Woods-ore locks with `reached: spotFound`.
+  **Book locks are not claimed:** a book counts once it is returned to the
+  library and read, so `hiddenBookSealed`, the six titled books and the ten
+  `hiddenBooks` parts (split by W8 with their places) stay planned with
+  `by: 'W11'`, and W11 claims each with its own `reached` (for example
+  returned, after `spotFound`).
+- **Chickens:** every flight needs a chicken where it starts, so a chicken
+  spot sits on the launch side of every flight the map needs, the way back
+  included (`chickenLair` east of the last chasm). W7 keeps a chicken at
+  each spot (it respawns there if carried off or lost), so nowhere becomes
+  one-way.
 - **Decor** (`{ type: 'decor', art, x, y }`) draws scenery bigger than a tile
   (buildings, the lighthouse, the water wheel, signboards) over solid
   footprint tiles (`x` grass, `y` water, `G` woods floor). Register a painter
@@ -519,11 +541,14 @@ that runs no tests, and an `async` test function, both fail the node run.
 
 `tests/overworld.test.js` walks the whole map tile by tile with any set of
 keys (walking, bushes, gloves on rocks, the raft on deep water, chicken
-flight of 2 or 4 tiles over `flyOver` tiles anywhere) and checks that every
+flight of 2 or 4 tiles over `flyOver` tiles anywhere; the gate keys are read
+from the tiles and regions) and checks that every
 region and spot opens exactly when its lock's needs say: reachable with the
 gate keys the table gives by then, and not reachable without any one gate or
-needed region even holding every other key. Moving a find or opening a gap
-in the map fails there. The browser smoke saves every screen as
+needed region even holding every other key. A second model lets flights
+start only where a chicken can be carried from its spot, and checks that
+with any set of keys every tile you reach leads back to the hut (R1). Moving
+a find or opening a gap in the map fails there. The browser smoke saves every screen as
 `map-<region>-<x>_<y>.png`.
 
 ## Progression: locks, keys, the solver and the playthrough

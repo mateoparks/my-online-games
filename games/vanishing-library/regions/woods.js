@@ -1,6 +1,6 @@
 // The Whispering Woods: a maze of look-alike screens north of the east road,
 // with the Hollow Oak (Dungeon 2) at its heart. VL.WOODS_ROUTE is the one way
-// through, for W15's copied-map mechanic; the wrong turns are dead ends.
+// through, for W15's copied-map mechanic; the wrong exits loop back.
 (() => {
   const { rect } = VL.ART;
 
@@ -117,7 +117,7 @@
     }
   });
 
-  const spot = (id, x, y, how, lock = id) => ({ type: 'spot', id, x, y, how, lock });
+  const spot = (id, x, y, how, by, lock = id) => ({ type: 'spot', id, x, y, how, by, lock });
 
   VL.addScreens('overworld', {
     // The way in from the east road.
@@ -128,7 +128,7 @@
         'FFFFfffFFFFFFFFF',
         'FFFFFffffFFFFFFF',
         'FFfFFFFFffffFFFF',
-        'FffffFFFFFfffFFF',
+        'fffffFFFFFfffFFF',
         'FFFfFFFFfffffFFF',
         'FFFffffffFFFffff',
         'FFFFFFfFFFFfffff',
@@ -146,15 +146,15 @@
         'FFFFFFFFFffFFFFF',
         'FFFFFFFFFfffffff',
         'FFFFFFFFFFFfffff',
-        'FFFFFFFFFFFFFFFF',
-        'FFFFFFFFFFFFFFFF',
-        'fffffFFFFFFFFFFF',
-        'ffffffFFFFFFFFFF',
-        'FFFffffFFFFFFFFF',
-        'FFFFFFFFFFFFFFFF',
+        'FFFFFFFFFFFFFfFF',
+        'FFFFFFFFFFFFFfFF',
+        'fffffFFFFFFFFfFF',
+        'ffffffFFFFFFFfFF',
+        'FFFffffFFFFFFfFF',
+        'FFFFFFFFFFFFFfFF',
       ],
       entities: [
-        spot('oreWoods', 6, 9, 'search'),
+        spot('oreWoods', 6, 9, 'pickup', 'W5'),
       ],
     },
     '7,-1': {
@@ -168,11 +168,11 @@
         'FFFFFFFFFFffFFFF',
         'FFFFFFFFFFFfFFFF',
         'FFFFFFFFFFFffFFF',
-        'FFFFFFFFFFFFFFFF',
-        'FFFFFFFFFFFFFFFF',
+        'FFFFFFFFFFFfFFFF',
+        'FFFFFFFFFFFfFFFF',
       ],
       entities: [
-        spot('bookWoods', 12, 8, 'search'),
+        spot('bookWoods', 12, 8, 'trunk', 'W11'),
       ],
     },
     '5,-2': {
@@ -183,7 +183,7 @@
         'FFFffFfffFFFFFFF',
         'FFFfFFFFffffffff',
         'FFffFFFFFfffffff',
-        'FFfFFFFFFFFFFFFF',
+        'fffFFFFFFFFFFFFF',
         'FFffFFFFFFFFFFFF',
         'FFFffFFFFFFFFFFF',
         'FFFffFFFFFFFFFFF',
@@ -193,10 +193,10 @@
     },
     '6,-2': {
       tiles: [
-        'FFFFFFFFFFFFFFFF',
-        'FFFFFFFFFFFFFFFF',
-        'FFFFFFFFFFFFFFFF',
-        'FFFFFFFFffFFFFFF',
+        'FFFfFFFFfFFFFFFF',
+        'FFFfFFFFffFFFFFF',
+        'FFffFFFFFfFFFFFF',
+        'FFfFFFFFffFFFFFF',
         'ffffffFffffFFFFF',
         'ffffffffFfffFFFF',
         'FFFFFFFFFFffFFFF',
@@ -212,7 +212,7 @@
       tiles: [
         'FFFFFFFFFFFFFFFF',
         'FFFFFGGGGGFFFFFF',
-        'FFFFfGGGGGfFFFFF',
+        'FFFFFGGGGGFFFFFF',
         'FFFffGGfGGffFFFF',
         'FFfffffffffffFFF',
         'FFffffffffffffFF',
@@ -224,15 +224,104 @@
       ],
       entities: [
         { type: 'decor', art: 'hollowOak', x: 5, y: 1 },
-        spot('hollowOakDoor', 7, 3, 'door', 'hollowOakEntered'),
+        spot('hollowOakDoor', 7, 3, 'door', 'W15', 'hollowOakEntered'),
       ],
+    },
+    // Wrong turns (VL.WOODS_WRONG_EXITS): look-alike screens that wind back
+    // to where you came from.
+    '4,-2': {
+      tiles: [
+        'GFFFFFFFFFFFFFFF',
+        'GFFFFFFFFFFFFFFF',
+        'FFFFFfffffFFFFFF',
+        'FFFFffFFFffFFFFF',
+        'FFFffFFFFFfffFFF',
+        'FFFfFFFFFFFFffFF',
+        'FFffFFFFFFFFFfff',
+        'FFfFFFFFFFFFFFFF',
+        'FFffFFFFFFFFFFFF',
+        'FFFfFFFFFFFFFFFF',
+        'FFFfFFFFFFFFFFFF',
+      ],
+      entities: [],
+    },
+    '4,-1': {
+      tiles: [
+        'FFFfFFFFFFFFFFFF',
+        'FFFffFFFFFFFFFFF',
+        'FFFFffFFFFFFFFFF',
+        'FFFFFfFFFFFFFFFF',
+        'FFFFFffFFFFFFFFF',
+        'FFFFFFfFFFffffff',
+        'FFFFFFfFFffFFFFF',
+        'FFFFFFffffFFFFFF',
+        'FFFFFFFFFFFFFFFF',
+        'FFFFFFFFFFFFFFFF',
+        'FFFFGGGGGGGGFFFF',
+      ],
+      entities: [],
+    },
+    '6,-3': {
+      tiles: [
+        'FFFFFFFFFFFFFFFF',
+        'FFFFFFFFFFFFFFFF',
+        'FFFFFfffffFFFFFF',
+        'FFFFffFFFffFFFFF',
+        'FFFffFFFFFfFFFFF',
+        'FFFfFFFFFFffFFFF',
+        'FFffFFFFFFFfFFFF',
+        'FFfFFFFFFFffFFFF',
+        'FFffFFFFFffFFFFF',
+        'FFFfFFFFffFFFFFF',
+        'FFFfFFFFfFFFFFFF',
+      ],
+      entities: [],
+    },
+    '7,0': {
+      tiles: [
+        'FFFFFFFFFFFfFFFF',
+        'FFFFFFFFFFffFFFF',
+        'FFFFFFFFFFfFFFFF',
+        'FFFFFFFFFffFFFFF',
+        'FFFFFFFFFfFFFFFF',
+        'fffFFFFFFffFFFFF',
+        'FFfFFFFFFFfFFFFF',
+        'FFffFFFFfffFFFFF',
+        'FFFffffffFFFFFFF',
+        'FFFFFFFFFFFFFFFF',
+        'FFFFFFFFFFFFFFFF',
+      ],
+      entities: [],
+    },
+    '6,0': {
+      tiles: [
+        'FFFFFFFFFFFFFfFF',
+        'FFFFFFFFFFFFffFF',
+        'FFFFFFFFFFFffFFF',
+        'FFFFFFFfffffFFFF',
+        'FFFFFFFfFFFFFFFF',
+        'FFFFFFFfffFFFfff',
+        'FFFFFFFFFffFFfFF',
+        'FFFFFFFFFFfffffF',
+        'FFFFFFFFFFFFFFFF',
+        'FFFFFFFFFFFFFFFF',
+        'FFFFFFFFFFFFFFFF',
+      ],
+      entities: [],
     },
   });
 
   VL.WOODS_ROUTE = ['5,-1', '5,-2', '6,-2', '6,-1', '7,-1', '7,-2'];
+  // Each wrong exit leaves a route screen and winds back to `back`, never
+  // further in; W15 decides what the copied map changes about them.
+  VL.WOODS_WRONG_EXITS = [
+    { from: '5,-2', side: 'west', back: '5,-1' },
+    { from: '6,-2', side: 'north', back: '6,-2' },
+    { from: '7,-1', side: 'south', back: '6,-1' },
+  ];
 
   VL.defineRegion('woods', {
-    screens: ['5,-1', '6,-1', '7,-1', '5,-2', '6,-2', '7,-2'],
+    screens: ['5,-1', '6,-1', '7,-1', '5,-2', '6,-2', '7,-2', '4,-2', '4,-1', '6,-3', '7,0', '6,0'],
     place: 'woods',
     softGate: 'woodsMapCopy',
   });

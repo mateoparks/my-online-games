@@ -33,7 +33,7 @@
     raised: (ctx, cell) => VL.ART.drawSprite(ctx, 'tile-boulder', cell.x, cell.y + 2),
   });
 
-  const spot = (id, x, y, how, lock = id) => ({ type: 'spot', id, x, y, how, lock });
+  const spot = (id, x, y, how, by, lock = id) => ({ type: 'spot', id, x, y, how, by, lock });
 
   VL.addScreens('overworld', {
     // The canyon and its boulders.
@@ -69,8 +69,8 @@
         'TTTTTTTTTTTTTTTT',
       ],
       entities: [
-        spot('heartFieldA', 14, 8, 'pickup'),
-        spot('bookEastRoad', 10, 3, 'bush'),
+        spot('heartFieldA', 14, 8, 'pickup', 'W6'),
+        spot('bookEastRoad', 10, 3, 'bush', 'W11'),
       ],
     },
   });

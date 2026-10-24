@@ -228,8 +228,8 @@
 
   // ---------- screens ----------
 
-  const spot = (id, x, y, how, lock = id) => ({ type: 'spot', id, x, y, how, lock });
-  const door = (id, lock, x, y) => spot(id, x, y, 'door', lock);
+  const spot = (id, x, y, how, by, lock = id) => ({ type: 'spot', id, x, y, how, by, lock });
+  const door = (id, lock, x, y, by) => spot(id, x, y, 'door', by, lock);
   const sign = (x, y, icon) => ({ type: 'decor', art: 'sign', icon, x, y });
 
   VL.addScreens('overworld', {
@@ -245,13 +245,13 @@
         'T.......P.......',
         'T,......PPPPPPPP',
         'T.......P......T',
-        'TT......P.....TT',
+        'T.......P.....TT',
         'T.TTTTT.P.TTTTTT',
       ],
       entities: [
         { type: 'decor', art: 'scriptorium', x: 6, y: 1 },
-        door('scriptoriumDoor', 'scriptoriumEntered', 8, 3),
-        spot('bookScriptoriumRock', 3, 5, 'rock'),
+        door('scriptoriumDoor', 'scriptoriumEntered', 8, 3, 'W14'),
+        spot('bookScriptoriumRock', 3, 5, 'rock', 'W14'),
       ],
     },
     // The river comes down from the lake; a footbridge to the east meadow.
@@ -270,8 +270,8 @@
         'TTTTPTTTTWWTTTTT',
       ],
       entities: [
-        spot('bookRiverside', 4, 4, 'bush'),
-        spot('chickenRiverside', 12, 3, 'chicken', 'chickens'),
+        spot('bookRiverside', 4, 4, 'bush', 'W11'),
+        spot('chickenRiverside', 12, 3, 'chicken', 'W7', 'chickens'),
       ],
     },
     // The library, the heart of town.
@@ -290,10 +290,10 @@
         'TTTTTTT.P.TTTTTT',
       ],
       entities: [
-        door('libraryDoor', 'library', 5, 4),
+        door('libraryDoor', 'library', 5, 4, 'W11'),
         sign(6, 4, 'book'),
-        spot('bookHerbalist', 13, 3, 'bush'),
-        spot('pageFieldA', 14, 9, 'search'),
+        spot('bookHerbalist', 13, 3, 'bush', 'W11'),
+        spot('pageFieldA', 14, 9, 'pickup', 'W11'),
       ],
     },
     // The paper mill and its water wheel on the river, the bindery across it.
@@ -312,12 +312,12 @@
         'TTTTPTTTTWWTTTTT',
       ],
       entities: [
-        door('paperMillDoor', 'paperMill', 6, 3),
+        door('paperMillDoor', 'paperMill', 6, 3, 'W10'),
         sign(7, 3, 'wheel'),
         { type: 'decor', art: 'waterWheel', x: 9, y: 1 },
-        door('binderyDoor', 'bindery', 12, 3),
+        door('binderyDoor', 'bindery', 12, 3, 'W10'),
         sign(13, 3, 'thread'),
-        spot('bookPrimer', 14, 4, 'trunk'),
+        spot('bookPrimer', 14, 4, 'trunk', 'W11'),
       ],
     },
     // The town square: puppet stage (trapdoor in front), well and shop.
@@ -329,7 +329,7 @@
         'T..Z.,..P.HDHH.T',
         'T.PPPPPPPPPPP..T',
         'T.P....xx...P...',
-        'T.P.........PPPP',
+        'T.P....xx...PPPP',
         'T.PPPPPPPPPPP...',
         'T.....,P.....,.T',
         'T.B....P.......T',
@@ -337,13 +337,13 @@
       ],
       entities: [
         { type: 'decor', art: 'puppetBooth', x: 2, y: 1 },
-        spot('puppetStage', 3, 2, 'stage'),
-        spot('trapdoor', 3, 3, 'trapdoor', 'trapdoorOpen'),
-        door('shopDoor', 'shop', 11, 3),
+        spot('puppetStage', 3, 2, 'stage', 'W11'),
+        spot('trapdoor', 3, 3, 'trapdoor', 'W11', 'trapdoorOpen'),
+        door('shopDoor', 'shop', 11, 3, 'W10'),
         sign(12, 3, 'shell'),
-        { type: 'decor', art: 'well', x: 7, y: 5 },
-        spot('hiddenBookSealed', 1, 3, 'trunk'),
-        spot('chickenSquare', 10, 8, 'chicken', 'chickens'),
+        { type: 'decor', art: 'well', x: 7, y: 6 },
+        spot('hiddenBookSealed', 1, 3, 'trunk', 'W11'),
+        spot('chickenSquare', 10, 8, 'chicken', 'W7', 'chickens'),
       ],
     },
     // The blacksmith by the river; the east road leaves past the bridge.
@@ -362,9 +362,9 @@
         'TTTP.TTTTWWTTTTT',
       ],
       entities: [
-        door('blacksmithDoor', 'blacksmith', 6, 3),
+        door('blacksmithDoor', 'blacksmith', 6, 3, 'W10'),
         sign(7, 3, 'anvil'),
-        spot('bookSmithsLedger', 1, 1, 'trunk'),
+        spot('bookSmithsLedger', 1, 1, 'trunk', 'W11'),
       ],
     },
     // The harbour: the chicken coop, a pier, and the beach path from the hut.
@@ -383,9 +383,9 @@
         'WWWWWWWWWWWWWWWW',
       ],
       entities: [
-        spot('chickenCoop', 4, 3, 'chicken', 'chickens'),
-        spot('bookChickenAlmanac', 3, 3, 'search'),
-        spot('bookDragons', 14, 1, 'trunk'),
+        spot('chickenCoop', 4, 3, 'chicken', 'W7', 'chickens'),
+        spot('bookChickenAlmanac', 3, 3, 'trunk', 'W11'),
+        spot('bookDragons', 14, 1, 'trunk', 'W11'),
       ],
     },
     // The river meets the sea.

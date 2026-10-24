@@ -5,13 +5,26 @@ const { test, read, loadGame, fakeDocument } = require('./harness');
 const { createPlaythrough } = require('./playthrough');
 
 const AREA = 'overworld';
-// Keys that open tiles or regions. Flight lengths are the design's starting
-// ideas (§ Chickens: about 2 tiles, 4 with the Almanac).
-const GATES = ['liftingGloves', 'woodsMapCopy', 'rafting', 'chickenFlightShort', 'chickenFlightLong', 'climbersAlmanac'];
+// Flight lengths are the design's starting ideas (§ Chickens: about 2 tiles,
+// 4 with the Almanac).
 const FLIGHT = { chickenFlightShort: 2, chickenFlightLong: 4 };
-const HOWS = ['door', 'trunk', 'search', 'bush', 'rock', 'buried', 'pickup', 'chicken', 'stage', 'trapdoor'];
+const HOWS = ['door', 'trunk', 'bush', 'rock', 'buried', 'pickup', 'chicken', 'stage', 'trapdoor'];
+
+// Keys that open tiles or regions, read from the map: gate tiles, rocks
+// (gloves), deep water (the raft), soft gates and chicken flight.
+function gateKeys(VL) {
+  const keys = new Set(Object.keys(FLIGHT));
+  for (const info of Object.values(VL.TILESETS.base)) {
+    if (info.gate) keys.add(info.gate);
+    if (info.rock) keys.add('liftingGloves');
+    if (info.water) keys.add('rafting');
+  }
+  for (const region of Object.values(VL.REGIONS)) if (region.softGate) keys.add(region.softGate);
+  return [...keys];
+}
 
 const shared = loadGame().VL;
+const GATES = gateKeys(shared);
 
 function world(VL) {
   const { cols, rows } = VL.TUNING;
@@ -32,14 +45,14 @@ function world(VL) {
   return { at, global };
 }
 
-// Every tile the hero can stand on with `keys`, walking, cutting bushes,
-// lifting rocks (gloves), rafting deep water and gliding with a chicken over
-// flyOver tiles (water, chasms), from the start. A player may carry a chicken
-// anywhere, so flight is allowed everywhere (the worst case for a sequence
-// break). `blocked` regions are impassable.
-function reach(VL, keys = [], { blocked = [] } = {}) {
+// One step of the hero with `keys`: walking, cutting bushes, lifting rocks
+// (gloves), rafting deep water and gliding with a chicken over flyOver tiles
+// (water, chasms). `launch` is where a flight may start: null means anywhere
+// (a chicken can be carried; the worst case for a sequence break). `blocked`
+// regions are impassable.
+function moves(VL, keys, { blocked = [], launch = null, flight: maxFlight = Infinity } = {}) {
   const have = new Set(keys);
-  const { at, global } = world(VL);
+  const { at } = world(VL);
   const closed = new Set(blocked.flatMap((id) => VL.REGIONS[id].screens));
   const passable = (t) => Boolean(t) && !closed.has(t.key) && (
     !t.info.solid || t.info.cuttable || (t.info.gate && have.has(t.info.gate))
@@ -49,30 +62,57 @@ function reach(VL, keys = [], { blocked = [] } = {}) {
     const gate = region && VL.REGIONS[region].softGate;
     return !gate || VL.regionOf(AREA, from.key) === region || have.has(gate);
   };
-  const flight = Math.max(0, ...Object.entries(FLIGHT).filter(([key]) => have.has(key)).map(([, n]) => n));
-  const seen = new Set();
-  const [sx, sy] = global(VL.START.screen, VL.START.tx, VL.START.ty);
-  const queue = [[sx, sy]];
-  seen.add(`${sx},${sy}`);
-  while (queue.length) {
-    const [gx, gy] = queue.shift();
+  const longest = Math.min(maxFlight, Math.max(0, ...Object.entries(FLIGHT).filter(([key]) => have.has(key)).map(([, n]) => n)));
+  return (gx, gy) => {
     const here = at(gx, gy);
+    const flight = !launch || launch.has(`${gx},${gy}`) ? longest : 0;
+    const out = [];
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      for (let n = 1; n <= Math.max(1, flight + 1); n += 1) {
+      for (let n = 1; n <= flight + 1; n += 1) {
         const next = at(gx + dx * n, gy + dy * n);
         if (!next) break;
         if (passable(next)) {
-          const id = `${gx + dx * n},${gy + dy * n}`;
-          if (!seen.has(id) && entering(here, next)) {
-            seen.add(id);
-            queue.push([gx + dx * n, gy + dy * n]);
-          }
+          if (entering(here, next)) out.push([gx + dx * n, gy + dy * n]);
           break;
         }
         if (!next.info.flyOver || n > flight) break;
       }
     }
+    return out;
+  };
+}
+
+function flood(starts, step) {
+  const seen = new Set(starts.map((xy) => xy.join(',')));
+  const queue = starts.slice();
+  while (queue.length) {
+    const [gx, gy] = queue.shift();
+    for (const [nx, ny] of step(gx, gy)) {
+      const id = `${nx},${ny}`;
+      if (!seen.has(id)) {
+        seen.add(id);
+        queue.push([nx, ny]);
+      }
+    }
   }
+  return seen;
+}
+
+// Tiles a chicken can be carried to on foot from its spot: with
+// `chickens: 'spots'`, the only places a flight can start.
+function chickenLaunches(VL, keys, blocked) {
+  const { global } = world(VL);
+  const chickens = Object.values(VL.SPOTS).filter((spot) => spot.area === AREA && spot.how === 'chicken');
+  return flood(chickens.map((spot) => global(spot.screen, spot.x, spot.y)), moves(VL, keys, { blocked, flight: 0 }));
+}
+
+// Every tile the hero can stand on with `keys`, from the start.
+function reach(VL, keys = [], { blocked = [], chickens = 'anywhere' } = {}) {
+  const { global } = world(VL);
+  const launch = chickens === 'spots' ? chickenLaunches(VL, keys, blocked) : null;
+  const step = moves(VL, keys, { blocked, launch });
+  const start = global(VL.START.screen, VL.START.tx, VL.START.ty);
+  const seen = flood([start], step);
   return {
     has: (key, tx, ty) => seen.has(global(key, tx, ty).join(',')),
     near: (key, tx, ty) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has(global(key, tx + dx, ty + dy).join(','))),
@@ -81,6 +121,9 @@ function reach(VL, keys = [], { blocked = [] } = {}) {
       return false;
     },
     size: seen.size,
+    seen,
+    step,
+    start,
   };
 }
 
@@ -157,7 +200,7 @@ test('the overworld has 30–45 screens, each in exactly one region', () => {
     for (const key of region.screens) assert.ok(VL.screenExists(region.area, key), `${region.id} ${key} exists`);
     if (region.place) assert.ok(VL.LOCKS[region.place]?.type === 'place', `${region.id} opens the place lock ${region.place}`);
   }
-  assert.deepEqual(Object.keys(VL.REGIONS).sort(), ['beach', 'canyon', 'cliffs', 'eastRoad', 'highlands', 'homeFields', 'lake', 'shipwreck', 'town', 'woods']);
+  for (const id of ['beach', 'canyon', 'cliffs', 'eastRoad', 'highlands', 'homeFields', 'lake', 'shipwreck', 'town', 'woods']) assert.ok(VL.REGIONS[id], `region ${id}`);
 });
 
 test('no open tile on a screen edge leads off the world', () => {
@@ -253,6 +296,39 @@ test('every spot is reachable once its lock\'s needs are, and not before', () =>
   assert.deepEqual(problems, []);
 });
 
+// R1: flights start only where a chicken lives (its spot, and wherever it can
+// be carried from there on foot), so every flight in has a flight back.
+test('nowhere is one-way: from every tile you can reach, you can get back to the hut', () => {
+  const VL = shared;
+  const problems = [];
+  for (let mask = 0; mask < 1 << GATES.length; mask += 1) {
+    const keys = GATES.filter((_, i) => mask & (1 << i));
+    const r = reach(VL, keys, { chickens: 'spots' });
+    const back = new Map();
+    for (const id of r.seen) {
+      const [gx, gy] = id.split(',').map(Number);
+      for (const [nx, ny] of r.step(gx, gy)) {
+        const to = `${nx},${ny}`;
+        if (!back.has(to)) back.set(to, []);
+        back.get(to).push(id);
+      }
+    }
+    const home = new Set([r.start.join(',')]);
+    const queue = [r.start.join(',')];
+    while (queue.length) for (const from of back.get(queue.shift()) || []) if (!home.has(from)) home.add(from) && queue.push(from);
+    const stuck = [...r.seen].filter((id) => !home.has(id));
+    if (stuck.length) problems.push(`[${keys}]: ${stuck.length} tiles, e.g. ${stuck[0]}`);
+  }
+  assert.deepEqual(problems, []);
+});
+
+test('the highlands and the lair are reachable with chickens only at their spots', () => {
+  const VL = shared;
+  const r = reach(VL, GATES, { chickens: 'spots' });
+  for (const key of VL.REGIONS.highlands.screens) assert.ok(r.screen(key), key);
+  assert.ok(!reach(VL, GATES.filter((key) => key !== 'chickenFlightLong'), { chickens: 'spots' }).screen('-1,-3'));
+});
+
 test('the design\'s placements: books, pages, hearts, ore, entrances and town doors', () => {
   const VL = shared;
   const locks = new Set(Object.values(VL.SPOTS).map((spot) => spot.lock));
@@ -265,12 +341,18 @@ test('the design\'s placements: books, pages, hearts, ore, entrances and town do
     'scriptoriumEntered', 'hollowOakEntered', 'lighthouseEntered', 'dragonsLairEntered', 'shipwreck',
     'library', 'shop', 'paperMill', 'bindery', 'blacksmith', 'puppetStage', 'trapdoorOpen', 'chickens', 'lostChicken',
   ]) assert.ok(locks.has(id), `${id} has a spot`);
-  // W8's claims are found at their spot: whoever fills it marks it found.
+  // Pages, hearts and the Woods ore are W8's claims, reached once picked up
+  // at their spot. A book only counts once returned: its lock stays W11's.
   const state = VL.newGame();
-  assert.equal(VL.LOCKS.bookWoods.reached(state), false);
-  VL.markFound(state, 'bookWoods');
-  assert.equal(VL.LOCKS.bookWoods.reached(state), true);
-  assert.equal(VL.spotFound(state, 'bookWoods'), true);
+  for (const id of ['pageFieldA', 'pageFieldB', 'heartFieldA', 'heartFieldB', 'oreWoods']) {
+    assert.equal(VL.LOCKS[id].reached(state), false, id);
+    VL.markFound(state, id);
+    assert.equal(VL.LOCKS[id].reached(state), true, id);
+  }
+  for (const lock of [...generic, ...['hiddenBookSealed', 'bookChickenAlmanac', 'bookPrimer'].map((id) => VL.LOCKS[id])]) {
+    assert.equal(lock.reached, undefined, `${lock.id} is not claimed`);
+    assert.equal(lock.by, 'W11', `${lock.id} is planned for W11`);
+  }
 });
 
 test('ore: three lumps on the map, two before the shockwave and the island\'s after', () => {
@@ -302,13 +384,16 @@ test('fillSpot swaps a marker for the real entity, whichever loads first', () =>
   VL.fillSpot('early', { type: 'door', to: { area: 'hut', screen: '0,0', tx: 7, ty: 8 } });
   assert.deepEqual([...VL.unplacedFills()], ['early']);
   const tiles = Array(11).fill('................');
-  VL.addScreens('probe', { '0,0': { tiles, entities: [{ type: 'spot', id: 'early', x: 2, y: 3, how: 'door' }, { type: 'spot', id: 'late', x: 4, y: 5, how: 'trunk' }] } });
+  VL.addScreens('probe', { '0,0': { tiles, entities: [{ type: 'spot', id: 'early', x: 2, y: 3, how: 'door', by: 'W10' }, { type: 'spot', id: 'late', x: 4, y: 5, how: 'trunk', by: 'W11' }] } });
+  assert.ok(VL.unfilledSpots().includes('late') && !VL.unfilledSpots().includes('early'));
   VL.fillSpot('late', { type: 'decor', art: 'well' });
+  assert.ok(!VL.unfilledSpots().includes('late'));
   const entities = VL.getScreen('probe', '0,0').entities;
   assert.deepEqual(entities.map((e) => [e.type, e.x, e.y, e.spot]), [['door', 2, 3, 'early'], ['decor', 4, 5, 'late']]);
   assert.deepEqual([...VL.unplacedFills()], []);
   assert.throws(() => VL.fillSpot('late', { type: 'door' }), /spot late is already filled/);
-  assert.throws(() => VL.addScreens('probe', { '1,0': { tiles, entities: [{ type: 'spot', id: 'late', x: 1, y: 1 }] } }), /spot late is already placed/);
+  assert.throws(() => VL.addScreens('probe', { '1,0': { tiles, entities: [{ type: 'spot', id: 'late', x: 1, y: 1, by: 'W5' }] } }), /spot late is already placed/);
+  assert.throws(() => VL.addScreens('probe', { '2,0': { tiles, entities: [{ type: 'spot', id: 'orphan', x: 1, y: 1 }] } }), /spot orphan must name the item that fills it/);
   assert.throws(() => VL.defineRegion('again', { area: 'overworld', screens: ['2,0'] }), /screen overworld 2,0 is already in region town/);
 });
 
@@ -346,6 +431,40 @@ test('the Woods: one route from the east road to the Hollow Oak, and a dead end 
   let onRoute = false;
   for (let id = door; id; id = prev.get(id)) if (id === ore) onRoute = true;
   assert.equal(onRoute, false, 'the ore is off the route');
+});
+
+test('the Woods: each wrong exit winds back to the route, never further in, within two screens', () => {
+  const VL = shared;
+  const { at, global } = world(VL);
+  const route = VL.WOODS_ROUTE;
+  const side = { north: [0, -1], south: [0, 1], west: [-1, 0], east: [1, 0] };
+  const loopScreens = new Set();
+  for (const exit of VL.WOODS_WRONG_EXITS) {
+    const first = VL.neighborKey(exit.from, ...side[exit.side]);
+    assert.equal(VL.regionOf(AREA, first), 'woods', `${exit.from} ${exit.side} leads into the Woods`);
+    assert.ok(!route.includes(first), `${first} is off the route`);
+    assert.ok(route.indexOf(exit.back) <= route.indexOf(exit.from), `${exit.from} loops back, not ahead`);
+    const starts = [];
+    for (let ty = 0; ty < VL.TUNING.rows; ty += 1) for (let tx = 0; tx < VL.TUNING.cols; tx += 1) if (!at(...global(first, tx, ty)).info.solid) starts.push(global(first, tx, ty));
+    const visited = new Set();
+    const touched = new Set();
+    flood(starts, (gx, gy) => {
+      visited.add(at(gx, gy).key);
+      const out = [];
+      for (const [dx, dy] of Object.values(side)) {
+        const next = at(gx + dx, gy + dy);
+        if (!next || next.info.solid) continue;
+        if (route.includes(next.key)) touched.add(next.key);
+        else out.push([gx + dx, gy + dy]);
+      }
+      return out;
+    });
+    assert.deepEqual([...touched].sort(), [...new Set([exit.from, exit.back])].sort(), `${exit.from} ${exit.side}`);
+    assert.ok(visited.size <= 2, `${exit.from} ${exit.side} winds through ${[...visited]}`);
+    visited.forEach((key) => loopScreens.add(key));
+  }
+  const offRoute = [...VL.REGIONS.woods.screens].filter((key) => !route.includes(key));
+  assert.deepEqual([...loopScreens].sort(), offRoute.sort(), 'every off-route Woods screen is a wrong turn');
 });
 
 // ---------- drawing and walking ----------

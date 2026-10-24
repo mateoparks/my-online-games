@@ -17,6 +17,7 @@ VL.FILES = {
     'save.js',
     'progression.js',
     'milestones.js',
+    'spots.js',
   ],
 
   art: [

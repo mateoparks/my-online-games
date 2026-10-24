@@ -26,7 +26,7 @@ VL.addScreens('overworld', {
       'TTTTTTTT....TTTT',
     ],
     entities: [
-      { type: 'spot', id: 'bookMeadowRock', x: 7, y: 3, how: 'rock', lock: 'bookMeadowRock' },
+      { type: 'spot', id: 'bookMeadowRock', x: 7, y: 3, how: 'rock', by: 'W14', lock: 'bookMeadowRock' },
     ],
   },
   '1,0': {
@@ -77,7 +77,7 @@ VL.addScreens('overworld', {
     ],
     entities: [
       { type: 'door', x: 8, y: 3, to: { area: 'hut', screen: '0,0', tx: 7, ty: 8, facing: 'up' } },
-      { type: 'spot', id: 'oreShallows', x: 12, y: 9, how: 'pickup', lock: 'oreShallows' },
+      { type: 'spot', id: 'oreShallows', x: 12, y: 9, how: 'pickup', by: 'W5', lock: 'oreShallows' },
     ],
   },
 });

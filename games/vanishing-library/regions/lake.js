@@ -29,7 +29,7 @@
     },
   });
 
-  const spot = (id, x, y, how, lock = id) => ({ type: 'spot', id, x, y, how, lock });
+  const spot = (id, x, y, how, by, lock = id) => ({ type: 'spot', id, x, y, how, by, lock });
 
   VL.addScreens('overworld', {
     // The west shore, up the path past the Scriptorium.
@@ -48,8 +48,8 @@
         'TT..TTTTTWWWWWWW',
       ],
       entities: [
-        spot('bookLakeShore', 3, 4, 'rock'),
-        spot('pageFieldB', 8, 8, 'search'),
+        spot('bookLakeShore', 3, 4, 'rock', 'W14'),
+        spot('pageFieldB', 8, 8, 'pickup', 'W11'),
       ],
     },
     // Open water and the island.
@@ -68,7 +68,7 @@
         'WWWWWWWWWWWWWWWW',
       ],
       entities: [
-        spot('oreLakeIsland', 7, 4, 'pickup'),
+        spot('oreLakeIsland', 7, 4, 'pickup', 'W17'),
       ],
     },
   });

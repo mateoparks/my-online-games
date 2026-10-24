@@ -85,7 +85,7 @@
     VL.ART.drawSparkle(ctx, x + 19, y + 29, t);
   });
 
-  const spot = (id, x, y, how, lock = id) => ({ type: 'spot', id, x, y, how, lock });
+  const spot = (id, x, y, how, by, lock = id) => ({ type: 'spot', id, x, y, how, by, lock });
 
   VL.addScreens('overworld', {
     // Where a chicken from the ledge below sets you down.
@@ -104,7 +104,7 @@
         'CVVVVVVVVVVVVVVC',
       ],
       entities: [
-        spot('chickenHighlands', 6, 5, 'chicken', null),
+        spot('chickenHighlands', 6, 5, 'chicken', 'W7', null),
       ],
     },
     '-2,-3': {
@@ -122,7 +122,7 @@
         'CCCCCCCCCCCCCCCC',
       ],
       entities: [
-        spot('bookHighlands', 9, 8, 'rock'),
+        spot('bookHighlands', 9, 8, 'rock', 'W14'),
       ],
     },
     // A chasm to the east: the next shelf is a long flight away.
@@ -141,7 +141,7 @@
         'CCCC::CCCCCCCVVV',
       ],
       entities: [
-        spot('chickenGap', 11, 4, 'chicken', null),
+        spot('chickenGap', 11, 4, 'chicken', 'W7', null),
       ],
     },
     '-1,-4': {
@@ -158,7 +158,10 @@
         'VCCCC:::CCCCCCCC',
         'VCCCCCCCCCCCCCCC',
       ],
-      entities: [],
+      // The way back west over the chasm (W7 keeps a chicken here).
+      entities: [
+        spot('chickenLair', 2, 5, 'chicken', 'W7', null),
+      ],
     },
     // The Dragon's Lair.
     '-1,-5': {
@@ -177,7 +180,7 @@
       ],
       entities: [
         { type: 'decor', art: 'lairCave', x: 6, y: 3 },
-        spot('lairDoor', 7, 4, 'door', 'dragonsLairEntered'),
+        spot('lairDoor', 7, 4, 'door', 'W19', 'dragonsLairEntered'),
       ],
     },
   });

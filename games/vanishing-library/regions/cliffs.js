@@ -119,7 +119,7 @@
     if (bright) rect(ctx, 'lampGlow', x + 4, y - 26, 40, 22);
   });
 
-  const spot = (id, x, y, how, lock = id) => ({ type: 'spot', id, x, y, how, lock });
+  const spot = (id, x, y, how, by, lock = id) => ({ type: 'spot', id, x, y, how, by, lock });
 
   VL.addScreens('overworld', {
     // The cliff road leaving town to the west.
@@ -138,7 +138,7 @@
         'TTTTTTTTTTTTTTTT',
       ],
       entities: [
-        spot('bookCliffRoad', 5, 7, 'bush'),
+        spot('bookCliffRoad', 5, 7, 'bush', 'W11'),
       ],
     },
     // A heart container on the ledge up the gap in the rocks; a berry bush.
@@ -157,8 +157,8 @@
         'TTTTTTTTTTTTTTTT',
       ],
       entities: [
-        spot('heartFieldB', 1, 1, 'pickup'),
-        spot('lostChicken', 13, 8, 'chicken'),
+        spot('heartFieldB', 1, 1, 'pickup', 'W6'),
+        spot('lostChicken', 13, 8, 'chicken', 'W7'),
       ],
     },
     '-1,-1': {
@@ -188,18 +188,18 @@
         'CC....P..R.....T',
         'C.....P........T',
         'C.....PP.......T',
-        'CC.....P.......T',
-        'CCC....P.......T',
-        'CCCCCC.PCCCCCCCx',
+        'CC.....PPPP....T',
+        'CCC.......P....T',
+        'CCCCCCCCCC.PCCCx',
       ],
       entities: [],
     },
     // The lighthouse headland.
     '-1,1': {
       tiles: [
-        'CTTTTT.PCTTTTTTT',
-        'C......PP......C',
-        'C.....xxxP.....C',
+        'CTTTTTTTTT.PTTTT',
+        'C.....xxx.PP...C',
+        'C.....xxxPP....C',
         'C.,...xxxP..,..C',
         'C.....xPxP.....C',
         'CC.....PPP....CC',
@@ -211,8 +211,8 @@
       ],
       entities: [
         { type: 'decor', art: 'lighthouse', x: 6, y: 2 },
-        spot('lighthouseDoor', 7, 4, 'door', 'lighthouseEntered'),
-        spot('bookLighthouse', 2, 3, 'search'),
+        spot('lighthouseDoor', 7, 4, 'door', 'W18', 'lighthouseEntered'),
+        spot('bookLighthouse', 2, 3, 'trunk', 'W11'),
       ],
     },
     // The cliff base. The trail ends at the hidden path; above it a ledge,
@@ -232,7 +232,7 @@
         'TTTTT.PTTTTTTTTC',
       ],
       entities: [
-        spot('chickenLedge', 7, 3, 'chicken', null),
+        spot('chickenLedge', 7, 3, 'chicken', 'W7', null),
       ],
     },
   });
