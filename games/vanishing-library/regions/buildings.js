@@ -287,7 +287,7 @@
       say: ['Brannock\'s the name, and smithing\'s the game! Swords, shields and shovels.', 'Wood gear, I make from wood. For metal, bring me a lump of ore and some shells. One lump for each piece, mind!'],
       set: 'met:brannock', shop: 'smithy',
     },
-    { when: { item: 'metalShovel', notFlag: 'dugSecret' }, say: 'That metal shovel bites hard ground, {name}. My gran swore folk buried their savings under the flowers in the fields by your hut.', shop: 'smithy' },
+    { when: { item: 'metalShovel', notFlag: 'dugSecret' }, say: 'That metal shovel bites hard ground, {name}. My gran always said folk buried their savings under the flowers in the fields by your hut.', shop: 'smithy' },
     { when: { has: { ore: 1 } }, say: 'Is that ore I see? Lovely! Pick what you want forged, {name}.', shop: 'smithy' },
     { say: 'Mind the sparks, {name}! What shall it be?', shop: 'smithy' },
   ]);

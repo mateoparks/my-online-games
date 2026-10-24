@@ -893,8 +893,9 @@ shops. Fixture: `tests/fixtures/save-v1-W10.json`.
   door spot, the tile outside, its keeper and shop (`store`, `mill`,
   `smithy`, `bookbinder`). The doors fill W8's spots; the place locks are
   reached on entering. A counter is a tile (`counter: true`): S facing it
-  talks to the NPC right behind it (the `counters` system), because NPCs may
-  not stand beside an entity. Each keeper's talk ends by opening their shop.
+  talks to the NPC across it, from any tile along the counter or at its
+  ends (the `counters` system, `VL.counterKeeper`), because NPCs may not
+  stand beside an entity. Each keeper's talk ends by opening their shop.
 - **The smith:** wood gear from wood; metal gear from 1 ore plus shells. Metal
   is its own tier, not an upgrade (no wood piece needed); the wood offer is
   hidden while the matching metal piece is owned. Every gear offer is sold
@@ -926,7 +927,9 @@ shops. Fixture: `tests/fixtures/save-v1-W10.json`.
 - **Sounds:** events `dig` (`dig`) and `digBlocked` (`tink`).
 - **Locks claimed:** `shop`, `paperMill`, `blacksmith`, `bindery`, `buyBerries`,
   `millShells`, `paper`, `digShells`, `buriedSecrets` (flags), and the six
-  gear locks (owned now). All keep the planned rules.
+  gear locks (owned now). All keep the planned rules. `paper`, like W5's
+  `berries`, marks the source, not the stock: it stays reached when the paper
+  is spent or the shockwave takes it, while lost gear reads as lost.
 
 ## Progression: locks, keys, the solver and the playthrough
 

@@ -159,6 +159,37 @@ test('the counter: S facing away, or a step back from it, does not talk', () => 
   assert.equal(t.app.sceneId, 'play');
 });
 
+test('the counter: S facing any counter tile, or a counter end from the side, talks to the keeper', () => {
+  const t = setup();
+  const { VL } = t;
+  for (const id of BUILDINGS) {
+    const counter = [];
+    for (let tx = 0; tx < 16; tx += 1) if (VL.tileInfo(id, VL.tileAt(id, '0,0', tx, 3)).counter) counter.push(tx);
+    assert.ok(counter.length >= 5, `${id} has a counter on row 3`);
+    const spots = [
+      ...counter.map((tx) => ({ tx, ty: 4, facing: 'up' })),
+      { tx: counter[0] - 1, ty: 3, facing: 'right' },
+      { tx: counter.at(-1) + 1, ty: 3, facing: 'left' },
+    ];
+    for (const spot of spots) {
+      t.at({ area: id, screen: '0,0', ...spot });
+      const keeper = t.game.room.entities.find((e) => e.type === 'npc');
+      keeper.facing = 'up';
+      t.press('interact');
+      const where = `${id}: S at ${spot.tx},${spot.ty} facing ${spot.facing}`;
+      assert.equal(t.app.sceneId, 'dialogue', `${where} talks`);
+      assert.equal(t.app.dialogue.speaker, VL.NPCS[VL.BUILDINGS[id].npc].name, `${where} reaches the keeper`);
+      assert.notEqual(keeper.facing, 'up', `${where}: the keeper turns to the hero`);
+      for (let i = 0; i < 20 && t.app.sceneId !== 'play'; i += 1) t.press(t.app.sceneId === 'shop' ? 'pause' : 'interact');
+      assert.equal(t.app.sceneId, 'play');
+    }
+    // Floor beside the counter is just floor.
+    t.at({ area: id, screen: '0,0', tx: counter.at(-1) + 2, ty: 4, facing: 'up' });
+    t.press('interact');
+    assert.equal(t.app.sceneId, 'play', `${id}: S past the counter's end does nothing`);
+  }
+});
+
 test('every keeper is placed, defined and has words; their dialogue checks clean', () => {
   const { VL } = loadGame();
   for (const id of BUILDINGS) {
@@ -358,6 +389,22 @@ test('after the shockwave: lost gear can be bought and forged again, with the or
   assert.equal(VL.buyOffer(game, offer(VL, 'smithy', 'metalShield')).kind, 'ore', 'each metal item needs its own lump');
 });
 
+test('after the shockwave: lost gear reads as lost, but paper (a source, like berries) stays reached', () => {
+  const t = setup();
+  const { VL } = t;
+  const game = t.game;
+  give(VL, game, { shells: 20 });
+  assert.equal(VL.buyOffer(game, offer(VL, 'mill', 'paper')).ok, true);
+  game.flags.pickedBerries = true;
+  VL.giveItem(game, 'woodSword');
+  assert.deepEqual(['paper', 'berries', 'woodSword'].map((id) => VL.LOCKS[id].reached(game)), [true, true, true]);
+  shockwave(VL, game);
+  assert.equal(game.inventory.paper, 0, 'the shockwave takes the paper');
+  assert.equal(VL.LOCKS.woodSword.reached(game), false, 'gear lost reads as lost');
+  assert.deepEqual([VL.LOCKS.paper.reached(game), VL.LOCKS.berries.reached(game)], [true, true], 'renewable sources stay open');
+  assert.ok(VL.LOCKS.paper.renewable && VL.LOCKS.berries.renewable);
+});
+
 // ---------- the bindery ----------
 
 test('the bindery binds five loose pages for 15 shells, once', () => {
@@ -470,6 +517,17 @@ test('the shovel is two-handed: it fills both hands, and Space or D digs', () =>
   VL.giveItem(game, 'woodSword');
   VL.giveItem(game, 'metalShovel');
   assert.deepEqual(plain(game.hands), { mainHand: 'woodSword', offHand: null });
+});
+
+test('the equipment grid marks a two-handed shovel with both keys, a one-handed item with its own', () => {
+  const t = setup();
+  const { VL } = t;
+  VL.giveItem(t.game, 'woodShovel');
+  assert.equal(VL.handMarks(t.game, 'woodShovel'), '␣D');
+  VL.giveItem(t.game, 'woodShield');
+  VL.setHand(t.game, 'offHand', 'woodShield');
+  assert.equal(VL.handMarks(t.game, 'woodShield'), 'D');
+  assert.equal(VL.handMarks(t.game, 'woodShovel'), '');
 });
 
 test('digging sand: a whole shell 40% of the time (seeded), a hole either way', () => {
