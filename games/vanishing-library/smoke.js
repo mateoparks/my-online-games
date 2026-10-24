@@ -2,7 +2,8 @@
 // no dependencies). Loads index.html from file://, fails on any console error
 // or uncaught exception, checks the integer scale at two window sizes and on a
 // live resize, walks the hero with real key events, checks a screen slide pans
-// the right way, and saves a screenshot of each size and of each art sheet page.
+// the right way, plays the real start (title, typed name, intro, pause, Save &
+// Quit, reload) and saves a screenshot of each size, scene and art sheet page.
 // Run: node games/vanishing-library/smoke.js --out <dir>
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
@@ -283,6 +284,74 @@ async function main() {
     if (resizeProblems.length) failures += 1;
     console.log(`${resizeProblems.length ? 'FAIL' : 'ok  '} resize to ${small.width}x${small.height} without reload: scale ${resized.scale}`);
     for (const problem of resizeProblems) console.log(`     ${problem}`);
+
+    // The real start with key events: title → typed name → intro → play,
+    // pause, Save & Quit, and a reload that finds the save (file:// keeps
+    // localStorage in this profile).
+    errors.length = 0;
+    const flowProblems = [];
+    const vk = { Enter: 13, Escape: 27, ArrowDown: 40, KeyS: 83 };
+    const tap = async (code, keyName = code) => {
+      const event = { key: keyName, code, windowsVirtualKeyCode: vk[code], nativeVirtualKeyCode: vk[code] };
+      await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+      await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+      if (!(await settle())) flowProblems.push(`animation frames stopped after ${code}`);
+    };
+    const typeText = async (text) => {
+      for (const ch of text) await tap(`Key${ch.toUpperCase()}`, ch);
+    };
+    const canvasShot = async (name) => {
+      const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+      const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+      fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+    };
+    const expectScene = async (scene, after) => {
+      const page = await info();
+      if (page.scene !== scene) flowProblems.push(`after ${after}: scene ${page.scene}, expected ${scene}`);
+    };
+    const reload = async () => {
+      const load = new Promise((resolve) => { loaded = resolve; });
+      await call('Page.navigate', { url: pageUrl });
+      await load;
+      if (!(await settle())) flowProblems.push('animation frames stopped after a reload');
+    };
+    await evaluate("for (const key of Object.keys(localStorage)) if (key.startsWith('vanishing-library-')) localStorage.removeItem(key)");
+    await reload();
+    await expectScene('title', 'load');
+    await canvasShot('title');
+    await tap('Enter');
+    await expectScene('name', 'Enter on an empty slot');
+    await typeText('Robin');
+    const typed = await evaluate('VL.app.naming && VL.app.naming.text');
+    if (typed !== 'Robin') flowProblems.push(`the name field holds ${JSON.stringify(typed)}, expected "Robin"`);
+    await canvasShot('name');
+    await tap('Enter');
+    await expectScene('intro', 'Enter on the name');
+    await sleep(1500);
+    await canvasShot('intro');
+    await tap('KeyS', 's');
+    await expectScene('play', 'S on the intro');
+    const started = JSON.parse(await evaluate("JSON.stringify({ name: VL.app.game && VL.app.game.name, slot: VL.app.slot, saved: localStorage.getItem('vanishing-library-slot-1') })"));
+    if (started.name !== 'Robin' || started.slot !== 0) flowProblems.push(`new game is ${started.name} in slot ${started.slot}`);
+    if (!started.saved || !started.saved.includes('"name":"Robin"')) flowProblems.push('the new game was not saved to slot 1');
+    await tap('Escape');
+    await expectScene('pause', 'Esc in play');
+    await canvasShot('pause');
+    await tap('ArrowDown');
+    await tap('Enter');
+    await expectScene('title', 'Save & Quit');
+    await canvasShot('title-saved');
+    await reload();
+    const slot = JSON.parse(await evaluate('JSON.stringify(VL.app.title.slots[0])'));
+    if (slot.status !== 'ok' || slot.summary.name !== 'Robin') flowProblems.push(`after the reload slot 1 is ${JSON.stringify(slot)}`);
+    await tap('Enter');
+    await expectScene('play', 'Enter on the saved slot');
+    const resumed = JSON.parse(await evaluate('JSON.stringify(VL.app.game ? [VL.app.game.name, VL.app.game.hp, VL.app.game.maxHp] : null)'));
+    if (!resumed || resumed[0] !== 'Robin' || resumed[1] !== resumed[2]) flowProblems.push(`continued as ${JSON.stringify(resumed)}`);
+    flowProblems.push(...errors);
+    if (flowProblems.length) failures += 1;
+    console.log(`${flowProblems.length ? 'FAIL' : 'ok  '} start flow: title, name "Robin", intro, play, pause, Save & Quit, reload, continue`);
+    for (const problem of flowProblems) console.log(`     ${problem}`);
 
     // The art kit, page by page (scenes/art-sheet.js), cropped to the canvas:
     // the evidence for comparing with the approved mockup.

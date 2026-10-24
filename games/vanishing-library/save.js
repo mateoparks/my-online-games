@@ -199,6 +199,19 @@
     state.events.push({ type: 'faint', cause });
   };
 
+  // A page reload that continues the same slot: what the playthrough's
+  // drive.reload() does to prove progress survives (README "Progression").
+  VL.reloadApp = function reloadApp(app) {
+    app.save();
+    const next = VL.createApp({ storage: app.storage });
+    const game = app.slot === null ? null : VL.loadSlot(app.storage, app.slot);
+    if (game) {
+      next.startGame(game, app.slot);
+      next.setScene('play');
+    }
+    return next;
+  };
+
   // Dying only resets position: full hearts, back at the save point, everything kept.
   VL.respawn = function respawn(state) {
     state.hp = state.maxHp;

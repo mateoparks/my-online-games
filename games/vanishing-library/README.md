@@ -291,6 +291,73 @@ or the bare frame `VL.ART.drawBox(ctx, x, y, w, h)`. A popup holds 4 lines;
   toggle belongs to the toggle (links activate on Enter, so Space still swings
   on a focused header link).
 
+## Scenes and menus
+
+`VL.START_SCENE` is `'title'` (`scenes/title.js`). A new player goes title
+(three slots) → `name` (typed into a field on the canvas, 12 characters,
+"Hero" when left blank) → `intro` (the three weathered lines; S, Space or
+Enter skips after half a second) → `play`. From play, Esc opens `pause`
+(Resume, Save & Quit, the controls); hearts running out opens `fainted`,
+where a press respawns the hero. One file per scene, each drawing through the
+art kit, and the render smoke in `tests/engine.test.js` covers every one.
+
+- Menus accept Enter, S or Space: `VL.confirmed(actions)`. Enter is the
+  `confirm` action, Backspace and Delete are `erase`. A scene that wants a
+  press to do nothing in the world just does not call `VL.updateWorld`
+  that step, so a confirm never leaks into play.
+- `actions.typed` is the text typed since the last poll (`'\b'` for
+  Backspace, key repeat kept); only the name scene reads it. Game letters
+  (S, E, D…) are typed there like any other.
+- `app.game` is the live game, `app.slot` its slot (`null` for a game no
+  slot holds, as in tests and the smoke), `app.storage` the wrapped store,
+  `app.save()` writes the game to its slot, `app.quit()` returns to the title,
+  `app.startGame(game, slot)` sets both.
+
+## Saving
+
+- **Keys:** `vanishing-library-slot-1`, `-2`, `-3` hold one JSON save each;
+  `vanishing-library-probe` is written, read and removed once at boot to see
+  whether storage works. `VL.createStorage(backing)` wraps `localStorage`
+  (or a function returning it, since the getter itself can throw) and never
+  throws. With `storage.ok` false, the title and pause menus say
+  "Saving is off in this browser" and everything still plays.
+- **What is saved:** every field of the game state except
+  `VL.TRANSIENT_FIELDS` (`time`, `player`, `room`, `transition`, `events`,
+  `dirty`, `fainted`) and `hp`. Loading gives full hearts at the last save
+  point (`savePoint`, or the start when there is none or a later map change
+  removed its screen). `finished` marks a finished game: the slot shows
+  FINISHED and loads the last save before the finale (the ending sets it).
+- **When (design: Option B, Zelda-style):** call `VL.earned(state)` after
+  anything the player earns (an item, a chest opened, a book, a page, a flag,
+  a boss) and the play scene saves before the next frame, with a "SAVED"
+  flash. Standing on a save point saves too (`{ type: 'savePoint', x, y }`
+  entity, a lantern, or `VL.touchSavePoint(state, place)` from your own
+  entity). Save & Quit saves; a new game is saved as soon as it is named.
+  Dying never saves or loses anything: `VL.faint(state, cause)` → the
+  `fainted` scene → `VL.respawn(state)`. `VL.addFaintLine('crab', '…')` adds
+  the line for a cause (`shrub` is already there).
+- **Schema (R2):** saves carry `v`, `VL.saveVersion()`. **Adding a field
+  needs no migration.** Add it from your own file with
+  `VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }))` and a save
+  written before it gets the default on load, nested keys included (an
+  `inventory.paper` added later fills in as 0). Keep fields JSON-safe: plain
+  objects, arrays, numbers, strings, booleans, null. **Changing the shape** of
+  a saved field (a rename, a split, a type change) needs a migration, from the
+  file that makes the change:
+  `VL.defineMigration(2, (save) => ({ ...save, flags: renamed(save.flags) }))`.
+  Versions are sequential (the next one is `VL.saveVersion() + 1`), so two
+  lanes picking the same number throw at load and one renumbers; a save goes
+  through every migration after its own version before defaults are filled.
+  A save newer than the game, or one that fails validation, shows as
+  **Damaged** on the title and can be deleted (with a confirm).
+  `tests/fixtures/save-v1.json` is a committed version 1 save that must keep
+  loading forever; regenerate it only on purpose, with the diff reviewed,
+  never to turn a red test green.
+- The slot card shows name, hearts and books; the book count comes from
+  `VL.slotSource('books', (save) => …)`, plugged in once by the library item.
+- `VL.reloadApp(app)` is a page reload that continues the same slot: what the
+  playthrough's `drive.reload()` uses to prove progress survives.
+
 ## Testing
 
 ```sh
@@ -314,7 +381,11 @@ scene, holds an arrow towards open ground through real key events and checks
 the hero moved, then saves a screenshot. It then walks the hero over the first
 open edge of the start area and checks the slide pans the way the hero walked
 with the hero on the canvas throughout, and resizes the window without
-reloading and checks the scale follows. It runs for 60 s at most. A test file
+reloading and checks the scale follows. Then it plays the real start with key
+events: title → Enter on an empty slot → "Robin" typed → Enter → the intro →
+S → play, with the slot saved; Esc, Save & Quit back to the title; a reload
+that still lists Robin and continues at full hearts (screenshots `title.png`,
+`name.png`, `intro.png`, `pause.png`, `title-saved.png`). It runs for 60 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
 ## Progression: locks, keys, the solver and the playthrough

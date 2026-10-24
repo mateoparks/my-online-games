@@ -1,17 +1,8 @@
 // Scenes (W2): title and slots, on-canvas name entry, the intro, pause with
 // Save & Quit, autosave, fainting; and the typed-text input they need.
 const assert = require('node:assert/strict');
-const { test, read, loadGame, addFixtureWorld, fakeDocument, fakeWindow, keyEvent } = require('./harness');
-
-function memoryStorage() {
-  const map = new Map();
-  return {
-    map,
-    getItem: (key) => (map.has(key) ? map.get(key) : null),
-    setItem: (key, value) => map.set(key, String(value)),
-    removeItem: (key) => map.delete(key),
-  };
-}
+const { test, read, loadGame, addFixtureWorld, memoryStorage, fakeDocument, fakeWindow, keyEvent } = require('./harness');
+const { createPlaythrough } = require('./playthrough');
 
 const blocked = () => {
   throw new Error('blocked');
@@ -449,6 +440,46 @@ test('every string the new scenes draw is in the font', () => {
   VL.ART.text = original;
   assert.ok(strings.length > 20);
   for (const { str, size } of strings) assert.deepEqual([...VL.ART.missingGlyphs(str, size)], [], str);
+});
+
+// ---------- the playthrough from the title ----------
+
+test('the playthrough drives the real title: named is the first milestone and a reload keeps the game', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.MILESTONES[0], 'named');
+  assert.equal(VL.MILESTONES[1], 'start');
+  assert.ok(VL.LOCKS.named.reached, 'W2 claims named');
+  const backing = memoryStorage();
+  const app = VL.createApp({ storage: VL.createStorage(backing) });
+  const play = createPlaythrough(VL, { app });
+  const drive = play.playTo('start');
+  assert.notEqual(drive.app, app, 'the steps reloaded the page');
+  assert.equal(drive.app.sceneId, 'play');
+  assert.equal(drive.state.name, 'Robin');
+  assert.equal(drive.app.slot, 0);
+  assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).name, 'Robin');
+  assert.ok(VL.progress(drive.state).includes('start'));
+});
+
+test('VL.reloadApp saves, builds a fresh app and continues the slot; without a slot it lands on the title', () => {
+  const { VL } = loadGame();
+  addFixtureWorld(VL);
+  const backing = memoryStorage();
+  const app = VL.createApp({ storage: VL.createStorage(backing) });
+  newGameTo(VL, app, 'Robin');
+  VL.touchSavePoint(app.game, { area: 'room', screen: '0,0', tx: 7, ty: 5 });
+  app.game.flags.chest = true;
+  app.game.hp = 1;
+  const next = VL.reloadApp(app);
+  assert.notEqual(next, app);
+  assert.equal(next.sceneId, 'play');
+  assert.equal(next.slot, 0);
+  assert.equal(next.game.flags.chest, true);
+  assert.equal(next.game.hp, next.game.maxHp);
+  assert.equal(next.game.player.area, 'room');
+  const bare = VL.reloadApp(VL.createApp());
+  assert.equal(bare.sceneId, 'title');
+  assert.equal(bare.game, null);
 });
 
 test('README documents the scenes and the typed input', () => {

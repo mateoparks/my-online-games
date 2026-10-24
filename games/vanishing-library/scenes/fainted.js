@@ -3,7 +3,7 @@
 (() => {
   VL.ART.addColors({ faintShade: '#1b1b24b0' });
   const WAKE_AFTER = 0.6;
-  const BOX = { x: 24, y: 64, w: 208, h: 60 };
+  const BOX = { x: 28, y: 64, w: 200, h: 60 };
   const LINES = ['Everything you found is still yours.', 'You wake up at your last save point.'];
 
   VL.defineScene('fainted', {

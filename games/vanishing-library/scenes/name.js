@@ -3,6 +3,12 @@
 (() => {
   VL.NAME_MAX = 12;
   VL.DEFAULT_NAME = 'Hero';
+
+  // A game exists only once a name was chosen (the default counts).
+  VL.defineLock('named', {
+    type: 'flag', doc: '§ Starting and saving: Title screen',
+    reached: (state) => typeof state.name === 'string' && state.name.length > 0,
+  });
   const FIELD = { x: 64, y: 84, w: 128, h: 20 };
 
   // Letters and digits as typed; anything the font cannot draw is dropped.

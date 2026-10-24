@@ -13,7 +13,7 @@
   const WRAP_WIDTH = 232;
   const LINE_TOP = 52;
   const LINE_SPACING = 36;
-  const EROSION = 0.22;
+  const EROSION = 0.1;
 
   VL.defineScene('intro', {
     enter(app) {

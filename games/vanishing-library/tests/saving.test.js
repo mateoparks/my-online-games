@@ -3,18 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { test, read, loadGame, addFixtureWorld, playState, hold } = require('./harness');
-
-// A localStorage look-alike that keeps strings in memory.
-function memoryStorage() {
-  const map = new Map();
-  return {
-    map,
-    getItem: (key) => (map.has(key) ? map.get(key) : null),
-    setItem: (key, value) => map.set(key, String(value)),
-    removeItem: (key) => map.delete(key),
-  };
-}
+const { test, read, loadGame, addFixtureWorld, memoryStorage, playState, hold } = require('./harness');
 
 const blocked = () => {
   throw new Error('blocked');
