@@ -70,31 +70,38 @@
   };
 
   const skipped = () => new Set([...VL.TRANSIENT_FIELDS, 'hp']);
-  const clone = (value) => (value === undefined ? null : JSON.parse(JSON.stringify(value)));
+  const clone = (value) => JSON.parse(JSON.stringify(value));
   const isPlainObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 
   VL.serializeSave = function serializeSave(state) {
     const save = { v: VL.saveVersion() };
     const skip = skipped();
     for (const [key, value] of Object.entries(state)) {
-      if (!skip.has(key)) save[key] = clone(value);
+      if (!skip.has(key) && value !== undefined) save[key] = clone(value);
     }
     return save;
   };
 
   // Saved values over the defaults, recursing into plain objects so a key
   // added inside an existing object (inventory.paper) gets its default too.
+  // An object or array default whose saved value is another kind keeps the
+  // default: one field reset beats a whole save shown as Damaged.
   function fill(defaults, saved) {
-    if (!isPlainObject(defaults) || !isPlainObject(saved)) return saved === undefined ? defaults : saved;
+    if (saved === undefined) return defaults;
+    if (Array.isArray(defaults)) return Array.isArray(saved) ? saved : defaults;
+    if (!isPlainObject(defaults)) return saved;
+    if (!isPlainObject(saved)) return defaults;
     const out = { ...defaults };
     for (const [key, value] of Object.entries(saved)) out[key] = key in defaults ? fill(defaults[key], value) : value;
     return out;
   }
 
-  // Migrates, fills defaults and validates; throws for anything damaged.
+  const isNewer = (raw) => isPlainObject(raw) && Number.isInteger(raw.v) && raw.v > VL.saveVersion();
+
+  // Migrates, drops play state, fills defaults and validates; throws for anything damaged.
   function normalizeSave(raw) {
     if (!isPlainObject(raw) || !Number.isInteger(raw.v) || raw.v < 1) throw new Error('not a save');
-    const migrated = VL.migrateSave(raw);
+    const migrated = { ...VL.migrateSave(raw) };
     if (typeof migrated.name !== 'string') throw new Error('save has no name');
     const fresh = VL.createGame({ name: migrated.name });
     const skip = skipped();
@@ -102,9 +109,9 @@
     for (const key of Object.keys(fresh)) {
       if (!skip.has(key)) defaults[key] = fresh[key];
     }
+    for (const key of skip) delete migrated[key];
     const save = { ...fill(defaults, migrated), v: migrated.v };
     if (!Number.isInteger(save.maxHp) || save.maxHp < 1) throw new Error('save has a bad maxHp');
-    if (!isPlainObject(save.flags) || !isPlainObject(save.visited)) throw new Error('save has bad flags');
     return save;
   }
 
@@ -146,11 +153,15 @@
     finished: Boolean(save.finished),
   });
 
+  // `newer` is a save written by a newer page (a cached old page, or a class
+  // laptop that has not reloaded): it is never damaged and is left alone.
   VL.readSlot = function readSlot(storage, slot) {
     const text = storage.read(VL.slotKey(slot));
     if (text === null || text === undefined) return { status: 'empty' };
     try {
-      const save = normalizeSave(JSON.parse(text));
+      const raw = JSON.parse(text);
+      if (isNewer(raw)) return { status: 'newer', v: raw.v };
+      const save = normalizeSave(raw);
       return { status: 'ok', save, summary: VL.saveSummary(save) };
     } catch {
       return { status: 'damaged' };
@@ -161,7 +172,12 @@
 
   VL.loadSlot = function loadSlot(storage, slot) {
     const read = VL.readSlot(storage, slot);
-    return read.status === 'ok' ? stateFrom(read.save) : null;
+    if (read.status !== 'ok') return null;
+    try {
+      return stateFrom(read.save);
+    } catch {
+      return null;
+    }
   };
 
   VL.deleteSlot = (storage, slot) => storage.remove(VL.slotKey(slot));
@@ -169,7 +185,8 @@
   // ---------- earning, save points, fainting ----------
 
   // Anything the player earns (an item, a chest, a book, a flag) calls this;
-  // the play scene saves before the next frame (design: Option B, Zelda-style).
+  // the app saves at the end of the same step, whatever the scene (design:
+  // Option B, Zelda-style).
   VL.earned = function earned(state) {
     state.dirty = true;
     state.events.push({ type: 'earned' });
@@ -201,8 +218,10 @@
 
   // A page reload that continues the same slot: what the playthrough's
   // drive.reload() does to prove progress survives (README "Progression").
-  VL.reloadApp = function reloadApp(app) {
-    app.save();
+  // Like a real reload it does not save first, so a forgotten VL.earned shows;
+  // `{ save: true }` is for the console.
+  VL.reloadApp = function reloadApp(app, { save = false } = {}) {
+    if (save) app.save();
     const next = VL.createApp({ storage: app.storage });
     const game = app.slot === null ? null : VL.loadSlot(app.storage, app.slot);
     if (game) {

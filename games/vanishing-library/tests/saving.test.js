@@ -3,14 +3,19 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const { test, read, loadGame, addFixtureWorld, memoryStorage, playState, hold } = require('./harness');
+const { createPlaythrough } = require('./playthrough');
 
 const blocked = () => {
   throw new Error('blocked');
 };
 const throwingStorage = { getItem: blocked, setItem: blocked, removeItem: blocked };
 
-const fixtureV1 = () => JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1.json'), 'utf8'));
+const fixturesDir = path.join(__dirname, 'fixtures');
+const readFixture = (file) => JSON.parse(fs.readFileSync(path.join(fixturesDir, file), 'utf8'));
+const fixtureV1 = () => readFixture('save-v1.json');
+const fixtureFiles = () => fs.readdirSync(fixturesDir).filter((name) => /^save-.*\.json$/.test(name)).sort();
 
 // ---------- storage ----------
 
@@ -130,7 +135,7 @@ test('readSlot reports empty, ok with a summary, or damaged; a damaged slot can 
   const ok = VL.readSlot(storage, 1);
   assert.equal(ok.status, 'ok');
   assert.deepEqual({ ...ok.summary }, { name: 'Kai', hearts: 5, books: 0, finished: true });
-  const damaged = ['{not json', '"42"', '[]', '{"v":1}', '{"v":"1","name":"X"}', '{"v":99,"name":"X"}', '{"v":0,"name":"X"}', '{"v":1,"name":"X","maxHp":"lots"}', '{"v":1,"name":"X","flags":[]}'];
+  const damaged = ['{not json', '"42"', '[]', '{"v":1}', '{"v":"1","name":"X"}', '{"v":0,"name":"X"}', '{"v":1,"name":"X","maxHp":"lots"}', '{"v":1,"name":"X","maxHp":0}'];
   for (const text of damaged) {
     backing.setItem(VL.slotKey(2), text);
     assert.equal(VL.readSlot(storage, 2).status, 'damaged', text);
@@ -194,12 +199,12 @@ test('a committed v1 save still loads after a schema change, through a migration
   assert.equal(before.maxHp, 8);
   assert.equal(before.hp, 8);
   assert.equal(before.flags.chest_hut, true);
-  assert.equal(before.player.area, 'hut');
   assert.deepEqual({ ...VL.readSlot(storage, 0).summary }, { name: 'Robin', hearts: 4, books: 0, finished: false });
 
   // The schema change: a later item renames the chest flag. Saves written
-  // before it carry v 1 and go through the migration on load.
-  VL.defineMigration(2, (save) => {
+  // before it carry an older v and go through the migration on load.
+  const next = VL.saveVersion() + 1;
+  VL.defineMigration(next, (save) => {
     const flags = { ...save.flags };
     if ('chest_hut' in flags) {
       flags.hutChest = flags.chest_hut;
@@ -207,15 +212,14 @@ test('a committed v1 save still loads after a schema change, through a migration
     }
     return { ...save, flags };
   });
-  assert.equal(VL.saveVersion(), 2);
+  assert.equal(VL.saveVersion(), next);
   const after = VL.loadSlot(storage, 0);
   assert.equal(after.flags.hutChest, true);
   assert.equal('chest_hut' in after.flags, false);
   assert.equal(after.maxHp, 8);
-  assert.equal(after.player.area, 'hut');
-  assert.equal(VL.serializeSave(after).v, 2, 'saved again at the current version');
+  assert.equal(VL.serializeSave(after).v, next, 'saved again at the current version');
   VL.saveSlot(storage, 0, after);
-  assert.equal(JSON.parse(storage.read(VL.slotKey(0))).v, 2);
+  assert.equal(JSON.parse(storage.read(VL.slotKey(0))).v, next);
   assert.equal(VL.loadSlot(storage, 0).flags.hutChest, true, 'a current save skips the migration');
 });
 
@@ -235,12 +239,131 @@ test('migrations are sequential and each version is defined once', () => {
   assert.throws(() => VL.migrateSave({ v: 4, name: 'X' }), /newer/);
 });
 
-test('the v1 fixture is a version 1 save as serializeSave writes it', () => {
+test('a save from a newer game reads as newer, never damaged, and is left as it is', () => {
   const { VL } = loadGame();
+  const backing = memoryStorage();
+  const storage = VL.createStorage(backing);
+  const text = JSON.stringify({ v: VL.saveVersion() + 1, name: 'Kai', maxHp: 12, flags: { lots: true }, visited: {} });
+  backing.setItem(VL.slotKey(0), text);
+  const read = VL.readSlot(storage, 0);
+  assert.equal(read.status, 'newer');
+  assert.equal(VL.loadSlot(storage, 0), null, 'cannot be played by this page');
+  assert.equal(backing.getItem(VL.slotKey(0)), text, 'untouched');
+});
+
+test('transient keys, hp and wrong-typed objects in a stored save take the fresh values', () => {
+  const { VL } = loadGame();
+  addFixtureWorld(VL);
+  VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }));
+  VL.extendGame('library', () => ({ books: [] }));
+  const backing = memoryStorage();
+  const storage = VL.createStorage(backing);
+  const base = { v: 1, name: 'X', maxHp: 6, flags: {}, visited: {} };
+  // A field that was saved once and is transient now (or a hand edit).
+  backing.setItem(VL.slotKey(0), JSON.stringify({ ...base, events: 'oops', fainted: { cause: 'shrub' }, hp: 1, player: null, time: 99 }));
+  assert.equal(VL.readSlot(storage, 0).status, 'ok');
+  const game = VL.loadSlot(storage, 0);
+  assert.ok(Array.isArray(game.events), 'events is the fresh list');
+  assert.equal(game.fainted, null);
+  assert.equal(game.hp, 6);
+  assert.equal(game.time, 0);
+  assert.equal(game.player.area, VL.START.area);
+  // An object or array field holding something else takes the default.
+  backing.setItem(VL.slotKey(1), JSON.stringify({ ...base, inventory: null, books: 'none', savePoint: 'hut' }));
+  assert.equal(VL.readSlot(storage, 1).status, 'ok');
+  const typed = VL.loadSlot(storage, 1);
+  assert.deepEqual({ ...typed.inventory }, { wood: 0 });
+  assert.deepEqual([...typed.books], []);
+  assert.equal(typed.player.area, VL.START.area, 'a bad save point means the start');
+  // A number over a nested object default too.
+  backing.setItem(VL.slotKey(2), JSON.stringify({ ...base, inventory: 5 }));
+  assert.deepEqual({ ...VL.loadSlot(storage, 2).inventory }, { wood: 0 });
+});
+
+test('a field left undefined is not written and takes its default on load', () => {
+  const { VL } = loadGame();
+  addFixtureWorld(VL);
+  const storage = VL.createStorage(memoryStorage());
+  const state = VL.newGame({ name: 'U' });
+  state.savePoint = undefined;
+  const save = VL.serializeSave(state);
+  assert.equal('savePoint' in save, false);
+  VL.saveSlot(storage, 0, state);
+  assert.equal(VL.loadSlot(storage, 0).savePoint, null);
+});
+
+test('the v1 fixture is frozen: the W2-era save, never regenerated', () => {
   const fixture = fixtureV1();
-  const fresh = VL.serializeSave(VL.newGame({ name: 'Robin' }));
-  assert.deepEqual(Object.keys(fixture).sort(), Object.keys(fresh).sort(), 'same fields (regenerate the fixture deliberately when the base schema changes)');
   assert.equal(fixture.v, 1);
+  assert.equal(fixture.name, 'Robin');
+  assert.deepEqual(Object.keys(fixture).sort(), ['finished', 'flags', 'maxHp', 'name', 'rngState', 'savePoint', 'v', 'visited'], 'the fields W2 saved; a later schema adds a new save-v<N>-<item>.json fixture instead');
+});
+
+test('every committed fixture loads through the real migrations and defaults', () => {
+  const { VL } = loadGame();
+  const files = fixtureFiles();
+  assert.ok(files.includes('save-v1.json'));
+  for (const file of files) {
+    const fixture = readFixture(file);
+    assert.ok(Number.isInteger(fixture.v) && fixture.v >= 1 && fixture.v <= VL.saveVersion(), `${file}: v ${fixture.v}`);
+    const backing = memoryStorage();
+    const storage = VL.createStorage(backing);
+    const text = JSON.stringify(fixture);
+    backing.setItem(VL.slotKey(0), text);
+    const read = VL.readSlot(storage, 0);
+    assert.equal(read.status, 'ok', `${file} reads ok`);
+    assert.equal(read.summary.name, fixture.name, file);
+    const game = VL.loadSlot(storage, 0);
+    assert.ok(game, `${file} loads`);
+    assert.equal(game.name, fixture.name);
+    assert.equal(game.hp, game.maxHp);
+    assert.equal(backing.getItem(VL.slotKey(0)), text, `${file}: reading never writes`);
+    assert.equal(VL.serializeSave(game).v, VL.saveVersion(), `${file} saves again at the current version`);
+  }
+});
+
+test('extendGame with transient: true adds play state that is never saved and resets on load', () => {
+  const { VL } = loadGame();
+  addFixtureWorld(VL);
+  VL.extendGame('enemies', () => ({ knockback: null, cooldown: 0 }), { transient: true });
+  VL.extendGame('inventory', () => ({ inventory: { wood: 0 } }));
+  assert.ok(VL.TRANSIENT_FIELDS.includes('knockback') && VL.TRANSIENT_FIELDS.includes('cooldown'));
+  const storage = VL.createStorage(memoryStorage());
+  const state = playState(VL, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
+  assert.equal(state.cooldown, 0);
+  state.cooldown = 3;
+  state.inventory.wood = 2;
+  const save = VL.serializeSave(state);
+  assert.equal('cooldown' in save, false);
+  assert.equal('knockback' in save, false);
+  assert.equal(save.inventory.wood, 2);
+  VL.saveSlot(storage, 0, state);
+  const loaded = VL.loadSlot(storage, 0);
+  assert.equal(loaded.cooldown, 0);
+  assert.equal(loaded.knockback, null);
+  assert.equal(loaded.inventory.wood, 2);
+  VL.extendGame('again', () => ({ cooldown: 1 }));
+  assert.throws(() => VL.createGame(), /cooldown/, 'a saved field cannot shadow a transient one');
+});
+
+test('every saved field is JSON-safe, for a new game and after the playthrough', () => {
+  const context = loadGame();
+  const { VL } = context;
+  const JSONvm = vm.runInContext('JSON', context);
+  const checkFields = (state, label) => {
+    for (const key of Object.keys(state)) {
+      if (VL.TRANSIENT_FIELDS.includes(key)) continue;
+      const value = state[key];
+      assert.notEqual(value, undefined, `${label}: ${key} is undefined (use null)`);
+      assert.deepEqual(JSONvm.parse(JSONvm.stringify(value)), value, `${label}: ${key} does not survive JSON`);
+    }
+  };
+  checkFields(VL.createGame(), 'a new game');
+  const play = createPlaythrough(VL);
+  const ids = play.drivable();
+  checkFields(play.playTo(ids[ids.length - 1]).state, `after ${ids[ids.length - 1]}`);
+  VL.extendGame('shells', () => ({ shellsTaken: new Set() }));
+  assert.throws(() => checkFields(VL.createGame(), 'a Set'), /shellsTaken/);
 });
 
 // ---------- earning, save points, fainting ----------

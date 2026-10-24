@@ -43,7 +43,7 @@
       if (pressed.up) title.cursor = (title.cursor + VL.SLOT_COUNT - 1) % VL.SLOT_COUNT;
       if (pressed.down) title.cursor = (title.cursor + 1) % VL.SLOT_COUNT;
       const slot = title.slots[title.cursor];
-      if (pressed.erase && slot.status !== 'empty') {
+      if (pressed.erase && (slot.status === 'ok' || slot.status === 'damaged')) {
         title.confirmDelete = true;
         title.deleteChoice = 1;
         return;
@@ -55,6 +55,7 @@
         const game = VL.loadSlot(app.storage, title.cursor);
         if (!game) {
           title.slots = readSlots(app);
+          if (title.slots[title.cursor].status === 'ok') title.slots[title.cursor] = { status: 'damaged' };
           return;
         }
         app.startGame(game, title.cursor);
@@ -88,6 +89,11 @@
         if (slot.status === 'damaged') {
           VL.ART.text(ctx, 'Damaged save', CARD.x + 14, y + 4, { color: 'heartLight' });
           VL.ART.text(ctx, 'BACKSPACE: DELETE IT', CARD.x + 14, y + 15, { size: 'small', color: 'textDim' });
+          return;
+        }
+        if (slot.status === 'newer') {
+          VL.ART.text(ctx, 'Saved by a newer game', CARD.x + 14, y + 4, { color: 'goldLight' });
+          VL.ART.text(ctx, 'RELOAD THE PAGE TO PLAY IT', CARD.x + 14, y + 15, { size: 'small', color: 'textDim' });
           return;
         }
         const { name, hearts, books, finished } = slot.summary;

@@ -52,6 +52,7 @@ VL.FILES = {
     'scenes/intro.js',
     'scenes/pause.js',
     'scenes/fainted.js',
+    'scenes/conflict.js',
   ],
 
   boot: [

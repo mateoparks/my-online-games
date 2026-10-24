@@ -30,8 +30,9 @@
         app.setScene('play');
         return;
       }
-      app.save();
-      app.quit();
+      // With saving off there is nothing to write; a write that fails keeps
+      // the player here with the note rather than quitting as if it saved.
+      if (app.save() || !app.storage.ok) app.quit();
     },
 
     draw(ctx, app, t) {
@@ -48,6 +49,7 @@
       });
       controls(app.game).forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 56 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
       if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'goldLight' });
+      else if (app.saveFailed) VL.ART.text(ctx, 'COULD NOT SAVE. STILL TRYING', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'heartLight' });
     },
   });
 })();

@@ -4,9 +4,12 @@ VL.GAME_EXTENSIONS = [];
 // A later file adds its own saved fields with VL.extendGame('inventory',
 // (options) => ({ inventory: {} })) instead of editing this file. Keep them
 // JSON-safe; a field two lanes both add is an error, not a silent override.
-VL.extendGame = function extendGame(id, fields) {
+// `{ transient: true }` adds play state that is never saved (enemies,
+// cooldowns): it joins VL.TRANSIENT_FIELDS and resets on load.
+VL.extendGame = function extendGame(id, fields, { transient = false } = {}) {
   if (VL.GAME_EXTENSIONS.some((other) => other.id === id)) throw new Error(`game extension ${id} is already defined`);
-  VL.GAME_EXTENSIONS.push({ id, fields });
+  VL.GAME_EXTENSIONS.push({ id, fields, transient });
+  if (transient) VL.TRANSIENT_FIELDS.push(...Object.keys(fields({})));
 };
 
 // Play state that is never saved (save.js strips these fields).
@@ -32,10 +35,10 @@ VL.createGame = function createGame(options = {}) {
     visited: {},
   };
   const transient = transientState();
-  for (const { id, fields } of VL.GAME_EXTENSIONS) {
+  for (const { id, fields, transient: isTransient } of VL.GAME_EXTENSIONS) {
     for (const [key, value] of Object.entries(fields(options))) {
       if (key in state || key in transient) throw new Error(`game extension ${id}: field ${key} already exists`);
-      state[key] = value;
+      (isTransient ? transient : state)[key] = value;
     }
   }
   // Extension fields sit above this line so they are part of the saved state.

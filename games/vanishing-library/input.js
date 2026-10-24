@@ -56,10 +56,12 @@ VL.createKeyboardInput = function createKeyboardInput(win, doc) {
     if (action && controlKeys[tag]?.has(action)) return;
     const key = event.key || '';
     // Typed text keeps key repeat (holding Backspace clears a name).
-    if (key === 'Backspace') typed += '\b';
+    if (key === 'Backspace' || key === 'Delete') typed += '\b';
     else if (key.length === 1) typed += key;
-    if (!action) return;
+    // A typed character is the game's too: ' and / open Firefox's Quick Find.
+    if (!action && key.length !== 1) return;
     event.preventDefault();
+    if (!action) return;
     if (event.repeat || held.has(action)) return;
     held.add(action);
     pressed.add(action);

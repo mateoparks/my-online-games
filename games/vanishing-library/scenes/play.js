@@ -1,5 +1,6 @@
-// The play scene: the world updates and is drawn. Esc pauses, earning
-// anything autosaves, and hearts running out hands over to the fainted scene.
+// The play scene: the world updates and is drawn. Esc pauses, a save flashes
+// SAVED (the app saves after every step), and hearts running out hands over
+// to the fainted scene.
 (() => {
   const SAVED_FLASH = 1.5;
 
@@ -14,13 +15,15 @@
         return;
       }
       VL.updateWorld(game, actions, dt);
-      if (game.dirty) app.save();
       if (game.hp <= 0) app.setScene('fainted');
     },
     draw(ctx, app, t) {
       VL.drawWorld(ctx, app.game, t);
-      if (app.savedAt !== null && app.time - app.savedAt < SAVED_FLASH) {
-        VL.ART.text(ctx, 'SAVED', VL.TUNING.width - 4, VL.TUNING.hudHeight + 3, { size: 'small', align: 'right', color: 'goldLight', shadow: 'outline' });
+      const note = { size: 'small', align: 'right', color: 'goldLight', shadow: 'outline' };
+      if (app.saveFailed) {
+        if (Math.floor(t * 2) % 2 === 0) VL.ART.text(ctx, 'COULD NOT SAVE', VL.TUNING.width - 4, VL.TUNING.hudHeight + 3, { ...note, color: 'heartLight' });
+      } else if (app.savedAt !== null && app.time - app.savedAt < SAVED_FLASH) {
+        VL.ART.text(ctx, 'SAVED', VL.TUNING.width - 4, VL.TUNING.hudHeight + 3, note);
       }
     },
   });

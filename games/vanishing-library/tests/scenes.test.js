@@ -66,9 +66,18 @@ test('Enter confirms, Backspace and Delete erase, and typed text is collected pe
     const event = keyEvent(code);
     win.dispatch('keydown', event);
     assert.equal(event.prevented, true, `${code} is prevented`);
-    assert.equal(input.poll().pressed.erase, true, code);
+    const actions = input.poll();
+    assert.equal(actions.pressed.erase, true, code);
+    assert.equal(actions.typed, '\b', `${code} erases in the name field`);
     win.dispatch('keyup', keyEvent(code));
   }
+  // Typed characters never reach the browser (Firefox opens Quick Find on ' and /).
+  for (const key of ["'", '/', 'r']) {
+    const event = keyEvent('Quote', { key });
+    win.dispatch('keydown', event);
+    assert.equal(event.prevented, true, `${key} is prevented`);
+  }
+  input.poll();
   for (const key of ['R', 'o', 'b', ' ', '1', '!']) win.dispatch('keydown', keyEvent(`Key${key.toUpperCase()}`, { key }));
   win.dispatch('keydown', keyEvent('KeyB', { key: 'b', repeat: true }));
   win.dispatch('keydown', keyEvent('Backspace'));
@@ -267,6 +276,27 @@ test('title cursor moves and wraps; a damaged slot cannot be started; a saved on
   assert.equal(app.game.player.area, 'hut');
 });
 
+test('a save from a newer game shows as needing a newer page: no delete, no start, untouched', () => {
+  const { VL, document } = loadGame();
+  const backing = memoryStorage();
+  const storage = VL.createStorage(backing);
+  const text = JSON.stringify({ v: VL.saveVersion() + 1, name: 'Kai', maxHp: 12, flags: { lots: true }, visited: {} });
+  backing.setItem(VL.slotKey(0), text);
+  const app = VL.createApp({ storage });
+  assert.equal(app.title.slots[0].status, 'newer');
+  const strings = drawnText(VL, document, app);
+  assert.ok(strings.some((s) => /newer/i.test(s)), 'says it was saved by a newer game');
+  assert.ok(strings.some((s) => /reload/i.test(s)), 'says to reload the page');
+  assert.ok(!strings.some((s) => /damaged/i.test(s)));
+  assert.ok(!strings.some((s) => /delete it/i.test(s)), 'no delete hint on the card');
+  press(VL, app, 'erase');
+  assert.equal(app.title.confirmDelete, false, 'cannot be deleted');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'title', 'cannot be started');
+  assert.equal(app.game, null);
+  assert.equal(backing.getItem(VL.slotKey(0)), text, 'left exactly as it was');
+});
+
 test('deleting a slot asks first, defaults to No, and erases on Yes', () => {
   const { VL, document } = loadGame();
   const backing = memoryStorage();
@@ -363,6 +393,106 @@ test('Esc pauses: the world freezes, Resume continues, Save & Quit saves and ret
   assert.equal(app.title.slots[0].summary.name, 'Robin', 'the title shows the saved game');
 });
 
+test('a failed write keeps the game dirty, says so on the canvas, retries, and Save & Quit stays put', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const { app, backing } = titleApp(VL);
+  newGameTo(VL, app, 'Kai');
+  const game = app.game;
+  VL.place(game, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
+  const working = backing.setItem;
+  backing.setItem = () => {
+    const error = new Error('QuotaExceededError');
+    error.name = 'QuotaExceededError';
+    throw error;
+  };
+  game.flags.chest = true;
+  VL.earned(game);
+  app.update(VL.noActions(), STEP);
+  assert.equal(game.dirty, true, 'still dirty after the failed write');
+  assert.equal(app.storage.ok, true);
+  assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).flags.chest, undefined);
+  assert.ok(drawnText(VL, document, app, app.time).some((s) => /could not save/i.test(s)), 'the play scene says so');
+  assert.ok(!drawnText(VL, document, app, app.time).some((s) => /^saved$/i.test(s)), 'no SAVED flash');
+  press(VL, app, 'pause');
+  assert.ok(drawnText(VL, document, app).some((s) => /could not save/i.test(s)), 'the pause menu says so');
+  press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'pause', 'Save & Quit does not pretend it saved');
+  assert.equal(app.game, game);
+  // The browser frees space: the next step's retry writes and the note goes.
+  backing.setItem = working;
+  app.update(VL.noActions(), STEP);
+  assert.equal(game.dirty, false);
+  assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).flags.chest, true);
+  assert.ok(!drawnText(VL, document, app).some((s) => /could not save/i.test(s)));
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'title', 'Save & Quit works again');
+});
+
+test('an earning in any scene is saved the same step, not only in play', () => {
+  const { VL } = loadGame();
+  addFixtureWorld(VL);
+  const { app, backing } = titleApp(VL);
+  newGameTo(VL, app, 'Kai');
+  VL.defineScene('shop', {
+    update(a) {
+      a.game.flags.bought = true;
+      VL.earned(a.game);
+    },
+    draw() {},
+  });
+  app.setScene('shop');
+  app.update(VL.noActions(), STEP);
+  assert.equal(app.game.dirty, false);
+  assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).flags.bought, true);
+});
+
+test('two windows on one slot: the stale one stops instead of overwriting the newer progress', () => {
+  const { VL, document } = loadGame();
+  addFixtureWorld(VL);
+  const backing = memoryStorage();
+  const a = VL.createApp({ storage: VL.createStorage(backing) });
+  newGameTo(VL, a, 'Kai');
+  const b = VL.createApp({ storage: VL.createStorage(backing) });
+  press(VL, b, 'confirm');
+  assert.equal(b.sceneId, 'play');
+  b.game.flags.bookOne = true;
+  VL.earned(b.game);
+  b.update(VL.noActions(), STEP);
+  assert.equal(JSON.parse(backing.getItem(VL.slotKey(0))).flags.bookOne, true);
+  // Window A, which knows nothing of that, earns a shell.
+  a.game.flags.shell = true;
+  VL.earned(a.game);
+  a.update(VL.noActions(), STEP);
+  const saved = JSON.parse(backing.getItem(VL.slotKey(0)));
+  assert.equal(saved.flags.bookOne, true, 'window B\'s book is kept');
+  assert.equal(saved.flags.shell, undefined, 'window A did not write');
+  assert.equal(a.sceneId, 'conflict');
+  assert.ok(drawnText(VL, document, a).some((s) => /another window/i.test(s)), 'window A is told');
+  press(VL, a, 'interact');
+  assert.equal(a.sceneId, 'title');
+  assert.equal(a.title.slots[0].status, 'ok');
+  assert.equal(a.game, null);
+  // Window B plays on untouched.
+  b.game.flags.bookTwo = true;
+  VL.earned(b.game);
+  b.update(VL.noActions(), STEP);
+  assert.equal(b.sceneId, 'play');
+  assert.equal(JSON.parse(backing.getItem(VL.slotKey(0))).flags.bookTwo, true);
+  // Save & Quit in a stale window is refused the same way.
+  const c = VL.createApp({ storage: VL.createStorage(backing) });
+  press(VL, c, 'confirm');
+  b.game.flags.bookThree = true;
+  VL.earned(b.game);
+  b.update(VL.noActions(), STEP);
+  press(VL, c, 'pause');
+  press(VL, c, 'down');
+  press(VL, c, 'confirm');
+  assert.equal(c.sceneId, 'conflict');
+  assert.equal(JSON.parse(backing.getItem(VL.slotKey(0))).flags.bookThree, true);
+});
+
 test('fainting shows its screen, then respawns at the save point with full hearts and the earnings kept', () => {
   const { VL, document } = loadGame();
   addFixtureWorld(VL);
@@ -432,8 +562,9 @@ test('every string the new scenes draw is in the font', () => {
   addFixtureWorld(VL);
   const backing = memoryStorage();
   const storage = VL.createStorage(backing);
-  VL.saveSlot(storage, 1, VL.newGame({ name: 'Kai' }));
-  backing.setItem(VL.slotKey(2), '{broken');
+  VL.saveSlot(storage, 0, VL.newGame({ name: 'Kai' }));
+  backing.setItem(VL.slotKey(1), '{broken');
+  backing.setItem(VL.slotKey(2), JSON.stringify({ v: VL.saveVersion() + 1, name: 'New', maxHp: 6, flags: {}, visited: {} }));
   const strings = [];
   const original = VL.ART.text;
   VL.ART.text = (ctx, str, x, y, options = {}) => {
@@ -442,7 +573,8 @@ test('every string the new scenes draw is in the font', () => {
   };
   const ctx = fakeDocument().createElement('canvas').getContext('2d');
   const app = VL.createApp({ storage });
-  for (const scene of ['title', 'name', 'intro', 'pause', 'fainted']) {
+  app.saveFailed = true;
+  for (const scene of ['title', 'name', 'intro', 'play', 'pause', 'fainted', 'conflict']) {
     if (!app.game) app.game = VL.newGame({ name: 'Kai' });
     app.setScene(scene, scene === 'name' ? { slot: 0 } : undefined);
     if (scene === 'name') app.naming.text = 'Kai';
@@ -473,7 +605,7 @@ test('the playthrough drives the real title: named is the first milestone and a 
   assert.ok(VL.progress(drive.state).includes('start'));
 });
 
-test('VL.reloadApp saves, builds a fresh app and continues the slot; without a slot it lands on the title', () => {
+test('VL.reloadApp is a real reload: only what was saved comes back; without a slot it lands on the title', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
   const backing = memoryStorage();
@@ -481,14 +613,21 @@ test('VL.reloadApp saves, builds a fresh app and continues the slot; without a s
   newGameTo(VL, app, 'Robin');
   VL.touchSavePoint(app.game, { area: 'room', screen: '0,0', tx: 7, ty: 5 });
   app.game.flags.chest = true;
+  app.update(VL.noActions(), STEP);
+  app.game.flags.forgotten = true;
   app.game.hp = 1;
   const next = VL.reloadApp(app);
   assert.notEqual(next, app);
   assert.equal(next.sceneId, 'play');
   assert.equal(next.slot, 0);
-  assert.equal(next.game.flags.chest, true);
+  assert.equal(next.game.flags.chest, true, 'earned, so saved');
+  assert.equal(next.game.flags.forgotten, undefined, 'set without VL.earned: a reload loses it');
   assert.equal(next.game.hp, next.game.maxHp);
   assert.equal(next.game.player.area, 'room');
+  assert.equal(VL.reloadApp(next, { save: true }).game.flags.forgotten, undefined, 'the option saves the dirty game only');
+  next.game.flags.kept = true;
+  VL.earned(next.game);
+  assert.equal(VL.reloadApp(next, { save: true }).game.flags.kept, true);
   const bare = VL.reloadApp(VL.createApp());
   assert.equal(bare.sceneId, 'title');
   assert.equal(bare.game, null);

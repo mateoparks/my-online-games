@@ -20,6 +20,11 @@ VL.createApp = function createApp({ storage } = {}) {
     storage: storage || VL.createStorage(null),
     time: 0,
     savedAt: null,
+    // The slot's text as this app last read or wrote it, so a write can tell
+    // when another window has saved there since (then this one stops).
+    slotText: null,
+    saveFailed: false,
+    saveConflict: false,
     setScene(id, data) {
       const scene = VL.SCENES[id];
       if (!scene) throw new Error(`unknown scene ${id}`);
@@ -31,6 +36,10 @@ VL.createApp = function createApp({ storage } = {}) {
       dt = Math.min(dt, VL.TUNING.maxDt);
       app.time += dt;
       app.scene.update(app, actions, dt);
+      // Autosave in every scene (a shop or a reward is earned outside play);
+      // a failed write leaves the game dirty, so this is also the retry.
+      if (app.game?.dirty) app.save();
+      if (app.saveConflict && app.sceneId !== 'conflict') app.setScene('conflict');
     },
     draw(ctx, t) {
       VL.render(ctx, app, t);
@@ -38,22 +47,45 @@ VL.createApp = function createApp({ storage } = {}) {
     startGame(game, slot) {
       app.game = game;
       app.slot = slot;
+      app.slotText = slot === null ? null : app.storage.read(VL.slotKey(slot));
       app.savedAt = null;
+      app.saveFailed = false;
+      app.saveConflict = false;
     },
-    // Writes the game to its slot. A game without a slot (tests, the smoke)
-    // or with storage off just drops the dirty mark.
+    // Writes the game to its slot; true when it was written. A game without
+    // a slot (tests, the smoke) or with storage off just drops the dirty
+    // mark. A write that fails keeps the game dirty and sets saveFailed
+    // until one succeeds; a slot another window wrote since sets
+    // saveConflict and is never overwritten.
     save() {
       const game = app.game;
       if (!game) return false;
-      game.dirty = false;
-      if (app.slot === null) return false;
-      const ok = VL.saveSlot(app.storage, app.slot, game);
-      if (ok) app.savedAt = app.time;
+      if (app.slot === null || !app.storage.ok) {
+        game.dirty = false;
+        return false;
+      }
+      const key = VL.slotKey(app.slot);
+      if (app.storage.read(key) !== app.slotText) {
+        app.saveConflict = true;
+        game.dirty = false;
+        return false;
+      }
+      const text = JSON.stringify(VL.serializeSave(game));
+      const ok = app.storage.write(key, text);
+      if (ok) {
+        app.slotText = text;
+        app.savedAt = app.time;
+      }
+      game.dirty = !ok;
+      app.saveFailed = !ok;
       return ok;
     },
     quit() {
       app.game = null;
       app.slot = null;
+      app.slotText = null;
+      app.saveFailed = false;
+      app.saveConflict = false;
       app.setScene(VL.START_SCENE);
     },
   };
