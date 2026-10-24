@@ -202,7 +202,8 @@ VL.ART.drawSprite(ctx, 'crab', x, y);                     // (x, y) = top-left o
 - Characters are about 12×14 (the hero), small creatures 8–10 wide; the feet
   point is the centre of the feet box (`state.player.x/y`), boots ending 3px
   below it. The hero set is `hero-<down|up|left|right>-<0|1|2>` (stand, walk
-  A, walk B); `VL.ART.heroFrame(player, t)` picks one.
+  A, walk B); `VL.ART.heroFrame(player, t)` picks one. `player.lift` (pixels)
+  draws the hero that far up in the air with the shadow left on the ground.
 - The kit's own shared sprites: `heart-full|half|empty`, `icon-shell`,
   `pickup-shell` (with `VL.ART.drawSparkle`), `chicken`, `item-sword-wood`,
   `item-shield-wood`. For everything defined so far, page through the art
@@ -569,8 +570,12 @@ people, with real keys: "Zoë" typed into name entry (with `ë`), S next to Nell
 and Gran (as "Élodie"), a long line over two pages, and the shop's "not
 enough" and Yes/No (`w9-name-entry.png`, `w9-conversation.png`,
 `w9-name-accent.png`, `w9-paged-1.png`, `w9-paged-2.png`, `w9-shop.png`,
-`w9-shop-ask.png`). It runs
-for 60 s at most. A test file
+`w9-shop-ask.png`). Then W7's chickens, with real keys: S lifts the coop
+chicken and S throws it, F flies over the river, a long flight crosses the
+last highland chasm and its screen edge, a flight off the pier splashes down,
+and five sword hits bring the swarm (`w7-lift.png`, `w7-throw.png`,
+`w7-flight-short.png`, `w7-flight-long-edge.png`, `w7-splash.png`,
+`w7-swarm.png`). It runs for 90 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
 ## Overworld map
@@ -646,10 +651,10 @@ that runs no tests, and an `async` test function, both fail the node run.
   highland chasms are exactly 4 wide (no margin), and both straddle a screen
   edge (-1,-2 into -1,-3 and -2,-4 into -1,-4), so a flight crosses the edge
   mid-air: the screen slide must carry the hero and the chicken through and
-  finish the glide on the far screen. The lengths live in `VL.TUNING`
-  (`config.js` today); W7 moves them into its own `VL.tune` call (delete the
-  `config.js` lines), and `tests/overworld.test.js` reads them from
-  `VL.TUNING`, so retuning them is checked against the map.
+  finish the glide on the far screen. The lengths are W7's `VL.tune` in
+  `systems/chickens.js`, and `tests/overworld.test.js` reads them from
+  `VL.TUNING`, so retuning them is checked against the map (see
+  [Chickens](#chickens)).
 - **Decor** (`{ type: 'decor', art, x, y }`) draws scenery bigger than a tile
   (buildings, the lighthouse, the water wheel, signboards) over solid
   footprint tiles (`x` grass, `y` water, `G` woods floor). Register a painter
@@ -738,6 +743,63 @@ looks and wandering, `scenes/dialogue.js` the conversation, and
   Talking adds no saved field of its own.
 - **A shop after talking:** `shop: 'store'` opens that shop when the last page
   closes (after the entry's flags and gifts).
+
+## Chickens
+
+`systems/chickens.js` is the behaviour, sounds and art; `entities/chicken.js`
+the entity (`{ type: 'chicken', spot, lost? }`), which fills all eight chicken
+spots. Tests: `tests/chickens.test.js`.
+
+- **Wandering:** a chicken pecks, clucks and strolls a tile at a time within
+  `chickenWander` tiles of its spot, on open ground (this visit's tiles and
+  solid entities). Each copy has its own seeded random numbers, so chickens
+  never shift `state.rngState`. Chickens are not solid. Their pixel feet are
+  `px`/`py` and `x`/`y` follow the tile under them, so S finds them.
+- **Lift and throw:** S facing a chicken lifts it overhead
+  (`player.carrying`); S again throws it `chickenThrowTiles` ahead in the
+  facing direction. A throw stops short of anything solid and the screen's
+  edge, flies over water and chasms, and a chicken that comes down on one
+  splashes and flaps back to where it was thrown from. While carrying, the
+  hands do nothing else (Space does not swing, S does not talk or pull).
+- **Flight (F, a secret):** F next to a chicken (within `chickenReach` px),
+  or holding one, and the chicken carries the hero the way he faces. It looks
+  along the line for `VL.chickenFlightTiles(state) + 1` tiles: water and
+  chasms (`flyOver`) are flown over, anything else solid and the world's edge
+  stop it. It lands on the farthest open tile before that, with the chicken
+  still in hand; when there is none it goes out as far as it can, splashes
+  down (water) or tires (chasm), and flaps the hero back to exactly where he
+  took off, so a flight never strands him. Facing a wall it is a hop in
+  place. `VL.planFlight(state)` is the rule. The flight is `player.flight`;
+  movement and the hands stand still while it is set, `player.lift` raises
+  the hero, and crossing a screen edge mid-air starts the slide and the
+  glide finishes on the far screen. A faint mid-flight drops it.
+- **The Almanac:** `VL.chickenFlightTiles` is `chickenFlightLong` once
+  `state.flags.chickenAlmanacRead` is set (W11 sets it when the librarian
+  reads the book, and its popup tells the player about F), otherwise
+  `chickenFlightShort`.
+- **Always at its spot:** every visit starts with a chicken at each spot, so
+  one carried off, thrown in the water or left on another screen is back next
+  time, and the one in the hero's hands is not doubled (`prepare` skips it).
+  A flight carries its chicken along, so after crossing a chasm there is one
+  on each side.
+- **Swarm:** `chickenSwarmHits` sword hits on chickens in one visit and
+  `chickenSwarmSize` friends flap in from off screen and mob the hero for
+  `chickenSwarmSeconds`, then fly off. Harmless: no damage, no push.
+- **The lost chicken** (`lost: true`, spot `lostChicken`): once lifted it
+  stays with the hero (`state.chickenFollower`, transient): thrown or set
+  down, it trots after him and turns up behind him on every screen he
+  enters. For W11's kid: `VL.chickenWithHero(state, id)` says whether it is
+  with the hero, `VL.takeChicken(state, id)` takes it away, and
+  `VL.markFound(state, 'lostChicken')` keeps it off its spot for good.
+- **Saved:** nothing. Carrying, flights, the follower and the swarm are play
+  state; a reload puts every chicken back at its spot.
+- **Locks claimed:** `chickens` (a screen with a town chicken visited),
+  `chickenFlightShort` (with `chickens`), `chickenFlightLong` (with
+  `chickens` and `chickenAlmanacRead`).
+- **Sounds:** events `chickenCluck`/`chickenLift`/`chickenPeck` (`cluck`),
+  `chickenThrow`/`chickenFlight`/`chickenFlap` (`flap`), `chickenLand`
+  (`step`), `chickenSplash` (`dunk`), `chickenBonk` (`bump`),
+  `chickenTired`/`chickenHit`/`chickenSwarm` (`squawk`).
 
 ## Shops
 

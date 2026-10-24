@@ -1,0 +1,500 @@
+// W7, chickens: wandering and clucking, lift (S) and throw, the secret F
+// flight (2 tiles, 4 after the Almanac) with its water splash and edge/solid
+// safety, chickens kept at their spots, the swarm, and the lost chicken that
+// follows the hero (design: Chickens, Controls; README "Chickens").
+const assert = require('node:assert/strict');
+const { test, read, loadGame, playApp, fakeContext } = require('./harness');
+
+const STEP = 1 / 60;
+const { tile } = loadGame().VL.TUNING;
+
+// A yard the tests own, two screens wide. Row 3: a 2-tile pond; row 4: a
+// 4-tile pond; row 5: a pond wider than any flight; row 6: a tree; row 8: a
+// 4-tile channel across the screen edge into 1,0; row 9: a 2-tile chasm.
+function addYard(VL) {
+  VL.addScreens('yard', {
+    '0,0': {
+      tiles: [
+        'TTTTTTTTTTTTTTTT',
+        'T..............T',
+        'T..............T',
+        'T...WW.........T',
+        'T...WWWW.......T',
+        'T..WWWWWWWW....T',
+        'T....T.........T',
+        'T...............',
+        'T.............WW',
+        'T...VV.........T',
+        'TTTTTTTTTTTTTTTT',
+      ],
+      entities: [
+        { type: 'chicken', spot: 'yardHen', x: 10, y: 2 },
+        { type: 'chicken', spot: 'yardLost', x: 12, y: 6, lost: true },
+      ],
+    },
+    '1,0': {
+      tiles: [
+        'TTTTTTTTTTTTTTTT',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        '...............T',
+        'WW.............T',
+        'T..............T',
+        'TTTTTTTTTTTTTTTT',
+      ],
+      entities: [],
+    },
+  });
+}
+
+function setup() {
+  const { VL } = loadGame();
+  addYard(VL);
+  const sounds = [];
+  VL.sfx = (name) => {
+    sounds.push(name);
+    return true;
+  };
+  const app = playApp(VL);
+  const state = () => app.game;
+  const step = (actions = VL.noActions()) => app.update(actions, STEP);
+  const press = (action) => step(VL.actions({ pressed: [action] }));
+  const hold = (held, seconds) => {
+    for (let t = 0; t < seconds - 1e-9; t += STEP) step(VL.actions({ held }));
+  };
+  const wait = (seconds) => hold([], seconds);
+  const until = (done, seconds = 5) => {
+    for (let t = 0; t < seconds && !done(); t += STEP) step();
+    assert.ok(done(), 'condition reached in time');
+  };
+  const at = (where) => VL.place(app.game, { area: 'yard', screen: '0,0', ...where });
+  const chickens = () => app.game.room.entities.filter((e) => e.type === 'chicken');
+  const chicken = (spot) => chickens().find((e) => e.spot === spot);
+  // Stands the hero on (tx, ty) facing `facing` with a chicken at his feet,
+  // the way a player walks up to one and turns.
+  const inFront = (spot = 'yardHen') => {
+    const hen = chicken(spot);
+    const [dx, dy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[app.game.player.facing];
+    const px = app.game.player.x + dx * 12;
+    const py = app.game.player.y + dy * 16;
+    Object.assign(hen, { px, py, x: VL.tileOf(px, py).tx, y: VL.tileOf(px, py).ty, mode: 'idle', idle: 99 });
+    return hen;
+  };
+  const withChicken = (tx, ty, facing, spot = 'yardHen') => {
+    app.game.player.carrying = null;
+    at({ tx, ty, facing });
+    return inFront(spot);
+  };
+  const tileOf = () => [VL.heroTile(app.game).tx, VL.heroTile(app.game).ty];
+  const fly = () => {
+    press('fly');
+    until(() => !app.game.player.flight, 6);
+  };
+  return { VL, app, state, step, press, hold, wait, until, at, chickens, chicken, inFront, withChicken, tileOf, fly, sounds };
+}
+
+// ---------- tuning and placement ----------
+
+test('flight lengths are W7 tuning, out of config.js (README "Flight contract")', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.TUNING.chickenFlightShort, 2);
+  assert.equal(VL.TUNING.chickenFlightLong, 4);
+  assert.ok(!read('config.js').includes('chickenFlight'), 'config.js no longer holds the flight lengths');
+  assert.ok(read('systems/chickens.js').includes('chickenFlightShort: 2'));
+});
+
+test('all eight chicken spots hold a chicken, the lost one marked lost', () => {
+  const { VL } = loadGame();
+  const spots = Object.values(VL.SPOTS).filter((spot) => spot.how === 'chicken');
+  assert.equal(spots.length, 8);
+  for (const spot of spots) {
+    assert.ok(spot.filled, `${spot.id} is filled`);
+    const entity = VL.getScreen(spot.area, spot.screen).entities.find((e) => e.spot === spot.id);
+    assert.equal(entity.type, 'chicken', spot.id);
+    assert.equal(Boolean(entity.lost), spot.id === 'lostChicken', spot.id);
+  }
+});
+
+// ---------- wandering ----------
+
+test('chickens wander near home on open ground, peck and cluck, without touching the game\'s random numbers', () => {
+  const { VL, app, at, wait, chicken, sounds } = setup();
+  at({ tx: 2, ty: 1 });
+  const rng = app.game.rngState;
+  const hen = chicken('yardHen');
+  const seen = new Set();
+  for (let i = 0; i < 60 * 40; i += 1) {
+    wait(STEP);
+    const { tx, ty } = VL.tileOf(hen.px, hen.py);
+    seen.add(`${tx},${ty}`);
+    assert.ok(Math.abs(tx - 10) <= VL.TUNING.chickenWander && Math.abs(ty - 2) <= VL.TUNING.chickenWander, `stays near home, at ${tx},${ty}`);
+    assert.ok(!VL.isSolidAt('yard', '0,0', tx, ty, app.game.room), `never on a solid tile (${tx},${ty})`);
+    assert.deepEqual([hen.x, hen.y], [tx, ty], 'its tile follows its feet, so S finds it');
+  }
+  assert.ok(seen.size > 2, `it walked about (${seen.size} tiles)`);
+  assert.equal(app.game.rngState, rng, 'drops stay reproducible');
+  assert.ok(sounds.includes('cluck'), 'it clucks now and then');
+});
+
+// ---------- lift and throw ----------
+
+test('S facing a chicken lifts it over the hero\'s head; the same press never throws it', () => {
+  const { app, press, withChicken, chickens, sounds } = setup();
+  const hen = withChicken(7, 2, 'right');
+  press('interact');
+  assert.equal(app.game.player.carrying, hen);
+  assert.ok(!chickens().includes(hen), 'it left the ground');
+  assert.ok(sounds.includes('cluck'));
+});
+
+test('carrying a chicken, the hero walks with it and S throws it ahead, where it lands on open ground', () => {
+  const { app, press, hold, wait, withChicken, chickens, sounds, tileOf } = setup();
+  const hen = withChicken(4, 7, 'right');
+  press('interact');
+  hold(['right'], 0.2);
+  assert.equal(app.game.player.carrying, hen, 'still held while walking');
+  const [tx] = tileOf();
+  press('interact');
+  assert.equal(app.game.player.carrying, null);
+  assert.ok(chickens().includes(hen) && hen.mode === 'air');
+  assert.ok(sounds.includes('flap'));
+  wait(1.5);
+  assert.equal(hen.z, 0);
+  assert.ok(hen.x >= tx + 2, `thrown a few tiles (from ${tx} to ${hen.x})`);
+  assert.equal(hen.y, 7);
+});
+
+test('a throw stops at a tree, never goes through it or off the world', () => {
+  const { VL, app, press, wait, withChicken } = setup();
+  const hen = withChicken(3, 6, 'right');
+  press('interact');
+  press('interact');
+  wait(1.5);
+  assert.ok(hen.x <= 4, `landed short of the tree (x ${hen.x})`);
+  const edge = withChicken(1, 2, 'left', 'yardLost');
+  press('interact');
+  press('interact');
+  wait(1.5);
+  assert.ok(edge.px >= 0 && !VL.isSolidAt('yard', '0,0', edge.x, edge.y, app.game.room), 'landed inside the yard');
+});
+
+test('a chicken thrown into water splashes and flutters back to land: never lost', () => {
+  const { VL, app, press, wait, withChicken, sounds, until } = setup();
+  const hen = withChicken(2, 4, 'right');
+  press('interact');
+  press('interact');
+  until(() => app.game.events.some((e) => e.type === 'chickenSplash') || sounds.includes('dunk'), 2);
+  until(() => hen.mode === 'idle' || hen.mode === 'walk', 4);
+  wait(0.1);
+  assert.ok(!VL.isSolidAt('yard', '0,0', hen.x, hen.y, app.game.room), `back on land at ${hen.x},${hen.y}`);
+  assert.ok(app.game.room.entities.includes(hen));
+});
+
+test('while carrying, S throws instead of talking or pulling, and Space does not swing', () => {
+  const { VL, app, press, withChicken } = setup();
+  VL.giveItem(app.game, 'woodSword');
+  app.game.popups.queue.length = 0;
+  withChicken(7, 2, 'right');
+  press('interact');
+  const hp = app.game.hp;
+  press('mainHand');
+  assert.ok(!app.game.player.swing, 'no swing with a chicken overhead');
+  assert.equal(app.game.hp, hp);
+});
+
+// ---------- flight ----------
+
+test('F with no chicken nearby does nothing (the flight stays a secret)', () => {
+  const { app, at, press, tileOf } = setup();
+  at({ tx: 3, ty: 3, facing: 'right' });
+  press('fly');
+  assert.ok(!app.game.player.flight);
+  assert.deepEqual(tileOf(), [3, 3]);
+});
+
+test('short flight: F next to a chicken clears a 2-tile pond and lands 3 tiles on, chicken in hand', () => {
+  const { app, press, step, withChicken, tileOf, fly, sounds } = setup();
+  const hen = withChicken(3, 3, 'right');
+  press('fly');
+  assert.ok(app.game.player.flight, 'took off');
+  assert.equal(app.game.player.carrying, hen, 'the chicken carries the hero');
+  step();
+  step();
+  assert.ok(app.game.player.lift > 0, 'off the ground');
+  fly();
+  assert.deepEqual(tileOf(), [6, 3]);
+  assert.equal(app.game.player.lift, 0);
+  assert.equal(app.game.player.carrying, hen, 'it lands with the hero');
+  assert.ok(sounds.includes('flap'));
+});
+
+test('long flight after the Almanac: clears a 4-tile pond and lands 5 tiles on', () => {
+  const { app, withChicken, tileOf, fly } = setup();
+  app.game.flags.chickenAlmanacRead = true;
+  withChicken(3, 4, 'right');
+  fly();
+  assert.deepEqual(tileOf(), [8, 4]);
+});
+
+test('a carried chicken flies too: F while holding one', () => {
+  const { app, press, withChicken, tileOf, fly } = setup();
+  withChicken(3, 3, 'up');
+  press('interact');
+  app.game.player.facing = 'right';
+  fly();
+  assert.deepEqual(tileOf(), [6, 3]);
+});
+
+test('too far: a short flight over a 4-tile pond splashes down and the chicken flaps the hero back to where he took off', () => {
+  const { VL, app, withChicken, fly, sounds, step, press } = setup();
+  withChicken(3, 4, 'right');
+  const from = { x: app.game.player.x, y: app.game.player.y };
+  press('fly');
+  let farthest = from.x;
+  let splashed = false;
+  for (let i = 0; i < 60 * 6 && app.game.player.flight; i += 1) {
+    step();
+    farthest = Math.max(farthest, app.game.player.x);
+    if (app.game.player.flight?.phase === 'dip') splashed = true;
+  }
+  assert.ok(splashed && sounds.includes('dunk'), 'a splash');
+  assert.ok(farthest >= from.x + 2.5 * VL.TUNING.tile, 'it did fly out over the water');
+  assert.deepEqual([app.game.player.x, app.game.player.y], [from.x, from.y], 'back exactly where he took off');
+  assert.equal(app.game.player.lift, 0);
+  fly();
+});
+
+test('a pond wider than the long flight splashes too, and a chasm makes the chicken turn back tired', () => {
+  const { app, withChicken, fly, tileOf, sounds } = setup();
+  app.game.flags.chickenAlmanacRead = true;
+  withChicken(2, 5, 'right');
+  fly();
+  assert.deepEqual(tileOf(), [2, 5]);
+  assert.ok(sounds.includes('dunk'));
+  sounds.length = 0;
+  app.game.flags.chickenAlmanacRead = false;
+  withChicken(3, 9, 'right');
+  fly();
+  assert.deepEqual(tileOf(), [6, 9], 'a 2-tile chasm is a short flight');
+  withChicken(6, 9, 'left');
+  fly();
+  assert.deepEqual(tileOf(), [3, 9], 'and back');
+});
+
+test('a solid in the way: the flight lands before it, or hops in place against it', () => {
+  const { app, withChicken, fly, tileOf, step, press } = setup();
+  app.game.flags.chickenAlmanacRead = true;
+  withChicken(1, 6, 'right');
+  fly();
+  assert.deepEqual(tileOf(), [4, 6], 'landed short of the tree');
+  withChicken(4, 6, 'right');
+  press('fly');
+  let highest = 0;
+  for (let i = 0; i < 120 && app.game.player.flight; i += 1) {
+    step();
+    highest = Math.max(highest, app.game.player.lift);
+  }
+  assert.ok(highest > 0, 'a hop');
+  assert.deepEqual(tileOf(), [4, 6], 'never through the tree');
+});
+
+test('the world edge stops a flight like a wall', () => {
+  const { app, withChicken, fly, tileOf } = setup();
+  withChicken(1, 2, 'left');
+  fly();
+  assert.deepEqual(tileOf(), [1, 2]);
+  assert.equal(app.game.player.screen, '0,0');
+});
+
+test('a long flight across a screen edge rides through the slide, hero and chicken in the air, and lands on the far screen', () => {
+  const { VL, app, step, press, withChicken, tileOf } = setup();
+  app.game.flags.chickenAlmanacRead = true;
+  const hen = withChicken(13, 8, 'right');
+  press('fly');
+  let slid = false;
+  for (let i = 0; i < 60 * 6 && app.game.player.flight; i += 1) {
+    step();
+    if (app.game.transition) {
+      slid = true;
+      assert.ok(app.game.player.lift > 0, 'up in the air during the slide');
+      assert.equal(app.game.player.carrying, hen);
+    }
+  }
+  assert.ok(slid, 'the screen slid');
+  assert.equal(app.game.player.screen, '1,0');
+  assert.deepEqual(tileOf(), [2, 8], '5 tiles from take-off');
+  assert.equal(app.game.player.carrying, hen);
+  assert.ok(!VL.isBlocked('yard', '1,0', app.game.player.x, app.game.player.y, VL.TUNING.heroBox.w, VL.TUNING.heroBox.h, app.game.room));
+});
+
+test('the flight is drawn: the hero lifted with the chicken flapping overhead, and a splash', () => {
+  const { VL, app, press, step, withChicken } = setup();
+  const canvas = fakeContext();
+  withChicken(3, 4, 'right');
+  press('fly');
+  for (let i = 0; i < 60 * 4 && app.game.player.flight; i += 1) {
+    step();
+    VL.drawWorld(canvas, app.game, i * STEP);
+  }
+  assert.ok(canvas.calls.fillRect > 0);
+});
+
+// ---------- the flight contract on the real map ----------
+
+function overworld() {
+  const { VL } = loadGame();
+  const app = playApp(VL);
+  const step = () => app.update(VL.noActions(), STEP);
+  const flyFrom = (screen, tx, ty, facing, almanac = true) => {
+    app.game.flags.chickenAlmanacRead = almanac;
+    VL.place(app.game, { area: 'overworld', screen, tx, ty, facing });
+    const hen = app.game.room.entities.find((e) => e.type === 'chicken');
+    Object.assign(hen, { px: app.game.player.x + 4, py: app.game.player.y, x: tx, y: ty, mode: 'idle', idle: 99 });
+    app.update(VL.actions({ pressed: ['fly'] }), STEP);
+    assert.ok(app.game.player.flight, `took off from ${screen}`);
+    for (let i = 0; i < 60 * 8 && app.game.player.flight; i += 1) step();
+    return [app.game.player.screen, VL.heroTile(app.game).tx, VL.heroTile(app.game).ty];
+  };
+  return { VL, app, flyFrom };
+}
+
+test('flight contract: the long flight crosses both highland chasms over their screen edges, and the chicken comes too', () => {
+  const { app, flyFrom } = overworld();
+  assert.deepEqual([...flyFrom('-1,-2', 7, 3, 'up')], ['-1,-3', 7, 9], 'the ledge up to the highlands');
+  assert.ok(app.game.player.carrying);
+  assert.deepEqual([...flyFrom('-1,-3', 7, 9, 'down')], ['-1,-2', 7, 3], 'and back down to the ledge');
+  assert.deepEqual([...flyFrom('-2,-4', 12, 4, 'right')], ['-1,-4', 1, 4], 'east over the last chasm');
+  assert.deepEqual([...flyFrom('-1,-4', 1, 4, 'left')], ['-2,-4', 12, 4], 'and west again from the lair side');
+});
+
+test('flight contract: the short flight falls short of the highlands and brings the hero back to the ledge', () => {
+  const { flyFrom } = overworld();
+  assert.deepEqual([...flyFrom('-1,-2', 7, 3, 'up', false)], ['-1,-2', 7, 3]);
+  assert.deepEqual([...flyFrom('-2,-4', 12, 4, 'right', false)], ['-2,-4', 12, 4]);
+});
+
+// ---------- chickens stay at their spots ----------
+
+test('a chicken carried off is back at its spot on the next visit, and never doubled while carried', () => {
+  const { app, press, hold, withChicken, chicken, at, chickens } = setup();
+  withChicken(13, 2, 'right');
+  press('interact');
+  hold(['right'], 0.6);
+  hold(['down'], 0.01);
+  at({ screen: '1,0', tx: 3, ty: 2 });
+  at({ tx: 8, ty: 2 });
+  assert.equal(chickens().filter((e) => e.spot === 'yardHen').length, 0, 'the one in hand is not doubled');
+  press('interact');
+  at({ screen: '1,0', tx: 3, ty: 2 });
+  at({ tx: 8, ty: 2 });
+  assert.ok(chicken('yardHen'), 'thrown and left behind: back at its spot');
+  assert.deepEqual([chicken('yardHen').x, chicken('yardHen').y], [10, 2]);
+});
+
+test('respawn: a highland chicken is always at its spot, and a flight leaves one on each side', () => {
+  const { app, flyFrom } = overworld();
+  flyFrom('-2,-4', 12, 4, 'right');
+  const lair = app.game.room.entities.filter((e) => e.type === 'chicken');
+  assert.equal(lair.length, 1, 'chickenLair waits at -1,-4');
+  assert.equal(lair[0].spot, 'chickenLair');
+  assert.equal(app.game.player.carrying.spot, 'chickenGap', 'and the one from across the chasm is in hand');
+});
+
+// ---------- the swarm ----------
+
+test('swarm: hit a chicken too often and its friends flap round the hero, harmless, then fly off', () => {
+  const { VL, app, step, press, wait, withChicken, inFront, chickens, sounds } = setup();
+  VL.giveItem(app.game, 'woodSword');
+  app.game.popups.queue.length = 0;
+  const hp = app.game.hp;
+  withChicken(7, 2, 'right');
+  for (let i = 0; i < VL.TUNING.chickenSwarmHits - 1; i += 1) {
+    inFront();
+    press('mainHand');
+    wait(0.5);
+  }
+  assert.ok(sounds.includes('squawk'));
+  assert.equal(app.game.room.entities.filter((e) => e.type === 'chickenSwarm').length, 0, 'no swarm yet');
+  inFront();
+  press('mainHand');
+  step();
+  const swarm = () => app.game.room.entities.filter((e) => e.type === 'chickenSwarm');
+  assert.equal(swarm().length, VL.TUNING.chickenSwarmSize);
+  wait(VL.TUNING.chickenSwarmSeconds / 2);
+  const close = swarm().filter((e) => Math.hypot(e.px - app.game.player.x, e.py - app.game.player.y) < 40);
+  assert.ok(close.length >= 3, `they mob the hero (${close.length} close)`);
+  assert.equal(app.game.hp, hp, 'harmless');
+  wait(VL.TUNING.chickenSwarmSeconds + 4);
+  assert.equal(swarm().length, 0, 'and fly off');
+  assert.equal(app.game.hp, hp);
+  assert.ok(chickens().length >= 1, 'the chicken itself is still about');
+});
+
+// ---------- the lost chicken ----------
+
+test('the lost chicken follows the hero once found, across screen edges, until W11\'s kid takes it', () => {
+  const { VL, app, press, hold, wait, withChicken, chicken, at } = setup();
+  const lost = withChicken(12, 6, 'right', 'yardLost');
+  assert.ok(!VL.chickenWithHero(app.game, 'yardLost'));
+  press('interact');
+  assert.ok(VL.chickenWithHero(app.game, 'yardLost'));
+  press('interact');
+  wait(1);
+  at({ tx: 12, ty: 7 });
+  const gap = () => Math.hypot(lost.px - app.game.player.x, lost.py - app.game.player.y);
+  wait(3);
+  assert.ok(gap() < 32, `it caught up (${Math.round(gap())} px)`);
+  hold(['right'], 1.5);
+  assert.equal(app.game.player.screen, '1,0');
+  wait(2);
+  const here = app.game.room.entities.find((e) => e.spot === 'yardLost');
+  assert.ok(here, 'it came along to the next screen');
+  assert.ok(Math.hypot(here.px - app.game.player.x, here.py - app.game.player.y) < 32);
+  assert.ok(VL.chickenWithHero(app.game, 'yardLost'));
+  assert.ok(VL.takeChicken(app.game, 'yardLost'));
+  assert.ok(!VL.chickenWithHero(app.game, 'yardLost'));
+  assert.ok(!app.game.room.entities.includes(here));
+  VL.markFound(app.game, 'yardLost');
+  at({ tx: 3, ty: 2 });
+  assert.equal(chicken('yardLost'), undefined, 'home with the kid, gone from its spot');
+});
+
+// ---------- safety, progression, sound, docs ----------
+
+test('a faint mid-flight never leaves the hero hanging in the air', () => {
+  const { VL, app, press, step, withChicken } = setup();
+  withChicken(3, 3, 'right');
+  press('fly');
+  step();
+  VL.respawn(app.game);
+  step();
+  assert.ok(!app.game.player.flight);
+  assert.equal(app.game.player.lift, 0);
+});
+
+test('W7 claims the chicken locks: chickens, and both flights', () => {
+  const { VL } = loadGame();
+  for (const id of ['chickens', 'chickenFlightShort', 'chickenFlightLong']) assert.equal(typeof VL.LOCKS[id].reached, 'function', id);
+  const state = VL.newGame();
+  assert.ok(!VL.LOCKS.chickens.reached(state));
+  state.visited['overworld:2,1'] = true;
+  assert.ok(VL.LOCKS.chickens.reached(state) && VL.LOCKS.chickenFlightShort.reached(state));
+  assert.ok(!VL.LOCKS.chickenFlightLong.reached(state));
+  state.flags.chickenAlmanacRead = true;
+  assert.ok(VL.LOCKS.chickenFlightLong.reached(state));
+  assert.equal(VL.chickenFlightTiles(state), VL.TUNING.chickenFlightLong);
+});
+
+test('chicken events make their sounds', () => {
+  const { VL } = loadGame();
+  for (const name of ['squawk', 'flap', 'dunk']) assert.ok(VL.SOUND.EFFECTS[name], name);
+});
+
+test('README documents chickens and the flight', () => {
+  const readme = read('README.md');
+  for (const word of ['## Chickens', 'VL.chickenWithHero', 'VL.takeChicken', 'chickenAlmanacRead', 'chickenSwarmHits']) assert.ok(readme.includes(word), word);
+});

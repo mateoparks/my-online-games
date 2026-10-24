@@ -75,6 +75,11 @@
       const { held } = actions;
       let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
       let dy = (held.down ? 1 : 0) - (held.up ? 1 : 0);
+      // Carried by a chicken (systems/chickens.js): the flight moves the hero.
+      if (player.flight) {
+        player.moving = false;
+        return;
+      }
       updateFacing(player, dx, dy);
       player.moving = dx !== 0 || dy !== 0;
       if (!player.moving) return;
