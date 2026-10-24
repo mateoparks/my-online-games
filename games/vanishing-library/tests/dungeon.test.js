@@ -445,7 +445,7 @@ test('the map item reveals every room on the map screen; M opens it only inside 
   // Outside a dungeon M is not the framework's.
   t.place({ area: 'overworld', screen: '1,1', tx: 8, ty: 6, facing: 'down' });
   t.press('map');
-  assert.equal(t.app.sceneId, 'play');
+  assert.notEqual(t.app.sceneId, 'dungeonMap');
 });
 
 test('the map screen draws visited rooms, every room with the map, the boss mark and the keys, in words the font has', () => {

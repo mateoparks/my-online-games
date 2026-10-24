@@ -33,6 +33,7 @@ VL.enterScreen = function enterScreen(state, where, slideDir) {
   player.x = spot.x;
   player.y = spot.y;
   if (where.facing) player.facing = where.facing;
+  const first = !state.visited[`${where.area}:${where.screen}`];
   state.visited[`${where.area}:${where.screen}`] = true;
   // `prepare(state, copy)` lets an entity type set up this visit's copy (an
   // opened chest) or leave it out by returning false (an ore lump already taken).
@@ -44,7 +45,7 @@ VL.enterScreen = function enterScreen(state, where, slideDir) {
     tiles: {},
   };
   for (const hook of VL.ROOM_HOOKS) hook(state);
-  state.events.push({ type: 'enterScreen', area: where.area, screen: where.screen });
+  state.events.push({ type: 'enterScreen', area: where.area, screen: where.screen, first });
 };
 
 // Runs once a screen's room is built, before it is drawn or anything moves:

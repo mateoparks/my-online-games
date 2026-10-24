@@ -1104,6 +1104,102 @@ async function main() {
       for (const problem of libProblems) console.log(`     ${problem}`);
     }
 
+    // W12, paper and ink with real keys: Space grinding a berry with the
+    // mortar, S copying a mural, M with no map, M asking, the map inking in
+    // and drawn with the Herbalist's marks, and a new screen on it after,
+    // saved as w12-*.png. A block of its own, so its names never clash.
+    {
+      errors.length = 0;
+      const inkProblems = [];
+      const codes = { KeyS: [83, 's'], KeyM: [77, 'm'], Space: [32, ' '] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) inkProblems.push(`animation frames stopped after ${code}`);
+      };
+      const picture = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const look = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const inkGame = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        g.popups.seen.controls = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+      const field = { area: 'overworld', screen: '1,1', tx: 4, ty: 6, facing: 'up' };
+
+      await inkGame(field, "VL.giveItem(g, 'mortarPestle'); VL.addResource(g, 'berries', 3);");
+      await tapKey('Space');
+      await sleep(150);
+      await picture('w12-mortar');
+      const ground = await look('[g.inventory.berries, g.inventory.ink]');
+      if (ground.join() !== '2,1') inkProblems.push(`Space with the mortar left berries and ink at ${ground}`);
+
+      await inkGame(field, "VL.addResource(g, 'paper', 1); VL.addResource(g, 'ink', 1);");
+      await evaluate("VL.app.game.room.entities.push({ type: 'copyable', copy: 'woodsMapCopy', look: 'mural', x: 4, y: 5 }, { type: 'copyable', copy: 'woodsMapCopy', look: 'tablet', x: 6, y: 5 })");
+      await sleep(200);
+      await picture('w12-mural');
+      await tapKey('KeyS');
+      await sleep(400);
+      await picture('w12-copy');
+      if (!(await look("VL.hasItem(g, 'woodsMapCopy') && g.inventory.paper === 0 && g.inventory.ink === 0"))) inkProblems.push('S at the mural with paper and ink made no copy');
+      await evaluate("VL.app.setScene('copyView', { id: 'woodsMapCopy' })");
+      await sleep(300);
+      await picture('w12-copy-view');
+
+      const explored = ['1,1', '1,0', '0,0', '0,1', '2,1', '2,0', '3,0', '2,-1', '3,-1', '2,-2', '3,-2', '1,-1', '0,-1', '-1,-1', '-1,0', '-1,1', '2,-3'];
+      const visits = `for (const key of ${JSON.stringify(explored)}) g.visited['overworld:' + key] = true;`;
+      const books = "g.library.returned.push('bookPrimer', 'bookHerbalist'); g.library.read.push('bookPrimer', 'bookHerbalist'); g.popups.seen.mapReady = true;";
+      await inkGame({ area: 'overworld', screen: '2,0', tx: 6, ty: 6 }, visits);
+      await tapKey('KeyM');
+      await sleep(400);
+      await picture('w12-map-none');
+      if ((await evaluate('VL.app.sceneId')) !== 'popup') inkProblems.push('M with no map and no Primer did not say why');
+      await inkGame({ area: 'overworld', screen: '2,0', tx: 6, ty: 6 }, `${visits} ${books} VL.addResource(g, 'paper', 1); VL.addResource(g, 'ink', 1);`);
+      await tapKey('KeyM');
+      await sleep(300);
+      await picture('w12-map-ask');
+      if ((await look('VL.app.worldMapView && VL.app.worldMapView.mode')) !== 'ask') inkProblems.push('M with the Primer, paper and ink did not ask to draw');
+      await tapKey('KeyS');
+      await sleep(450);
+      await picture('w12-map-drawing');
+      await sleep(1400);
+      await picture('w12-map');
+      const drawn = await look("[VL.app.sceneId, VL.app.worldMapView.mode, VL.hasItem(g, 'worldMap'), VL.mapView(g).screens.length, VL.mapView(g).marks.length]");
+      if (drawn.slice(0, 4).join() !== `worldMap,view,true,${explored.length}` || !(drawn[4] > 0)) inkProblems.push(`the drawn map: ${drawn}`);
+      await tapKey('KeyM');
+      await evaluate("(() => { const g = VL.app.game; g.popups.queue.length = 0; VL.app.setScene('play'); VL.place(g, { area: 'overworld', screen: '4,0', tx: 3, ty: 6 }); })()");
+      await sleep(200);
+      await tapKey('KeyM');
+      await sleep(400);
+      await picture('w12-map-explored');
+      if (!(await look("VL.mapView(g).screens.includes('4,0')"))) inkProblems.push('a screen explored after drawing is not on the map');
+      await tapKey('KeyM');
+      const everything = "for (const key of Object.keys(VL.AREAS.overworld.screens)) g.visited['overworld:' + key] = true;"
+        + " g.library.returned.push('bookPrimer', 'bookHerbalist', 'bookSmithsLedger'); g.library.read.push('bookPrimer', 'bookHerbalist', 'bookSmithsLedger');"
+        + " g.popups.seen.mapReady = true; VL.giveItem(g, 'worldMap'); g.popups.queue.length = 0;";
+      await inkGame({ area: 'overworld', screen: '1,1', tx: 8, ty: 6 }, everything);
+      await tapKey('KeyM');
+      await sleep(400);
+      await picture('w12-map-full');
+      const full = await look("[VL.app.sceneId, VL.mapView(g).labels.length, VL.mapView(g).marks.length]");
+      if (full[0] !== 'worldMap' || !(full[1] >= 8) || !(full[2] > 0)) inkProblems.push(`the full map: ${full}`);
+
+      inkProblems.push(...errors);
+      if (inkProblems.length) failures += 1;
+      console.log(`${inkProblems.length ? 'FAIL' : 'ok  '} paper and ink: mortar, a copied mural, M before and after drawing, the drawn map with marks, ${path.join(outDir, 'w12-*.png')}`);
+      for (const problem of inkProblems) console.log(`     ${problem}`);
+    }
+
     // W13, the dungeon framework on the sample dungeon (tests/sample-dungeon.js,
     // loaded into the page here, never by the game) with real keys: a room
     // with its statue and enemy, the locked door's note, the block pushed

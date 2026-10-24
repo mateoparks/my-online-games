@@ -43,6 +43,7 @@ VL.FILES = {
     'systems/digging.js',
     'systems/dungeon.js',
     'systems/library.js',
+    'systems/paper-ink.js',
   ],
 
   entities: [
@@ -73,6 +74,7 @@ VL.FILES = {
     'entities/dungeon-map.js',
     'entities/warp.js',
     'entities/library-finds.js',
+    'entities/copyable.js',
   ],
 
   regions: [
@@ -109,6 +111,7 @@ VL.FILES = {
     'scenes/dungeon-map.js',
     'scenes/reading.js',
     'scenes/puppet-show.js',
+    'scenes/world-map.js',
   ],
 
   boot: [
