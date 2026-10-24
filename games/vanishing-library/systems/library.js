@@ -284,7 +284,7 @@
     const count = VL.booksReturned(state);
     const next = VL.nextRewardAt(state);
     let tally = `That makes ${count} ${count === 1 ? 'book' : 'books'} back on the shelves!`;
-    if (next !== null) tally += ` Bring me ${next - count} more and I'll have something special for you.`;
+    if (next !== null && !VL.pendingReward(state)) tally += ` Bring me ${next - count} more and I'll have something special for you.`;
     return [...lines, tally];
   };
 
