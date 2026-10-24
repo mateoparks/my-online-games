@@ -674,15 +674,15 @@ async function main() {
         await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
         await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
       };
-      const shot = async (name) => {
-        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
-        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
-        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      const snap = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
       };
-      const read = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const peek = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
       // A new game in play at `where` (no popups), with this screen's first
       // chicken standing just in front of the hero.
-      const stage = (where, setup = '') => evaluate(`(() => {
+      const henGame = (where, setup = '') => evaluate(`(() => {
         VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
         const g = VL.app.game;
         g.popups.seen.controls = true;
@@ -702,60 +702,60 @@ async function main() {
       })()`);
       const flown = async (ms) => {
         await sleep(ms);
-        return read('[Boolean(g.player.flight), g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty]');
+        return peek('[Boolean(g.player.flight), g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty]');
       };
 
-      await stage({ area: 'overworld', screen: '2,1', tx: 4, ty: 4, facing: 'up' });
+      await henGame({ area: 'overworld', screen: '2,1', tx: 4, ty: 4, facing: 'up' });
       await henInFront();
       await tap('KeyS');
       await sleep(400);
-      await shot('w7-lift');
-      if (!(await read('Boolean(g.player.carrying)'))) henProblems.push('S at the coop chicken did not lift it');
+      await snap('w7-lift');
+      if (!(await peek('Boolean(g.player.carrying)'))) henProblems.push('S at the coop chicken did not lift it');
       await evaluate("VL.app.game.player.facing = 'down'");
       await tap('KeyS');
       await sleep(130);
-      await shot('w7-throw');
-      if (await read('Boolean(g.player.carrying)')) henProblems.push('S with a chicken overhead did not throw it');
+      await snap('w7-throw');
+      if (await peek('Boolean(g.player.carrying)')) henProblems.push('S with a chicken overhead did not throw it');
 
-      await stage({ area: 'overworld', screen: '3,-2', tx: 8, ty: 4, facing: 'right' });
+      await henGame({ area: 'overworld', screen: '3,-2', tx: 8, ty: 4, facing: 'right' });
       await henInFront();
       await tap('KeyF');
       await sleep(350);
-      await shot('w7-flight-short');
+      await snap('w7-flight-short');
       const short = await flown(1200);
       if (short.join() !== 'false,3,-2,11,4') henProblems.push(`the short flight over the river ended at ${short}`);
 
-      await stage({ area: 'overworld', screen: '-2,-4', tx: 12, ty: 4, facing: 'right' }, 'g.flags.chickenAlmanacRead = true;');
+      await henGame({ area: 'overworld', screen: '-2,-4', tx: 12, ty: 4, facing: 'right' }, 'g.flags.chickenAlmanacRead = true;');
       await henInFront();
       await tap('KeyF');
       await sleep(820);
-      await shot('w7-flight-long-edge');
+      await snap('w7-flight-long-edge');
       const long = await flown(1800);
       if (long.join() !== 'false,-1,-4,1,4') henProblems.push(`the long flight over the chasm ended at ${long}`);
 
-      await stage({ area: 'overworld', screen: '2,1', tx: 8, ty: 9, facing: 'left' });
+      await henGame({ area: 'overworld', screen: '2,1', tx: 8, ty: 9, facing: 'left' });
       await henInFront();
       await tap('KeyF');
       let dipped = false;
       for (let i = 0; i < 30 && !dipped; i += 1) {
         await sleep(50);
-        dipped = await read("g.player.flight ? g.player.flight.phase === 'dip' : false");
+        dipped = await peek("g.player.flight ? g.player.flight.phase === 'dip' : false");
       }
       await sleep(120);
-      await shot('w7-splash');
+      await snap('w7-splash');
       const splash = await flown(2500);
       if (!dipped || splash.join() !== 'false,2,1,8,9') henProblems.push(`the flight off the pier: dipped ${dipped}, ended at ${splash}`);
 
-      await stage({ area: 'overworld', screen: '2,1', tx: 4, ty: 4, facing: 'up' }, "VL.giveItem(g, 'woodSword');");
-      const hp = await read('g.hp');
+      await henGame({ area: 'overworld', screen: '2,1', tx: 4, ty: 4, facing: 'up' }, "VL.giveItem(g, 'woodSword');");
+      const hp = await peek('g.hp');
       for (let i = 0; i < 5; i += 1) {
         await henInFront();
         await tap('Space');
         await sleep(420);
       }
       await sleep(900);
-      await shot('w7-swarm');
-      const swarm = await read("[g.room.entities.filter((e) => e.type === 'chickenSwarm').length, g.hp]");
+      await snap('w7-swarm');
+      const swarm = await peek("[g.room.entities.filter((e) => e.type === 'chickenSwarm').length, g.hp]");
       if (!(swarm[0] > 0) || swarm[1] !== hp) henProblems.push(`after five hits: ${swarm[0]} swarming, hearts ${swarm[1]} of ${hp}`);
 
       henProblems.push(...errors);
