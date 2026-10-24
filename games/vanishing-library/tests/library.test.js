@@ -326,6 +326,27 @@ test('the purse holds 99 whole shells; the Big Shell Purse holds 999', () => {
   assert.equal(t.game.inventory.shells, 999);
 });
 
+test('a full purse turns a trade away before the wood or the berry is paid', () => {
+  const { VL } = loadGame();
+  const game = VL.newGame({ name: 'Robin' });
+  const offer = (shop, id) => VL.SHOPS[shop].offers.find((o) => o.id === id);
+  VL.addResource(game, 'wood', 10);
+  VL.addResource(game, 'berries', 2);
+  VL.addResource(game, 'shells', VL.TUNING.shellCap);
+  for (const [shop, id] of [['mill', 'millTrade'], ['store', 'sellBerry']]) {
+    const result = VL.buyOffer(game, offer(shop, id));
+    assert.deepEqual(plain(result), { ok: false, reason: 'refused', text: 'Your purse is full!' }, id);
+    assert.equal(VL.offerRefusal(game, offer(shop, id)), 'Your purse is full!', `${id}: the shop scene says why`);
+  }
+  assert.equal(game.inventory.wood, 10);
+  assert.equal(game.inventory.berries, 2);
+  assert.equal(VL.buyOffer(game, offer('store', 'paper')).ok, true, 'buying with shells still works at the cap');
+  assert.equal(VL.buyOffer(game, offer('mill', 'millTrade')).ok, true, 'and once there is room, trading does too');
+  game.items.shellPurse = true;
+  game.inventory.shells = VL.TUNING.shellCap;
+  assert.equal(VL.buyOffer(game, offer('store', 'sellBerry')).ok, true, 'the Big Shell Purse has room');
+});
+
 test('the Swiftfoot Boots make the hero run faster for good', () => {
   const t = setup();
   const { VL } = t;

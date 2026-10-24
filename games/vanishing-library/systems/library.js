@@ -175,6 +175,7 @@
     text: `It only holds ${VL.TUNING.shellCap} whole shells. The librarian might know where to find a bigger one.`,
   });
   VL.shellCap = (state) => (VL.hasItem(state, 'shellPurse') ? VL.TUNING.shellCapPurse : VL.TUNING.shellCap);
+  VL.RESOURCE_CAPS.shells = { most: VL.shellCap, full: 'Your purse is full!' };
 
   // ---------- the thief ----------
 

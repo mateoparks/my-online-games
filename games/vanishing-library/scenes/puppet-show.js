@@ -67,7 +67,7 @@
         { say: 'One day, Ned poked his nose into a goose\'s nest.', cast: { hero: 0.45, goose: 0.75 } },
         { say: 'HONK! The goose chased Ned all the way to the next town!', cast: { hero: 1.2, goose: 1.05 }, move: { hero: 'run', goose: 'run' } },
         { say: 'And Ned was never nosy again. The end! Ha ha ha!', cast: { goose: 0.5 }, move: { goose: 'hop' } },
-        { speaker: 'Mrs. Fenwick', say: 'Wasn\'t that funny? Nosy people always get chased off in the end, {name}.', cast: { goose: 0.5 } },
+        { speaker: 'Mrs. Fenwick', say: 'Wasn\'t that funny? Ha! That goose!', cast: { goose: 0.5 } },
       ],
     },
     {

@@ -964,6 +964,10 @@ VL.openShop(state, 'store');   // from an entity; or `shop: 'store'` on a dialog
   overrides. `soldOut(state)` greys it out, `hidden(state)` leaves it off,
   `refuse(state)` returns why not right now ("Bring me pages first!", shown in
   place of a price check) or null, `thanks` replaces "Thank you!".
+- `VL.RESOURCE_CAPS[kind] = { most(state), full }` gives a resource a ceiling
+  (the shell purse): an offer whose gain would overflow it is refused with
+  `full` before anything is paid. `VL.offerRefusal(state, offer)` is that check
+  plus the offer's own `refuse`; the scene and `VL.buyOffer` both use it.
 - Resource names in the UI come from `VL.defineCurrency(kind, { one, many, icon })`
   (shells, wood, ore, berries, broken shells, paper and ink are defined); an
   `icon` sprite is drawn after the number. A shop naming a resource the
@@ -1075,7 +1079,9 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
 - **Rewards:** `TUNING.libraryRewards` (5 the Big Shell Purse, 10 a heart
   container, 15 the Swiftfoot Boots), books returned ever. The purse raises
   `TUNING.shellCap` (99 whole shells) to `shellCapPurse` (999); the
-  `shellPurse` system trims anything over and says who might help. The boots
+  `shellPurse` system trims anything over (a drop, a dig) and says who might
+  help; a shop trade at the cap is refused instead ("Your purse is full!",
+  `VL.RESOURCE_CAPS.shells`), so no wood or berry is lost. The boots
   carry `speed: TUNING.swiftfootSpeed` on their item and `VL.heroSpeed(state)`
   (`systems/movement.js`) uses the fastest worn item. Worn items never fill a hand.
 - **The thief:** `VL.applyThefts(state)` runs as the hero walks into the
