@@ -34,7 +34,8 @@ below exist to keep their diffs in different files:
   other**: use only earlier sections (`core`, `art`) at load time, and talk to
   other files in your section through the registries at run time. The one
   exception is `art.js`, which stays first in `art` and which every other art
-  file may use. The test
+  file may use. One more: `regions/library.js` stays after `regions/finds.js`,
+  whose book locks it claims (it throws on load otherwise). The test
   checks that every listed file exists, nothing is listed twice and `main.js`
   is last. To remove a file, delete it as well as its manifest line: a union
   merge keeps both sides of overlapping edits, so a line another branch

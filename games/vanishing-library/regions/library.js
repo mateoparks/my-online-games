@@ -296,7 +296,7 @@
   // Untitled books (and the sealed one) count once returned; titled ones once
   // the librarian has read them, which is when their effect switches on.
   for (const [id, book] of Object.entries(VL.BOOKS)) {
-    if (!VL.LOCKS[id]) continue;
+    if (!VL.LOCKS[id]) throw new Error(`book ${id} has no lock: regions/library.js must load after regions/finds.js`);
     claim(id, book.kind === 'titled' ? read(id) : (state) => VL.bookReturned(state, id));
   }
   claim('library', (state) => Boolean(state.visited['library:0,0']), { place: { area: 'library', screen: '0,0' } });
