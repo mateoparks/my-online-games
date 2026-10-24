@@ -6,12 +6,13 @@
   const QUIT_OPTIONS = ['Yes', 'No'];
   const BOX = { x: 40, y: 40, w: 176, h: 112 };
   const DIALOG = { x: 36, y: 64, w: 184, h: 52 };
-  // Space is not mentioned until the player holds a main-hand item (design: Controls).
+  // Space is not mentioned until the player holds a main-hand item, nor M
+  // until there is a map to open (design: Controls).
   const controls = (state) => [
     '↑↓←→ MOVE    S: TALK, PICK UP',
     VL.ART.hudModel(state).mainHand ? '␣ MAIN HAND    D: OFF HAND' : 'D: OFF HAND',
     'E: EQUIPMENT    N: SOUND ON/OFF',
-    'ESC: BACK TO THE GAME',
+    VL.hasItem(state, 'worldMap') || VL.inDungeon(state) ? 'M: MAP    ESC: BACK TO THE GAME' : 'ESC: BACK TO THE GAME',
   ];
 
   VL.defineScene('pause', {

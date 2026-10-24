@@ -4,6 +4,25 @@ A top-down pixel-art adventure for Arcade Current. Static files only: open
 `index.html` from disk or any static server. The design record lives outside
 the repo (`docs/vanishing-library-design.md` is git-ignored, local only).
 
+## Controls
+
+Keyboard only for now (laptop or desktop).
+
+| Key | What it does |
+|---|---|
+| Arrow keys | Walk |
+| S | Pick up, talk, read, open chests, pick berries, throw what you carry |
+| Space | Use the item in your main hand (a sword, the slingshot, ...) |
+| D | Use the item in your off hand (a shield, ...) |
+| E | Equipment: choose what goes in each hand |
+| M | The map, once you have one (the world map, or a dungeon's map) |
+| N | Sound on or off |
+| Esc | Pause, or Save & Quit |
+
+Two-handed tools work with Space or D. The first time you play, a popup
+teaches the arrows, S and E; Esc lists every key you can use so far. Some
+friends in the world may teach you a trick or two of their own.
+
 ## Layout
 
 Every script is a classic `<script>` that attaches to the global `VL`.
