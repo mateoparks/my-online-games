@@ -16,6 +16,7 @@ VL.addScreens = function addScreens(areaId, screens) {
   for (const [key, screen] of Object.entries(screens)) {
     if (area.screens[key]) throw new Error(`screen ${areaId} ${key} is already defined`);
     area.screens[key] = { tiles: screen.tiles, entities: screen.entities || [] };
+    VL.registerSpots(areaId, key, area.screens[key]);
   }
 };
 

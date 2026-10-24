@@ -61,13 +61,13 @@ test('a later item claims a planned lock by defining it with a reached predicate
 
 test('a claim that changes the planned rule must say why (replan), so a loosened gate shows in the diff', () => {
   const { VL } = loadGame();
-  const planned = { type: 'place', needs: ['town', 'liftingGloves'], doc: '§ The path through the game, 2' };
-  assert.throws(() => VL.defineLock('eastRoad', { ...planned, needs: ['town'], reached: () => true }), /eastRoad is claimed with a different rule than planned \(needs\); say why with replan/);
-  assert.throws(() => VL.defineLock('eastRoad', { ...planned, optional: true, gives: ['view'], reached: () => true }), /than planned \(gives, optional\)/);
-  assert.equal(VL.LOCKS.eastRoad.reached, undefined, 'a refused claim leaves the plan in place');
+  const planned = { type: 'place', needs: ['cliffs', 'glowstone'], doc: '§ The path through the game, 6' };
+  assert.throws(() => VL.defineLock('lighthouseEntered', { ...planned, needs: ['cliffs'], reached: () => true }), /lighthouseEntered is claimed with a different rule than planned \(needs\); say why with replan/);
+  assert.throws(() => VL.defineLock('lighthouseEntered', { ...planned, optional: true, gives: ['view'], reached: () => true }), /than planned \(gives, optional\)/);
+  assert.equal(VL.LOCKS.lighthouseEntered.reached, undefined, 'a refused claim leaves the plan in place');
   // Order inside needs (and inside an any-of) does not count as a change.
-  const same = VL.defineLock('eastRoad', { ...planned, needs: ['liftingGloves', 'town'], reached: () => true });
-  assert.equal(VL.LOCKS.eastRoad, same);
+  const same = VL.defineLock('lighthouseEntered', { ...planned, needs: ['glowstone', 'cliffs'], reached: () => true });
+  assert.equal(VL.LOCKS.lighthouseEntered, same);
   const d2 = VL.LOCKS.d2Boss;
   VL.defineLock('d2Boss', { ...d2, needs: ['hollowOakEntered', 'grapplingRope', ['metalSword', 'woodSword']], by: undefined, reached: () => true });
   const loosened = VL.defineLock('scriptoriumEntered', { type: 'place', needs: ['town'], doc: '§ The world: Old Scriptorium', replan: 'the door is open; the key is decorative', reached: () => true });
@@ -76,23 +76,25 @@ test('a claim that changes the planned rule must say why (replan), so a loosened
 
 test('an item splits a planned placeholder into its own locks without editing milestones.js', () => {
   const { VL } = loadGame();
-  assert.deepEqual({ ...VL.LOCKS.hiddenBooks.supplies }, { books: 10 });
+  // W8 split the real hiddenBooks, so the test splits a placeholder of its own.
+  VL.defineLock('fixtureBooks', { type: 'item', needs: ['town', 'library'], supplies: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Hidden books', by: 'W99' });
+  assert.deepEqual({ ...VL.LOCKS.fixtureBooks.supplies }, { books: 10 });
   const part = (books) => ({ type: 'item', needs: ['town', 'library'], supplies: { books }, optional: true, doc: '§ Books, pages and the library: Hidden books', reached: () => false });
-  assert.throws(() => VL.splitLock('hiddenBooks', { bookUnderRock: part(4), bookInTrunk: part(5) }), /hiddenBooks supplies books 10 but its parts supply 9/);
-  assert.throws(() => VL.splitLock('hiddenBooks', { bookUnderRock: part(5), oreWoods: part(5) }), /lock oreWoods already exists/);
-  assert.ok(VL.LOCKS.hiddenBooks, 'a refused split leaves the placeholder');
+  assert.throws(() => VL.splitLock('fixtureBooks', { bookUnderRock: part(4), bookInTrunk: part(5) }), /fixtureBooks supplies books 10 but its parts supply 9/);
+  assert.throws(() => VL.splitLock('fixtureBooks', { bookUnderRock: part(5), oreWoods: part(5) }), /lock oreWoods already exists/);
+  assert.ok(VL.LOCKS.fixtureBooks, 'a refused split leaves the placeholder');
   assert.throws(() => VL.splitLock('start', { a: part(1) }), /start is implemented, not a placeholder/);
   assert.throws(() => VL.splitLock('nothing', { a: part(1) }), /lock nothing does not exist/);
   // A split can only share out the placeholder's counters: it cannot hand out the placeholder's own
   // keys (that would loosen a gate without a replan) or counters the plan never promised.
   assert.throws(() => VL.splitLock('woodsMural', { muralRoom: { type: 'place', needs: ['start'], gives: ['woodsMural'], doc: '§ The path through the game, 2', by: 'W14' } }), /woodsMural is not a placeholder \(it supplies no counter\); claim it with defineLock/);
-  assert.throws(() => VL.splitLock('hiddenBooks', { bookA: part(5), bookB: { ...part(5), gives: ['hiddenBooks'] } }), /part bookB gives hiddenBooks, which the placeholder stood for; claim it with defineLock and replan/);
-  assert.throws(() => VL.splitLock('hiddenBooks', { bookA: part(5), bookB: { ...part(5), supplies: { books: 5, ore: 1 } } }), /part bookB supplies ore, which hiddenBooks does not/);
-  VL.splitLock('hiddenBooks', { bookUnderRock: part(4), bookInTrunk: part(6) });
-  assert.equal(VL.LOCKS.hiddenBooks, undefined);
+  assert.throws(() => VL.splitLock('fixtureBooks', { bookA: part(5), bookB: { ...part(5), gives: ['fixtureBooks'] } }), /part bookB gives fixtureBooks, which the placeholder stood for; claim it with defineLock and replan/);
+  assert.throws(() => VL.splitLock('fixtureBooks', { bookA: part(5), bookB: { ...part(5), supplies: { books: 5, ore: 1 } } }), /part bookB supplies ore, which fixtureBooks does not/);
+  VL.splitLock('fixtureBooks', { bookUnderRock: part(4), bookInTrunk: part(6) });
+  assert.equal(VL.LOCKS.fixtureBooks, undefined);
   assert.equal(VL.LOCKS.bookInTrunk.supplies.books, 6);
-  assert.throws(() => VL.defineLock('hiddenBooks', { ...part(1), reached: () => true }), /lock hiddenBooks was split into its parts/, 'a split id cannot come back with a looser rule');
-  assert.throws(() => VL.splitLock('oreWoods', { hiddenBooks: { type: 'item', needs: ['woods'], supplies: { ore: 1 }, doc: '§ Tools: two tiers', by: 'W8' } }), /lock hiddenBooks was split into its parts/);
+  assert.throws(() => VL.defineLock('fixtureBooks', { ...part(1), reached: () => true }), /lock fixtureBooks was split into its parts/, 'a split id cannot come back with a looser rule');
+  assert.throws(() => VL.splitLock('oreScriptorium', { hiddenBooks: { type: 'item', needs: ['scriptoriumEntered'], supplies: { ore: 1 }, doc: '§ Tools: two tiers', by: 'W14' } }), /lock hiddenBooks was split into its parts/);
   const report = VL.solveProgression();
   assert.deepEqual([...report.problems], []);
   assert.ok(report.stages[0].reached.includes('swiftfootBoots'), 'the 15-book reward still adds up');
@@ -134,7 +136,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 89);
+  assert.equal(Object.keys(VL.LOCKS).length, 98);
 });
 
 test('implemented place locks name screens that exist', () => {
@@ -151,9 +153,9 @@ test('implemented place locks name screens that exist', () => {
 test('VL.progress lists the locks a live game has reached', () => {
   const { VL } = loadGame();
   const state = VL.newGame();
-  assert.deepEqual([...VL.progress(state)], ['named', 'start']);
+  assert.deepEqual([...VL.progress(state)], ['named', 'start', 'beach']);
   VL.place(state, { area: 'hut', screen: '0,0', tx: 7, ty: 5 });
-  assert.deepEqual([...VL.progress(state)], ['named', 'start', 'hutInside']);
+  assert.deepEqual([...VL.progress(state)], ['named', 'start', 'hutInside', 'beach']);
 });
 
 // ---------- the solver on the shipped table ----------

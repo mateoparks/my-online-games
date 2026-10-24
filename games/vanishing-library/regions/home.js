@@ -15,7 +15,7 @@ VL.addScreens('overworld', {
     tiles: [
       'TTTTTTTTTTTTTTTT',
       'T..............T',
-      'T..B.....,.....T',
+      'T..B.....,...Y.T',
       'T......R.......T',
       'T...............',
       'T......,........',
@@ -25,7 +25,9 @@ VL.addScreens('overworld', {
       'T..............T',
       'TTTTTTTT....TTTT',
     ],
-    entities: [],
+    entities: [
+      { type: 'spot', id: 'bookMeadowRock', x: 7, y: 3, how: 'rock', by: 'W14', lock: 'bookMeadowRock' },
+    ],
   },
   '1,0': {
     tiles: [
@@ -65,9 +67,9 @@ VL.addScreens('overworld', {
       'T......HHHH....T',
       'T......HHHH....T',
       'T......HDHH....T',
-      '........P......T',
-      '........P......T',
-      '....B...P..B...T',
+      '........P.......',
+      '........PPPPPPPP',
+      '....B...P..B....',
       'ssssssssssssssss',
       'ssssssssssssssst',
       'wwwwwwwwwwwwwwwo',
@@ -75,6 +77,7 @@ VL.addScreens('overworld', {
     ],
     entities: [
       { type: 'door', x: 8, y: 3, to: { area: 'hut', screen: '0,0', tx: 7, ty: 8, facing: 'up' } },
+      { type: 'spot', id: 'oreShallows', x: 12, y: 9, how: 'pickup', by: 'W5', lock: 'oreShallows' },
     ],
   },
 });
