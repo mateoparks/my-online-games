@@ -1119,6 +1119,57 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   `primerTaken`. All keep the planned rules.
 - **Sounds:** `booksReturned` and a finished reading play `libraryChime`.
 
+## Paper and ink (W12)
+
+`systems/paper-ink.js` holds the rules (ink, copies, the world map, the M
+key, the lock claims), `entities/copyable.js` the mural and tablet, and
+`scenes/world-map.js` the `worldMap` and `copyView` scenes. Tests:
+`tests/paper-ink.test.js`. Fixture: `tests/fixtures/save-v1-W12.json`.
+
+- **Saved:** nothing new. The tools, the map and the copies are items
+  (`state.items`), ink and paper are resources, and the screens visited are
+  W1's `state.visited`. **A first visit to a screen is earned**
+  (`VL.enterScreen`), so a reload right after exploring keeps it on the map.
+- **Ink:** the `mortarPestle` item (W14's Bookworm gives it with
+  `VL.giveItem`) is a hand tool: its key, or S on the equipment screen,
+  grinds one berry into `TUNING.inkPerBerry` ink (`VL.makeInk`), one grind
+  per `TUNING.grindSeconds`, drawn with the hero. No berries: a message.
+  `flags.madeInk` marks the source, like W10's paper.
+- **Copying:** `{ type: 'copyable', x, y, copy, look: 'mural' | 'tablet', text? }`
+  is solid; S at it runs `VL.copyFrom(state, entity)`: with
+  `TUNING.copyCost` (1 paper, 1 ink) it spends them and gives the `copy` item
+  (popup, earned); otherwise it describes the picture and says what is
+  missing, and once the copy is owned it says so and spends nothing. A copy is
+  an item from `VL.defineCopy(id, { name, icon, about, seen, popup,
+  picture(ctx, box, t) })`; its key or S on the equipment screen opens the
+  `copyView` scene, which calls `picture`. `woodsMapCopy` is defined here (its
+  picture is the Woods route from `VL.WOODS_ROUTE`); W14 places its mural in
+  the Scriptorium, W15 decides what holding it changes in the maze. The design
+  wants one or two copy puzzles at most.
+- **The world map:** M (outside dungeons; `VL.inDungeon(state)` is the one
+  branch point with W13, whose dungeon map owns M inside) calls
+  `VL.openWorldMap`. With no map, `VL.mapNeeds(state)` says why not (the
+  Primer read and still on the shelf, then `TUNING.mapCost`); when nothing is
+  missing, the `worldMap` scene asks first, `VL.makeWorldMap` spends the paper
+  and ink and gives the `worldMap` item, and every visited overworld screen is
+  inked in, one after another, over `TUNING.mapRevealSeconds` (a press skips).
+  After that M opens it, and it fills in as the hero explores. The `mapReady`
+  popup tells the player about M once the Primer, paper and ink are all there.
+- **What it shows:** `VL.mapView(state)` gives `screens` (overworld only, in
+  the order first visited; interiors and dungeons are never on it), `marks`
+  (W11's `VL.mapMarks`: the berry bushes once the Herbalist's Notes are read,
+  shown even on screens not visited yet, and the Woods ore after the Smith's
+  Ledger), `labels` (`VL.REGION_NAMES` for visited regions; `null` leaves a
+  region unnamed) and `hero` (indoors, the door of the building he is in).
+  Each screen is a pixel per tile in map inks (`mapWater`, `mapTree`, ...).
+- **Losing it:** `VL.loseWorldMap(state)` takes the map and empties a hand
+  holding it, and earns; W16's shockwave calls it. The visits stay, so
+  drawing it again (while the Primer is on the shelf) shows everything at once.
+- **Locks claimed:** `ink`, `worldMap`, `woodsMapCopy`, all with the planned
+  rules. `mortarPestle` is a key of W14's `d1Boss`.
+- **Sounds:** `pestleGrind` (event `grind`), `penScratch` (`copied`, and each
+  screen inked in), `mapUnfold` (a map or copy opening).
+
 ## Progression: locks, keys, the solver and the playthrough
 
 `progression.js` holds the one table of everything that gates progress

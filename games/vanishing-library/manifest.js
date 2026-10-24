@@ -42,6 +42,7 @@ VL.FILES = {
     'systems/economy.js',
     'systems/digging.js',
     'systems/library.js',
+    'systems/paper-ink.js',
   ],
 
   entities: [
@@ -62,6 +63,7 @@ VL.FILES = {
     'entities/gull.js',
     'entities/heart-container.js',
     'entities/library-finds.js',
+    'entities/copyable.js',
   ],
 
   regions: [
@@ -97,6 +99,7 @@ VL.FILES = {
     'scenes/equipment.js',
     'scenes/reading.js',
     'scenes/puppet-show.js',
+    'scenes/world-map.js',
   ],
 
   boot: [

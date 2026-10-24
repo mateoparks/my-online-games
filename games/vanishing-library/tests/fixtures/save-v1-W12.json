@@ -1,0 +1,68 @@
+{
+  "v": 1,
+  "name": "Robin",
+  "rngState": 2399460287,
+  "maxHp": 6,
+  "flags": {
+    "madeInk": true
+  },
+  "visited": {
+    "overworld:1,1": true,
+    "overworld:1,0": true,
+    "overworld:0,0": true,
+    "overworld:2,0": true,
+    "overworld:2,-1": true,
+    "overworld:3,-1": true,
+    "overworld:3,0": true,
+    "overworld:2,1": true,
+    "overworld:-1,-1": true,
+    "overworld:0,-1": true,
+    "library:0,0": true
+  },
+  "savePoint": null,
+  "finished": false,
+  "inventory": {
+    "wood": 0,
+    "shells": 0,
+    "brokenShells": 0,
+    "berries": 1,
+    "ore": 0,
+    "paper": 1,
+    "ink": 1
+  },
+  "items": {
+    "mortarPestle": true,
+    "worldMap": true,
+    "woodsMapCopy": true
+  },
+  "hands": {
+    "mainHand": "mortarPestle",
+    "offHand": "worldMap"
+  },
+  "popups": {
+    "seen": {
+      "mortarPestle": true,
+      "worldMap": true,
+      "woodsMapCopy": true
+    },
+    "queue": []
+  },
+  "library": {
+    "returned": [
+      "bookPrimer",
+      "bookHerbalist"
+    ],
+    "read": [
+      "bookPrimer",
+      "bookHerbalist"
+    ],
+    "gone": [],
+    "trips": 0,
+    "lastTripAt": 0,
+    "stolen": {
+      "trips": 0,
+      "bosses": 0
+    },
+    "noticed": 0
+  }
+}
