@@ -269,6 +269,43 @@ that owns a value plugs in its reader once:
 or the bare frame `VL.ART.drawBox(ctx, x, y, w, h)`. A popup holds 4 lines;
 `VL.ART.popupLayout(...)` reports `overflow` when the text needs more.
 
+## Sound
+
+`systems/sound.js` synthesizes every effect with WebAudio; there are no audio
+files. Play one by name from anywhere: `VL.sfx('swing')`. It returns whether
+the sound started and never throws for missing audio (node, old browsers, a
+blocked context, mute); an unknown name does throw, so a typo fails the tests.
+
+- **Starter set:** `step`, `bump`, `swing`, `hit`, `hurt`, `pickup`, `shell`,
+  `door`, `popup`, `menuMove`, `menuSelect`, `faint`, `cluck`.
+- **New effects** go in the file that uses them:
+  `VL.defineSfx('splash', [{ wave: 'noise', dur: 0.2, vol: 0.4, filter: { type: 'lowpass', freq: 1200, to: 300 } }], { gap: 0.1 })`.
+  A voice is `{ wave: sine|square|triangle|sawtooth|noise, freq, to, at, dur, vol, attack, filter }`
+  (seconds, Hz; `to` slides the pitch or filter). Keep `vol` at 0.5 or less
+  for square and unfiltered noise; band-passed noise loses most of its energy,
+  so `swing` needs `vol: 1` to sit level with `bump` and `hit`. A test keeps
+  the voices that sound together under half scale after the master volume
+  (`VL.TUNING.soundVolume`, behind a limiter). `gap` stops the same effect
+  stacking (default 0.04 s).
+- **Game logic stays silent where it can:** push an event and map it once,
+  `VL.SOUND.onEvent('chestOpened', 'pickup')` or
+  `VL.SOUND.onEvent('coin', (event) => (event.whole ? 'shell' : null))`.
+  Doors and walking into a wall (`bump`, once per push) are wired already.
+  Menus and scenes call `VL.sfx('menuMove')` directly.
+- **Autoplay:** the AudioContext is created on the first key press, click or
+  touch (browsers block audio before a gesture), so nothing plays on the title
+  screen until the player presses something. A touch unlocks on its `touchend`
+  or `pointerup`, not on `pointerdown`.
+- **Mute:** N, on every scene, saved as `vanishing-library-muted` (`'1'`/`'0'`).
+  A crossed-out speaker sits in the HUD while muted, and a note shows for
+  1.5 s after each toggle, in the HUD gap so it never covers the play field. A
+  scene that types text (name entry) sets `textEntry: true` on its scene object
+  so N stays a letter there.
+- **Touch (future lesson):** an on-screen mute button calls the public
+  `VL.SOUND.toggleMute()` from a `touchend` or `click` handler (a `touchstart`
+  is not a gesture, so the unmute confirmation would be dropped). The sprites
+  `icon-sound` and `icon-sound-off` are ready for its two states.
+
 ## Engine notes
 
 - Logical canvas 256×192: a 16px HUD strip over a 16×11 grid of 16px tiles.
