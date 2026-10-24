@@ -132,14 +132,16 @@
     return !room.entities.some((e) => e !== npc && (taken(e) || beside(e)));
   };
 
-  // ... and clear of the hero's feet box.
+  // ... and clear of the hero's feet box, and of the spot a chicken flight
+  // may bring him back to.
   function canStep(state, npc, tx, ty) {
     if (!VL.npcMayStand(state.room, npc, tx, ty)) return false;
     const { tile, heroBox } = VL.TUNING;
-    const { x, y } = state.player;
     const margin = 2;
-    return x + heroBox.w / 2 + margin <= tx * tile || x - heroBox.w / 2 - margin >= (tx + 1) * tile
+    const clear = ({ x, y }) => x + heroBox.w / 2 + margin <= tx * tile || x - heroBox.w / 2 - margin >= (tx + 1) * tile
       || y + heroBox.h / 2 + margin <= ty * tile || y - heroBox.h / 2 - margin >= (ty + 1) * tile;
+    const takeOff = VL.flightStart(state);
+    return clear(state.player) && (!takeOff || clear(takeOff));
   }
 
   function wander(state, npc, dt) {

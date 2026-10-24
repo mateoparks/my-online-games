@@ -285,6 +285,42 @@ test('a pond wider than the long flight splashes too, and a chasm makes the chic
   assert.deepEqual(tileOf(), [3, 9], 'and back');
 });
 
+test('landing runs the stand hooks once, as a step would (a door, a save point)', () => {
+  const { VL, app, withChicken, fly, hold, wait } = setup();
+  const stood = [];
+  VL.defineEntity('henPad', { onStand: (state, e) => stood.push(e.id) });
+  withChicken(3, 3, 'right');
+  app.game.room.entities.push({ type: 'henPad', id: 'far', x: 6, y: 3 });
+  fly();
+  assert.deepEqual(stood, ['far'], 'fired on landing');
+  hold(['down'], 0.05);
+  wait(0.1);
+  assert.deepEqual(stood, ['far'], 'not again on the next step');
+});
+
+test('a townsperson never wanders onto the take-off tile while the hero is out, so he always flies back to open ground', () => {
+  const { VL, app, press, step, withChicken } = setup();
+  VL.defineNpc('henWalker', { name: 'Wren', look: 'townsfolk', wander: 1 });
+  withChicken(2, 5, 'right');
+  const npc = { type: 'npc', id: 'henWalker', x: 2, y: 4 };
+  app.game.room.entities.push(npc);
+  // Restless and set on the take-off tile: it tries a step down (DIRS[1] in
+  // entities/npc.js) every frame it is not already walking.
+  const random = VL.random;
+  VL.random = (owner) => (owner === npc ? 0.3 : random(owner));
+  const start = [app.game.player.x, app.game.player.y];
+  press('fly');
+  let onStart = false;
+  for (let i = 0; i < 60 * 6 && app.game.player.flight; i += 1) {
+    if (npc.idle !== undefined) npc.idle = 0;
+    step();
+    if (npc.x === 2 && npc.y === 5) onStart = true;
+  }
+  assert.deepEqual([app.game.player.x, app.game.player.y], start, 'flew back');
+  assert.ok(!onStart, 'nobody stepped onto the take-off tile');
+  assert.ok(!VL.isBlocked('yard', '0,0', start[0], start[1], VL.TUNING.heroBox.w, VL.TUNING.heroBox.h, app.game.room));
+});
+
 test('one tile back from a gap, a flight lands on the edge tile (no splash), and a second F crosses', () => {
   const { app, withChicken, tileOf, fly, sounds } = setup();
   withChicken(2, 3, 'right');
@@ -388,6 +424,30 @@ test('a long flight across a screen edge rides through the slide, hero and chick
   assert.deepEqual(tileOf(), [2, 8], '5 tiles from take-off');
   assert.equal(app.game.player.carrying, hen);
   assert.ok(!VL.isBlocked('yard', '1,0', app.game.player.x, app.game.player.y, VL.TUNING.heroBox.w, VL.TUNING.heroBox.h, app.game.room));
+});
+
+test('a flight sees solid things placed on the far screen, and turns back with a splash instead of flying out for nothing', () => {
+  const { VL, app, withChicken, fly, tileOf, sounds } = setup();
+  VL.defineEntity('henPost', { solid: true });
+  VL.getScreen('yard', '1,0').entities.push({ type: 'henPost', x: 2, y: 8 });
+  app.game.flags.chickenAlmanacRead = true;
+  withChicken(13, 8, 'right');
+  assert.equal(VL.planFlight(app.game).land, 0, 'the far landing tile is taken');
+  fly();
+  assert.deepEqual([app.game.player.screen, ...tileOf()], ['0,0', 13, 8], 'back where he took off');
+  assert.ok(sounds.includes('dunk'), 'and said so with a splash');
+});
+
+test('something moving onto the landing tile mid-flight turns the chicken back, squawking', () => {
+  const { VL, app, press, step, withChicken, until, tileOf, sounds } = setup();
+  VL.defineEntity('henPost', { solid: true });
+  withChicken(3, 3, 'right');
+  press('fly');
+  step();
+  app.game.room.entities.push({ type: 'henPost', x: 6, y: 3 });
+  until(() => !app.game.player.flight, 6);
+  assert.deepEqual(tileOf(), [3, 3]);
+  assert.ok(sounds.includes('henSquawk'));
 });
 
 test('the flight is drawn: the hero lifted with the chicken flapping overhead, and a splash', () => {

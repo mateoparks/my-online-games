@@ -401,6 +401,14 @@
     return { x: sx * T.width + state.player.x, y: sy * playHeight() + state.player.y };
   }
 
+  // Where a turned-back flight sets the hero down, in this room's pixels.
+  VL.flightStart = function flightStart(state) {
+    const flight = state.player.flight;
+    if (!flight) return null;
+    const [sx, sy] = screenXY(state.room.screen);
+    return { x: flight.start.x - sx * T.width, y: flight.start.y - sy * playHeight() };
+  };
+
   // Moves the hero to a world position; crossing into the next screen starts
   // its slide, and the flight carries on once the slide is done.
   function moveHero(state, gx, gy) {
@@ -421,6 +429,21 @@
     player.flight.room = state.room;
   }
 
+  // isSolidAt only knows this visit's entities; past the screen edge, the
+  // neighbour's placed solid entities (a sign, a chest) count too.
+  function solidAhead(state, tx, ty) {
+    const { area, screen } = state.player;
+    if (VL.isSolidAt(area, screen, tx, ty, state.room)) return true;
+    const dx = tx < 0 ? -1 : tx >= T.cols ? 1 : 0;
+    const dy = ty < 0 ? -1 : ty >= T.rows ? 1 : 0;
+    if (!dx && !dy) return false;
+    // Off the world, isSolidAt has already said solid.
+    const other = VL.neighborKey(screen, dx, dy);
+    const lx = tx - dx * T.cols;
+    const ly = ty - dy * T.rows;
+    return VL.getScreen(area, other).entities.some((e) => e.x === lx && e.y === ly && (e.solid || VL.ENTITIES[e.type]?.solid));
+  }
+
   // Looks along the flight: `land` is the farthest tile it can set the hero
   // down on, `reach` the farthest it gets before a wall (water and chasms are
   // flown over, anything else solid stops it, and so does the world's edge).
@@ -436,7 +459,7 @@
     for (let n = 1; n <= longest; n += 1) {
       const x = tx + dx * n;
       const y = ty + dy * n;
-      if (!VL.isSolidAt(area, screen, x, y, state.room)) {
+      if (!solidAhead(state, x, y)) {
         land = n;
         reach = n;
         continue;
@@ -495,6 +518,7 @@
     player.lift = 0;
     if (player.carrying) player.carrying.since = state.time;
     state.events.push({ type: 'chickenLand' });
+    VL.standHooks(state);
   }
 
   function nextPhase(state, flight) {
@@ -511,7 +535,9 @@
     } else if (flight.phase === 'dip') {
       back('back');
     } else if (flight.phase === 'out' && VL.isBlocked(player.area, player.screen, player.x, player.y, T.heroBox.w, T.heroBox.h, state.room)) {
-      // Someone stepped onto the landing tile mid-flight.
+      // The landing tile was taken after take-off (something moved onto it,
+      // or the far screen's visit placed something planFlight could not see).
+      state.events.push({ type: 'chickenTired' });
       back('back');
     } else {
       endFlight(state);

@@ -67,6 +67,8 @@
     room.standingOn = entity || null;
     if (entity) VL.ENTITIES[entity.type].onStand(state, entity);
   }
+  // A chicken flight's landing counts as arriving on a tile too.
+  VL.standHooks = standHooks;
 
   VL.defineSystem('movement', {
     order: 10,
