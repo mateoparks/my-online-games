@@ -16,6 +16,18 @@
 
   const items = (app) => VL.equipmentItems(app.game);
 
+  // The grid shows GRID.rows rows at a time and scrolls a row at a time to
+  // keep the chosen item in view; arrows at its side say there is more.
+  function scrollTo(view, count) {
+    const row = Math.floor(view.cursor / GRID.cols);
+    const lastTop = Math.max(0, Math.ceil(count / GRID.cols) - GRID.rows);
+    view.top = VL.clamp(VL.clamp(view.top, row - GRID.rows + 1, row), 0, lastTop);
+  }
+
+  function arrow(ctx, x, y, up) {
+    for (let i = 0; i < 3; i += 1) VL.ART.rect(ctx, 'goldLight', x + 2 - i, up ? y + i : y + 2 - i, 1 + i * 2, 1);
+  }
+
   function frame(ctx, name, x, y, w, h) {
     VL.ART.rect(ctx, name, x + 1, y, w - 2, 1);
     VL.ART.rect(ctx, name, x + 1, y + h - 1, w - 2, 1);
@@ -30,7 +42,7 @@
 
   VL.defineScene('equipment', {
     enter(app) {
-      app.equipment = { cursor: 0 };
+      app.equipment = { cursor: 0, top: 0 };
       VL.sfx('menuSelect');
     },
 
@@ -51,6 +63,7 @@
       if (pressed.up) view.cursor -= GRID.cols;
       view.cursor = VL.clamp(view.cursor, 0, Math.max(0, list.length - 1));
       if (view.cursor !== before) VL.sfx('menuMove');
+      scrollTo(view, list.length);
       const item = list[view.cursor];
       if (!item) return;
       for (const hand of VL.HANDS) {
@@ -60,6 +73,7 @@
       }
       if (pressed.interact && item.id === 'berry') VL.sfx(VL.eatBerry(game) ? 'munch' : 'bump');
       view.cursor = VL.clamp(view.cursor, 0, Math.max(0, items(app).length - 1));
+      scrollTo(view, items(app).length);
     },
 
     draw(ctx, app, t) {
@@ -70,9 +84,11 @@
       VL.ART.drawBox(ctx, BOX.x, BOX.y, BOX.w, BOX.h);
       VL.ART.text(ctx, 'EQUIPMENT', BOX.x + BOX.w / 2, BOX.y + 7, { align: 'center', color: 'goldLight', shadow: 'boxShade' });
       VL.ART.text(ctx, 'ITEMS', GRID.x, GRID.y - 9, { size: 'small', color: 'textDim' });
-      for (let i = 0; i < GRID.cols * GRID.rows; i += 1) {
-        const x = GRID.x + (i % GRID.cols) * (GRID.w + GRID.gap);
-        const y = GRID.y + Math.floor(i / GRID.cols) * (GRID.h + GRID.gap);
+      const first = app.equipment.top * GRID.cols;
+      for (let cell = 0; cell < GRID.cols * GRID.rows; cell += 1) {
+        const i = first + cell;
+        const x = GRID.x + (cell % GRID.cols) * (GRID.w + GRID.gap);
+        const y = GRID.y + Math.floor(cell / GRID.cols) * (GRID.h + GRID.gap);
         const item = list[i];
         const chosen = item && i === app.equipment.cursor;
         VL.ART.rect(ctx, 'boxShade', x + 1, y + 1, GRID.w - 2, GRID.h - 2);
@@ -81,14 +97,17 @@
         if (!item) continue;
         centred(ctx, `item-${item.icon}`, x + GRID.w / 2, y + GRID.h / 2);
         if (item.count) VL.ART.text(ctx, String(item.count(game)), x + GRID.w - 2, y + GRID.h - 7, { size: 'small', align: 'right', color: 'text', shadow: 'outline' });
-        const hand = VL.HANDS.find((h) => game.hands[h] === item.id);
+        const hand = VL.HANDS.find((h) => VL.heldItem(game, h) === item.id);
         if (hand) VL.ART.text(ctx, hand === 'mainHand' ? '␣' : 'D', x + 2, y + 2, { size: 'small', color: 'goldLight' });
       }
+      const arrowX = GRID.x + GRID.cols * (GRID.w + GRID.gap) - 1;
+      if (first > 0) arrow(ctx, arrowX, GRID.y + 2, true);
+      if (first + GRID.cols * GRID.rows < list.length) arrow(ctx, arrowX, GRID.y + GRID.rows * (GRID.h + GRID.gap) - GRID.gap - 5, false);
       VL.ART.text(ctx, 'HANDS', HANDS_X, GRID.y - 9, { size: 'small', color: 'textDim' });
       VL.HANDS.forEach((hand, i) => {
         const y = GRID.y + i * (GRID.h + GRID.gap);
         frame(ctx, 'text', HANDS_X, y, GRID.w, GRID.h);
-        const held = VL.ITEMS[game.hands[hand]];
+        const held = VL.ITEMS[VL.heldItem(game, hand)];
         if (held) centred(ctx, `item-${held.icon}`, HANDS_X + GRID.w / 2, y + GRID.h / 2);
         VL.ART.text(ctx, hand === 'mainHand' ? '␣ MAIN' : 'D OFF', HANDS_X + GRID.w + 5, y + 8, { size: 'small', color: 'text' });
       });
@@ -106,7 +125,7 @@
         centred(ctx, icon, x + 4, y + 3);
         VL.ART.text(ctx, String(game.inventory[kind]).padStart(2, '0'), x + 10, y, { color: 'text' });
       });
-      const hint = list.length ? '←→ CHOOSE   ␣/D: HOLD   S: USE   E: BACK' : 'E: BACK';
+      const hint = list.length > GRID.cols ? '←→↑↓ CHOOSE   ␣/D: HOLD   S: USE   E: BACK' : list.length ? '←→ CHOOSE   ␣/D: HOLD   S: USE   E: BACK' : 'E: BACK';
       VL.ART.text(ctx, hint, BOX.x + BOX.w / 2, BOX.y + BOX.h - 11, { size: 'small', align: 'center', color: 'textDim' });
     },
   });

@@ -117,11 +117,7 @@
     const player = state.player;
     if (player.swing) return false;
     player.swing = { t: 0, item, facing: player.facing };
-    const tiles = [];
-    for (const side of [0, -5, 5]) {
-      const tile = VL.facingTile(state, side);
-      if (!tiles.some((other) => other.tx === tile.tx && other.ty === tile.ty)) tiles.push(tile);
-    }
+    const tiles = VL.facingTiles(state);
     state.events.push({ type: 'swing', item, hand, tiles });
     let bounced = false;
     for (const { tx, ty } of tiles) {
@@ -145,21 +141,25 @@
     if (state.inventory.berries <= 0 || state.hp >= state.maxHp) return false;
     state.hp = Math.min(state.maxHp, state.hp + VL.TUNING.berryHeal);
     VL.addResource(state, 'berries', -1);
-    VL.tidyHands(state);
     state.events.push({ type: 'eat' });
     return true;
   };
 
+  // S tries the tile ahead first, then the ones the hero half faces, so a
+  // hero standing a little off the chest still opens it. One thing per press:
+  // an entity, else berries, else (bare-handed) one bush.
   VL.interact = function interact(state) {
-    const { tx, ty } = VL.facingTile(state);
-    const entity = state.room.entities.find((e) => e.x === tx && e.y === ty && VL.ENTITIES[e.type]?.onInteract);
-    if (entity) {
-      VL.ENTITIES[entity.type].onInteract(state, entity);
-      return true;
+    const tiles = VL.facingTiles(state);
+    for (const { tx, ty } of tiles) {
+      const entity = state.room.entities.find((e) => e.x === tx && e.y === ty && VL.ENTITIES[e.type]?.onInteract);
+      if (entity) {
+        VL.ENTITIES[entity.type].onInteract(state, entity);
+        return true;
+      }
     }
-    if (VL.pickBerries(state, tx, ty)) return true;
-    if (!isSword(state.hands.mainHand)) return VL.pullBush(state, tx, ty);
-    return false;
+    if (tiles.some(({ tx, ty }) => VL.pickBerries(state, tx, ty))) return true;
+    if (isSword(VL.heldItem(state, 'mainHand'))) return false;
+    return tiles.some(({ tx, ty }) => VL.pullBush(state, tx, ty));
   };
 
   VL.definePopup('controls', {
@@ -181,24 +181,21 @@
       }
       player.shield = false;
       for (const hand of VL.HANDS) {
-        const id = state.hands[hand];
+        const id = VL.heldItem(state, hand);
         if (id && actions.held[hand]) VL.ITEMS[id]?.hold?.(state, hand);
       }
       if (actions.pressed.interact) VL.interact(state);
       for (const hand of VL.HANDS) {
         if (!actions.pressed[hand] || state.hp <= 0) continue;
-        const id = state.hands[hand];
+        const id = VL.heldItem(state, hand);
         if (id) VL.ITEMS[id]?.use?.(state, hand);
-        else if (hand === 'mainHand') {
-          const { tx, ty } = VL.facingTile(state);
-          VL.pullBush(state, tx, ty);
-        }
+        else if (hand === 'mainHand') VL.facingTiles(state).some(({ tx, ty }) => VL.pullBush(state, tx, ty));
       }
     },
   });
 
   // The HUD shows whole shells and what each hand holds.
   VL.ART.hudSource('shells', (state) => state.inventory?.shells ?? 0);
-  VL.ART.hudSource('mainHand', (state) => VL.ITEMS[state.hands?.mainHand]?.icon || null);
-  VL.ART.hudSource('offHand', (state) => VL.ITEMS[state.hands?.offHand]?.icon || null);
+  VL.ART.hudSource('mainHand', (state) => VL.ITEMS[VL.heldItem(state, 'mainHand')]?.icon || null);
+  VL.ART.hudSource('offHand', (state) => VL.ITEMS[VL.heldItem(state, 'offHand')]?.icon || null);
 })();

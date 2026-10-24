@@ -112,6 +112,56 @@ test('the W5 fixture loads with every field intact', () => {
   assert.deepEqual(plain(game.popups), fixture.popups);
 });
 
+test('a save naming a popup or item a later version removed still loads and plays (R2)', () => {
+  const t = setup({ storage: true });
+  const { VL } = t;
+  const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W5.json'), 'utf8'));
+  fixture.popups.queue = ['retiredPopup', 'wood', 'alsoRetired'];
+  fixture.popups.seen.oldPopup = true;
+  fixture.items.retiredSword = true;
+  fixture.hands = { mainHand: 'retiredSword', offHand: 'woodShield' };
+  t.app.storage.write(VL.slotKey(0), JSON.stringify(fixture));
+  const app = VL.reloadApp(t.app);
+  const step = (actions = VL.noActions()) => app.update(actions, STEP);
+  assert.doesNotThrow(() => step());
+  assert.equal(app.sceneId, 'popup');
+  assert.equal(VL.currentPopup(app.game).id, 'wood', 'the unknown popup is skipped, not shown');
+  assert.equal(app.game.popups.seen.retiredPopup, undefined, 'skipped, not marked seen');
+  for (let i = 0; i < 30; i += 1) step();
+  step(VL.actions({ pressed: ['interact'] }));
+  assert.equal(app.game.popups.seen.wood, true);
+  assert.doesNotThrow(() => step());
+  assert.equal(VL.currentPopup(app.game), null, 'an unknown id at the end of the queue is dropped too');
+  assert.equal(app.sceneId, 'play');
+  assert.equal(VL.heldItem(app.game, 'mainHand'), null, 'a hand naming a removed item counts as empty');
+  assert.equal(VL.ART.hudModel(app.game).mainHand, null);
+  assert.equal(VL.hasItem(app.game, 'retiredSword'), false);
+  assert.deepEqual(plain(VL.equipmentItems(app.game).map((item) => item.id)), ['woodSword', 'woodShield', 'berry']);
+  const ctx = t.context.document.createElement('canvas').getContext('2d');
+  step(VL.actions({ pressed: ['equipment'] }));
+  assert.equal(app.sceneId, 'equipment');
+  assert.doesNotThrow(() => VL.render(ctx, app, 0));
+});
+
+test('a hand only ever holds what the hero has: berries leaving by any path empty it (M2)', () => {
+  const t = setup();
+  const { VL } = t;
+  t.game.inventory.berries = 2;
+  VL.setHand(t.game, 'mainHand', 'berry');
+  assert.equal(VL.heldItem(t.game, 'mainHand'), 'berry');
+  VL.addResource(t.game, 'berries', -2);
+  assert.equal(VL.heldItem(t.game, 'mainHand'), null);
+  assert.equal(t.game.hands.mainHand, null, 'the saved hand is emptied too');
+  assert.equal(VL.ART.hudModel(t.game).mainHand, null);
+  // A path that changes the count directly (a later shop or shockwave) still
+  // never shows or uses a berry the hero no longer has.
+  t.game.inventory.berries = 1;
+  VL.setHand(t.game, 'offHand', 'berry');
+  t.game.inventory.berries = 0;
+  assert.equal(VL.heldItem(t.game, 'offHand'), null);
+  assert.equal(VL.ART.hudModel(t.game).offHand, null);
+});
+
 // ---------- the hut chest ----------
 
 test('the hut chest holds the wood sword and shield: S opens it once, both go in hand, and it stays open', () => {
@@ -136,6 +186,27 @@ test('the hut chest holds the wood sword and shield: S opens it once, both go in
   assert.equal(t.game.popups.queue.length, 0, 'an open chest gives nothing more');
   VL.place(t.game, { area: 'hut', screen: '0,0', tx: 7, ty: 5 });
   assert.equal(entitiesOf(t.game, 'chest')[0].opened, true, 'still open on the next visit');
+});
+
+test('S reaches what the hero half faces, like the swing, but pulls only one bush (M6)', () => {
+  const t = setup();
+  const { VL } = t;
+  const chest = VL.AREAS.hut.screens['0,0'].entities.find((e) => e.type === 'chest');
+  VL.place(t.game, { area: 'hut', screen: '0,0', tx: chest.x, ty: chest.y + 1, facing: 'up' });
+  t.game.player.x += 9;
+  assert.notEqual(VL.facingTile(t.game).tx, chest.x, 'straight ahead is the next tile over');
+  t.press('interact');
+  assert.equal(VL.hasItem(t.game, 'woodSword'), true, 'the chest still opens');
+  t.closePopups();
+  // Grove row 4 has bushes at 4 and 5: straddling them from below, S pulls one.
+  const t2 = setup();
+  t2.at({ tx: 4, ty: 5, facing: 'up' });
+  t2.game.player.x += 8;
+  const hp = t2.game.hp;
+  t2.press('interact');
+  assert.equal(t2.game.hp, hp - t2.VL.TUNING.pullCost, 'one bush, one half heart');
+  const bushes = [4, 5].filter((tx) => t2.VL.tileAt('grove', '0,0', tx, 4, t2.game.room) === 'B');
+  assert.equal(bushes.length, 1, 'the other bush is still there');
 });
 
 test('the chest and a sign are solid', () => {
@@ -282,6 +353,7 @@ test('walking onto a drop picks it up: wood and shells are earned, a heart heals
   t.closePopups();
   assert.equal(t.game.inventory.shells, 1);
   assert.ok(t.sounds.includes('shell'));
+  assert.equal(VL.TUNING.heartDropHeal, 2, 'a heart drop heals one heart (two halves), tuned in one place');
   assert.equal(t.game.hp, 4, 'a heart is two half hearts');
   assert.equal(entitiesOf(t.game, 'drop').length, 0);
   drop('wood', 13);
@@ -505,6 +577,47 @@ test('E opens the equipment screen: Space and D choose the hands, S eats a berry
   t.press('equipment');
   assert.equal(t.app.sceneId, 'play');
   assert.equal(VL.ART.hudModel(t.game).mainHand, VL.ITEMS.woodShield.icon);
+});
+
+test('the equipment grid scrolls when the hero carries more than fits (M5)', () => {
+  const t = setup();
+  const { VL, context } = t;
+  for (let i = 0; i < 10; i += 1) VL.defineItem(`testThing${i}`, { name: `Thing ${i}`, icon: i === 9 ? 'test-last' : 'sword-wood', about: 'A test thing.' });
+  VL.ART.defineSprite('item-test-last', { colors: { g: 'gold' }, rows: ['gg', 'gg'] });
+  VL.giveItem(t.game, 'woodSword');
+  VL.giveItem(t.game, 'woodShield');
+  for (let i = 0; i < 10; i += 1) VL.giveItem(t.game, `testThing${i}`);
+  t.closePopups();
+  assert.equal(VL.equipmentItems(t.game).length, 12);
+  const drawn = [];
+  const original = VL.ART.drawSprite;
+  VL.ART.drawSprite = (ctx, id, ...rest) => {
+    drawn.push(id);
+    return original(ctx, id, ...rest);
+  };
+  const ctx = context.document.createElement('canvas').getContext('2d');
+  t.press('equipment');
+  VL.render(ctx, t.app, 0);
+  assert.ok(!drawn.includes('item-test-last'), 'the twelfth item is below the visible rows at first');
+  t.press('down');
+  t.press('down');
+  t.press('right');
+  t.press('right');
+  t.press('right');
+  assert.equal(t.app.equipment.cursor, 11);
+  drawn.length = 0;
+  VL.render(ctx, t.app, 0);
+  assert.ok(drawn.includes('item-test-last'), 'the grid scrolled to show the chosen item');
+  t.press('mainHand');
+  assert.equal(t.game.hands.mainHand, 'testThing9');
+  t.press('mainHand');
+  assert.equal(t.game.hands.mainHand, null, 'choosing it again empties the hand');
+  t.press('up');
+  t.press('up');
+  drawn.length = 0;
+  VL.render(ctx, t.app, 0);
+  assert.ok(!drawn.includes('item-test-last'), 'and back up again');
+  VL.ART.drawSprite = original;
 });
 
 test('a hand holding nothing it can use does nothing, and the shield is raised while D is held', () => {

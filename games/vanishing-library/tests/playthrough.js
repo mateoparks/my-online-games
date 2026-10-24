@@ -99,8 +99,6 @@ function createDrive(VL, initialApp, reload) {
       const { area, screen, x, y } = drive.state.player;
       throw new Error(`not reached after ${maxSeconds} s holding [${held}]: hero at ${area} ${screen} (${x.toFixed(1)},${y.toFixed(1)}), scene ${app.sceneId}`);
     },
-    // Walks the shortest tile path with real held directions; `target` fields
-    // default to the hero's area and screen.
     // Reads and closes every popup that is up or waiting, as a player would (S).
     closePopups() {
       for (let i = 0; i < 20; i += 1) {
@@ -111,6 +109,8 @@ function createDrive(VL, initialApp, reload) {
       }
       throw new Error(`popups kept coming: ${VL.currentPopup(app.game)?.id}`);
     },
+    // Walks the shortest tile path with real held directions; `target` fields
+    // default to the hero's area and screen.
     walkTo(target) {
       const player = drive.state.player;
       const here = { area: player.area, screen: player.screen, ...VL.heroTile(drive.state) };

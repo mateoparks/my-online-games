@@ -30,7 +30,7 @@
   VL.defineEntity('drop', {
     onStand(state, drop) {
       take(state, drop);
-      if (drop.kind === 'heart') state.hp = Math.min(state.maxHp, state.hp + 2);
+      if (drop.kind === 'heart') state.hp = Math.min(state.maxHp, state.hp + VL.TUNING.heartDropHeal);
       else {
         const kind = drop.kind === 'shell' ? 'shells' : drop.kind;
         VL.addResource(state, kind, 1);

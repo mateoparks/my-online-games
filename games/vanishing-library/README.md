@@ -331,24 +331,34 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   (whole shells, the money), `brokenShells`, `berries`, `ore`);
   `state.items` maps owned item ids to `true`; `state.hands` is
   `{ mainHand, offHand }` (item ids or null); `state.popups` is
-  `{ seen, queue }`. Fixture: `tests/fixtures/save-v1-W5.json`.
+  `{ seen, queue }`. Fixture: `tests/fixtures/save-v1-W5.json`. **Saved ids
+  must never break a load:** a popup id no definition has any more is skipped
+  (`VL.currentPopup` drops it), an item id no `defineItem` has is not owned,
+  and a hand naming one counts as empty. Renaming or removing a popup or item
+  is safe; keep that true for any id list you save.
 - **Resources:** `VL.addResource(state, 'wood', 1)` (a negative amount
-  spends; it never goes below 0) earns, so the game saves.
+  spends; it never goes below 0) earns, so the game saves, and empties a hand
+  holding what ran out (`VL.tidyHands`).
 - **Items:** `VL.defineItem(id, { name, icon, about, popup, use(state, hand),
   hold(state, hand), count(state), sword, prefers })` from the item's own file;
   `icon` names the `item-<icon>` sprite the HUD and the equipment screen draw.
   `VL.giveItem(state, id)` owns it, puts it in an empty hand (the main hand
   first; `prefers: 'offHand'` for a shield), queues its popup and earns.
   `VL.hasItem`, `VL.setHand(state, hand, id)` (choosing the held item again
-  empties the hand) and `VL.equipmentItems(state)` do the rest. An item with
+  empties the hand) and `VL.equipmentItems(state)` do the rest. **Read a hand
+  with `VL.heldItem(state, hand)`**, never `state.hands` directly: it is the
+  saved id only while the hero still has that item, so berries sold (W10) or
+  an item taken away (W16) can never be shown or used from a hand. Anything
+  that takes an item away calls `VL.tidyHands(state)` to clear the saved hand too. An item with
   `count` (berries) is owned while the count is above 0. Two-handed items
   (the shovel) are still to come (W10).
 - **Hands (`systems/hands.js`):** Space uses the main-hand item and D the
   off-hand one; `hold` runs every step the key is held (the shield sets
   `state.player.shield`). S calls `VL.interact`: an entity's `onInteract` on
-  the tile in front (`VL.facingTile(state)`), else a berry bush, else a bare-hand
-  pull when no sword is in the main hand. Space with an empty main hand pulls
-  too. A sword swing (`VL.swing`) sets `state.player.swing` for
+  the tiles the hero faces (`VL.facingTiles(state)`: straight ahead first,
+  then the ones half overlapped), else a berry bush, else a bare-hand pull of
+  one bush when no sword is in the main hand. Space with an empty main hand
+  pulls too. Entities match by integer tile (`e.x/e.y`). A sword swing (`VL.swing`) sets `state.player.swing` for
   `TUNING.swingSeconds` and pushes `{ type: 'swing', item, hand, tiles }`; it
   cuts the bushes on those tiles, so combat (W6) reads the same event.
 - **Bushes (`systems/foliage.js`):** a `cuttable` tile is cut for the visit
@@ -356,7 +366,8 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   `cutTo` character (default grass `.`, so a bush on sand says `cutTo: 's'`).
   One roll per bush, `TUNING.bushDrops` (heart 2%, whole shell 5%, wood 20%,
   exclusive bands), puts a `drop` entity on the tile that fades after
-  `TUNING.dropSeconds`. A bare-hand pull costs `TUNING.pullCost` half hearts,
+  `TUNING.dropSeconds` (a heart drop heals `TUNING.heartDropHeal` half hearts;
+  enemy drops reuse the `drop` entity). A bare-hand pull costs `TUNING.pullCost` half hearts,
   and a pull on the last half heart faints the hero (`shrub`). Berry bushes
   (`berry: true`) are picked with S (`TUNING.berriesPerPick`), show bare (`u`)
   until the hero comes back, and a sword only bounces off them. Eating a berry
@@ -377,7 +388,9 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   saved (signs). The controls popup is queued as the intro hands over to play.
   Keep a popup to 4 lines: a test checks every popup and sign.
 - **Equipment screen (`'equipment'`, E):** arrows choose, Space or D puts the
-  item in that hand, S uses it (eats a berry), E or Esc goes back.
+  item in that hand, S uses it (eats a berry), E or Esc goes back. The grid
+  shows 4×2 items and scrolls a row at a time (arrows at its side show more
+  above or below), so any number of items fits.
 - **Drawing with the hero:** `VL.defineHeroLayer(id, (ctx, state, x, y, t,
   pass) => {})` draws with the hero, once behind (`pass === 'behind'`) and once
   in front; the swing and the raised shield are the `hands` layer.
@@ -683,7 +696,11 @@ hook given to `createPlaythrough` (or `VL.reloadApp`), which W2 supplies once
 saving exists (fresh `createApp`, load; no save first, like a real reload);
 until then it throws. **`playTo` reloads after every milestone's step** and
 checks `reached` again, so progress that was never earned (`VL.earned`) fails
-there: progress survives reloading the page at any point. The default app is
+there: progress survives reloading the page at any point. That reload sees
+everything saved by the end of the step, so a later earning in the same step
+(closing a popup earns) hides a missing `VL.earned` in the action itself: when
+a step ends with `drive.closePopups()` or more play, call `drive.reload()` right
+after the earning action and check it there (W5's `chestGear` step does). The default app is
 therefore a new game saved in slot 1 of an in-memory store (`slotApp`); the app
 itself is also injectable (`createPlaythrough(VL, { app })`), so the title
 screen and name entry can be driven from there, and an app without a save slot

@@ -279,7 +279,7 @@ test('HUD hearts: two half-hearts each, rounded to full, half and empty', () => 
 
 test('HUD values come from sources the owning files plug in once', () => {
   const { VL } = loadGame();
-  const state = { hp: 6, maxHp: 6, inventory: { shells: 7 }, hands: { mainHand: 'woodSword', offHand: null } };
+  const state = { hp: 6, maxHp: 6, inventory: { shells: 7 }, items: { woodSword: true }, hands: { mainHand: 'woodSword', offHand: null } };
   assert.equal(VL.ART.hudModel({ hp: 6, maxHp: 6 }).shells, 0, 'a state without the fields shows nothing');
   assert.equal(VL.ART.hudModel(state).shells, 7, 'W5 plugs in the inventory');
   assert.equal(VL.ART.hudModel(state).mainHand, 'sword-wood', 'and the hands, as sprite ids');
