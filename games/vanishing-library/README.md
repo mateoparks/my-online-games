@@ -476,6 +476,9 @@ holds the heart containers.
   `VL.spawnEnemy` starts at once. A test walks onto every open entry of every
   enemy screen and stands still for 1.5 s unhurt, so place new enemies far
   enough in.
+- **After a popup or a talk:** closing one back to play gives the hero
+  `TUNING.popupGraceSeconds` (0.8 s) of `invuln` without the hurt flash
+  (`VL.graceAfterPopup`), since the world froze mid-attack under it.
 - **Enemies:** `VL.defineEnemy(type, { tuning, body: { w, h }, size, flies,
   rooted, faint, drops?, setup(state, e), think(state, e, dt), harmful(e),
   onHit, onTouch, draw(ctx, e, cx, cy, t) })` also defines the entity type,

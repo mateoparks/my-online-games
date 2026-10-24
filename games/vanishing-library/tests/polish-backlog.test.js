@@ -152,3 +152,51 @@ test('holding up a few pixels off Gran\'s corner slides the hero round her (wave
     assert.ok(!VL.isBlocked('overworld', '2,0', game.player.x, game.player.y, box.w, box.h, game.room), 'and never into her');
   }
 });
+
+// ---------- 5. a moment's grace after a popup or a talk ----------
+
+function enemyBeside(VL) {
+  VL.defineEnemy('graceDummy', { hp: 2, damage: 1, size: 'small', body: { w: 10, h: 10 }, think() {}, draw() {} });
+  VL.addScreens('graceYard', { '0,0': { tiles: ['TTTTTTTTTTTTTTTT', ...Array(9).fill('T..............T'), 'TTTTTTTTTTTTTTTT'] } });
+  const app = playApp(VL);
+  const game = app.game;
+  game.popups.seen.controls = true;
+  game.popups.queue.length = 0;
+  VL.place(game, { area: 'graceYard', screen: '0,0', tx: 7, ty: 5, facing: 'right' });
+  const enemy = VL.spawnEnemy(game, 'graceDummy', 8, 5);
+  enemy.cx = game.player.x + 9;
+  enemy.cy = game.player.y - 5;
+  return { app, game };
+}
+
+const graceCases = {
+  popup: (VL, app, game) => {
+    VL.showMessage(game, { title: 'A heart!', text: 'One more heart.' });
+    app.setScene('popup');
+    for (let i = 0; i < 30; i += 1) app.update(VL.noActions(), 1 / 60);
+    app.update(VL.actions({ pressed: ['interact'] }), 1 / 60);
+  },
+  dialogue: (VL, app) => {
+    app.setScene('dialogue', { speaker: 'Pip', pages: VL.dialoguePages(['Hi!'], app.game) });
+    app.update(VL.actions({ pressed: ['interact'] }), 1 / 60);
+    app.update(VL.actions({ pressed: ['interact'] }), 1 / 60);
+  },
+};
+
+for (const [kind, close] of Object.entries(graceCases)) {
+  test(`closing a ${kind} next to an enemy gives a short grace before it can hurt, without the hurt flash`, () => {
+    const { VL } = loadGame();
+    VL.sfx = () => true;
+    const { app, game } = enemyBeside(VL);
+    close(VL, app, game);
+    assert.equal(app.sceneId, 'play');
+    const hp = game.hp;
+    assert.ok(VL.TUNING.popupGraceSeconds >= 0.5, 'a grace longer than the half second the gull needed');
+    const graceSteps = Math.floor(VL.TUNING.popupGraceSeconds * 60) - 1;
+    for (let i = 0; i < graceSteps; i += 1) app.update(VL.noActions(), 1 / 60);
+    assert.equal(game.hp, hp, 'not hurt during the grace');
+    assert.ok(!(game.player.flash > 0), 'and the hero does not flash as if hurt');
+    for (let i = 0; i < 10; i += 1) app.update(VL.noActions(), 1 / 60);
+    assert.equal(game.hp, hp - 1, 'then the enemy is real again');
+  });
+}

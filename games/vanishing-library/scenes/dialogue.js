@@ -16,7 +16,11 @@
   function close(app, { shop = app.dialogue.shop } = {}) {
     VL.endTalk(app.game, app.dialogue.end);
     if (shop) app.setScene('shop', { shop });
-    else app.setScene(VL.currentPopup(app.game) ? 'popup' : 'play');
+    else if (VL.currentPopup(app.game)) app.setScene('popup');
+    else {
+      VL.graceAfterPopup(app.game);
+      app.setScene('play');
+    }
   }
 
   // Sprites in canvas pixels, heads included.
