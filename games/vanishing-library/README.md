@@ -690,7 +690,13 @@ chickens, with real keys: S lifts the coop chicken and S throws it, F flies
 over the river, a long flight crosses the last highland chasm and its screen
 edge, a flight off the pier splashes down, and five sword hits bring the
 swarm (`w7-lift.png`, `w7-throw.png`, `w7-flight-short.png`,
-`w7-flight-long-edge.png`, `w7-splash.png`, `w7-swarm.png`). It runs
+`w7-flight-long-edge.png`, `w7-splash.png`, `w7-swarm.png`). Then W12's
+paper and ink with real keys: Space grinding a berry with the mortar
+(`w12-mortar.png`), S copying a mural (`w12-mural.png`, `w12-copy.png`,
+`w12-copy-view.png`), M with no map (`w12-map-none.png`), M asking to draw
+(`w12-map-ask.png`), the map inking in and drawn with the Herbalist's marks
+(`w12-map-drawing.png`, `w12-map.png`) and a screen explored after
+(`w12-map-explored.png`). It runs
 for 120 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
