@@ -2,7 +2,7 @@
 // no dependencies). Loads index.html from file://, fails on any console error
 // or uncaught exception, checks the integer scale at two window sizes and on a
 // live resize, walks the hero with real key events, checks a screen slide pans
-// the right way, and saves a screenshot of each size.
+// the right way, and saves a screenshot of each size and of each art sheet page.
 // Run: node games/vanishing-library/smoke.js --out <dir>
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
@@ -283,6 +283,25 @@ async function main() {
     if (resizeProblems.length) failures += 1;
     console.log(`${resizeProblems.length ? 'FAIL' : 'ok  '} resize to ${small.width}x${small.height} without reload: scale ${resized.scale}`);
     for (const problem of resizeProblems) console.log(`     ${problem}`);
+
+    // The art kit, page by page (scenes/art-sheet.js), cropped to the canvas:
+    // the evidence for comparing with the approved mockup.
+    errors.length = 0;
+    const artProblems = [];
+    const pageCount = await evaluate('VL.ART_SHEET_PAGES');
+    for (let page = 0; page < pageCount; page += 1) {
+      await evaluate(`VL.app.setScene('artSheet', { page: ${page} })`);
+      if (!(await settle())) artProblems.push(`animation frames stopped on art page ${page + 1}`);
+      const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+      const clip = { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 };
+      const { data } = await call('Page.captureScreenshot', { format: 'png', clip });
+      fs.writeFileSync(path.join(outDir, `art-${page + 1}.png`), Buffer.from(data, 'base64'));
+    }
+    artProblems.push(...errors);
+    if (!(pageCount >= 1)) artProblems.push('no art sheet pages');
+    if (artProblems.length) failures += 1;
+    console.log(`${artProblems.length ? 'FAIL' : 'ok  '} art sheet: ${pageCount} pages, ${path.join(outDir, 'art-*.png')}`);
+    for (const problem of artProblems) console.log(`     ${problem}`);
 
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();

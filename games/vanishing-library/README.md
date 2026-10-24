@@ -14,7 +14,7 @@ top to bottom:
 | Section | What lives there | Registers with |
 |---|---|---|
 | `core` | `config.js` (`VL.TUNING`), `util.js` (Actions, RNG), `tiles.js`, `world.js` (areas, screens, collision), `state.js`, `engine.js` (system pipeline, `enterScreen`), `app.js` (scenes), `screen.js` (integer scaling), `loop.js` (fixed step) | - |
-| `art` | `art.js`: everything drawn goes through `VL.ART` (the art kit replaces the placeholder) | `VL.ART.*` |
+| `art` | the art kit: `art.js` (palette, sprites, fonts, tile styles, light) first, then `art/*.js` (fonts, base tiles, hero, small sprites, HUD and popups). Everything drawn goes through `VL.ART`; see [Art kit](#art-kit) | `VL.ART.*` |
 | `systems` | one file per gameplay system (`systems/movement.js`, later combat, chickens, ...) | `VL.defineSystem` |
 | `entities` | one file per entity type (`entities/door.js`, later chests, signs, ...) | `VL.defineEntity` |
 | `regions` | one file per overworld region, adding screens to the `overworld` area | `VL.addScreens` |
@@ -32,7 +32,9 @@ below exist to keep their diffs in different files:
   branches appending to the same section merge cleanly with both lines kept.
   That is only safe because **files in a section must not depend on each
   other**: use only earlier sections (`core`, `art`) at load time, and talk to
-  other files in your section through the registries at run time. The test
+  other files in your section through the registries at run time. The one
+  exception is `art.js`, which stays first in `art` and which every other art
+  file may use. The test
   checks that every listed file exists, nothing is listed twice and `main.js`
   is last. To remove a file, delete it as well as its manifest line: a union
   merge keeps both sides of overlapping edits, so a line another branch
@@ -70,7 +72,7 @@ add new ones with `VL.extendTileset`.
 Create `dungeons/<name>.js`, give it its own area and, if needed, tileset:
 
 ```js
-VL.defineTileset('scriptorium', { '#': { solid: true, wall: true }, '.': { floor: true } });
+VL.defineTileset('scriptorium', { '#': { solid: true, wall: true, art: 'wallInside' }, '.': { floor: true, art: 'floor' } });
 VL.defineArea('scriptorium', { tileset: 'scriptorium' });
 VL.addScreens('scriptorium', { '0,0': { tiles, entities } });
 ```
@@ -122,6 +124,150 @@ title scene sets it to `'title'`. `app.game` is the live game state. The render
 smoke enters, updates and draws every registered scene with `app.game` set, and
 the browser smoke switches to `'play'` with `app.setScene('play')` on a new game,
 so both must keep working whatever the start scene is.
+
+## Art kit
+
+Everything on the canvas is drawn by code through `VL.ART`, in the approved
+"modern pixel art" look: dark 1px outlines on characters, a rich fixed
+palette, soft drop shadows, a warm light from the top-left and a vignette,
+and small animations. Draw with the kit so every item looks like one game.
+The test `R6: no game file outside art.js draws with raw colours or canvas
+text` fails on a hex colour (outside `VL.ART.addColors`), `rgb(`/`hsl(`,
+`fillText`/`strokeText` or `ctx.font =` in any file in `manifest.js`.
+
+**Where an item's art goes.** An item's sprites, tile styles and colours live
+in its own file (the system, entity, region, dungeon or scene file that uses
+them), defined at load time; the `art` section loads first, so the kit is
+ready. `art.js` and `art/*.js` belong to the kit: don't add to them, so two
+lanes never edit the same art file (a test pins the `art` section's files).
+The `artSheet` scene shows every piece (`VL.app.setScene('artSheet')` in the
+console, left/right to page); the browser smoke saves each page as
+`art-<n>.png`.
+
+**Palette.** Every colour is a name in `VL.PALETTE` (`art.js`): `outline`,
+`ink`, `text`, `textDim`, `gold`, `heart`, `skin`, `hair`, `tunic`, `grass`,
+`leaf`, `bush`, `rock`, `sand`, `water`, `foam`, `wood`, `roof`, `shadow`,
+and their `Dark`/`Light`/`Alt` shades. Never write a hex value in a draw call:
+use `VL.ART.rect(ctx, 'heart', x, y, w, h)` or `VL.ART.color('heart')`. A
+region or dungeon that needs new colours adds them from its own file with
+`VL.ART.addColors({ mossDark: '#2a4a2a' })` (lower-case `#rrggbb` or
+`#rrggbbaa`; a name already taken is an error). The canvas looks the same in
+the site's light and dark themes, so the kit never reads the page's CSS.
+
+**Adding a sprite.** Sprites are rows of characters, one per pixel, `.` for
+transparent, and a map from characters to palette names:
+
+```js
+VL.ART.defineSprite('crab', {
+  colors: { r: 'heart', l: 'heartLight', e: 'ink' },
+  rows: [
+    'r.r..r.r',
+    '.rlrrlr.',
+    'rrerrerr',
+    '.rrrrrr.',
+    'r.r..r.r',
+  ],
+});
+VL.ART.defineSprite('crab-right', { mirrorOf: 'crab' });  // left-right flip
+VL.ART.drawSprite(ctx, 'crab', x, y);                     // (x, y) = top-left of the rows
+```
+
+- **Outline rules.** Characters, creatures and pickups get the automatic
+  outline: a 1px `outline` ring on the four sides of every filled pixel (never
+  diagonal corners), outside the rows, so don't draw it yourself and leave a
+  pixel of room around the sprite. `outline: 'gold'` changes its colour.
+  Terrain (trees, bushes, rocks) and HUD icons use `outline: false` and shade
+  their own rim with the colour's `Dark` shade.
+- Shade with two or three tones of a colour (light top-left, dark bottom-right),
+  like the hero and the tree.
+- Things standing on the ground get `VL.ART.drawShadow(ctx, centreX, feetY, width)`
+  under them, drawn first.
+- Sprite ids are global: prefix them by kind (`hero-`, `item-`, `pickup-`,
+  `tile-`, `npc-`, `enemy-`). A duplicate id, a row of the wrong width, a
+  character with no colour or an unknown palette name throws at load time.
+- Characters are about 12×14 (the hero), small creatures 8–10 wide; the feet
+  point is the centre of the feet box (`state.player.x/y`), boots ending 3px
+  below it. The hero set is `hero-<down|up|left|right>-<0|1|2>` (stand, walk
+  A, walk B); `VL.ART.heroFrame(player, t)` picks one.
+- The kit's own shared sprites: `heart-full|half|empty`, `icon-shell`,
+  `pickup-shell` (with `VL.ART.drawSparkle`), `chicken`, `item-sword-wood`,
+  `item-shield-wood`. For everything defined so far, page through the art
+  sheet or run `Object.keys(VL.ART.SPRITES)`. An item in a HUD hand slot is
+  drawn with `item-<item id>` (a missing one shows `?`).
+
+**Tiles.** A tile's look comes from a tile style, picked from its legend entry:
+`art: 'name'` names one directly, otherwise the highest-`priority` style whose
+`when` flag the entry has (`water`, `sand`, `bush`, ...). `when` flags are for
+the base set's shared terrain only: **every tile character added after the
+base set, in `base` or a new tileset, names its look with `art:`** (the test
+`every tile character added after the base set names its look with art`
+checks), so a dungeon's `{ solid: true, wall: true }` can't turn into the
+hut's roof. Two styles with the same `when` and `priority` throw, and so does
+a tile whose flags tie two styles. A region with its own tiles adds styles
+from its own file:
+
+```js
+VL.extendTileset('base', { '%': { solid: true, ore: true, art: 'ore' } });
+VL.ART.defineTileStyle('ore', {
+  under: 'shallow',                                 // ground drawn first
+  raised(ctx, cell, t) { VL.ART.drawSprite(ctx, 'tile-ore', cell.x, cell.y + 4); },
+});
+```
+
+Props such as trees, rocks and bushes draw grass under themselves (`under`).
+A legend entry's `ground` picks another floor: any style with a ground pass,
+matching what is around the prop. `'r': { solid: true, rock: true, art: 'rock',
+ground: 'sand' }` is a beach rock; `ground: 'shallow'` stands a rock in the
+shallows, and shores and foam then run round it as water. A name that is
+unknown, or has no ground pass, throws. The test `every prop in every area
+sits on a ground one of its neighbours shares` catches exactly one thing: a
+prop no neighbour's ground supports, such as a grass square on the beach or a
+sand square in the water. Neighbouring props don't count, and flowers (which
+draw their own ground) count as grass floor. One supporting neighbour is
+enough, so a grass prop on the top sand row, under the grass, passes as a
+one-tile grass tongue into the beach. A tree avenue between two paths, with
+trees north and south, is flagged (`grass among path`); give such a tree a
+grass tile beside it or `ground: 'path'`.
+
+A style has up to three passes, each run for the whole screen before the
+next: `ground` (the floor of the tile), `shadow`, then `raised` (anything
+tall, which may spill over the tile above). `cell` gives `x, y` (pixels),
+`tx, ty`, `info`, `near(dx, dy)` (a neighbour's legend entry, read across
+screen edges; `null` off the world) and `seed(i)` (stable noise in 0..1 for
+variation). Shores, sand edges and the hut's roof come from `near`, so you
+never need corner tiles. Water and shallow tiles animate their ripples and
+foam from `t`; keep any other tile animation that subtle. A tile without a
+style draws as a red-and-black checker, and the test `every character of
+every shipped tileset has a tile style` fails.
+
+**Light.** Each area has a mood drawn over the play area after the hero:
+`day` (default), `indoor` or `dark`. Set it once from the area's file with
+`VL.ART.setAreaLight('hut', 'indoor')`.
+
+**Text sizes.** All text is a bitmap font drawn with
+`VL.ART.text(ctx, str, x, y, { size, color, shadow, align })` ((x, y) is the
+top-left, or top-centre/top-right with `align`):
+
+| Size | Glyphs | Line height | Use |
+|---|---|---|---|
+| `'small'` | 3×5 capitals and digits (lower case drawn as capitals) | 7 | HUD labels, key hints |
+| `'normal'` | 5×7 capitals, lower case with descenders | 10 | dialogue, popups, menus |
+| `'large'` | `normal` at 2× | 20 | titles |
+
+Over the world, give text `shadow: 'outline'`. `VL.ART.measureText`,
+`VL.ART.wrapText(str, width, size)` and `VL.ART.missingGlyphs(str, size)` help
+with layout; a content test should check its strings with `missingGlyphs`
+(characters the font lacks are drawn as `?`). The font has letters, digits,
+`.,!?'":;-+=()/&%*<>`, arrows `←→↑↓`, `♥` (not small), and `␣` (the space bar).
+
+**HUD and popups.** `VL.ART.drawHud` draws hearts (from `hp`/`maxHp`), the
+whole-shell count and the main-hand (Space) and off-hand (D) slots. The file
+that owns a value plugs in its reader once:
+`VL.ART.hudSource('shells', (state) => state.inventory.shells)` (also
+`mainHand` and `offHand`, returning an item id). Popups, dialogue and menus use
+`VL.ART.drawPopup(ctx, { title, text, at: 'bottom' | 'top' | 'center', prompt }, t)`
+or the bare frame `VL.ART.drawBox(ctx, x, y, w, h)`. A popup holds 4 lines;
+`VL.ART.popupLayout(...)` reports `overflow` when the text needs more.
 
 ## Engine notes
 

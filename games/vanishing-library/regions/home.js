@@ -3,6 +3,13 @@
 VL.defineArea('overworld', { tileset: 'base' });
 VL.defineArea('hut', { tileset: 'base' });
 
+// Beach props stand on the floor around them, not on a square of grass.
+VL.extendTileset('base', {
+  t: { solid: true, tree: true, art: 'tree', ground: 'sand' },
+  r: { solid: true, rock: true, art: 'rock', ground: 'sand' },
+  o: { solid: true, rock: true, art: 'rock', ground: 'shallow' },
+});
+
 VL.addScreens('overworld', {
   '0,0': {
     tiles: [
@@ -45,8 +52,8 @@ VL.addScreens('overworld', {
       'T...............',
       'T......R........',
       'T...............',
-      'Rsssssssssssssss',
-      'Rsssssssssssssss',
+      'rsssssssssssssss',
+      'rsssssssssssssss',
       'Wwwwwwwwwwwwwwww',
       'WWWWWWWWWWWWWWWW',
     ],
@@ -62,8 +69,8 @@ VL.addScreens('overworld', {
       '........P......T',
       '....B...P..B...T',
       'ssssssssssssssss',
-      'sssssssssssssssT',
-      'wwwwwwwwwwwwwwwT',
+      'ssssssssssssssst',
+      'wwwwwwwwwwwwwwwo',
       'WWWWWWWWWWWWWWWW',
     ],
     entities: [

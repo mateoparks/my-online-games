@@ -2,21 +2,16 @@
 // the HUD strip; a screen slide draws the old and new screens offset.
 VL.render = function render(ctx, app, t) {
   const { width, height } = VL.TUNING;
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, width, height);
+  VL.ART.rect(ctx, 'ink', 0, 0, width, height);
   app.scene.draw(ctx, app, t);
 };
 
 // `entities` defaults to the screen's static list (used for the outgoing screen
 // of a slide); the current screen passes the room's live per-visit copies.
 VL.drawScreen = function drawScreen(ctx, areaId, key, ox, oy, t, entities) {
-  const { cols, rows, tile } = VL.TUNING;
+  const { tile } = VL.TUNING;
   const screen = VL.getScreen(areaId, key);
-  for (let ty = 0; ty < rows; ty += 1) {
-    for (let tx = 0; tx < cols; tx += 1) {
-      VL.ART.drawTile(ctx, VL.tileInfo(areaId, screen.tiles[ty][tx]), ox + tx * tile, oy + ty * tile, t);
-    }
-  }
+  VL.ART.drawScreenTiles(ctx, areaId, key, ox, oy, t);
   for (const entity of entities || screen.entities) {
     VL.ENTITIES[entity.type]?.draw?.(ctx, entity, ox + entity.x * tile, oy + entity.y * tile, t);
   }
@@ -45,6 +40,7 @@ VL.drawWorld = function drawWorld(ctx, state, t) {
   }
   VL.drawScreen(ctx, player.area, player.screen, ox, oy, t, state.room.entities);
   VL.ART.drawHero(ctx, player, Math.round(ox + player.x), Math.round(oy + player.y), t);
+  VL.ART.drawLight(ctx, VL.ART.lightFor(player.area), width, playHeight);
   ctx.restore();
   VL.ART.drawHud(ctx, state, t);
 };

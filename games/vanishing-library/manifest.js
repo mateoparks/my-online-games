@@ -18,6 +18,11 @@ VL.FILES = {
 
   art: [
     'art.js',
+    'art/font.js',
+    'art/tiles.js',
+    'art/hero.js',
+    'art/sprites.js',
+    'art/ui.js',
   ],
 
   systems: [
@@ -37,6 +42,7 @@ VL.FILES = {
 
   scenes: [
     'scenes/play.js',
+    'scenes/art-sheet.js',
   ],
 
   boot: [
