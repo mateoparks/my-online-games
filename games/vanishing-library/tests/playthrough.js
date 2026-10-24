@@ -84,7 +84,14 @@ function createDrive(VL, initialApp, reload) {
       if (!hook) throw new Error('drive.reload needs a reload hook (W2): pass reload(app) to createPlaythrough or define VL.reloadApp');
       app = hook(app);
     },
+    // Scripted play is about progression, so enemies are cleared from every
+    // screen before each step (combat has tests/combat.test.js); a step that
+    // means to fight sets `drive.fight = true`.
+    fight: false,
     update(actions = VL.noActions()) {
+      if (!drive.fight && app.game?.room && VL.isEnemy) {
+        app.game.room.entities = app.game.room.entities.filter((e) => !VL.isEnemy(e) && e.type !== 'projectile');
+      }
       app.update(actions, STEP);
     },
     press(action) {

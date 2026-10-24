@@ -42,9 +42,12 @@ VL.drawWorld = function drawWorld(ctx, state, t) {
   VL.drawScreen(ctx, player.area, player.screen, ox, oy, t, state.room);
   const heroX = Math.round(ox + player.x);
   const heroY = Math.round(oy + player.y);
-  for (const layer of VL.HERO_LAYERS) layer.draw(ctx, state, heroX, heroY, t, 'behind');
-  VL.ART.drawHero(ctx, player, heroX, heroY, t);
-  for (const layer of VL.HERO_LAYERS) layer.draw(ctx, state, heroX, heroY, t, 'front');
+  // A hurt hero flashes while invulnerable (systems/combat.js sets `flash`).
+  if (!(player.flash > 0 && Math.floor(player.flash * 16) % 2 === 1)) {
+    for (const layer of VL.HERO_LAYERS) layer.draw(ctx, state, heroX, heroY, t, 'behind');
+    VL.ART.drawHero(ctx, player, heroX, heroY, t);
+    for (const layer of VL.HERO_LAYERS) layer.draw(ctx, state, heroX, heroY, t, 'front');
+  }
   VL.ART.drawLight(ctx, VL.ART.lightFor(player.area), width, playHeight);
   ctx.restore();
   VL.ART.drawHud(ctx, state, t);

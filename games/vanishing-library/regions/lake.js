@@ -48,6 +48,7 @@
         'TT..TTTTTWWWWWWW',
       ],
       entities: [
+        { type: 'slime', x: 4, y: 6 },
         spot('bookLakeShore', 3, 4, 'rock', 'W14'),
         spot('pageFieldB', 8, 8, 'pickup', 'W11'),
       ],

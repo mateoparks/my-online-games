@@ -35,6 +35,7 @@ VL.FILES = {
     'systems/sound.js',
     'systems/foliage.js',
     'systems/hands.js',
+    'systems/combat.js',
   ],
 
   entities: [
@@ -46,6 +47,12 @@ VL.FILES = {
     'entities/sign.js',
     'entities/pickups.js',
     'entities/ore.js',
+    'entities/crab.js',
+    'entities/slime.js',
+    'entities/bat.js',
+    'entities/spitter.js',
+    'entities/gull.js',
+    'entities/heart-container.js',
   ],
 
   regions: [

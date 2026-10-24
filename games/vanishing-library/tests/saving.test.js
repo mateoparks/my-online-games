@@ -459,9 +459,9 @@ test('faint lines: a default, the shrub, and items add their own once', () => {
   assert.equal(typeof VL.faintLine('default'), 'string');
   assert.match(VL.faintLine('shrub'), /shrub/);
   assert.equal(VL.faintLine('mystery'), VL.faintLine('default'));
-  VL.addFaintLine('crab', 'A crab pinched you out cold.');
-  assert.equal(VL.faintLine('crab'), 'A crab pinched you out cold.');
-  assert.throws(() => VL.addFaintLine('crab', 'again'), /crab/);
+  VL.addFaintLine('boulder', 'A boulder rolled you flat.');
+  assert.equal(VL.faintLine('boulder'), 'A boulder rolled you flat.');
+  assert.throws(() => VL.addFaintLine('boulder', 'again'), /boulder/);
   for (const [cause, line] of Object.entries(VL.FAINT_LINES)) {
     assert.deepEqual([...VL.ART.missingGlyphs(line)], [], cause);
   }

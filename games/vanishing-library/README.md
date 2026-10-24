@@ -360,7 +360,8 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   one bush when no sword is in the main hand. Space with an empty main hand
   pulls too. Entities match by integer tile (`e.x/e.y`). A sword swing (`VL.swing`) sets `state.player.swing` for
   `TUNING.swingSeconds` and pushes `{ type: 'swing', item, hand, tiles }`; it
-  cuts the bushes on those tiles, so combat (W6) reads the same event.
+  cuts the bushes on those tiles. Enemies are hit by the blade's reach box
+  instead (see Combat).
 - **Bushes (`systems/foliage.js`):** a `cuttable` tile is cut for the visit
   by `VL.cutBush(state, tx, ty, 'sword' | 'hands')`; it becomes the legend's
   `cutTo` character (default grass `.`, so a bush on sand says `cutTo: 's'`).
@@ -401,6 +402,72 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
 - **Locks claimed:** `chestGear` (the hut chest, `found:hutChest`),
   `oreShallows`, `berryBush` (a screen with a berry bush visited), `berries`,
   `bushBareHands`, `bushCut`, `beachBrokenShells`.
+
+## Combat (W6)
+
+`systems/combat.js` runs after the hands (order 30): the sword hits enemies,
+enemies and seeds hurt the hero, the shield turns them away, and anything
+that hurts knocks back. Enemy types live one per file in `entities/`
+(`crab`, `slime`, `bat`, `spitter`, `gull`); `entities/heart-container.js`
+holds the heart containers.
+
+- **Tiers are data:** `TUNING.swordDamage` (`woodSword` 1, `metalSword` 2)
+  and `TUNING.shieldBlocks` (`woodShield` blocks `small`, `metalShield`
+  `small` and `big`). The metal items are defined here (sprites, popups);
+  W10's smith only gives them. A new shield (the Mirror Shield, W19) adds its
+  line, e.g. `fire`.
+- **Hurting the hero:** `VL.hurtHero(state, { damage, size, from, cause })`
+  (half hearts; `from` is a point, `cause` the faint line's id) returns
+  `'blocked'`, `'hurt'` or `'ignored'`. A hit sets `player.invuln` and
+  `player.flash` (`TUNING.invulnSeconds`; `render.js` skips the hero on
+  alternate frames while `flash` runs) and `player.knockback`, which moves
+  the hero for `TUNING.knockbackSeconds` with the arrows ignored
+  (`systems/movement.js`), stopping at walls and never crossing a screen
+  edge. Hearts running out calls `VL.faint(state, cause)`; `VL.respawn` also
+  clears knockback and flashing.
+- **The shield** blocks when a hand holding a shield has its key held
+  (`player.shieldItem`, worked out each step), the hit comes from the side the
+  hero faces, and the shield's list has the hit's `size`. A block shoves the
+  hero a little, bounces the enemy, sparks and plays `clank`; no damage, no
+  invulnerability.
+- **Enemies:** `VL.defineEnemy(type, { tuning, body: { w, h }, size, flies,
+  rooted, faint, drops?, setup(state, e), think(state, e, dt), harmful(e),
+  onHit, onTouch, draw(ctx, e, cx, cy, t) })` also defines the entity type,
+  so a region places one with `{ type: 'crab', x, y }` (tiles). `tuning`
+  names a `VL.TUNING` entry whose `hp` and `damage` are read live. A live
+  enemy keeps its body centre in pixels (`e.cx`, `e.cy`); move it with
+  `VL.moveEnemy(state, e, dx, dy)` (walkers stop at solid tiles, fliers cross
+  them, and nothing leaves the screen) and aim with `VL.toHero(state, e)`.
+  Enemies are never solid, so none can wall off a path. They live in the
+  visit's room, so they come back at full strength on re-entry and never
+  follow the hero to another screen. `VL.spawnEnemy(state, type, tx, ty)` and
+  `VL.spawnProjectile(state, { cx, cy, vx, vy, size, damage, cause, sprite })`
+  add one to the current visit.
+- **Hits and drops:** a swing hits each enemy in the blade's reach once
+  (`VL.hitEnemy(state, e, damage, from)` for other weapons), knocks it back
+  (not a `rooted` one) and flashes it. A beaten enemy leaves a puff and rolls
+  `TUNING.enemyDrops` (heart 20%, whole shell 20%) for a `drop` entity on its
+  tile, or the nearest open one.
+- **The roster:** beach crabs (sideways, hurry at a hero in their row) on the
+  beaches; slimes (hop at a nearby hero) in the fields, canyon, east road and
+  lake shore; bats (doze until the hero is close, flutter at them, fly off) and
+  spitters (rooted; puff up, then spit a seed along a straight line) in the
+  Woods; gulls (wheel, squawk, dive where the hero stood; `big`, so only metal
+  blocks them) on the cliffs and highlands. Every one does half a heart and
+  takes one to three wood-sword hits. The start screen, the home meadow (0,0)
+  and the town have none.
+- **Heart containers:** `VL.giveHeartContainer(state, id?)` adds
+  `TUNING.heartContainerHp` (one heart) to `maxHp`, fills every heart, marks
+  `id` found, shows its popup the first time only, plays `fanfare` and earns.
+  W6 fills the `heartFieldA` (east road, among the bushes) and `heartFieldB`
+  (cliff ledge) spots; bosses (W13+) call it directly. No new saved field:
+  `maxHp` and the found flags were already saved.
+- **Sounds:** events `enemyHit` (`hit`), `heroHurt` (`hurt`), `blocked`
+  (`clank`), `enemyDefeated` (`poof`), `spit`, `squawk` and `heartContainer`
+  (`fanfare`).
+- **The playthrough** clears enemies from the room before every step, since
+  it scripts progression, not fights; a step that means to fight sets
+  `drive.fight = true`.
 
 ## Engine notes
 
@@ -559,7 +626,12 @@ and a continue at full hearts (screenshots `title.png`, `name.png`,
 sword and shield land in the hands), E for the equipment screen, Space on a
 bush (it must be cut) and S at a berry bush (`w5-hut.png`,
 `w5-chest-popup.png`, `w5-equipment.png`, `w5-bush-cut.png`,
-`w5-bush-after.png`, `w5-berry-bush.png`, `w5-berries-picked.png`). It runs
+`w5-bush-after.png`, `w5-berry-bush.png`, `w5-berries-picked.png`). Then
+combat (W6): each roster enemy on a screen it lives on
+(`w6-enemy-<type>.png`), Space hitting a slime that is knocked back
+(`w6-hit-knockback.png`), a crab hurting and knocking back the hero
+(`w6-hurt.png`), D held blocking a spitter's seed (`w6-shield-block.png`) and
+a heart container picked up (`w6-heart-container.png`). It runs
 for 60 s at most. A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
