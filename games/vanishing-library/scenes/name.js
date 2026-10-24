@@ -16,11 +16,22 @@
   // Letters and digits as typed; anything the font cannot draw is dropped.
   const typeable = (ch) => ch >= ' ' && ch !== '\u007f' && VL.ART.missingGlyphs(ch).length === 0;
 
+  function typeInto(naming, typed) {
+    // NFC joins an accent typed as its own code point (e + ´) into é.
+    for (const ch of typed.normalize('NFC')) {
+      if (ch === '\b') naming.text = naming.text.slice(0, -1);
+      else if (naming.text.length < VL.NAME_MAX && typeable(ch)) naming.text += ch;
+    }
+  }
+
   VL.defineScene('name', {
     // Typing goes into the field: letter shortcuts (such as N for mute) stay off here.
     textEntry: true,
     enter(app, data) {
       app.naming = { slot: data?.slot ?? 0, text: '', onStart: false };
+      // N is a letter here, so a mute note from the title would only confuse.
+      VL.SOUND.clearNote();
+      typeInto(app.naming, data?.typed || '');
     },
 
     update(app, actions) {
@@ -33,11 +44,7 @@
       if (pressed.up) naming.onStart = false;
       if (pressed.down) naming.onStart = true;
       if (naming.onStart !== wasOnStart && (pressed.up || pressed.down)) VL.sfx('menuMove');
-      // NFC joins an accent typed as its own code point (e + ´) into é.
-      for (const ch of naming.onStart ? '' : actions.typed.normalize('NFC')) {
-        if (ch === '\b') naming.text = naming.text.slice(0, -1);
-        else if (naming.text.length < VL.NAME_MAX && typeable(ch)) naming.text += ch;
-      }
+      if (!naming.onStart) typeInto(naming, actions.typed);
       if (actions.pressed.pause) {
         app.setScene('title', { slot: naming.slot });
         return;

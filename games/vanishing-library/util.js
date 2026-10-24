@@ -11,7 +11,7 @@ VL.noActions = function noActions() {
     held[action] = false;
     pressed[action] = false;
   }
-  return { held, pressed, typed: '' };
+  return { held, pressed, typed: '', typedAfterConfirm: '' };
 };
 
 // Actions from name lists; pressed actions count as held too.

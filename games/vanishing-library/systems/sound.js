@@ -174,10 +174,15 @@
     if (!VL.SOUND.muted) VL.sfx('menuSelect');
   };
 
+  VL.SOUND.currentNote = () => note;
+  VL.SOUND.clearNote = () => {
+    note = null;
+  };
+
   function isMuteKey(event) {
     if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return false;
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return false;
-    if (VL.app?.scene?.textEntry) return false;
+    if (VL.app?.scene?.textEntry || VL.input?.confirmPending()) return false;
     return event.code ? event.code === VL.SOUND.MUTE_CODE : (event.key || '').toLowerCase() === 'n';
   }
 

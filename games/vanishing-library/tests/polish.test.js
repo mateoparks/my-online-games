@@ -243,4 +243,70 @@ test('storage full at boot: saving is off, but the saved slots still list and co
   assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).name, 'Robin', 'the save is untouched');
 });
 
+// ---------- 5. title cursor after Save & Quit, the mute note, N/Enter races ----------
+
+test('Save & Quit puts the title cursor back on the slot just played', () => {
+  const { VL } = loadGame();
+  const app = titleApp(VL);
+  press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  type(VL, app, 'Two');
+  press(VL, app, 'confirm');
+  assert.equal(app.slot, 1);
+  app.setScene('pause');
+  press(VL, app, 'down');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'title');
+  assert.equal(app.title.cursor, 1);
+});
+
+test('the "Sound off (N)" note does not follow the player onto name entry', () => {
+  const { VL } = loadGame();
+  const app = titleApp(VL);
+  VL.SOUND.toggleMute();
+  assert.ok(VL.SOUND.currentNote(), 'the title shows the note');
+  press(VL, app, 'confirm');
+  assert.equal(app.sceneId, 'name');
+  assert.equal(VL.SOUND.currentNote(), null);
+  VL.SOUND.setMuted(false);
+});
+
+test('Enter then N in one frame: N is a letter in the name, not a mute', () => {
+  const { VL } = loadGame();
+  const win = fakeWindow();
+  const input = VL.createKeyboardInput(win, fakeDocument());
+  win.dispatch('keydown', keyEvent('Enter', { key: 'Enter' }));
+  assert.equal(input.confirmPending(), true, 'sound asks this before taking N as mute');
+  win.dispatch('keydown', keyEvent('KeyN'));
+  const actions = input.poll();
+  assert.equal(input.confirmPending(), false);
+  assert.equal(actions.typedAfterConfirm, 'n');
+  const app = titleApp(VL);
+  app.update(actions, STEP);
+  assert.equal(app.sceneId, 'name');
+  assert.equal(app.naming.text, 'n', 'the N reaches the name field');
+  const soundWindow = fakeWindow({ localStorage: memoryStorage() });
+  VL.SOUND.install(soundWindow);
+  VL.input = { confirmPending: () => true };
+  soundWindow.dispatch('keydown', keyEvent('KeyN'));
+  assert.equal(VL.SOUND.muted, false, 'sound leaves an N right after Enter to the game');
+});
+
+test('N held through Enter does not keep typing into the name', () => {
+  const { VL } = loadGame();
+  const win = fakeWindow();
+  const input = VL.createKeyboardInput(win, fakeDocument());
+  win.dispatch('keydown', keyEvent('KeyN'));
+  win.dispatch('keydown', keyEvent('KeyN', { repeat: true }));
+  input.poll();
+  win.dispatch('keydown', keyEvent('Enter', { key: 'Enter' }));
+  input.poll();
+  for (let i = 0; i < 3; i += 1) win.dispatch('keydown', keyEvent('KeyN', { repeat: true }));
+  assert.equal(input.poll().typed, '', 'repeats of a key held before Enter are dropped');
+  win.dispatch('keyup', keyEvent('KeyN'));
+  win.dispatch('keydown', keyEvent('KeyN'));
+  win.dispatch('keydown', keyEvent('KeyN', { repeat: true }));
+  assert.equal(input.poll().typed, 'nn', 'a fresh press types and repeats again');
+});
+
 module.exports = { titleApp, press, type, STEP };

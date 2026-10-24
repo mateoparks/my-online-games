@@ -40,6 +40,7 @@ VL.boot = function boot(doc, win) {
   loop.start();
 
   VL.app = app;
+  VL.input = input;
   VL.screen = screen;
   return app;
 };

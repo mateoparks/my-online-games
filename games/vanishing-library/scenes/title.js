@@ -60,7 +60,8 @@
       if (!VL.confirmed(actions)) return;
       if (slot.status === 'empty' || slot.status === 'ok') VL.sfx('menuSelect');
       if (slot.status === 'empty') {
-        app.setScene('name', { slot: title.cursor });
+        // Letters typed just after Enter, in the same frame, belong to the name.
+        app.setScene('name', { slot: title.cursor, typed: actions.pressed.confirm ? actions.typedAfterConfirm : '' });
       } else if (slot.status === 'ok') {
         const game = VL.loadSlot(app.storage, title.cursor);
         if (!game) {
