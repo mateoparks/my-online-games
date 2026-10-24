@@ -41,6 +41,7 @@ VL.FILES = {
     'systems/combat.js',
     'systems/economy.js',
     'systems/digging.js',
+    'systems/dungeon.js',
   ],
 
   entities: [
@@ -60,6 +61,16 @@ VL.FILES = {
     'entities/spitter.js',
     'entities/gull.js',
     'entities/heart-container.js',
+    'entities/locked-door.js',
+    'entities/push-block.js',
+    'entities/pressure-plate.js',
+    'entities/switch.js',
+    'entities/shutter.js',
+    'entities/save-statue.js',
+    'entities/small-key.js',
+    'entities/boss-key.js',
+    'entities/dungeon-map.js',
+    'entities/warp.js',
   ],
 
   regions: [
@@ -92,6 +103,7 @@ VL.FILES = {
     'scenes/shop.js',
     'scenes/popup.js',
     'scenes/equipment.js',
+    'scenes/dungeon-map.js',
   ],
 
   boot: [
