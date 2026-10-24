@@ -23,7 +23,8 @@
 
     update(app, actions) {
       const naming = app.naming;
-      for (const ch of actions.typed) {
+      // NFC joins an accent typed as its own code point (e + ´) into é.
+      for (const ch of actions.typed.normalize('NFC')) {
         if (ch === '\b') naming.text = naming.text.slice(0, -1);
         else if (naming.text.length < VL.NAME_MAX && typeable(ch)) naming.text += ch;
       }

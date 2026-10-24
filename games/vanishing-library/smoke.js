@@ -4,8 +4,9 @@
 // live resize, walks the hero with real key events, checks a screen slide pans
 // the right way, plays the real start (title, typed name, intro, controls
 // popup, pause, Save & Quit, reload), plays every sound effect and toggles the
-// persisted mute, plays W5's core loop (chest, equipment, bush, berries), and
-// saves a screenshot of each size, scene and art sheet page.
+// persisted mute, plays W5's core loop (chest, equipment, bush, berries), talks
+// to townsfolk and opens a shop, and saves a screenshot of each size, scene and
+// art sheet page.
 // Run: node games/vanishing-library/smoke.js --out <dir>
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
@@ -666,6 +667,105 @@ async function main() {
       if (combatProblems.length) failures += 1;
       console.log(`${combatProblems.length ? 'FAIL' : 'ok  '} combat: 5 enemies, hit, hurt, shield block, heart container, ${path.join(outDir, 'w6-*.png')}`);
       for (const problem of combatProblems) console.log(`     ${problem}`);
+    }
+
+    // W9: accented name entry, talking to townsfolk with S, a long line over
+    // several pages, {name} with an accented name and the shop/trade UI, with
+    // real key events, saved as w9-*.png. A block of its own, so its names
+    // never clash with another check's.
+    {
+      errors.length = 0;
+      const talkProblems = [];
+      const codes = { KeyS: 83, KeyE: 69, KeyO: 79, KeyZ: 90, Enter: 13, Escape: 27, ArrowDown: 40 };
+      const hit = async (code, keyName = code) => {
+        const event = { key: keyName, code, windowsVirtualKeyCode: codes[code], nativeVirtualKeyCode: codes[code] };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) talkProblems.push(`animation frames stopped after ${code}`);
+      };
+      const shoot = async (name) => {
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      };
+      const scene = () => evaluate('VL.app.sceneId');
+
+      await evaluate("VL.app.setScene('name', { slot: 2 }); document.getElementById('game').focus()");
+      for (const [code, ch] of [['KeyZ', 'Z'], ['KeyO', 'o'], ['KeyE', 'ë']]) await hit(code, ch);
+      const named = await evaluate('VL.app.naming.text');
+      if (named !== 'Zoë') talkProblems.push(`typing Z, o, ë gave the name ${JSON.stringify(named)}`);
+      await shoot('w9-name-entry');
+      await hit('Escape');
+
+      // Stands the hero next to a townsperson, facing them, and presses S.
+      const talkTo = async (npc, name) => {
+        const placed = await evaluate(`(() => {
+          for (const [key, screen] of Object.entries(VL.AREAS.overworld.screens)) {
+            const npc = screen.entities.find((e) => e.type === 'npc' && e.id === '${npc}');
+            if (!npc) continue;
+            VL.app.game = VL.newGame({ name: '${name}' });
+            VL.app.setScene('play');
+            for (const [dx, dy, facing] of [[0, -1, 'down'], [0, 1, 'up'], [-1, 0, 'right'], [1, 0, 'left']]) {
+              if (VL.isSolidAt('overworld', key, npc.x + dx, npc.y + dy)) continue;
+              VL.place(VL.app.game, { area: 'overworld', screen: key, tx: npc.x + dx, ty: npc.y + dy, facing });
+              return true;
+            }
+          }
+          return false;
+        })()`);
+        if (!placed) talkProblems.push(`no open tile next to ${npc}`);
+        await hit('KeyS', 's');
+        if ((await scene()) !== 'dialogue') talkProblems.push(`S next to ${npc} gave scene ${await scene()}`);
+      };
+
+      await talkTo('nell', 'Robin');
+      await sleep(1500);
+      await shoot('w9-conversation');
+      const nell = JSON.parse(await evaluate('JSON.stringify(VL.app.dialogue)'));
+      if (!nell || nell.speaker !== 'Nell' || !nell.pages[0].join(' ').includes('Robin')) talkProblems.push(`talking to Nell showed ${JSON.stringify(nell)}`);
+      await hit('KeyS', 's');
+      await hit('KeyS', 's');
+      await hit('KeyS', 's');
+      if ((await scene()) !== 'play') talkProblems.push(`after Nell's last page the scene is ${await scene()}`);
+
+      await talkTo('gran', 'Élodie');
+      await sleep(1500);
+      await shoot('w9-name-accent');
+      const gran = await evaluate('VL.app.dialogue.pages[0].join(" ")');
+      if (!gran.includes('Élodie')) talkProblems.push(`Gran said ${JSON.stringify(gran)}`);
+      await hit('Escape');
+
+      const pageCount = await evaluate(`(() => {
+        const say = 'Long ago this town had more books than people, {name}. Every house kept a shelf, and every shelf was full. Then, one by one, the books began to vanish. Nobody saw them go. The librarian still opens the doors every morning, hoping.';
+        VL.app.setScene('dialogue', { speaker: 'Storyteller', pages: VL.dialoguePages(say, VL.app.game) });
+        return VL.app.dialogue.pages.length;
+      })()`);
+      if (!(pageCount >= 2)) talkProblems.push(`the long line made ${pageCount} pages`);
+      await sleep(4000);
+      await shoot('w9-paged-1');
+      await hit('KeyS', 's');
+      await sleep(4000);
+      await shoot('w9-paged-2');
+      if ((await evaluate('VL.app.dialogue.page')) !== 1) talkProblems.push('S did not turn to page 2');
+      await hit('Escape');
+
+      await evaluate("VL.app.game.inventory = { ...(VL.app.game.inventory || {}), shells: 1, wood: 6, berries: 2, paper: 0 }; VL.app.setScene('shop', VL.SCENES.shop.smokeData())");
+      await hit('Enter');
+      const note = await evaluate('VL.app.shopView.note && VL.app.shopView.note.text');
+      if (note !== 'Not enough shells!') talkProblems.push(`Enter on paper with 1 shell said ${JSON.stringify(note)}`);
+      await shoot('w9-shop');
+      await hit('ArrowDown');
+      await hit('Enter');
+      if ((await evaluate('VL.app.shopView.mode')) !== 'ask') talkProblems.push('Enter on "Sell a berry" did not ask');
+      await shoot('w9-shop-ask');
+      await hit('Escape');
+      await hit('Escape');
+      if ((await scene()) !== 'play') talkProblems.push(`Esc twice in the shop left scene ${await scene()}`);
+
+      talkProblems.push(...errors);
+      if (talkProblems.length) failures += 1;
+      console.log(`${talkProblems.length ? 'FAIL' : 'ok  '} npcs and dialogue: name "Zoë", Nell, Gran to Élodie, ${pageCount} pages, shop, ${path.join(outDir, 'w9-*.png')}`);
+      for (const problem of talkProblems) console.log(`     ${problem}`);
     }
 
     await cdp.send('Browser.close').catch(() => {});

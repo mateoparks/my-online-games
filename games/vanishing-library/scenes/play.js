@@ -21,7 +21,9 @@
       }
       VL.updateWorld(game, actions, dt);
       if (game.hp <= 0) app.setScene('fainted');
-      else if (VL.currentPopup(game) && !game.transition) app.setScene('popup');
+      // A talk asked for this step (VL.requestScene) goes first; a popup the
+      // same step queued waits for play again.
+      else if (VL.currentPopup(game) && !game.transition && !game.sceneRequest) app.setScene('popup');
     },
     draw(ctx, app, t) {
       VL.drawWorld(ctx, app.game, t);

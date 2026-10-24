@@ -1037,3 +1037,86 @@ test('drive.fight is reset before every milestone step, so one step\'s fight nev
   createPlaythrough(VL, { steps }).playTo(second);
   assert.equal(seen, false);
 });
+
+// ---------- townsfolk (W9) ----------
+
+// A townsperson standing at tx,ty in the arena, with one line to say.
+function addTownsperson(t, tx, ty) {
+  t.VL.defineNpc('tester', { name: 'Tess', look: 'townsfolk' });
+  t.VL.defineDialogue('tester', [{ say: 'Hello, {name}!' }]);
+  const npc = { type: 'npc', id: 'tester', x: tx, y: ty };
+  t.game.room.entities.push(npc);
+  return npc;
+}
+
+test('S on a townsperson only talks: no swing with a sword in hand, no bush pulled bare-handed', () => {
+  for (const sword of [true, false]) {
+    const t = setup();
+    t.at(5, 5, 'right');
+    if (sword) t.give('woodSword');
+    addTownsperson(t, 6, 5);
+    const hp = t.game.hp;
+    t.press('interact');
+    assert.equal(t.app.sceneId, 'dialogue', `sword ${sword}`);
+    assert.ok(!t.player.swing, `sword ${sword}: no swing`);
+    assert.ok(!t.events.includes('swing') && !t.events.includes('pullHurt'), `sword ${sword}: ${t.events}`);
+    assert.equal(t.game.hp, hp);
+  }
+});
+
+test('enemies wait while a dialogue or a shop is open, and only touch the hero once play resumes', () => {
+  const t = setup();
+  t.at(5, 5, 'right');
+  addTownsperson(t, 6, 5);
+  t.press('interact');
+  assert.equal(t.app.sceneId, 'dialogue');
+  const crab = t.spawn('crab', 4, 5);
+  touch(t, crab, 'left');
+  const hp = t.game.hp;
+  const where = [crab.cx, crab.cy];
+  t.hold([], 3);
+  t.app.setScene('shop', t.VL.SCENES.shop.smokeData());
+  t.hold([], 3);
+  assert.equal(t.game.hp, hp, 'no harm while talking or shopping');
+  assert.deepEqual([crab.cx, crab.cy], where, 'the crab waited too');
+  t.press('pause');
+  assert.equal(t.app.sceneId, 'play', 'Esc leaves the shop');
+  t.step();
+  assert.ok(t.game.hp < hp, 'the crab was really touching: back in play it hurts');
+});
+
+test('the sword passes through townsfolk: no hit, no push, and an enemy behind still gets hit', () => {
+  const t = setup();
+  t.at(5, 5, 'right');
+  t.give('woodSword');
+  const npc = addTownsperson(t, 6, 5);
+  const dummy = t.spawn('dummy', 6, 5);
+  dummy.cx = 104;
+  dummy.cy = 88;
+  t.press('mainHand');
+  t.hold([], 0.3);
+  assert.ok(t.game.room.entities.includes(npc), 'the townsperson is still there');
+  assert.deepEqual([npc.x, npc.y, npc.knock, npc.hp], [6, 5, undefined, undefined]);
+  assert.equal(dummy.hp, t.VL.ENEMIES.dummy.hp - 1, 'the swing still reached the enemy');
+  assert.equal(t.events.filter((e) => e === 'enemyHit').length, 1);
+});
+
+test('knockback never pushes the hero into a townsperson\'s tile', () => {
+  for (const side of ['left', 'right', 'up', 'down']) {
+    const t = setup();
+    t.at(7, 5, side);
+    const [dx, dy] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[side];
+    const back = { left: 'right', right: 'left', up: 'down', down: 'up' }[side];
+    addTownsperson(t, 7 - dx, 5 - dy);
+    touch(t, t.spawn('dummy', 7 + dx, 5 + dy), side);
+    t.step();
+    assert.ok(t.player.knockback || t.game.hp < t.game.maxHp, `${side}: hurt`);
+    t.hold([], 0.4);
+    const { tile, heroBox } = t.VL.TUNING;
+    const p = t.player;
+    const box = { l: p.x - heroBox.w / 2, r: p.x + heroBox.w / 2, t: p.y - heroBox.h / 2, b: p.y + heroBox.h / 2 };
+    const npcTile = { l: (7 - dx) * tile, r: (8 - dx) * tile, t: (5 - dy) * tile, b: (6 - dy) * tile };
+    const inside = box.l < npcTile.r && box.r > npcTile.l && box.t < npcTile.b && box.b > npcTile.t;
+    assert.ok(!inside, `${side}, pushed ${back}: hero box ${JSON.stringify(box)} overlaps the townsperson's tile`);
+  }
+});

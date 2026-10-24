@@ -19,6 +19,8 @@ VL.FILES = {
     'milestones.js',
     'items.js',
     'spots.js',
+    'talk.js',
+    'shop.js',
   ],
 
   art: [
@@ -43,6 +45,7 @@ VL.FILES = {
     'entities/spot.js',
     'entities/decor.js',
     'entities/save-point.js',
+    'entities/npc.js',
     'entities/chest.js',
     'entities/sign.js',
     'entities/pickups.js',
@@ -65,6 +68,7 @@ VL.FILES = {
     'regions/cliffs.js',
     'regions/highlands.js',
     'regions/finds.js',
+    'regions/townsfolk.js',
   ],
 
   dungeons: [
@@ -79,6 +83,8 @@ VL.FILES = {
     'scenes/pause.js',
     'scenes/fainted.js',
     'scenes/conflict.js',
+    'scenes/dialogue.js',
+    'scenes/shop.js',
     'scenes/popup.js',
     'scenes/equipment.js',
   ],
