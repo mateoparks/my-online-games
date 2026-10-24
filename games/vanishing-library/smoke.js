@@ -1200,6 +1200,90 @@ async function main() {
       for (const problem of inkProblems) console.log(`     ${problem}`);
     }
 
+    // W13, the dungeon framework on the sample dungeon (tests/sample-dungeon.js,
+    // loaded into the page here, never by the game) with real keys: a room
+    // with its statue and enemy, the locked door's note, the block pushed
+    // onto its plate and the shutter lifting, the map screen on M, and the
+    // boss room, saved as w13-*.png. A block of its own, so its names never clash.
+    {
+      errors.length = 0;
+      const dungeonProblems = [];
+      const codes = { ArrowUp: [38, 'ArrowUp'], ArrowRight: [39, 'ArrowRight'], KeyM: [77, 'm'] };
+      const tap = async (code) => {
+        const [vkCode, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vkCode, nativeVirtualKeyCode: vkCode };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+      };
+      const holdKey = async (code, ms) => {
+        const [vkCode, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vkCode, nativeVirtualKeyCode: vkCode };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await sleep(ms);
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+      };
+      const snap = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const peek = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      await evaluate(fs.readFileSync(path.join(__dirname, 'tests', 'sample-dungeon.js'), 'utf8'));
+      if (!(await evaluate("Boolean(VL.DUNGEONS.sample)"))) dungeonProblems.push('the sample dungeon did not load into the page');
+      // A new game in play at `where`, no popups waiting.
+      const dungeonGame = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        g.popups.seen.controls = true;
+        g.popups.seen.dungeonMap = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+
+      await dungeonGame({ area: 'sample', screen: '0,0', tx: 8, ty: 7, facing: 'up' });
+      await sleep(300);
+      await snap('w13-room');
+      const room = await peek("[g.room.entities.some((e) => e.type === 'slime'), g.room.entities.find((e) => e.type === 'shutter').solid, g.room.entities.some((e) => e.type === 'saveStatue')]");
+      if (room.join() !== 'true,true,true') dungeonProblems.push(`the entrance hall: slime, barred shutter, statue = ${room}`);
+
+      await dungeonGame({ area: 'sample', screen: '0,0', tx: 7, ty: 2, facing: 'up' }, "g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));");
+      await holdKey('ArrowUp', 450);
+      await sleep(100);
+      await snap('w13-locked-door');
+      const locked = await peek("[g.room.entities.find((e) => e.type === 'lockedDoor').open, g.dungeonNote && g.dungeonNote.text, VL.heroTile(g).ty]");
+      if (locked.join() !== 'false,Locked. A small key would open it.,1') dungeonProblems.push(`walking into the locked door without a key: ${locked}`);
+
+      await dungeonGame({ area: 'sample', screen: '1,0', tx: 10, ty: 8, facing: 'right' });
+      await holdKey('ArrowRight', 700);
+      await sleep(250);
+      await snap('w13-block-puzzle');
+      const pushed = await peek("[g.room.entities.find((e) => e.type === 'pushBlock').x, g.dungeons.sample.plates.samplePlate === true, g.room.entities.find((e) => e.type === 'shutter').closed]");
+      if (pushed.join() !== '12,true,false') dungeonProblems.push(`the block onto the plate: block x, plate latched, shutter closed = ${pushed}`);
+
+      await dungeonGame({ area: 'sample', screen: '0,-1', tx: 8, ty: 8, facing: 'up' }, "g.dungeons.sample.map = true; g.dungeons.sample.keysGiven = 2; g.dungeons.sample.bossKey = true; g.visited['sample:0,0'] = true; g.visited['sample:1,0'] = true;");
+      await tap('KeyM');
+      await sleep(250);
+      await snap('w13-map');
+      if ((await evaluate('VL.app.sceneId')) !== 'dungeonMap') dungeonProblems.push(`M in a dungeon opened ${await evaluate('VL.app.sceneId')}, expected dungeonMap`);
+      await tap('KeyM');
+      await sleep(100);
+      if ((await evaluate('VL.app.sceneId')) !== 'play') dungeonProblems.push('M again did not close the map');
+
+      await dungeonGame({ area: 'sample', screen: '0,-2', tx: 7, ty: 8, facing: 'up' });
+      await sleep(300);
+      await snap('w13-boss-room');
+      const bossRoom = await peek("[g.room.entities.some((e) => e.type === 'sampleGolem' && e.boss), g.room.entities.find((e) => e.type === 'shutter').solid]");
+      if (bossRoom.join() !== 'true,true') dungeonProblems.push(`the boss room: boss marked, way back barred = ${bossRoom}`);
+
+      dungeonProblems.push(...errors);
+      if (dungeonProblems.length) failures += 1;
+      console.log(`${dungeonProblems.length ? 'FAIL' : 'ok  '} dungeon: room, locked door, block puzzle, map, boss room, ${path.join(outDir, 'w13-*.png')}`);
+      for (const problem of dungeonProblems) console.log(`     ${problem}`);
+    }
+
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();
   } finally {

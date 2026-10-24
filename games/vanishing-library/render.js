@@ -49,6 +49,9 @@ VL.drawWorld = function drawWorld(ctx, state, t) {
     for (const layer of VL.HERO_LAYERS) layer.draw(ctx, state, heroX, heroY, t, 'front');
   }
   VL.ART.drawLight(ctx, VL.ART.lightFor(player.area), width, playHeight);
+  // Readouts over the play area (a dungeon's keys): over the light, never
+  // hidden by the flash.
+  for (const layer of VL.HERO_LAYERS) layer.draw(ctx, state, heroX, heroY, t, 'overlay');
   ctx.restore();
   VL.ART.drawHud(ctx, state, t);
 };

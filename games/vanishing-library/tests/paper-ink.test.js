@@ -5,13 +5,18 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const { test, read, loadGame, playApp, memoryStorage, fakeContext } = require('./harness');
 
 const STEP = 1 / 60;
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
-function setup({ storage = false } = {}) {
-  const { VL } = loadGame();
+// `dungeon: true` loads W13's sample dungeon (tests/sample-dungeon.js), so
+// the seams with the real dungeon framework are tested without a stub.
+function setup({ storage = false, dungeon = false } = {}) {
+  const context = loadGame();
+  if (dungeon) vm.runInContext(read('tests/sample-dungeon.js'), context, { filename: 'tests/sample-dungeon.js' });
+  const { VL } = context;
   VL.sfx = () => true;
   let app;
   if (storage) {
@@ -514,6 +519,130 @@ test('inside a dungeon the world map opens from no key, and the "press M" popup 
   fresh.VL.dungeonOf = () => null;
   fresh.wait(0.1);
   assert.equal(fresh.VL.currentPopup(fresh.game)?.id, 'mapReady', 'it shows once he is back outside');
+});
+
+// The real W13 framework, no stub: the sample dungeon is entered from its
+// own yard (not an overworld screen) and its rooms share keys like '0,0'
+// and '1,0' with the overworld.
+const YARD = { area: 'sampleYard', screen: '0,0', tx: 8, ty: 4, facing: 'up' };
+const HALL = { area: 'sample', screen: '0,0', tx: 8, ty: 7, facing: 'up' };
+
+test('in a real dungeon M opens the dungeon map and never the world map, by any path', () => {
+  const t = setup({ dungeon: true });
+  const { VL } = t;
+  t.at(HALL);
+  readPrimer(VL, t.game);
+  give(VL, t.game, { paper: 1, ink: 1 });
+  t.wait(0.1);
+  assert.equal(VL.currentPopup(t.game), null, 'no "press M" popup inside');
+  // No world map yet, and everything there to draw one: M is still the dungeon's.
+  t.press('map');
+  assert.equal(t.app.sceneId, 'dungeonMap');
+  t.press('map');
+  assert.equal(t.app.sceneId, 'play');
+  assert.equal(t.app.worldMapView, undefined, 'nothing asked to draw');
+  assert.equal(VL.hasItem(t.game, 'worldMap'), false);
+  // With the world map in hand: not by M, its hand key or the equipment screen.
+  VL.giveItem(t.game, 'worldMap');
+  t.closePopups();
+  t.press('map');
+  assert.equal(t.app.sceneId, 'dungeonMap');
+  t.press('map');
+  t.press('mainHand');
+  assert.notEqual(t.app.sceneId, 'worldMap');
+  t.closePopups();
+  t.app.setScene('play');
+  t.press('equipment');
+  t.app.equipment.cursor = VL.equipmentItems(t.game).findIndex((item) => item.id === 'worldMap');
+  t.press('interact');
+  assert.equal(t.app.sceneId, 'equipment');
+  t.press('equipment');
+  t.closePopups();
+  // Out in the yard (no dungeon) M is the world map again.
+  t.at(YARD);
+  t.press('map');
+  assert.equal(t.app.sceneId, 'worldMap');
+});
+
+test('first visits to dungeon rooms fire the room hooks and are earned, but never ink an overworld screen', () => {
+  const t = setup({ dungeon: true, storage: true });
+  const { VL } = t;
+  t.at(FIELD);
+  VL.giveItem(t.game, 'worldMap');
+  t.closePopups();
+  const inks = () => {
+    const drawn = [];
+    const rect = VL.ART.rect;
+    VL.ART.rect = (c, color, ...rest) => {
+      drawn.push(`${color}@${rest.join(',')}`);
+      return rect(c, color, ...rest);
+    };
+    t.app.draw(fakeContext(), 0);
+    VL.ART.rect = rect;
+    return drawn.filter((d) => d.startsWith('map'));
+  };
+  for (const key of ['0,0', '1,0', '0,-1', '0,-2']) assert.equal(t.game.visited[`overworld:${key}`], undefined, `overworld ${key} is unvisited`);
+  t.at(YARD);
+  t.press('map');
+  const screensBefore = VL.mapView(t.game).screens;
+  const before = inks();
+  t.press('map');
+  // Walk in through the yard door: a real first visit inside a step.
+  const savedAt = t.app.savedAt;
+  for (let s = 0; s < 3 && t.game.player.area !== 'sample'; s += STEP) t.app.update(VL.actions({ held: ['up'] }), STEP);
+  assert.equal(t.game.player.area, 'sample');
+  assert.equal(t.game.visited['sample:0,0'], true);
+  assert.ok(t.game.room.dungeonReady, 'the room hooks ran as the room was built');
+  assert.equal(t.game.room.entities.find((e) => e.type === 'shutter').solid, true, 'its shutter settled before the first step');
+  assert.notEqual(t.app.savedAt, savedAt, 'the first visit is earned');
+  for (const key of ['1,0', '0,-1', '0,-2']) {
+    t.at({ area: 'sample', screen: key, tx: 8, ty: 8 });
+    assert.ok(t.game.room.dungeonReady, `${key} is prepared as it is built, before any step`);
+  }
+  t.at(YARD);
+  assert.deepEqual(plain(VL.mapView(t.game).screens), plain(screensBefore));
+  t.press('map');
+  assert.equal(t.app.sceneId, 'worldMap');
+  assert.deepEqual(inks(), before, 'the drawn map is unchanged by the dungeon rooms');
+  // A reload keeps the dungeon visit, and still keeps it off the world map.
+  t.reload();
+  assert.equal(t.game.visited['sample:0,0'], true);
+  assert.deepEqual(plain(VL.mapView(t.game).screens), plain(screensBefore));
+});
+
+test("W13's VL.saveTile shows on the drawn world map; a change inside a dungeon does not", () => {
+  const t = setup({ dungeon: true });
+  const { VL } = t;
+  t.at(FIELD);
+  VL.giveItem(t.game, 'worldMap');
+  t.closePopups();
+  const inks = () => {
+    const drawn = [];
+    const rect = VL.ART.rect;
+    VL.ART.rect = (c, color, ...rest) => {
+      drawn.push(`${color}@${rest.join(',')}`);
+      return rect(c, color, ...rest);
+    };
+    t.app.draw(fakeContext(), 0);
+    VL.ART.rect = rect;
+    return drawn.filter((d) => d.startsWith('map'));
+  };
+  t.game.visited['overworld:0,0'] = true;
+  assert.notEqual(VL.getScreen('overworld', '0,0').tiles[5][5], 'W');
+  t.press('map');
+  const before = inks();
+  t.press('map');
+  t.at(HALL);
+  VL.saveTile(t.game, 5, 5, 'W');
+  t.at(FIELD);
+  t.press('map');
+  assert.deepEqual(inks(), before, "the dungeon room's '0,4' is not the overworld's");
+  t.press('map');
+  VL.saveTile(t.game, 0, 4, 'W');
+  assert.equal(VL.mapTiles(t.game, '1,1')[4][0], 'W');
+  t.press('map');
+  const after = inks();
+  assert.ok(after.filter((d) => d.startsWith('mapWater')).length > before.filter((d) => d.startsWith('mapWater')).length, 'the saved water is inked in');
 });
 
 test('region names never cover a mark, the hero or each other, with everything visited and both books read', () => {

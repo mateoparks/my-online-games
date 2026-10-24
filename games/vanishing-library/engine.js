@@ -44,7 +44,16 @@ VL.enterScreen = function enterScreen(state, where, slideDir) {
     standingOn: null,
     tiles: {},
   };
+  for (const hook of VL.ROOM_HOOKS) hook(state);
   state.events.push({ type: 'enterScreen', area: where.area, screen: where.screen, first });
+};
+
+// Runs once a screen's room is built, before it is drawn or anything moves:
+// a framework applies saved changes to the room here (dungeon tile changes,
+// doors and shutters settled), so a screen slides in already changed.
+VL.ROOM_HOOKS = [];
+VL.onRoomBuilt = function onRoomBuilt(hook) {
+  VL.ROOM_HOOKS.push(hook);
 };
 
 VL.heroTile = (state) => VL.tileOf(state.player.x, state.player.y);
