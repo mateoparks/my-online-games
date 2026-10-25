@@ -18,9 +18,11 @@ Keyboard only for now (laptop or desktop).
 | M | The map, once you have one (the world map, or a dungeon's map) |
 | N | Sound on or off |
 | Esc | Pause, or Save & Quit |
+| Enter | Confirm a name or a menu choice (in menus, Space and S work too) |
+| Backspace | Delete a letter, or a saved game on the title screen |
 
 Two-handed tools work with Space or D. The first time you play, a popup
-teaches the arrows, S and E; Esc lists every key you can use so far. Some
+teaches the arrows, S, E and Esc; Esc lists every key you can use so far. Some
 friends in the world may teach you a trick or two of their own.
 
 ## Layout
