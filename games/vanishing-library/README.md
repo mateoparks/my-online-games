@@ -15,13 +15,14 @@ Keyboard only for now (laptop or desktop).
 | Space | Use the item in your main hand (a sword, the slingshot, ...) |
 | D | Use the item in your off hand (a shield, ...) |
 | E | Equipment: choose what goes in each hand |
+| X | Dig with your shovel, whatever your hands hold (once you have a shovel) |
 | M | The map, once you have one (the world map, or a dungeon's map) |
 | N | Sound on or off |
 | Esc | Pause, or Save & Quit |
 | Enter | Confirm a name or a menu choice (in menus, Space and S work too) |
 | Backspace | Delete a letter, or a saved game on the title screen |
 
-Two-handed tools work with Space or D. The first time you play, a popup
+Two-handed tools work with Space or D; X digs with the best shovel you own without changing what your hands hold. The first time you play, a popup
 teaches the arrows, S, E and Esc; Esc lists every key you can use so far. Some
 friends in the world may teach you a trick or two of their own.
 
@@ -258,9 +259,9 @@ VL.ART.defineTileStyle('ore', {
 
 Props such as trees, rocks and bushes draw grass under themselves (`under`).
 A legend entry's `ground` picks another floor: any style with a ground pass,
-matching what is around the prop. `'r': { solid: true, rock: true, art: 'rock',
-ground: 'sand' }` is a beach rock; `ground: 'shallow'` stands a rock in the
-shallows, and shores and foam then run round it as water. A name that is
+matching what is around the prop. `'t': { solid: true, tree: true, art: 'tree',
+ground: 'sand' }` is a tree on the beach; `ground: 'shallow'` stands a prop in
+the shallows, and shores and foam then run round it as water. A name that is
 unknown, or has no ground pass, throws. The test `every prop in every area
 sits on a ground one of its neighbours shares` catches exactly one thing: a
 prop no neighbour's ground supports, such as a grass square on the beach or a
@@ -402,13 +403,17 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
 - **Bushes (`systems/foliage.js`):** a `cuttable` tile is cut for the visit
   by `VL.cutBush(state, tx, ty, 'sword' | 'hands')`; it becomes the legend's
   `cutTo` character (default grass `.`, so a bush on sand says `cutTo: 's'`).
-  One roll per bush, `TUNING.bushDrops` (heart 2%, whole shell 5%, wood 20%,
+  One roll per bush, `TUNING.bushDrops` (heart 2%, whole shell 5%, wood 50% since W29,
   exclusive bands), puts a `drop` entity on the tile that fades after
   `TUNING.dropSeconds` (a heart drop heals `TUNING.heartDropHeal` half hearts;
   enemy drops reuse the `drop` entity). A bare-hand pull costs `TUNING.pullCost` half hearts,
   and a pull on the last half heart faints the hero (`shrub`). Berry bushes
-  (`berry: true`) are picked with S (`TUNING.berriesPerPick`), show bare (`u`)
-  until the hero comes back, and a sword only bounces off them. Eating a berry
+  (`berry: true`) are picked with S (`TUNING.berriesPerPick`), show bare (`u`,
+  or the legend's `pickedTo`: `Q`→`U` on the Woods moss, `K`→`L` on scree)
+  until the hero comes back. There are three (W29): by the hut from the
+  start, in the Hollow Oak's clearing (the Woods, so after Dungeon 1's
+  mortar makes the ink for the map) and on the first highland shelf (after
+  Dungeon 3's page completes the Climber's Almanac), and a sword only bounces off them. Eating a berry
   (`VL.eatBerry`, a berry in a hand or S on the equipment screen) heals
   `TUNING.berryHeal` half hearts and never past full.
 - **Pickups:** walking over a `drop`, a `shell` (`{ type: 'shell', x, y }` is a
@@ -526,7 +531,13 @@ holds the heart containers.
   spitters (rooted; puff up, then spit a seed along a straight line) in the
   Woods; gulls (wheel, squawk, dive where the hero stood; `big`, so only metal
   blocks them) on the cliffs and highlands. Every one does half a heart and
-  takes one to three wood-sword hits. The start screen, the home meadow (0,0)
+  takes one to three wood-sword hits, except one placed with `tough: true`
+  (W29: the two thorny spitters in the Hollow Oak's clearing), which only a
+  sword in `TUNING.toughSwords` (the metal one) hurts. The rule lives in
+  `VL.hitEnemy(state, enemy, damage, from, weapon)`: a wood blade, a thrown
+  rock or pot, or any hit without a listed `weapon` just clinks off
+  (`tink`); the rope still only stuns. Enemies are never solid, so they never make the
+  metal sword required. The start screen, the home meadow (0,0)
   and the town have none.
 - **Heart containers:** `VL.giveHeartContainer(state, id?)` adds
   `TUNING.heartContainerHp` (one heart) to `maxHp`, fills every heart, marks
@@ -764,7 +775,12 @@ shockwave with real keys: the ground shaking, the flash, the story on black,
 waking at home holding up the Glowstone, and Gran Ottie's talk and wood
 (`w16-rumble.png`, `w16-flash.png`, `w16-story.png`, `w16-waking.png`,
 `w16-glowstone.png`, `w16-glowstone-popup.png`, `w16-helper.png`,
-`w16-helper-wood.png`, `w16-helper-wood-popup.png`). It runs
+`w16-helper-wood.png`, `w16-helper-wood-popup.png`).
+Then W29's playtest notes with real keys: the driftwood at the hut beach
+(`w29-driftwood.png`), the first shovel's dig-key popup and X digging with
+the sword and shield in hand (`w29-dig-key-popup.png`, `w29-dig-x.png`), a
+wood sword clinking off a thorny spitter (`w29-tough-spitter.png`) and the
+path the copied map opens before the Oak (`w29-woods-path.png`). It runs
 for 240 s at most (about twice its run time). A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
@@ -810,6 +826,12 @@ that runs no tests, and an `async` test function, both fail the node run.
   owns the key makes them passable (W14 lifts boulders for good with
   `VL.saveTile`, see Lifting; W19 opens the hidden path). Rocks (`rock: true`) are liftable with the gloves and bushes are
   always passable (bare hands), so neither is used as a wall between areas.
+- **Shore barriers (W29):** where a beach or its shallows meet a screen edge
+  that leads nowhere, the sand shows driftwood (`j`, solid, never lifted)
+  and the shallows end in deep water (`W`). Nothing liftable stands on sand
+  or in the shallows at all: a rock there would promise a way through.
+  `tests/playtest-2.test.js` checks both on every screen, so a new beach
+  follows the same rule.
 - **Spots** (`spots.js`) are placement markers,
   `{ type: 'spot', id, x, y, how, by, lock }`, for everything another item
   puts on the map: books, pages, hearts, ore, chickens, building and dungeon
@@ -856,7 +878,7 @@ that runs no tests, and an `async` test function, both fail the node run.
 - **New tile characters** (all in `base`): `b` bridge/pier, `q` stage, `Z`
   trapdoor, `x` `y` `G` footprints, `e` reeds, `O` boulder, `f` woods floor,
   `F` woods tree, `C` cliff, `h` hidden path, `V` chasm (`flyOver`), `:`
-  scree, `k` rock on scree.
+  scree, `k` rock on scree, `j` driftwood (W29).
 
 `tests/overworld.test.js` walks the whole map tile by tile with any set of
 keys (walking, bushes, gloves on rocks, the raft on deep water, chicken
@@ -1081,16 +1103,23 @@ shops. Fixture: `tests/fixtures/save-v1-W10.json`.
   lock. With `VL.pagesToBind()` (5) pages, binding sets the flag
   `pagesBound` (`VL.pagesBound`) and queues the `pagesBound` popup; W19 turns
   that into the Climber's Almanac (claim `climbersAlmanac` with it).
+- **The dig key (W29):** X (`dig` action) digs with `VL.bestShovel(state)`
+  (metal before wood) whatever the hands hold, so the sword and shield stay
+  up; it waits while something is lifted, a chicken carried, the rope out
+  or a swing under way. The first shovel owned queues the `digKey` popup,
+  and Esc lists X from then on (`VL.pauseControls`).
 - **Digging:** `VL.dig(state, shovel)` digs the tile ahead and returns
-  `'blocked'`, `'find'`, `'secret'`, `'shell'` or `'empty'` (false while a dig is
+  `'blocked'`, `'find'`, `'secret'`, `'shell'`, `'brokenShell'` or `'empty'` (false while a dig is
   under way). Sand takes any shovel, grass only the metal one (`digsDirt`).
   A hole is the visit's tile (`VL.DIG_HOLES`, `@` sand, `*` grass, through
   `VL.setRoomTile`), so it is gone on the next visit; **W14**, which owns saved
-  per-visit tile overrides, decides whether holes should persist. A whole shell
-  pops out as a `drop` with `VL.digChance` (`digChance` 40%,
-  `digChanceTideTables` 60% once `VL.tideTablesRead`, i.e. W11's
-  `bookTideTables` claim; `digDirtChance` on grass), rolled with the seeded
-  `VL.random`. A `{ type: 'buried', id, popup }` entity (the beach book, spot
+  per-visit tile overrides, decides whether holes should persist. One roll
+  per dig (`VL.digFind`, the seeded `VL.random`): a whole shell pops out as
+  a `drop` with `VL.digChance` (`digChance` 20%, `digChanceTideTables` 30%
+  once `VL.tideTablesRead`, i.e. W11's `bookTideTables` claim;
+  `digDirtChance` on grass), and on sand a broken shell (`drop` kind
+  `brokenShell`) `digBrokenChance` (50%) of the time (W29). Every seashore
+  screen also has a broken shell lying on the sand. A `{ type: 'buried', id, popup }` entity (the beach book, spot
   `bookBeachBuried`) is dug up once: `VL.markFound`, so W11 counts it as found.
   `VL.BURIED_SECRETS` are shell caches under the home fields' flowers for the
   metal shovel (the smith hints at them).
@@ -1143,7 +1172,7 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   picks up at the next talk ("Now, where were we?").
 - **Readings and effects:** a reading ends (by its last page or Esc) with
   `VL.finishReading(state, id)`: read for good, then the book's effect. The
-  Tide Tables raise `VL.digChance` to 60% (W10 reads the lock); the Smith's
+  Tide Tables raise `VL.digChance` to 30% (W10 reads the lock); the Smith's
   Ledger swaps in the smith's cheaper metal offers and marks the Woods ore;
   the Herbalist's Notes mark the three berry bushes: both through
   `VL.mapMarks(state)` (`{ kind: 'berries' | 'ore', area, screen, tx, ty }`)
@@ -1169,7 +1198,7 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   by id (`reward:<id>`), so a save from before the swap that got the purse at
   5 gets the heart on its next visit and nothing at 10
   (`tests/fixtures/save-v1-W26.json`). The purse raises
-  `TUNING.shellCap` (99 whole shells) to `shellCapPurse` (999); the
+  `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (250); every price in town fits the first purse (a test checks); the
   `shellPurse` system trims anything over (a drop, a dig) and says who might
   help; a shop trade at the cap is refused instead ("Your purse is full!",
   `VL.RESOURCE_CAPS.shells`), so no wood or berry is lost. The boots
@@ -1414,6 +1443,16 @@ through"), in `systems/woods-map.js`. Tests: `tests/woods-gate.test.js`.
   scribes' blue mark (`woodsBlaze`, added as the room is built) on the tree
   beside its way on (`VL.woodsBlaze(key)`), and the copy (E, or its hand
   key) blinks where the hero stands (`VL.woodsMapHere`).
+- **The trees before the Oak (W29):** the pass from 7,-1 up to the Hollow
+  Oak's clearing is closed by trees, one of them the gate tile `J`
+  (`gate: 'woodsMapCopy'`, at `VL.WOODS_GATE_TREE`). Once the copy is owned
+  it becomes a dirt path for good (`VL.saveTile` with an explicit screen),
+  checked as each room is built and every step, so an old save that copied
+  the map finds it open as it loads. The turn-back rule above still keeps a
+  hero without the copy from reaching 7,-1 at all; the trees are the same
+  lock shown on the map, and on the drawn map the path appears with the
+  copy. `VL.saveTile(state, tx, ty, ch, { area, screen })` saves a tile on
+  any screen.
 - **Edge rules** (`engine.js`): `VL.defineEdgeRule(id, (state, area, from,
   to) => Place | null)` sends a crossing somewhere other than the neighbour.
   `systems/movement.js` follows it and pushes `{ type: 'edgeTurned', rule,

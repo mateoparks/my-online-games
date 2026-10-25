@@ -423,8 +423,9 @@
 
   // ---------- saved tile changes (for W14's boulders and anything else that outlasts a visit) ----------
 
-  VL.saveTile = function saveTile(state, tx, ty, ch) {
-    const { area, screen } = state.player;
+  // `at` names another screen ({ area, screen }); the hero's own by default.
+  VL.saveTile = function saveTile(state, tx, ty, ch, at = state.player) {
+    const { area, screen } = at;
     const key = `${area}:${screen}`;
     (state.tileChanges[key] || (state.tileChanges[key] = {}))[`${tx},${ty}`] = ch;
     if (state.room && state.room.area === area && state.room.screen === screen) VL.setRoomTile(state, tx, ty, ch);

@@ -90,7 +90,7 @@
   // ---------- what can be lifted ----------
 
   // A lifted rock leaves the ground it stood on.
-  const GROUND = { grass: '.', sand: 's', scree: ':', path: 'P', floor: '_' };
+  const GROUND = { grass: '.', sand: 's', shallow: 'w', scree: ':', path: 'P', floor: '_' };
   VL.liftedGround = (info) => info.liftTo || GROUND[info.ground || 'grass'];
 
   const tileKind = (info) => (info.boulder ? 'boulder' : info.rock ? 'rock' : null);

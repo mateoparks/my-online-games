@@ -39,9 +39,9 @@
   };
   titled('bookHerbalist', 'Herbalist\'s Notes', 'leaf', 'reading-leaf', [
     'Old Mother Bryony wrote this! She knew every plant on the island.',
-    'She says there are only three berry bushes in all the land: one in the fields by your hut, one up on the cliffs, and one by the lake.',
+    'She says there are only three berry bushes in all the land: one in the fields by your hut, one deep in the Whispering Woods, and one high up in the highlands.',
     'Berries heal you, and crushed with a mortar and pestle they make fine ink. If you ever draw a map, I\'ll mark the bushes on it.',
-  ], popupOnRead('herbalistRead', { title: 'Herbalist\'s Notes', text: 'Three berry bushes: by your hut, on the cliffs and by the lake. A map you draw will show them.' }));
+  ], popupOnRead('herbalistRead', { title: 'Herbalist\'s Notes', text: 'Three berry bushes: by your hut, in the Whispering Woods and up in the highlands. A map you draw will show them.' }));
   titled('bookTideTables', 'Tide Tables', 'water', 'reading-wave', [
     'Every high and low tide for a hundred years. Rather dry reading... ha!',
     'But see this note in the margin: "Dig just after the tide goes out. The best shells are left behind."',

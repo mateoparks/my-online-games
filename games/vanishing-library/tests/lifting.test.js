@@ -286,13 +286,13 @@ test('a rock lifted with the gloves leaves its ground for this visit only; witho
   t.place(scr('1,0', 11, 5, 'right'));
   assert.equal(t.tileHere(12, 5), 'r', 'back on the next visit');
   assert.equal(t.VL.savedTile(t.game, 'scriptorium', '1,0', 12, 5), null, 'never saved');
-  // An overworld rock on the beach sand leaves sand.
+  // An overworld rock in a field leaves grass (W29: no rocks on the shore).
   const spot = t.VL.SPOTS.bookLakeShore;
   const rocks = [];
   for (const [key, screen] of Object.entries(t.VL.AREAS.overworld.screens)) {
-    screen.tiles.forEach((row, ty) => [...row].forEach((ch, tx) => { if (ch === 'r') rocks.push({ key, tx, ty }); }));
+    screen.tiles.forEach((row, ty) => [...row].forEach((ch, tx) => { if (ch === 'R') rocks.push({ key, tx, ty }); }));
   }
-  assert.ok(spot && rocks.length, 'the map has beach rocks');
+  assert.ok(spot && rocks.length, 'the map has field rocks');
   const u = setup({ gloves: false });
   const rock = rocks.find(({ key, tx, ty }) => !u.VL.isSolidAt('overworld', key, tx, ty + 1));
   u.place(ow(rock.key, rock.tx, rock.ty + 1, 'up'));
@@ -301,7 +301,7 @@ test('a rock lifted with the gloves leaves its ground for this visit only; witho
   u.close();
   u.game.items.liftingGloves = true;
   u.press('interact');
-  assert.equal(u.tileHere(rock.tx, rock.ty), 's');
+  assert.equal(u.tileHere(rock.tx, rock.ty), '.');
 });
 
 test('each rock spot hides a book: lift the rock, walk onto it, and it is found for good (W8 spots, filled by W14)', () => {

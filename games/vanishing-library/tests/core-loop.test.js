@@ -222,22 +222,22 @@ test('the chest and a sign are solid', () => {
 
 // ---------- bushes ----------
 
-test('a bush drops a heart 2%, a whole shell 5% and wood 20% of the time, otherwise nothing', () => {
+test('a bush drops a heart 2%, a whole shell 5% and wood 50% of the time (W29), otherwise nothing', () => {
   const { VL } = loadGame();
   assert.equal(VL.bushDrop(0), 'heart');
   assert.equal(VL.bushDrop(0.019), 'heart');
   assert.equal(VL.bushDrop(0.02), 'shell');
   assert.equal(VL.bushDrop(0.069), 'shell');
   assert.equal(VL.bushDrop(0.07), 'wood');
-  assert.equal(VL.bushDrop(0.269), 'wood');
-  assert.equal(VL.bushDrop(0.27), null);
+  assert.equal(VL.bushDrop(0.569), 'wood');
+  assert.equal(VL.bushDrop(0.571), null);
   const state = { rngState: 7 };
   const counts = { heart: 0, shell: 0, wood: 0, null: 0 };
   const rolls = 40000;
   for (let i = 0; i < rolls; i += 1) counts[VL.bushDrop(VL.random(state))] += 1;
   assert.ok(Math.abs(counts.heart / rolls - 0.02) < 0.004, `hearts ${counts.heart}`);
   assert.ok(Math.abs(counts.shell / rolls - 0.05) < 0.006, `shells ${counts.shell}`);
-  assert.ok(Math.abs(counts.wood / rolls - 0.2) < 0.01, `wood ${counts.wood}`);
+  assert.ok(Math.abs(counts.wood / rolls - 0.5) < 0.01, `wood ${counts.wood}`);
 });
 
 test('the sword cuts the bush in front: it opens for this visit, rolls a drop, and regrows when you come back', () => {

@@ -3,14 +3,15 @@
 // shallows by the hut, easy to find, and one in the Woods dead end (design:
 // Tools, Ore is scarce (1) and (3)).
 (() => {
+  // Dark iron laced with gold veins, so it never passes for a plain grey stone.
   VL.ART.defineSprite('pickup-ore', {
-    colors: { d: 'rockDark', m: 'rock', l: 'rockLight', g: 'goldLight', y: 'gold' },
-    rows: ['..mmmm..', '.mlllmm.', 'mllgllmd', 'mlmmlymd', '.dmmmmd.'],
+    colors: { d: 'rockDark', m: 'rockShade', l: 'rock', g: 'goldLight', y: 'gold', w: 'flowerWhite' },
+    rows: ['..dmmmd..', '.mlywlmmd', 'mlgmmymgd', 'mmylmgymd', '.mmgmmmd.', '..ddddd..'],
   });
   VL.ART.defineSprite('icon-ore', {
     outline: false,
-    colors: { d: 'rockDark', m: 'rock', l: 'rockLight', g: 'goldLight' },
-    rows: ['.mmmm.', 'mllglm', 'mlmmmd', '.dddd.'],
+    colors: { d: 'rockDark', m: 'rockShade', l: 'rock', g: 'goldLight', y: 'gold' },
+    rows: ['.mmmm.', 'mlyglm', 'mgmmym', '.dddd.'],
   });
 
   VL.definePopup('ore', { title: 'A lump of ore!', text: 'It glints like metal. A blacksmith could forge it into something strong.' });
@@ -26,7 +27,7 @@
       state.events.push({ type: 'pickup', kind: 'ore' });
     },
     draw(ctx, lump, x, y, t) {
-      VL.ART.drawSprite(ctx, 'pickup-ore', x + 4, y + 7);
+      VL.ART.drawSprite(ctx, 'pickup-ore', x + 3, y + 6);
       if (lump.wet) {
         // Water laps over its foot.
         const lap = Math.sin(t * 2.4) > 0 ? 1 : 0;
