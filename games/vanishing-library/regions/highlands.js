@@ -124,6 +124,7 @@
       ],
       entities: [
         spot('bookHighlands', 9, 8, 'rock', 'W14'),
+        spot('bookDragons', 11, 5, 'trunk', 'W11'),
       ],
     },
     // A chasm to the east: the next shelf is a long flight away.

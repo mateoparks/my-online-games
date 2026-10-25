@@ -61,12 +61,12 @@
   // ---------- books, pages and the library ----------
 
   lock('hiddenBooks', { type: 'item', needs: ['town', 'library'], supplies: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Hidden books', by: 'W8' });
-  lock('bookHerbalist', { type: 'item', needs: ['town', 'library'], gives: ['herbalistRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Herbalist\'s Notes', by: 'W8' });
-  lock('bookTideTables', { type: 'item', needs: ['beach', 'library'], gives: ['tideTablesRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Tide Tables', by: 'W8' });
-  lock('bookSmithsLedger', { type: 'item', needs: ['town', 'library'], gives: ['smithsLedgerRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Smith\'s Ledger', by: 'W8' });
-  lock('bookPrimer', { type: 'item', needs: ['town', 'library'], gives: ['primerOnShelf'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Cartographer\'s Primer', by: 'W8' });
-  lock('bookDragons', { type: 'item', needs: ['town', 'library'], gives: ['dragonsRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: A Child\'s Book of Dragons', by: 'W8' });
-  lock('bookChickenAlmanac', { type: 'item', needs: ['town', 'library'], gives: ['chickenAlmanacRead'], supplies: { books: 1 }, doc: '§ Books, pages and the library: The Chicken Keeper\'s Almanac', by: 'W8' });
+  lock('bookHerbalist', { type: 'item', needs: ['woods', 'library'], gives: ['herbalistRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Herbalist\'s Notes', by: 'W8' });
+  lock('bookTideTables', { type: 'item', needs: ['shipwreck', 'library'], gives: ['tideTablesRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Tide Tables', by: 'W8' });
+  lock('bookSmithsLedger', { type: 'item', needs: ['lakeIsland', 'library'], gives: ['smithsLedgerRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Smith\'s Ledger', by: 'W8' });
+  lock('bookPrimer', { type: 'item', needs: ['eastRoad', 'library'], gives: ['primerOnShelf'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Cartographer\'s Primer', by: 'W8' });
+  lock('bookDragons', { type: 'item', needs: ['highlands', 'library'], gives: ['dragonsRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: A Child\'s Book of Dragons', by: 'W8' });
+  lock('bookChickenAlmanac', { type: 'item', needs: ['woods', 'library'], gives: ['chickenAlmanacRead'], supplies: { books: 1 }, doc: '§ Books, pages and the library: The Chicken Keeper\'s Almanac', by: 'W8' });
   lock('heartLibrary', { type: 'item', needs: ['library'], count: { books: 5 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('shellPurse', { type: 'item', needs: ['library'], count: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('swiftfootBoots', { type: 'item', needs: ['library'], count: { books: 15 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });

@@ -292,7 +292,6 @@
       entities: [
         door('libraryDoor', 'library', 5, 4, 'W11'),
         sign(6, 4, 'book'),
-        spot('bookHerbalist', 13, 3, 'bush', 'W11'),
         spot('pageFieldA', 14, 9, 'pickup', 'W11'),
         { type: 'npc', id: 'bramble', x: 11, y: 8 },
       ],
@@ -318,7 +317,6 @@
         { type: 'decor', art: 'waterWheel', x: 9, y: 1 },
         door('binderyDoor', 'bindery', 12, 3, 'W10'),
         sign(13, 3, 'thread'),
-        spot('bookPrimer', 14, 4, 'trunk', 'W11'),
       ],
     },
     // The town square: puppet stage (trapdoor in front), well and shop.
@@ -367,7 +365,6 @@
       entities: [
         door('blacksmithDoor', 'blacksmith', 6, 3, 'W10'),
         sign(7, 3, 'anvil'),
-        spot('bookSmithsLedger', 1, 1, 'trunk', 'W11'),
         { type: 'npc', id: 'juniper', x: 13, y: 7 },
       ],
     },
@@ -388,8 +385,6 @@
       ],
       entities: [
         spot('chickenCoop', 4, 3, 'chicken', 'W7', 'chickens'),
-        spot('bookChickenAlmanac', 3, 3, 'trunk', 'W11'),
-        spot('bookDragons', 14, 1, 'trunk', 'W11'),
         { type: 'npc', id: 'nell', x: 11, y: 6 },
         { type: 'npc', id: 'chickenKid', x: 13, y: 3 },
       ],

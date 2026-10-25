@@ -109,7 +109,6 @@
       entities: [
         { type: 'crab', x: 6, y: 6 },
         { type: 'crab', x: 11, y: 7 },
-        spot('bookTideTables', 10, 5, 'trunk', 'W11'),
         starfish(4, 6, 6, 8),
       ],
     },
@@ -131,6 +130,7 @@
       entities: [
         { type: 'decor', art: 'wreck', x: 3, y: 4 },
         spot('shipwreckHatch', 8, 5, 'door', 'W17', 'shipwreck'),
+        spot('bookTideTables', 10, 6, 'trunk', 'W11'),
       ],
     },
   });

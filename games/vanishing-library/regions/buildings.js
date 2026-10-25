@@ -187,21 +187,44 @@
     rect(ctx, 'metal', x + 2, y + 3, 12, 1);
   });
 
-  // Floor-to-ceiling bookcases: the binder still has books, for now.
-  VL.defineDecor('bookcase', (ctx, x, y, t, e) => {
+  // The binder's wall shelves, nearly bare: nobody orders a book that might
+  // just vanish (design: People). Dusty boards with a few loose pages, her
+  // tools and one lonely book. `side` 0 or 1 picks which odds and ends.
+  VL.defineDecor('binderShelf', (ctx, x, y, t, e) => {
     const w = (e.w || 6) * 16;
     shade(ctx, x, y - 4, w, 18);
     rect(ctx, 'outline', x, y - 6, w, 22);
     rect(ctx, 'woodDark', x + 1, y - 5, w - 2, 20);
-    const spines = ['heart', 'jarBlue', 'jarGreen', 'gold', 'npcPlum', 'roof', 'paperWhite'];
     for (let board = 0; board < 3; board += 1) {
       const by = y - 4 + board * 7;
-      for (let bx = x + 2; bx < x + w - 3; bx += 2) {
-        if (VL.ART.hash(bx, by, 3) < 0.12) continue;
-        const pick = Math.floor(VL.ART.hash(bx, by, e.x + 1) * spines.length);
-        rect(ctx, spines[pick], bx, by + (VL.ART.hash(bx, by, 7) > 0.7 ? 1 : 0), 2, 5);
-      }
       rect(ctx, 'wood', x + 1, by + 5, w - 2, 2);
+      for (let dx = 6; dx < w - 6; dx += 13) if (VL.ART.hash(x + dx, by, 5) < 0.5) rect(ctx, 'paperShade', x + dx, by + 4, 3, 1);
+    }
+    const top = y - 4;
+    const mid = y + 3;
+    const low = y + 10;
+    if (!e.side) {
+      // A stack of loose pages, a pot of glue and a ball of red thread.
+      rect(ctx, 'paperShade', x + 8, top + 2, 10, 3);
+      rect(ctx, 'paperWhite', x + 8, top + 2, 10, 1);
+      rect(ctx, 'paperWhite', x + 9, top + 4, 9, 1);
+      rect(ctx, 'jarBlue', x + 60, mid + 1, 5, 4);
+      rect(ctx, 'paperWhite', x + 61, mid, 3, 1);
+      rect(ctx, 'heart', x + 30, low + 2, 4, 3);
+      rect(ctx, 'heartLight', x + 30, low + 2, 2, 1);
+      // The one book left, standing alone.
+      rect(ctx, 'npcPlum', x + 80, low, 2, 5);
+    } else {
+      // Scissors, an awl and a single page curling at the edge.
+      rect(ctx, 'metalDark', x + 14, mid + 3, 6, 1);
+      rect(ctx, 'metal', x + 12, mid + 2, 2, 2);
+      rect(ctx, 'metal', x + 12, mid + 4, 2, 1);
+      rect(ctx, 'woodLight', x + 50, top + 4, 6, 1);
+      rect(ctx, 'metal', x + 56, top + 4, 3, 1);
+      rect(ctx, 'paperWhite', x + 72, low + 4, 7, 1);
+      rect(ctx, 'paperShade', x + 78, low + 3, 1, 1);
+      rect(ctx, 'gold', x + 34, low + 1, 3, 4);
+      rect(ctx, 'woodDark', x + 34, low + 1, 3, 1);
     }
   });
 
@@ -265,7 +288,7 @@
     { when: { flag: 'shopThief' }, say: 'Back again, Sticky Fingers? Keep your hands where I can see them!', shop: 'store' },
     {
       when: { notFlag: 'met:mabel' },
-      say: ['Welcome to the General Store, {name}! I\'m Mabel.', 'Paper, berries, a shovel for the beach... and I buy berries too, a whole shell each.'],
+      say: ['Welcome to the General Store, {name}! I\'m Mabel.', 'I sell paper, berries and shovels for the beach. I buy berries too, at a whole shell each!'],
       set: 'met:mabel', shop: 'store',
     },
     { when: { test: onlyBroken }, say: 'Broken shells? Oh dear, those are only good for the craft basket. Whole shells spend here, {name}!', shop: 'store' },
@@ -275,7 +298,7 @@
   VL.defineDialogue('miller', [
     {
       when: { notFlag: 'met:pell' },
-      say: ['The wheel turns and the paper comes! Pell\'s the name, miller by trade.', 'Bring me wood: five pieces buys a whole shell. And I sell the finest paper in town.'],
+      say: ['The wheel turns and the paper comes! Pell\'s the name, miller by trade.', 'Bring me wood: five pieces buy a whole shell. And I sell the finest paper in town.'],
       set: 'met:pell', shop: 'mill',
     },
     { say: 'Wood for shells, shells for paper. Round and round, like my wheel!', shop: 'mill' },
@@ -284,7 +307,7 @@
   VL.defineDialogue('smith', [
     {
       when: { notFlag: 'met:brannock' },
-      say: ['Brannock\'s the name, and smithing\'s the game! Swords, shields and shovels.', 'Wood gear, I make from wood. For metal, bring me a lump of ore and some shells. One lump for each piece, mind!'],
+      say: ['Brannock\'s the name, and smithing\'s the game! Swords, shields and shovels.', 'Bring me wood and I\'ll make you wooden gear. For metal, bring me a lump of ore and some shells. One lump for each piece, mind!'],
       set: 'met:brannock', shop: 'smithy',
     },
     { when: { item: 'metalShovel', notFlag: 'dugSecret' }, say: 'That metal shovel bites hard ground, {name}. My gran always said folk buried their savings under the flowers in the fields by your hut.', shop: 'smithy' },
@@ -295,7 +318,11 @@
   VL.defineDialogue('binder', [
     {
       when: { notFlag: 'met:quill' },
-      say: ['Oh! A visitor. I\'m Miss Quill. I bind books.', 'Loose pages blow away and get lost. Bring me five and I\'ll bind them into a proper book.'],
+      say: [
+        'Oh! A customer? I\'m Miss Quill. I bind books... or I used to.',
+        'Business has been slow, {name}. Nobody wants a new book made if it might just vanish from the shelf.',
+        'Still, loose pages blow away and get lost. Bring me five and I\'ll bind them into a proper book.',
+      ],
       set: 'met:quill', shop: 'bookbinder',
     },
     { when: { flag: 'pagesBound' }, say: 'A fine book, that. Look after it, {name}.', shop: 'bookbinder' },
@@ -498,7 +525,7 @@
         '#______m_______#',
         '################',
       ],
-      entities: [decor('bookcase', 1, 1, { w: 6 }), decor('bookcase', 9, 1, { w: 6 }), decor('press', 2, 5), decor('threadTable', 11, 5)],
+      entities: [decor('binderShelf', 1, 1, { w: 6 }), decor('binderShelf', 9, 1, { w: 6, side: 1 }), decor('press', 2, 5), decor('threadTable', 11, 5)],
     },
   };
 

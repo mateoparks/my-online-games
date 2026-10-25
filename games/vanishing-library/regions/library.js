@@ -8,11 +8,11 @@
   // ---------- the books ----------
 
   const generic = (id, title, color, blurb) => VL.defineBook(id, { kind: 'generic', title, color, blurb });
-  generic('bookRiverside', 'Ninety-Nine Ways to Cook a Turnip', 'leaf', 'Ninety-nine! I only knew three, and two of them were "boiled".');
+  generic('bookRiverside', 'Rocks and How to Lift Them', 'rock', 'Step one: be very strong. Step two... no, that\'s all of it.');
   generic('bookBeachBuried', 'Sandcastles of Long Ago', 'sand', 'Someone buried a book about sandcastles in the sand. Very clever.');
   generic('bookCliffRoad', 'The Gull Who Wanted to Be a Goose', 'rockLight', 'It ends happily. The goose wanted to be a gull, so they swapped.');
   generic('bookLighthouse', 'The Lighthouse Keeper\'s Diary', 'water', 'Every night: "Lamp lit. Sea calm. Crab large." Crab large? How large, I wonder.');
-  generic('bookEastRoad', 'Rocks and How to Lift Them', 'rock', 'Step one: be very strong. Step two... no, that\'s all of it.');
+  generic('bookEastRoad', 'Ninety-Nine Ways to Cook a Turnip', 'leaf', 'Ninety-nine! I only knew three, and two of them were "boiled".');
   generic('bookWoods', 'Whispers of the Woods', 'leafLight', 'They say the paths in the Woods wander about at night, like sleepy cats.');
   generic('bookScriptoriumRock', 'Neat Letters for Messy Scribes', 'tunic', 'Page one is very neat. By page ninety, the scribe had clearly given up.');
   generic('bookLakeShore', 'Fish I Have Known', 'waterLight', 'Every fish gets its own chapter. Chapter twelve just says "splash".');
@@ -43,13 +43,13 @@
     'Berries heal you, and crushed with a mortar and pestle they make fine ink. If you ever draw a map, I\'ll mark the bushes on it.',
   ], popupOnRead('herbalistRead', { title: 'Herbalist\'s Notes', text: 'Three berry bushes: by your hut, on the cliffs and by the lake. A map you draw will show them.' }));
   titled('bookTideTables', 'Tide Tables', 'water', 'reading-wave', [
-    'Every high tide and low tide for a hundred years. Rather dry reading... ha!',
+    'Every high and low tide for a hundred years. Rather dry reading... ha!',
     'But see this note in the margin: "Dig just after the tide goes out. The best shells are left behind."',
   ], popupOnRead('tideTablesRead', { title: 'Tide Tables', text: 'Digging on the beach turns up whole shells more often now.' }));
   titled('bookSmithsLedger', 'The Smith\'s Ledger', 'roof', 'reading-anvil', [
     'Brannock\'s great-grandfather kept this. Every lump of ore he ever used!',
     'Here: "Best ore of my life, found deep in the Whispering Woods." So there\'s ore hiding in the Woods!',
-    'And his trick for using fewer shells at the forge. I\'ll tell Brannock. He\'ll charge you less now.',
+    'And here\'s his trick for using fewer shells at the forge! I\'ll tell Brannock, and he\'ll charge you less.',
   ], popupOnRead('smithsLedgerRead', { title: 'The Smith\'s Ledger', text: 'Ore lies hidden deep in the Whispering Woods. The smith forges metal gear for fewer shells now.' }));
   titled('bookPrimer', 'The Cartographer\'s Primer', 'gold', 'reading-map', [
     'How to draw a map of every place you have ever been. How wonderful!',
@@ -58,7 +58,7 @@
   ], popupOnRead('primerRead', { title: 'The Cartographer\'s Primer', text: 'With paper and ink you can draw a map of everywhere you have been, while the Primer is on the shelf. For ink, grind berries with the Old Scriptorium\'s Mortar & Pestle.' }));
   titled('bookDragons', 'A Child\'s Book of Dragons', 'berry', 'reading-dragon', [
     'I read this to my wife when we were young. She never did like the ending.',
-    'Dragons breathe fire, but here\'s a funny thing: they can\'t stand their own fire! Bounce it back, and whoosh!',
+    'Dragons breathe fire, but here\'s a funny thing: they can\'t stand their own flames! Bounce them back, and whoosh!',
     'Something shiny might do the trick. A mirror, perhaps?',
   ], popupOnRead('dragonsRead', { title: 'A Child\'s Book of Dragons', text: 'Dragons can\'t stand their own fire. Something shiny might bounce it back.' }));
   titled('bookChickenAlmanac', 'The Chicken Keeper\'s Almanac', 'goldLight', 'reading-chicken', [
@@ -99,7 +99,7 @@
   const not = (fn) => (state) => !fn(state);
   VL.LIBRARY_HINTS = {
     chestGear: [{ say: 'Have you looked around your own hut, {name}? I\'m sure there\'s an old chest in there.' }],
-    scriptoriumKey: [{ say: 'Folk have been hiding books to keep them safe. Try the old trunks around town. There\'s one by the puppet stage in the square.' }],
+    scriptoriumKey: [{ say: 'Folk have been hiding books to keep them safe. Try the old trunk by the puppet stage in the square.' }],
     scriptoriumEntered: [{ say: 'That key opens the Old Scriptorium, just north of the library. Go and see what the scribes left behind!' }],
     liftingGloves: [{ say: 'The Scriptorium is full of heavy pots and stones. Perhaps the scribes kept something in there to help with the lifting.' }],
     d1Boss: [{ say: 'Something has been chewing through the Scriptorium\'s shelves. A pot or two thrown its way might teach it some manners!' }],
@@ -109,19 +109,19 @@
     d2Boss: [{ say: 'Something with a hard shell guards the Hollow Oak. Hook its plates, then strike!' }],
     shockwave: [{ say: 'You beat the beast in the Hollow Oak? Well done, {name}! Funny... the shelves have been rattling all day.' }],
     raft: [{ say: 'You\'ll want to get out on the water. Rope and wood make a fine raft, or so I\'ve read.' }],
-    lakeIsland: [{ say: 'A raft needs an oar: the shop sells them, or make one. Then the island in the lake isn\'t far at all.' }],
+    lakeIsland: [{ say: 'A raft needs an oar. Buy one at the shop or make your own, and the island in the lake isn\'t far at all.' }],
     shipwreck: [{ say: 'There\'s an old wreck off the beach, past the tide pools. Who knows what washed up inside it?' }],
     lighthouseEntered: [{ say: 'That glowing stone you carry... the old Lighthouse on the cliffs is pitch dark inside. Perhaps it\'s time for a visit.' }],
     slingshot: [{ say: 'The Lighthouse has switches far out of reach. Look high and low in there for a way to hit them.' }],
     d3Boss: [{ say: 'A great crab has taken the Lighthouse lens for its shell! Aim for its eyes, {name}.' }],
-    climbersAlmanac: [{ say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow everywhere: by the library, the lake, even a chicken coop. Little Pip in the harbour might know!' }],
+    climbersAlmanac: [{ say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow all over: by the library, by the lake, even into a chicken coop. Little Pip in the harbour might know something!' }],
     highlands: [
-      { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think someone hid it down by the harbour coop.' },
+      { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think someone hid it at the heart of the Whispering Woods.' },
       { say: 'The Climber\'s Almanac shows a hidden path at the foot of the cliffs. From there, let the chickens carry you up!' },
     ],
     dragonsLairEntered: [{ say: 'The Dragon\'s Lair is at the very top of the highlands. Be brave, {name}.' }],
     mirrorShield: [
-      { when: not(read('bookDragons')), say: 'If you find A Child\'s Book of Dragons, bring it to me. I think it was hidden somewhere near the harbour.' },
+      { when: not(read('bookDragons')), say: 'If you find A Child\'s Book of Dragons, bring it to me. I think it was hidden somewhere up in the highlands.' },
       { say: 'Remember the dragon book? Dragons can\'t stand their own fire. Something shiny might bounce it back.' },
     ],
     d4Boss: [{ say: 'Bounce the dragon\'s fire right back at it, then use your sword!' }],
@@ -132,7 +132,7 @@
 
   const carrying = (state) => VL.booksCarried(state).length > 0;
   const beatsWaiting = (state) => Boolean(VL.nextReading(state) || VL.pendingReward(state));
-  const noticing = (state) => state.library.gone.length > state.library.noticed;
+  const remarking = (line, also) => (state) => VL.vanishedRemark(state) === line && (!also || also(state));
   const nextIs = (id, when) => (state) => VL.nextMilestone(state) === id && (!when || when(state));
   const hintEntries = Object.entries(VL.LIBRARY_HINTS).flatMap(([id, hints]) => hints.map((hint) => ({ when: { test: nextIs(id, hint.when) }, say: hint.say })));
 
@@ -142,14 +142,24 @@
     'If you ever find one, bring it here and we\'ll read it together. Ask me any time if you\'re stuck.',
   ];
   const booksHandedIn = 'Are those... books? You found books, {name}! Let me put them on the shelves.';
+  const whereWereWe = 'Now, where were we? Ah, yes!';
+  // Books gone since his last remark come first, whatever else he has to say.
+  const remarks = (also, after, give) => VL.VANISHED_REMARKS.map((line) => ({
+    when: { test: remarking(line, also) },
+    say: after ? [line, after] : line,
+    give: { noticeTheft: true, ...give },
+    repeat: true,
+  }));
 
   VL.defineDialogue('librarian', [
     // A kid who walks in already carrying the first book still meets him first.
     { when: { notFlag: 'met:fenwick', test: carrying }, say: [...introduction, booksHandedIn], set: 'met:fenwick', give: { returnBooks: true } },
+    ...remarks(carrying, booksHandedIn, { returnBooks: true }),
     { when: { test: carrying }, say: booksHandedIn, give: { returnBooks: true }, repeat: true },
-    { when: { test: beatsWaiting }, say: 'Now, where were we? Ah, yes!', give: { libraryChain: true }, repeat: true },
+    ...remarks(beatsWaiting, whereWereWe, { libraryChain: true }),
+    { when: { test: beatsWaiting }, say: whereWereWe, give: { libraryChain: true }, repeat: true },
     { when: { notFlag: 'met:fenwick' }, say: introduction, set: 'met:fenwick' },
-    { when: { test: noticing }, say: 'That\'s odd. I was sure I put a book right here on this shelf. My memory must be going.', give: { noticeTheft: true }, repeat: true },
+    ...remarks(null, null, {}),
     ...hintEntries,
     { say: 'Every book you bring back makes this old room a little brighter, {name}.' },
   ]);

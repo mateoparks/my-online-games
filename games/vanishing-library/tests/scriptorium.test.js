@@ -102,7 +102,7 @@ test('the gallery block: a sign beside it says how to undo a wrong push, and ste
   const { VL } = t;
   t.press('interact');
   const popup = VL.currentPopup(t.game);
-  assert.match(popup.text, /Step out of the room and back in/);
+  assert.match(popup.text, /Step out of the room and in again/);
   assert.deepEqual(plain(VL.ART.missingGlyphs(popup.title + popup.text)), []);
   assert.ok(!VL.ART.popupLayout({ title: popup.title, text: popup.text }).overflow);
   t.close();
