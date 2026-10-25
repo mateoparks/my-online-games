@@ -68,7 +68,7 @@
     icon: 'shovel-wood',
     twoHanded: true,
     about: 'Takes both hands. Space or D digs sand.',
-    popup: { title: 'You got a Wood Shovel!', text: 'It takes both hands. Choose it with E, then press Space or D to dig in the sand. Whole shells hide there!' },
+    popup: { title: 'You got a Wood Shovel!', text: 'Whole shells hide in the beach sand. Dig for them!' },
     use(state, hand) {
       VL.dig(state, 'woodShovel', hand);
     },
@@ -177,11 +177,25 @@
     return find;
   };
 
+  // X digs with the best shovel owned, whatever the hands hold, so the sword
+  // and shield stay ready; the first shovel brings the popup that says so.
+  VL.definePopup('digKey', {
+    title: 'A dig key!',
+    text: 'Press X to dig with your shovel, any time. Your sword and shield stay in your hands.',
+  });
+  VL.bestShovel = (state) => ['metalShovel', 'woodShovel'].find((id) => VL.hasItem(state, id)) || null;
+
   VL.defineSystem('digging', {
     order: 21,
     update(state, actions, dt) {
-      const dig = state.player.dig;
-      if (dig && (dig.t += dt) >= VL.TUNING.digSeconds) state.player.dig = null;
+      const player = state.player;
+      const dig = player.dig;
+      if (dig && (dig.t += dt) >= VL.TUNING.digSeconds) player.dig = null;
+      const shovel = VL.bestShovel(state);
+      if (!shovel) return;
+      VL.showPopup(state, 'digKey');
+      const busy = player.carrying || player.flight || player.rope || player.lifted || player.swing || state.hp <= 0;
+      if (actions.pressed.dig && !busy) VL.dig(state, shovel);
     },
   });
 

@@ -807,6 +807,7 @@ async function main() {
         for (const [kind, n] of Object.entries(${JSON.stringify(stuff)})) VL.addResource(g, kind, n);
         g.popups.queue.length = 0;
         g.popups.seen.controls = true;
+        g.popups.seen.digKey = true; // W29's block shows the dig key popup
         VL.app.setScene('play');
         VL.place(g, ${JSON.stringify(where)});
         g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));

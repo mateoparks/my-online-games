@@ -246,3 +246,79 @@ test('a broken shell dug up pops out and is picked up like one on the beach', ()
   assert.equal(state.inventory.brokenShells, 1);
   assert.ok(VL.LOCKS.beachBrokenShells.reached(state));
 });
+
+// ---------- the dig key ----------
+
+function beachWithGear(VL) {
+  const state = playState(VL, ow('1,1', 5, 7, 'down'));
+  state.popups.seen.controls = true;
+  VL.giveItem(state, 'woodSword');
+  VL.giveItem(state, 'woodShield');
+  state.popups.queue.length = 0;
+  return state;
+}
+
+test('X is the dig key: it digs with the best shovel owned while the sword and shield stay in hand', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.KEYS.KeyX, 'dig');
+  assert.equal(VL.KEY_NAMES.x, 'dig');
+  assert.ok(VL.ACTIONS.includes('dig'));
+  const state = beachWithGear(VL);
+  VL.updateWorld(state, VL.actions({ pressed: ['dig'] }), 1 / 60);
+  assert.ok(!state.player.dig, 'no shovel, no digging');
+  VL.giveItem(state, 'woodShovel');
+  state.popups.queue.length = 0;
+  assert.deepEqual(plain(state.hands), { mainHand: 'woodSword', offHand: 'woodShield' }, 'the shovel waits in the bag');
+  VL.random = () => 0.99;
+  VL.updateWorld(state, VL.actions({ pressed: ['dig'] }), 1 / 60);
+  assert.equal(state.player.dig?.item, 'woodShovel');
+  assert.equal(VL.tileAt('overworld', '1,1', 5, 8, state.room), '@', 'a hole in the sand ahead');
+  assert.deepEqual(plain(state.hands), { mainHand: 'woodSword', offHand: 'woodShield' }, 'and the hands never changed');
+  hold(VL, state, [], 0.5);
+  state.items.metalShovel = true;
+  state.player.facing = 'right';
+  VL.updateWorld(state, VL.actions({ pressed: ['dig'] }), 1 / 60);
+  assert.equal(state.player.dig?.item, 'metalShovel', 'the metal one when he has it');
+});
+
+test('X does nothing while the hands are busy (something lifted, a chicken carried)', () => {
+  const { VL } = loadGame();
+  const state = beachWithGear(VL);
+  VL.giveItem(state, 'woodShovel');
+  state.popups.queue.length = 0;
+  state.player.lifted = { kind: 'pot', since: 0, t: 0 };
+  VL.updateWorld(state, VL.actions({ pressed: ['dig'] }), 1 / 60);
+  assert.ok(!state.player.dig);
+  state.player.lifted = null;
+  state.player.carrying = { id: 'x' };
+  VL.updateWorld(state, VL.actions({ pressed: ['dig'] }), 1 / 60);
+  assert.ok(!state.player.dig);
+});
+
+test('the first shovel reveals X with a popup, once, whichever shovel comes first', () => {
+  for (const shovel of ['woodShovel', 'metalShovel']) {
+    const { VL } = loadGame();
+    const state = beachWithGear(VL);
+    VL.giveItem(state, shovel);
+    hold(VL, state, [], 0.05);
+    assert.ok(state.popups.queue.includes('digKey'), `${shovel}: the dig key popup`);
+    const popup = VL.POPUPS.digKey;
+    assert.match(popup.text, /\bX\b/);
+    assert.ok(!VL.ART.popupLayout({ title: popup.title, text: popup.text }).overflow);
+    state.popups.queue.length = 0;
+    state.popups.seen.digKey = true;
+    VL.giveItem(state, shovel === 'woodShovel' ? 'metalShovel' : 'woodShovel');
+    hold(VL, state, [], 0.05);
+    assert.ok(!state.popups.queue.includes('digKey'), 'once only');
+  }
+});
+
+test('Esc lists X once there is a shovel; README Controls lists it', () => {
+  const { VL } = loadGame();
+  const state = beachWithGear(VL);
+  assert.ok(!VL.pauseControls(state).some((line) => /X: DIG/.test(line)));
+  state.items.woodShovel = true;
+  assert.ok(VL.pauseControls(state).some((line) => /X: DIG/.test(line)));
+  const { read } = require('./harness');
+  assert.match(read('README.md'), /\| X \| Dig/);
+});

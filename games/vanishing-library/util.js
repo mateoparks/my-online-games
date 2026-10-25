@@ -2,7 +2,7 @@
 // game logic only ever reads Actions, so touch controls can be added later.
 // `confirm` (Enter) and `erase` (Backspace/Delete) are for menus; `typed` is
 // the text typed since the last poll, for the on-canvas name field.
-VL.ACTIONS = ['up', 'down', 'left', 'right', 'interact', 'mainHand', 'offHand', 'equipment', 'fly', 'map', 'pause', 'confirm', 'erase'];
+VL.ACTIONS = ['up', 'down', 'left', 'right', 'interact', 'mainHand', 'offHand', 'equipment', 'fly', 'dig', 'map', 'pause', 'confirm', 'erase'];
 
 VL.noActions = function noActions() {
   const held = {};

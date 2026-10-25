@@ -15,13 +15,14 @@ Keyboard only for now (laptop or desktop).
 | Space | Use the item in your main hand (a sword, the slingshot, ...) |
 | D | Use the item in your off hand (a shield, ...) |
 | E | Equipment: choose what goes in each hand |
+| X | Dig with your shovel, whatever your hands hold (once you have a shovel) |
 | M | The map, once you have one (the world map, or a dungeon's map) |
 | N | Sound on or off |
 | Esc | Pause, or Save & Quit |
 | Enter | Confirm a name or a menu choice (in menus, Space and S work too) |
 | Backspace | Delete a letter, or a saved game on the title screen |
 
-Two-handed tools work with Space or D. The first time you play, a popup
+Two-handed tools work with Space or D; X digs with the best shovel you own without changing what your hands hold. The first time you play, a popup
 teaches the arrows, S, E and Esc; Esc lists every key you can use so far. Some
 friends in the world may teach you a trick or two of their own.
 
@@ -1086,6 +1087,11 @@ shops. Fixture: `tests/fixtures/save-v1-W10.json`.
   lock. With `VL.pagesToBind()` (5) pages, binding sets the flag
   `pagesBound` (`VL.pagesBound`) and queues the `pagesBound` popup; W19 turns
   that into the Climber's Almanac (claim `climbersAlmanac` with it).
+- **The dig key (W29):** X (`dig` action) digs with `VL.bestShovel(state)`
+  (metal before wood) whatever the hands hold, so the sword and shield stay
+  up; it waits while something is lifted, a chicken carried, the rope out
+  or a swing under way. The first shovel owned queues the `digKey` popup,
+  and Esc lists X from then on (`VL.pauseControls`).
 - **Digging:** `VL.dig(state, shovel)` digs the tile ahead and returns
   `'blocked'`, `'find'`, `'secret'`, `'shell'`, `'brokenShell'` or `'empty'` (false while a dig is
   under way). Sand takes any shovel, grass only the metal one (`digsDirt`).

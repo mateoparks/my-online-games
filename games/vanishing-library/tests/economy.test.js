@@ -488,6 +488,7 @@ function digSetup(shovel = 'woodShovel') {
   if (shovel) {
     t.VL.giveItem(t.game, shovel);
     t.game.popups.queue.length = 0;
+    t.game.popups.seen.digKey = true; // the dig key's own popup (W29) is tested elsewhere
   }
   return t;
 }
@@ -641,6 +642,7 @@ test('buried secrets in the fields: only the metal shovel finds them, once', () 
   VL.giveItem(t.game, 'woodShovel');
   VL.giveItem(t.game, 'metalShovel');
   t.game.popups.queue.length = 0;
+  t.game.popups.seen.digKey = true; // the dig key's own popup (W29) is tested elsewhere
   standBy();
   assert.equal(VL.dig(t.game, 'woodShovel'), 'blocked');
   standBy();
