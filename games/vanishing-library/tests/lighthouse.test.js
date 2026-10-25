@@ -237,6 +237,51 @@ test('render: a dark room draws the dark over the room, with glints past the lig
   assert.equal(gradients, 1, 'lit: the area light only');
 });
 
+test('a hurt hero flashing in a dark room never flashes the dark or the beam with him (no strobe)', () => {
+  const t = setup({ where: lh('-1,0', 14, 5) });
+  const { VL } = t;
+  const base = fakeDocument().createElement('canvas').getContext('2d');
+  let gradients = 0;
+  const ctx = new Proxy(base, {
+    get(target, property) {
+      if (property !== 'createRadialGradient') return base[property];
+      return (...args) => {
+        gradients += 1;
+        return base.createRadialGradient(...args);
+      };
+    },
+    set: () => true,
+  });
+  let heroDrawn = 0;
+  const drawHero = VL.ART.drawHero;
+  VL.ART.drawHero = (...args) => {
+    heroDrawn += 1;
+    return drawHero(...args);
+  };
+  const beamRects = [];
+  const rect = VL.ART.rect;
+  VL.ART.rect = (c, color, ...rest) => {
+    if (color === 'beamGlow') beamRects.push(rest);
+    return rect(c, color, ...rest);
+  };
+  try {
+    for (const flash of [0.5, 0.45, 0.4, 0.35]) {
+      t.game.player.flash = flash;
+      gradients = 0;
+      VL.render(ctx, t.app, 1);
+      assert.equal(gradients, 2, `flash ${flash}: the dark and the area light are drawn`);
+    }
+    assert.equal(heroDrawn, 2, 'the hero himself still flashes (2 of the 4 frames)');
+    t.place(lh('1,0', 9, 2, 'right'));
+    t.game.player.flash = 0.45;
+    VL.render(ctx, t.app, 1);
+    assert.ok(beamRects.length > 0, 'the beam is drawn on the hero\'s off frame');
+  } finally {
+    VL.ART.drawHero = drawHero;
+    VL.ART.rect = rect;
+  }
+});
+
 // ---------- the Slingshot ----------
 
 test('the Slingshot: each shot costs one broken shell; with none it says where to find more and fires nothing', () => {

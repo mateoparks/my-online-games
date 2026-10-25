@@ -60,12 +60,14 @@ VL.heroTile = (state) => VL.tileOf(state.player.x, state.player.y);
 
 // Things drawn with the hero (a sword swing, a raised shield): `draw(ctx,
 // state, x, y, t, pass)` runs once with pass 'behind' and once with 'front',
-// (x, y) being where the hero's feet are drawn.
+// (x, y) being where the hero's feet are drawn. A `steady` layer draws things
+// in the room, not on him (the dark, the beam), so it is drawn on the hurt
+// hero's off frames too: a large area must never flash with him.
 VL.HERO_LAYERS = [];
 
-VL.defineHeroLayer = function defineHeroLayer(id, draw) {
+VL.defineHeroLayer = function defineHeroLayer(id, draw, { steady = false } = {}) {
   if (VL.HERO_LAYERS.some((layer) => layer.id === id)) throw new Error(`hero layer ${id} is already defined`);
-  VL.HERO_LAYERS.push({ id, draw });
+  VL.HERO_LAYERS.push({ id, draw, steady });
 };
 
 VL.updateWorld = function updateWorld(state, actions, dt) {

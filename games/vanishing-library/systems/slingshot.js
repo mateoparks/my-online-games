@@ -202,7 +202,7 @@
     },
   });
 
-  // The slingshot held out the way he fired, and stars over a stunned creature.
+  // The slingshot held out the way he fired.
   const HELD = { right: [5, -12], left: [-11, -12], down: [-3, -6], up: [-3, -22] };
   VL.defineHeroLayer('slingshot', (ctx, state, x, y, t, pass) => {
     const player = state.player;
@@ -210,6 +210,11 @@
       const [dx, dy] = HELD[player.slingFacing] || HELD.down;
       VL.ART.drawSprite(ctx, 'item-slingshot', x + dx, y + dy);
     }
+  });
+
+  // Stars over a stunned creature, over the dark (after systems/darkness.js).
+  VL.defineHeroLayer('stunStars', (ctx, state, x, y, t, pass) => {
+    const player = state.player;
     if (pass !== 'front') return;
     const ox = x - Math.round(player.x);
     const oy = y - Math.round(player.y);
@@ -221,7 +226,7 @@
         VL.ART.drawSprite(ctx, 'fx-stun-star', Math.round(ox + e.cx + Math.cos(a) * 7) - 1, Math.round(oy + top + Math.sin(a) * 2) - 1);
       }
     }
-  });
+   }, { steady: true });
 
   // Broken shells left, beside the slingshot in its HUD slot: the HUD's
   // shell count is whole shells only.

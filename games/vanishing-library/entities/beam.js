@@ -220,7 +220,7 @@
         VL.ART.rect(ctx, core, ox + left, oy + top, w + 1, h + 1);
       }
     }
-  });
+  }, { steady: true });
 
   VL.defineSfx('mirrorTurn', [{ wave: 'triangle', freq: 600, to: 900, dur: 0.08, vol: 0.25 }], { gap: 0.08 });
   VL.defineSfx('crystalLit', [

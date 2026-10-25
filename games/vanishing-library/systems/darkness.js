@@ -83,5 +83,5 @@
       const gy = oy + e.y * tile + 8;
       if (far(gx, gy)) VL.ART.drawSparkle(ctx, gx + 2, gy - 4, t + e.x * 0.37 + e.y * 0.61);
     }
-  });
+  }, { steady: true });
 })();
