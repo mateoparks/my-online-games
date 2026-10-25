@@ -714,8 +714,9 @@ function steerTo(drive, goal) {
 test('damage budget: walking from the hut through the Woods to the Hollow Oak, never swinging, costs at most half the starting hearts', () => {
   for (const seed of [1, 2, 3]) {
     const { VL } = loadGame();
-    // Stand-ins for the gate items, as in W8's Woods walk.
-    for (const ch of ['O', 'h', 'V']) VL.TILESETS.base[ch].solid = false;
+    // Stand-ins for the gate items, as in W8's Woods walk (J: the tree the
+    // copied map opens, W29).
+    for (const ch of ['O', 'h', 'V', 'J']) VL.TILESETS.base[ch].solid = false;
     const { createPlaythrough } = require('./playthrough');
     const { drive } = createPlaythrough(VL);
     drive.fight = true;

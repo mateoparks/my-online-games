@@ -37,7 +37,7 @@
       tiles: [
         'TTTTTTTTWWWWWWWW',
         'T..,....wwWWWWWW',
-        'T.Y....wwWWWWWWW',
+        'T......wwWWWWWWW',
         'T......weWWWWWWW',
         'T..R...wwWWWWWWW',
         'T.....,.wWWWWWWW',
@@ -60,7 +60,7 @@
         'WWWWWWWwwWWWWWWW',
         'WWWWWWwsswwWWWWW',
         'WWWWWwsstsswWWWW',
-        'WWWWWwsssrswWWWW',
+        'WWWWWwsssjswWWWW',
         'WWWWWWwssswWWWWW',
         'WWWWWWWwwwWWWWWW',
         'WWWWWWWWWWWWWWWW',

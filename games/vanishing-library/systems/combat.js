@@ -5,6 +5,9 @@
 (() => {
   VL.tune({
     swordDamage: { woodSword: 1, metalSword: 2 },
+    // An enemy placed with `tough: true` is hurt only by these; any other hit
+    // (another sword, a throw) clinks off.
+    toughSwords: ['metalSword'],
     shieldBlocks: { woodShield: ['small'], metalShield: ['small', 'big'] },
     invulnSeconds: 1.2,
     // After an enemy hurts the hero (or is blocked) it backs off and is
@@ -356,8 +359,14 @@
     state.events.push({ type: 'enemyDefeated', enemy: enemy.type, drop: tile ? kind : null });
   }
 
-  VL.hitEnemy = function hitEnemy(state, enemy, damage, from) {
-    if (enemy.hurt > 0 || enemy.hp <= 0) return false;
+  // `weapon` is the sword's item id; a throw passes none.
+  VL.hitEnemy = function hitEnemy(state, enemy, damage, from, weapon) {
+    if (enemy.hp <= 0) return false;
+    if (enemy.tough && !VL.TUNING.toughSwords.includes(weapon)) {
+      state.events.push({ type: 'tink' });
+      return false;
+    }
+    if (enemy.hurt > 0) return false;
     enemy.hp -= damage;
     enemy.hurt = VL.TUNING.enemyHurtSeconds;
     state.events.push({ type: 'enemyHit', enemy: enemy.type });
@@ -380,7 +389,7 @@
     for (const enemy of enemies) {
       if (enemy.hitBy === swing || !overlap(box, swordTarget(enemy))) continue;
       enemy.hitBy = swing;
-      VL.hitEnemy(state, enemy, damage, VL.heroCentre(state));
+      VL.hitEnemy(state, enemy, damage, VL.heroCentre(state), swing.item);
     }
   }
 

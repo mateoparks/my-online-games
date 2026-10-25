@@ -142,7 +142,7 @@
         spot('bookCliffRoad', 5, 7, 'bush', 'W11'),
       ],
     },
-    // A heart container on the ledge up the gap in the rocks; a berry bush.
+    // A heart container on the ledge up the gap in the rocks.
     '0,-1': {
       tiles: [
         'CCCCCCCCCCCCCCCC',
@@ -153,7 +153,7 @@
         '................',
         'PPPPPPPPPPPPPPPP',
         'T.....,........T',
-        'T..B.....Y.....T',
+        'T..B...........T',
         'TT..........R.TT',
         'TTTTTTTTTTTTTTTT',
       ],

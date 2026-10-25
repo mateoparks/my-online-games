@@ -4,10 +4,45 @@ VL.defineArea('overworld', { tileset: 'base' });
 VL.defineArea('hut', { tileset: 'base' });
 
 // Beach props stand on the floor around them, not on a square of grass.
+// Where the shore is blocked it shows driftwood, which nothing lifts: a rock
+// there would promise a way through (README "Overworld map", shore barriers).
 VL.extendTileset('base', {
   t: { solid: true, tree: true, art: 'tree', ground: 'sand' },
-  r: { solid: true, rock: true, art: 'rock', ground: 'sand' },
-  o: { solid: true, rock: true, art: 'rock', ground: 'shallow' },
+  j: { solid: true, driftwood: true, art: 'driftwood', ground: 'sand' },
+});
+
+VL.ART.addColors({
+  driftwood: '#9c6b40',
+  driftwoodLight: '#c99863',
+  driftwoodDark: '#4a3020',
+  driftwoodGrain: '#6e4527',
+  driftwoodEnd: '#ecd3a0',
+  driftwoodRing: '#c09060',
+});
+
+// A long brown log lying on its side, its pale cut end showing rings and a
+// branch still reaching out of it: low, warm and long, so it never reads as
+// one of the round grey rocks a hero can lift.
+VL.ART.defineSprite('tile-driftwood', {
+  outline: false,
+  colors: { d: 'driftwoodDark', l: 'driftwood', L: 'driftwoodLight', k: 'driftwoodGrain', E: 'driftwoodEnd', r: 'driftwoodRing', c: 'driftwoodDark' },
+  rows: [
+    '............dd..',
+    '...........dLd..',
+    '..........dLd...',
+    '.dddddddddLdddd.',
+    'dEEdLLLLLLLLLLdd',
+    'ErrElllkkklllLLd',
+    'ErcEllllllllkkld',
+    'ErrEkkllllllllld',
+    'dEEdllllllkkllld',
+    '.dddddddddddddd.',
+  ],
+});
+VL.ART.defineTileStyle('driftwood', {
+  under: 'sand',
+  shadow: (ctx, cell) => VL.ART.rect(ctx, 'shadow', cell.x + 1, cell.y + 13, 15, 3),
+  raised: (ctx, cell) => VL.ART.drawSprite(ctx, 'tile-driftwood', cell.x, cell.y + 5),
 });
 
 VL.addScreens('overworld', {
@@ -57,8 +92,8 @@ VL.addScreens('overworld', {
       'T...............',
       'T......R........',
       'T...............',
-      'rsssssssssssssss',
-      'rsssssssssssssss',
+      'jsssssssssssssss',
+      'jsssssssssssssss',
       'Wwwwwwwwwwwwwwww',
       'WWWWWWWWWWWWWWWW',
     ],
@@ -78,8 +113,8 @@ VL.addScreens('overworld', {
       '........PPPPPPPP',
       '....B...P..B....',
       'ssssssssssssssss',
-      'ssssssssssssssst',
-      'wwwwwwwwwwwwwwwo',
+      'sssssssssssssssj',
+      'wwwwwwwwwwwwwwwW',
       'WWWWWWWWWWWWWWWW',
     ],
     entities: [

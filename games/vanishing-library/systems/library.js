@@ -18,8 +18,9 @@
     // and a boss beaten too, so a first play doesn't meet her cool side
     // before Dungeon 1 (design: Anti-goals).
     wifeStages: [{ books: 3 }, { books: 7, boss: 'd1Boss' }, { books: 12, boss: 'd2Boss' }],
-    shellCap: 99,
-    shellCapPurse: 999,
+    // Whole shells a purse holds (W29: every price in town fits the first).
+    shellCap: 15,
+    shellCapPurse: 250,
     swiftfootSpeed: 1.35,
   });
 

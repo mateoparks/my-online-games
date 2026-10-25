@@ -42,6 +42,7 @@
   VL.SOUND.onEvent('spit', 'spit');
 
   const AIM = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] };
+  const THORNS = [[-0.7, -0.7], [0.7, -0.7], [-1, 0.1], [1, 0.1], [0, -1], [-0.7, 0.7], [0.7, 0.7]];
 
   VL.defineEnemy('spitter', {
     tuning: 'enemySpitter',
@@ -86,6 +87,21 @@
       VL.ART.drawSprite(ctx, 'enemy-spitter-leaves', cx - 7, cy + 3);
       const puffed = plant.mode === 'puff';
       const size = puffed ? 12 : 10;
+      // A tough one (placed with `tough: true`) bristles with woody thorns.
+      if (plant.tough) {
+        const r = size / 2;
+        for (const [tx, ty] of THORNS) {
+          const at = (d) => [Math.round(cx + tx * d), Math.round(cy - 2 + ty * d)];
+          for (const d of [r, r + 2, r + 4]) {
+            const [x, y] = at(d);
+            VL.ART.rect(ctx, 'outline', x - 1, y - 1, 3, 3);
+          }
+          for (const [d, color] of [[r, 'bark'], [r + 2, 'bark'], [r + 4, 'woodLight']]) {
+            const [x, y] = at(d);
+            VL.ART.rect(ctx, color, x, y, 1, 1);
+          }
+        }
+      }
       VL.ART.drawSprite(ctx, puffed ? 'enemy-spitter-puff' : 'enemy-spitter', cx - size / 2, cy - size / 2 - 2);
       // The mouth points where the next seed goes.
       const [ax, ay] = AIM[plant.aim] || AIM.down;

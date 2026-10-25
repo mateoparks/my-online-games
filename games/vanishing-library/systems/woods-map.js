@@ -22,6 +22,18 @@
 
   VL.defineEdgeRule('woods', (state, area, from, to) => (inWoods(area, from) && inWoods(area, to) && !hasMap(state) ? VL.WOODS_ENTRY : null));
 
+  // Trees close the pass below the Hollow Oak; with the copy in hand, one of
+  // them is a dirt path for good. Checked as rooms are built and every step,
+  // so a save that copied the map before the trees grew finds it open too.
+  VL.WOODS_GATE_TREE = { area: 'overworld', screen: '7,-1', tx: 7, ty: 2, opensTo: 'P' };
+  function openWoodsPath(state) {
+    const gate = VL.WOODS_GATE_TREE;
+    if (!hasMap(state) || VL.savedTile(state, gate.area, gate.screen, gate.tx, gate.ty)) return;
+    VL.saveTile(state, gate.tx, gate.ty, gate.opensTo, gate);
+  }
+  VL.onRoomBuilt(openWoodsPath);
+  VL.defineSystem('woodsPath', { order: 96, update: openWoodsPath });
+
   // The Woods screen the hero stands on, for the copy's "you are here".
   VL.woodsMapHere = (state) => (state?.player && inWoods(state.player.area, state.player.screen) ? state.player.screen : null);
 

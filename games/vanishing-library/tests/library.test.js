@@ -258,7 +258,7 @@ test('the effects: Herbalist marks, Ledger ore and cheaper forging, Primer, Drag
   assert.deepEqual(plain(VL.mapMarks(game)), []);
   returnAndRead(VL, game, ['bookHerbalist', 'bookSmithsLedger', 'bookPrimer', 'bookDragons', 'bookChickenAlmanac', 'hiddenBookSealed']);
   const marks = plain(VL.mapMarks(game));
-  assert.deepEqual(marks.filter((m) => m.kind === 'berries').map((m) => m.screen).sort(), ['0,-1', '0,0', '2,-3'], 'the three berry bushes');
+  assert.deepEqual(marks.filter((m) => m.kind === 'berries').map((m) => m.screen).sort(), ['-1,-3', '0,0', '7,-2'], 'the three berry bushes (hut, Woods, highlands since W29)');
   assert.deepEqual(marks.filter((m) => m.kind === 'ore'), [{ kind: 'ore', area: 'overworld', screen: VL.SPOTS.oreWoods.screen, tx: VL.SPOTS.oreWoods.x, ty: VL.SPOTS.oreWoods.y }]);
   VL.markFound(game, 'oreWoods');
   assert.ok(!VL.mapMarks(game).some((m) => m.kind === 'ore'), 'no mark once the ore is found');
@@ -331,7 +331,7 @@ test('a save that got the Big Shell Purse at five books keeps it, gets the heart
   assert.equal(VL.booksReturned(t.game), 7);
   assert.ok(VL.hasItem(t.game, 'shellPurse'));
   t.step();
-  assert.equal(t.game.inventory.shells, 140, 'the purse still holds more than 99');
+  assert.equal(t.game.inventory.shells, 140, 'the purse still holds more than the first one');
   assert.equal(VL.pendingReward(t.game), 'heartLibrary', 'the heart is owed now (unknown reward ids are ignored)');
   t.visitLibrarian();
   assert.equal(t.game.maxHp, fixture.maxHp + VL.TUNING.heartContainerHp);
@@ -358,19 +358,19 @@ test('two rewards earned in one trip both come, one after the other', () => {
   assert.ok(VL.rewardGiven(t.game, 'heartLibrary'));
 });
 
-test('the purse holds 99 whole shells; the Big Shell Purse holds 999', () => {
+test('the purse holds 15 whole shells; the Big Shell Purse holds 250 (W29)', () => {
   const t = setup();
   const { VL } = t;
   VL.addResource(t.game, 'shells', 150);
   t.step();
-  assert.equal(t.game.inventory.shells, 99);
+  assert.equal(t.game.inventory.shells, 15);
   assert.ok(t.game.popups.queue.includes('purseFull'), 'the purse says why, and who might help');
   t.game.popups.queue.length = 0;
   t.app.setScene('play');
   t.game.items.shellPurse = true;
   VL.addResource(t.game, 'shells', 2000);
   t.step();
-  assert.equal(t.game.inventory.shells, 999);
+  assert.equal(t.game.inventory.shells, 250);
 });
 
 test('a full purse turns a trade away before the wood or the berry is paid', () => {
