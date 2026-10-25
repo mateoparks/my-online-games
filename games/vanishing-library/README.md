@@ -1121,6 +1121,17 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   Shield. The Chicken Keeper's Almanac sets `flags.chickenAlmanacRead` (W7's
   long flight) and its popup tells about F. The sealed book gives the
   Scriptorium key (`VL.hasItem(state, 'scriptoriumKey')`, for W14's door).
+- **Where the titled books lie (W28):** none is in town at the start, so they
+  come along the path rather than all at once. The Primer is in a trunk on
+  the east road (past the boulders, so with the gloves, as Dungeon 1's
+  mortar makes ink for a map); the Herbalist's Notes in the Woods' west
+  pocket by the ore and the Chicken Keeper's Almanac at the Hollow Oak's
+  clearing (after Dungeon 1); the Smith's Ledger on the lake island and the
+  Tide Tables on the shipwreck's deck (by raft, after the shockwave, when
+  gear and shells are needed again); A Child's Book of Dragons in the
+  highlands, on the way to the Mirror Shield. Their locks' `needs` say so,
+  and `tests/overworld.test.js` checks each spot against them. Fifteen books
+  can still be returned before the shockwave.
 - **Rewards:** `TUNING.libraryRewards` (5 a heart container, 10 the Big
   Shell Purse, 15 the Swiftfoot Boots), books returned ever, each given once
   by id (`reward:<id>`), so a save from before the swap that got the purse at

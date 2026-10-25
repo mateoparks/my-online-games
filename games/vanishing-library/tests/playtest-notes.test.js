@@ -118,3 +118,46 @@ test('Miss Quill\'s first words: business is down, since nobody wants a book tha
   assert.match(first, /vanish|disappear/i);
   assert.match(first, /five/i, 'she still asks for five loose pages');
 });
+
+// ---------- the titled books, later along the path ----------
+
+// Every key a lock transitively needs (all any-of alternatives included).
+function needsOf(VL, id) {
+  const givers = {};
+  for (const lock of Object.values(VL.LOCKS)) for (const key of [lock.id, ...lock.gives]) (givers[key] ||= []).push(lock);
+  const out = new Set();
+  const visit = (key) => {
+    if (out.has(key)) return;
+    out.add(key);
+    for (const lock of givers[key] || []) lock.needs.flat().forEach(visit);
+  };
+  VL.LOCKS[id].needs.flat().forEach(visit);
+  return out;
+}
+
+test('the six titled books wait behind later progress, each where it is useful', () => {
+  const { VL } = loadGame();
+  const behind = {
+    bookPrimer: 'liftingGloves', // the east road, as D1's mortar brings ink for a map
+    bookHerbalist: 'woodsMapCopy', // in the Woods, after D1
+    bookChickenAlmanac: 'woodsMapCopy', // at the heart of the Woods, long before the highlands
+    bookSmithsLedger: 'shockwave', // the lake island, when gear must be forged again
+    bookTideTables: 'shockwave', // the shipwreck, when shells must be dug again
+    bookDragons: 'climbersAlmanac', // the highlands, on the way to the dragon
+  };
+  for (const [id, key] of Object.entries(behind)) assert.ok(needsOf(VL, id).has(key), `${id} needs ${key}`);
+  const opening = ['town', 'beach', 'homeFields', 'cliffs', 'lake'].flatMap((region) => VL.REGIONS[region].screens);
+  for (const id of Object.keys(behind)) {
+    const spot = VL.SPOTS[id];
+    assert.ok(!(spot.area === 'overworld' && opening.includes(spot.screen) && spot.screen !== '3,-3'), `${id} is not lying about town at the start (${spot.screen})`);
+  }
+});
+
+test('the solver stays green and every library reward is still reachable before the shockwave', () => {
+  const { VL } = loadGame();
+  const result = VL.solveProgression();
+  assert.deepEqual([...result.problems], []);
+  const beforeShockwave = result.stages[0].reached;
+  for (const id of ['heartLibrary', 'shellPurse', 'swiftfootBoots', 'bookPrimer', 'bookHerbalist', 'bookChickenAlmanac']) assert.ok(beforeShockwave.includes(id), id);
+  for (const id of ['bookSmithsLedger', 'bookTideTables', 'bookDragons']) assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
+});

@@ -116,12 +116,12 @@
     d3Boss: [{ say: 'A great crab has taken the Lighthouse lens for its shell! Aim for its eyes, {name}.' }],
     climbersAlmanac: [{ say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow all over: by the library, by the lake, even into a chicken coop. Little Pip in the harbour might know something!' }],
     highlands: [
-      { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think someone hid it down by the harbour coop.' },
+      { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think someone hid it at the heart of the Whispering Woods.' },
       { say: 'The Climber\'s Almanac shows a hidden path at the foot of the cliffs. From there, let the chickens carry you up!' },
     ],
     dragonsLairEntered: [{ say: 'The Dragon\'s Lair is at the very top of the highlands. Be brave, {name}.' }],
     mirrorShield: [
-      { when: not(read('bookDragons')), say: 'If you find A Child\'s Book of Dragons, bring it to me. I think it was hidden somewhere near the harbour.' },
+      { when: not(read('bookDragons')), say: 'If you find A Child\'s Book of Dragons, bring it to me. I think it was hidden somewhere up in the highlands.' },
       { say: 'Remember the dragon book? Dragons can\'t stand their own fire. Something shiny might bounce it back.' },
     ],
     d4Boss: [{ say: 'Bounce the dragon\'s fire right back at it, then use your sword!' }],

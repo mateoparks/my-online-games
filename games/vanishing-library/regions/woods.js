@@ -157,6 +157,7 @@
       ],
       entities: [
         spot('oreWoods', 6, 9, 'pickup', 'W5'),
+        spot('bookHerbalist', 5, 8, 'trunk', 'W11'),
       ],
     },
     '7,-1': {
@@ -232,6 +233,7 @@
         { type: 'spitter', x: 12, y: 6 },
         { type: 'decor', art: 'hollowOak', x: 5, y: 1 },
         spot('hollowOakDoor', 7, 3, 'door', 'W15', 'hollowOakEntered'),
+        spot('bookChickenAlmanac', 10, 8, 'trunk', 'W11'),
       ],
     },
     // Wrong turns (VL.WOODS_WRONG_EXITS): look-alike screens that wind back
