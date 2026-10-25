@@ -2067,20 +2067,26 @@ async function main() {
       for (const problem of raftProblems) console.log(`     ${problem}`);
     }
 
-    // The flash guard (WCAG 2.3.1 in spirit): sample scenes are
-    // stepped by hand on an app of their own and drawn to an offscreen canvas
-    // every 1/60 s. In 16x16 cells, a flip is a change of 0.05 or more in mean
-    // relative luminance against the last extreme, the darker side under 0.8
-    // (half WCAG's 0.1, so dark rooms' dim floors count too). It fails when cells covering over a quarter of the canvas flip more than
-    // 3 times within any one second. A control run with the steady layers
-    // switched off must fail, so the guard is known to see a strobe.
+    // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
+    // app of their own and drawn to an offscreen canvas every 1/60 s. In 16x16
+    // cells, a flip is a change in mean relative luminance against the last
+    // extreme, the darker side under 0.8. Two checks, each over any one
+    // second: a broad one (a change of 0.05, half WCAG's, so dark rooms' dim
+    // floors count too; fails when over a quarter of the canvas flips more
+    // than 3 times) and WCAG's own numbers (a change of 0.1, more than 3 flash
+    // pairs, so over 6 flips; fails past 4% of the canvas, about 25% of a 10
+    // degree field at this game's scale). A control run with the steady layers
+    // switched off must fail both, so each is known to see a strobe.
     {
       errors.length = 0;
       const flashProblems = [];
       const scan = JSON.parse(await evaluate(`(() => {
         const { width, height, step } = VL.TUNING;
         const cell = 16;
-        const flipBy = 0.05;
+        const checks = [
+          { id: 'broad', flipBy: 0.05, over: 3, bound: 0.25 },
+          { id: 'wcag', flipBy: 0.1, over: 6, bound: 0.04 },
+        ];
         const cols = width / cell;
         const rows = height / cell;
         const canvas = document.createElement('canvas');
@@ -2112,8 +2118,8 @@ async function main() {
           for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
           app.setScene('play');
           setup(app, g);
-          const cells = [];
-          let worst = { area: 0, at: 0, flips: 0 };
+          const cells = checks.map(() => []);
+          const worst = checks.map(() => ({ area: 0, at: 0, flips: 0 }));
           let shown = false;
           for (let s = 0; s < seconds; s += step) {
             const actions = tick?.(app, app.game, s) || VL.noActions();
@@ -2121,32 +2127,35 @@ async function main() {
             shown = shown || Boolean(reached(app, app.game));
             VL.render(ctx, app, s);
             const now = luminance();
-            // Each cell follows its brightest (rising) or darkest (falling)
-            // value since its last flip; a big enough turn the other way flips it.
-            now.forEach((l, i) => {
-              const c = cells[i] || (cells[i] = { dir: 0, hi: l, lo: l, flips: [] });
-              const flip = (dir) => {
-                c.flips.push(s);
-                Object.assign(c, { dir, hi: l, lo: l });
-              };
-              if (c.dir >= 0 && c.hi - l >= flipBy && l < 0.8) flip(-1);
-              else if (c.dir <= 0 && l - c.lo >= flipBy && c.lo < 0.8) flip(1);
-              else {
-                c.hi = Math.max(c.hi, l);
-                c.lo = Math.min(c.lo, l);
+            checks.forEach(({ flipBy, over }, k) => {
+              // Each cell follows its brightest (rising) or darkest (falling)
+              // value since its last flip; a big enough turn the other way flips it.
+              now.forEach((l, i) => {
+                const c = cells[k][i] || (cells[k][i] = { dir: 0, hi: l, lo: l, flips: [] });
+                const flip = (dir) => {
+                  c.flips.push(s);
+                  Object.assign(c, { dir, hi: l, lo: l });
+                };
+                if (c.dir >= 0 && c.hi - l >= flipBy && l < 0.8) flip(-1);
+                else if (c.dir <= 0 && l - c.lo >= flipBy && c.lo < 0.8) flip(1);
+                else {
+                  c.hi = Math.max(c.hi, l);
+                  c.lo = Math.min(c.lo, l);
+                }
+              });
+              let flashing = 0;
+              let most = 0;
+              for (const c of cells[k]) {
+                const recent = c.flips.filter((f) => f > s - 1).length;
+                most = Math.max(most, recent);
+                if (recent > over) flashing += 1;
               }
+              const area = flashing / (cols * rows);
+              const w = worst[k];
+              if (area > w.area || (area === w.area && most > w.flips)) worst[k] = { area, at: Math.round(s * 100) / 100, flips: most };
             });
-            let flashing = 0;
-            let most = 0;
-            for (const c of cells) {
-              const recent = c.flips.filter((f) => f > s - 1).length;
-              most = Math.max(most, recent);
-              if (recent > 3) flashing += 1;
-            }
-            const area = flashing / (cols * rows);
-            if (area > worst.area || (area === worst.area && most > worst.flips)) worst = { area, at: Math.round(s * 100) / 100, flips: most };
           }
-          return { name, shown, ...worst };
+          return { name, shown, checks: checks.map((check, k) => ({ ...check, ...worst[k] })) };
         };
         const lh = (screen, tx, ty, facing = 'up') => ({ area: 'lighthouse', screen, tx, ty, facing });
         const arm = (g) => {
@@ -2259,15 +2268,22 @@ async function main() {
         return JSON.stringify(results);
       })()`));
       for (const r of scan) {
-        const pct = Math.round(r.area * 100);
-        if (r.missing || !r.shown) flashProblems.push(`${r.name}: the scene never showed what it samples`);
-        else if (r.control && !(r.area > 0.25)) flashProblems.push(`${r.name}: the guard did not see the strobe (${pct}% of the canvas, ${r.flips} flips/s at most)`);
-        else if (!r.control && r.area > 0.25) flashProblems.push(`${r.name}: ${pct}% of the canvas flips more than 3 times a second (at ${r.at} s, ${r.flips} flips in a cell)`);
-        console.log(`     ${r.control ? 'control ' : ''}${r.name}: ${pct}% of the canvas over 3 flips/s, ${r.flips ?? '-'} flips/s in the busiest cell`);
+        if (r.missing || !r.shown) {
+          flashProblems.push(`${r.name}: the scene never showed what it samples`);
+          continue;
+        }
+        const summary = r.checks.map((c) => `${c.id} (${c.flipBy}, over ${c.over}) ${Math.round(c.area * 100)}%, ${c.flips} flips/s in the busiest cell`);
+        for (const c of r.checks) {
+          const pct = Math.round(c.area * 100);
+          const label = `${c.id} check (a change of ${c.flipBy}, over ${c.over} flips a second, past ${c.bound * 100}% of the canvas)`;
+          if (r.control && !(c.area > c.bound)) flashProblems.push(`${r.name}: the ${label} did not see the strobe (${pct}%, ${c.flips} flips/s at most)`);
+          else if (!r.control && c.area > c.bound) flashProblems.push(`${r.name}: fails the ${label}: ${pct}% at ${c.at} s, ${c.flips} flips in a cell`);
+        }
+        console.log(`     ${r.control ? 'control ' : ''}${r.name}: ${summary.join('; ')}`);
       }
       flashProblems.push(...errors);
       if (flashProblems.length) failures += 1;
-      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second in the dark, hurt, beam, boss, shockwave, swarm, popup and faint scenes`);
+      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 4% more than 3 flash pairs (WCAG 2.3.1), in the dark, hurt, beam, boss, shockwave, swarm, popup and faint scenes`);
       for (const problem of flashProblems) console.log(`     ${problem}`);
     }
 

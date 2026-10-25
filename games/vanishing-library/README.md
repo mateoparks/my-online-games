@@ -803,14 +803,16 @@ screen edge and landing on the island for its ore (`w17-launch.png`,
 beach to the wreck and aboard by its stove-in side (`w17-wreck.png`,
 `w17-wreck-aboard.png`), every room below deck (`w17-room-<x>_<y>.png`), the
 rope over the bilge (`w17-bilge-rope.png`) and the cabin's page
-(`w17-page.png`). Last, the
-flash guard (WCAG 2.3.1 in spirit): dark rooms while hurt, the beam, the Lens
-Crab's rounds, the shockwave, the chicken swarm, popups and a faint are each
-stepped by hand and drawn offscreen at 60 fps; it fails when over a quarter of
-the canvas (16 px cells) flips brightness (0.05 relative luminance) more than
-3 times in a second. A control run with the steady layers off must fail. It runs
-for 240 s at most (about twice its run time). A test file
-that runs no tests, and an `async` test function, both fail the node run.
+(`w17-page.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
+the beam, the Lens Crab's rounds, the shockwave, the chicken swarm, popups and
+a faint are each stepped by hand and drawn offscreen at 60 fps, in 16 px
+cells. It fails when, within any one second, over a quarter of the canvas
+flips brightness (0.05 relative luminance) more than 3 times, or over 4% of
+it (about a quarter of a 10 degree field at this scale) flips by WCAG's 0.1
+more than 6 times (over 3 flash pairs). A control run with the steady layers
+off must fail both. It runs for 240 s at most (about twice its run time). A
+test file that runs no tests, and an `async` test function, both fail the
+node run.
 
 ## Overworld map
 

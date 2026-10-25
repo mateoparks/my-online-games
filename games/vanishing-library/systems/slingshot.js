@@ -226,7 +226,7 @@
         VL.ART.drawSprite(ctx, 'fx-stun-star', Math.round(ox + e.cx + Math.cos(a) * 7) - 1, Math.round(oy + top + Math.sin(a) * 2) - 1);
       }
     }
-   }, { steady: true });
+  }, { steady: true });
 
   // Broken shells left, beside the slingshot in its HUD slot: the HUD's
   // shell count is whole shells only.
