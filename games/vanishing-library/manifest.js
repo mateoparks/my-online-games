@@ -47,6 +47,7 @@ VL.FILES = {
     'systems/paper-ink.js',
     'systems/woods-map.js',
     'systems/grappling-rope.js',
+    'systems/shockwave.js',
   ],
 
   entities: [
@@ -123,6 +124,7 @@ VL.FILES = {
     'scenes/reading.js',
     'scenes/puppet-show.js',
     'scenes/world-map.js',
+    'scenes/shockwave.js',
   ],
 
   boot: [
