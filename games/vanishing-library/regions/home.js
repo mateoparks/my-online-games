@@ -127,6 +127,9 @@ VL.addScreens('overworld', {
   },
 });
 
+// The hut's lantern: where a finished dungeon hands its save point on to.
+VL.HOME_SAVE = { area: 'hut', screen: '0,0', tx: 2, ty: 2, facing: 'down' };
+
 VL.addScreens('hut', {
   '0,0': {
     tiles: [
@@ -144,7 +147,7 @@ VL.addScreens('hut', {
     ],
     entities: [
       { type: 'door', x: 7, y: 9, to: { area: 'overworld', screen: '1,1', tx: 8, ty: 4, facing: 'down' } },
-      { type: 'savePoint', x: 2, y: 2 },
+      { type: 'savePoint', x: VL.HOME_SAVE.tx, y: VL.HOME_SAVE.ty },
       { type: 'chest', id: 'hutChest', x: 12, y: 2, contents: [{ item: 'woodSword' }, { item: 'woodShield' }] },
     ],
   },

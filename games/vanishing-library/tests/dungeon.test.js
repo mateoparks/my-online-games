@@ -811,8 +811,9 @@ test('playthrough: the sample dungeon from the yard to the boss and out, reloadi
   const { VL } = loadDungeon();
   const play = createPlaythrough(VL, { milestones: SAMPLE_MILESTONES, steps: sampleSteps });
   const drive = play.playTo('sampleBoss');
-  // playTo's last reload: out through the boss warp, so outside at the entrance.
-  assert.deepEqual([drive.state.player.area, VL_tile(drive).tx, VL_tile(drive).ty], ['sampleYard', 8, 4]);
+  // playTo's last reload: out through the boss warp, the dungeon finished, so at home (W31).
+  assert.deepEqual(plain(drive.state.savePoint), plain(VL.DUNGEONS.sample.entrance));
+  assert.deepEqual([drive.state.player.area, VL_tile(drive).tx, VL_tile(drive).ty], [VL.HOME_SAVE.area, VL.HOME_SAVE.tx, VL.HOME_SAVE.ty]);
   assert.equal(drive.state.maxHp, VL.TUNING.startMaxHp + VL.TUNING.heartContainerHp);
   assert.deepEqual(plain(drive.state.dungeons.sample), {
     keysGiven: 0, bossKey: true, map: true, boss: true,
@@ -1067,7 +1068,7 @@ test('the boss warp waits for the keys to be let go, so a direction held through
   assert.equal(t.game.player.area, 'sample', 'let go and pressed again: in through the door');
 });
 
-test("the boss warp makes the dungeon's entrance the save point, so Continue after the win starts outside, not at the statue", () => {
+test("the boss warp makes the dungeon's entrance the save point, and with the dungeon finished Continue starts at home (W31), not at the statue", () => {
   const t = setup({ where: at('0,0', 2, 2, 'up'), storage: true });
   t.until((g) => g.savePoint?.area === 'sample', 1, ['up']);
   t.d.boss = true;
@@ -1081,12 +1082,15 @@ test("the boss warp makes the dungeon's entrance the save point, so Continue aft
   assert.ok(t.app.savedAt !== null && !t.game.dirty, 'saved at once');
   t.place(at('0,0', 2, 6));
   t.reload();
-  assert.deepEqual([t.game.player.area, t.game.player.screen, ...t.tile()], ['sampleYard', '0,0', 8, 4], 'Continue starts at the entrance');
-  // Back inside, the statue is the save point again.
+  const home = t.VL.HOME_SAVE;
+  assert.deepEqual([t.game.player.area, t.game.player.screen, ...t.tile()], [home.area, home.screen, home.tx, home.ty], 'Continue starts at the hut');
+  // Back inside, the statue is the save point again, and still hands on to the hut.
   t.place(at('0,0', 2, 2, 'up'));
   t.until((g) => g.savePoint?.area === 'sample', 1, ['up']);
+  t.reload();
+  assert.deepEqual([t.game.player.area, ...t.tile()], [home.area, home.tx, home.ty]);
   const readme = read('README.md');
-  assert.ok(readme.includes('**The warp out is a save') && readme.includes('records it as his save point'), 'README: the boss room and How to build a dungeon');
+  assert.ok(readme.includes('**The warp out is a save') && readme.includes('records it as his save point') && readme.includes('VL.HOME_SAVE'), 'README: the boss room and How to build a dungeon');
 });
 
 test("every dungeon's entrance is a walkable tile just outside its door (a saved respawn point since W27)", () => {
