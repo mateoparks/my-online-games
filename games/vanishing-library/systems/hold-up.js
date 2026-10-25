@@ -15,15 +15,16 @@
     { wave: 'triangle', freq: 1319, at: 0.2, dur: 0.35, vol: 0.3 },
     { wave: 'sine', freq: 1760, at: 0.2, dur: 0.35, vol: 0.12 },
   ], { gap: 0.5 });
-  // A reward with its own fanfare (a heart container, a big chest) holds up quietly.
-  VL.SOUND.onEvent('holdUp', (event) => (event.quiet ? null : 'holdUpJingle'));
 
   // The sprite an item is drawn with in the HUD, held up the same.
   VL.itemSprite = (id) => `item-${VL.ITEMS[id]?.icon}`;
 
-  // Lifts `sprite` overhead. Several things given at once (the hut chest's
-  // sword and shield) are held up side by side in one pose.
-  VL.holdUp = function holdUp(state, sprite, { quiet = false } = {}) {
+  // Lifts `sprite` overhead with `sound` (none when `quiet`). Several things
+  // given at once (the hut chest's sword and shield) are held up side by side
+  // in one pose, heard once. The sound plays here, not from the event: a
+  // reward handed over at the end of a talk or a reading is given outside a
+  // world update, and the next update clears its events unplayed.
+  VL.holdUp = function holdUp(state, sprite, { quiet = false, sound = 'holdUpJingle' } = {}) {
     if (!VL.ART.SPRITES[sprite]) throw new Error(`holdUp: no sprite ${sprite}`);
     if (state.holdUp) {
       if (!state.holdUp.sprites.includes(sprite)) state.holdUp.sprites.push(sprite);
@@ -35,6 +36,7 @@
       state.player.holding = true;
       state.player.swing = null;
     }
+    if (!quiet) VL.sfx(sound);
     state.events.push({ type: 'holdUp', sprite, quiet });
   };
 

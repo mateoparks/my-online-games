@@ -20,14 +20,13 @@
     { wave: 'triangle', freq: 784, at: 0.24, dur: 0.12, vol: 0.4 },
     { wave: 'triangle', freq: 1046, at: 0.36, dur: 0.4, vol: 0.4 },
   ], { gap: 1 });
-  VL.SOUND.onEvent('heartContainer', 'fanfare');
 
   VL.giveHeartContainer = function giveHeartContainer(state, id = null) {
     state.maxHp += VL.TUNING.heartContainerHp;
     state.hp = state.maxHp;
     if (id) VL.markFound(state, id);
     VL.showPopup(state, 'heartContainer');
-    VL.holdUp(state, 'pickup-heart-container', { quiet: true });
+    VL.holdUp(state, 'pickup-heart-container', { sound: 'fanfare' });
     state.events.push({ type: 'heartContainer' });
     VL.earned(state);
   };

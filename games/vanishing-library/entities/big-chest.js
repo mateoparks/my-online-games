@@ -47,7 +47,7 @@
       VL.markFound(state, chest.id);
       if (VL.ITEMS[chest.item].worn) VL.giveWornItem(state, chest.item);
       else VL.giveItem(state, chest.item);
-      VL.holdUp(state, VL.itemSprite(chest.item), { quiet: true });
+      VL.holdUp(state, VL.itemSprite(chest.item), { sound: 'fanfare' });
       VL.earned(state);
       state.events.push({ type: 'bigChestOpened', item: chest.item });
     },
@@ -57,5 +57,4 @@
       if (!chest.opened) VL.ART.drawSparkle(ctx, x + 12, y + 3, t);
     },
   });
-  VL.SOUND.onEvent('bigChestOpened', 'fanfare');
 })();

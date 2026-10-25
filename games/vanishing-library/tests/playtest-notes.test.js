@@ -290,9 +290,18 @@ test('every handover holds up: librarian rewards, the Scriptorium key, heart con
     assert.ok(state.holdUp.sprites.includes(sprite), `${name} shows ${sprite} (got ${[...state.holdUp.sprites]})`);
     assert.ok(state.events.some((e) => e.type === 'holdUp'), `${name} plays the hold-up`);
   }
-  const quiet = fresh();
-  VL.giveHeartContainer(quiet);
-  assert.ok(quiet.events.find((e) => e.type === 'holdUp').quiet, 'a heart container keeps its own fanfare, no jingle on top');
+  const sounds = [];
+  VL.sfx = (name) => sounds.push(name) > 0;
+  VL.giveHeartContainer(fresh());
+  assert.deepEqual(sounds, ['fanfare'], 'a heart container keeps its own fanfare, no jingle on top');
+  sounds.length = 0;
+  VL.ENTITIES.bigChest.onInteract(fresh(), { id: 'testBigChest', item: 'liftingGloves' });
+  assert.deepEqual(sounds, ['fanfare'], 'so does a big chest');
+  sounds.length = 0;
+  const pair = fresh();
+  VL.holdUp(pair, 'item-sword-wood');
+  VL.holdUp(pair, 'item-shield-wood');
+  assert.deepEqual(sounds, ['holdUpJingle'], 'two things held up together are heard once');
 });
 
 // ---------- the librarian notices ----------
@@ -369,6 +378,28 @@ test('a reward at the end of a talk or a reading is held up before its popup, no
   const heart = seen.find((s) => s.popup === 'heartContainer');
   assert.ok(key && heart, `both popups shown: ${JSON.stringify(seen)}`);
   for (const shown of [key, heart]) assert.ok(shown.holding && shown.held >= VL.TUNING.holdUpSeconds, `${shown.popup} only after the hold-up: ${JSON.stringify(shown)}`);
+});
+
+test('every reward the librarian hands over is heard: the 5-book heart\'s fanfare, the 10-book purse\'s jingle, the sealed book\'s key', () => {
+  const { VL, app, sounds, step } = heldApp();
+  const g = app.game;
+  g.flags['met:fenwick'] = true;
+  const generic = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic').slice(0, 9);
+  assert.equal(generic.length, 9);
+  for (const id of [...generic, 'hiddenBookSealed']) VL.markFound(g, id);
+  VL.place(g, { area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT, facing: 'up' });
+  const heard = {};
+  const done = () => VL.rewardGiven(g, 'shellPurse') && VL.rewardGiven(g, 'heartLibrary') && VL.hasItem(g, 'scriptoriumKey') && !g.holdUp && app.sceneId === 'play';
+  for (let i = 0; i < 60 * 60 && !done(); i += 1) {
+    const before = g.holdUp ? null : sounds.length;
+    step(i % 10 === 0 && (app.sceneId !== 'play' || i === 0 || !g.holdUp) ? VL.actions({ pressed: ['interact'] }) : VL.noActions());
+    if (before !== null && g.holdUp) heard[g.holdUp.sprites[0]] = sounds.slice(before);
+  }
+  assert.ok(done(), `all three given: ${JSON.stringify(heard)}`);
+  assert.ok(heard['pickup-heart-container']?.includes('fanfare'), `the heart's fanfare: ${JSON.stringify(heard)}`);
+  assert.ok(!heard['pickup-heart-container'].includes('holdUpJingle'), 'no jingle on top of the fanfare');
+  assert.ok(heard['item-purse']?.includes('holdUpJingle'), `the purse's jingle: ${JSON.stringify(heard)}`);
+  assert.ok(heard['item-scriptorium-key']?.includes('holdUpJingle'), `the key's jingle: ${JSON.stringify(heard)}`);
 });
 
 // ---------- later notes ----------

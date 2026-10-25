@@ -338,7 +338,10 @@ blocked context, mute); an unknown name does throw, so a typo fails the tests.
   `VL.SOUND.onEvent('chestOpened', 'pickup')` or
   `VL.SOUND.onEvent('coin', (event) => (event.whole ? 'shell' : null))`.
   Doors and walking into a wall (`bump`, once per push) are wired already.
-  Menus and scenes call `VL.sfx('menuMove')` directly.
+  Menus and scenes call `VL.sfx('menuMove')` directly. Events only sound when
+  pushed inside a world update: anything given at the end of a talk or a
+  reading (`endTalk`, `finishReading`) is cleared by the next update unplayed,
+  so play its sound directly (the hold-up does).
 - **Autoplay:** the AudioContext is created on the first key press, click or
   touch (browsers block audio before a gesture), so nothing plays on the title
   screen until the player presses something. A touch unlocks on its `touchend`
@@ -427,11 +430,13 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   hero or a chest gives him, he lifts over his head facing the player
   (`hero-hold`) for `TUNING.holdUpSeconds` with the `holdUpJingle`, the world
   waiting, and only then does the popup name it; he keeps holding it while
-  the popup is up. Every handover calls **`VL.holdUp(state, sprite, { quiet })`**
+  the popup is up. Every handover calls **`VL.holdUp(state, sprite, { sound, quiet })`**
   (`VL.itemSprite(id)` for an item's HUD sprite; several calls in one go are
-  held up side by side, like the hut chest's sword and shield). `quiet` skips
-  the jingle when the reward has its own fanfare (heart containers, big
-  chests). Today: chests, big chests, heart containers, the librarian's
+  held up side by side, like the hut chest's sword and shield, and heard
+  once). `VL.holdUp` plays the sound itself (`holdUpJingle` by default; heart
+  containers and big chests pass `sound: 'fanfare'`; `quiet` plays nothing),
+  because a reward given at the end of a talk or a reading happens outside a
+  world update, and an event pushed there is cleared unplayed. Today: chests, big chests, heart containers, the librarian's
   rewards and the Scriptorium key, the Bookworm's mortar and books, Pip's
   page. Shop and smithy purchases do not hold up. `state.holdUp` is play
   state; `VL.tickHoldUp` is the play scene's clock, and a test that drives

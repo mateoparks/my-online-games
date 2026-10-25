@@ -1538,7 +1538,7 @@ async function main() {
 
       await oakGame(oak('1,-2', 7, 4), '');
       await tapKey('KeyS');
-      await sleep(250);
+      await sleep(1250);
       await shot('w15-rope-popup');
       const got = await see("[VL.hasItem(g, 'grapplingRope'), VL.app.sceneId, VL.currentPopup(g) && VL.currentPopup(g).title]");
       if (got.join() !== 'true,popup,You got the Grappling Rope!') oakProblems.push(`the big chest: rope, scene, popup = ${got}`);
