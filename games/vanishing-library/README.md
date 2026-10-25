@@ -1483,7 +1483,10 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   is its found id) where the boss stood on the map and the warp out (to
   `entrance`) at `warp`, and calls `onDefeat(state)` for the dungeon's own
   rewards (the Mortar & Pestle, books). On later visits the boss is gone, the
-  warp is there and the heart waits until taken. A shutter
+  warp is there and the heart waits until taken. **The warp out is a save
+  point:** stepping on it records `entrance` (outside the dungeon) as the
+  save point (`savePoint: true` on the warp), so Continue after the win
+  starts on the doorstep, not back at the statue. A shutter
   `{ bossBeaten: true }` on the entry tile bars the way back once the hero
   has stepped in; since he is then shut in until the boss falls or he
   faints, a boss behind such bars must be able to make him faint, or the
@@ -1529,7 +1532,10 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
    });
    ```
 2. Fill the overworld door spot with a `door` into the first room and put a
-   `door` on the mat tile back out; a `saveStatue` by the entrance.
+   `door` on the mat tile back out; a `saveStatue` by the entrance. Make
+   `entrance` a safe, walkable tile outside the door: the boss warp lands
+   the hero there and records it as his save point, so every Continue after
+   the win starts there.
 3. Lay the puzzles with the entities above, every id prefixed with the
    dungeon (`d1…`); every key, boss key, map, plate and switch has one.
    Every `smallKey`, `bossKey` and `lockedDoor` names its lock

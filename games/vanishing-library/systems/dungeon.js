@@ -377,7 +377,8 @@
       room.entities.push({ type: 'heartContainer', id: boss.heart, x: stood.x, y: stood.y });
     }
     if (room.entities.some((e) => e.type === 'warp')) return;
-    const warp = { type: 'warp', x: boss.warp.tx, y: boss.warp.ty, to: dungeon.entrance };
+    // savePoint: Continue after the win starts outside, not back at the statue.
+    const warp = { type: 'warp', x: boss.warp.tx, y: boss.warp.ty, to: dungeon.entrance, savePoint: true };
     room.entities.push(warp);
     // A warp that opens under the hero waits for him to step off and back on.
     const hero = VL.heroTile(state);
