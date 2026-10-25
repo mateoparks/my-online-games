@@ -1186,7 +1186,7 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   by id (`reward:<id>`), so a save from before the swap that got the purse at
   5 gets the heart on its next visit and nothing at 10
   (`tests/fixtures/save-v1-W26.json`). The purse raises
-  `TUNING.shellCap` (99 whole shells) to `shellCapPurse` (999); the
+  `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (250); every price in town fits the first purse (a test checks); the
   `shellPurse` system trims anything over (a drop, a dig) and says who might
   help; a shop trade at the cap is refused instead ("Your purse is full!",
   `VL.RESOURCE_CAPS.shells`), so no wood or berry is lost. The boots

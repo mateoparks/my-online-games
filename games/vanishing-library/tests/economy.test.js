@@ -207,17 +207,19 @@ test('every keeper is placed, defined and has words; their dialogue checks clean
 test('the store: paper, berries bought and sold, and a wood shovel for shells', () => {
   const { VL } = loadGame();
   const game = VL.newGame();
-  give(VL, game, { shells: 20, berries: 1 });
+  // A full first purse (15 whole shells since W29).
+  give(VL, game, { shells: 15, berries: 1 });
   assert.equal(VL.buyOffer(game, offer(VL, 'store', 'paper')).ok, true);
-  assert.deepEqual([game.inventory.paper, game.inventory.shells], [1, 18]);
+  assert.deepEqual([game.inventory.paper, game.inventory.shells], [1, 13]);
   assert.equal(VL.buyOffer(game, offer(VL, 'store', 'buyBerry')).ok, true);
-  assert.deepEqual([game.inventory.berries, game.inventory.shells], [2, 15]);
+  assert.deepEqual([game.inventory.berries, game.inventory.shells], [2, 10]);
   assert.equal(VL.LOCKS.buyBerries.reached(game), true);
   assert.equal(VL.buyOffer(game, offer(VL, 'store', 'sellBerry')).ok, true);
-  assert.deepEqual([game.inventory.berries, game.inventory.shells], [1, 16]);
+  assert.deepEqual([game.inventory.berries, game.inventory.shells], [1, 11]);
+  give(VL, game, { shells: 4 });
   assert.equal(VL.buyOffer(game, offer(VL, 'store', 'woodShovel')).ok, true);
   assert.equal(VL.hasItem(game, 'woodShovel'), true);
-  assert.equal(game.inventory.shells, 1);
+  assert.equal(game.inventory.shells, 0);
   assert.equal(VL.buyOffer(game, offer(VL, 'store', 'woodShovel')).reason, 'soldOut', 'one shovel is enough');
 });
 

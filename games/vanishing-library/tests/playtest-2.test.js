@@ -375,3 +375,37 @@ test('the Herbalist\'s Notes point at the new places', () => {
   assert.match(popup.text, /highlands/);
   assert.doesNotMatch(popup.text, /cliffs|lake/);
 });
+
+// ---------- the purses ----------
+
+test('the first purse holds 15 whole shells, the Big Shell Purse 250, and the purse popups say so', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.TUNING.shellCap, 15);
+  assert.equal(VL.TUNING.shellCapPurse, 250);
+  assert.match(VL.ITEMS.shellPurse.about, /\b250\b/);
+  assert.match(VL.ITEMS.shellPurse.popup.text, /\b250\b.*\b15\b/);
+  assert.match(VL.POPUPS.purseFull.text, /\b15\b/);
+  const state = playState(VL, ow('1,1', 8, 5));
+  VL.addResource(state, 'shells', 40);
+  hold(VL, state, [], 0.05);
+  assert.equal(state.inventory.shells, 15);
+  state.items.shellPurse = true;
+  VL.addResource(state, 'shells', 400);
+  hold(VL, state, [], 0.05);
+  assert.equal(state.inventory.shells, 250);
+});
+
+test('everything sold in town costs no more than the first purse holds (so nothing needs the Big Shell Purse)', () => {
+  const VL = shared;
+  const problems = [];
+  for (const [id, shop] of Object.entries(VL.SHOPS)) {
+    for (const offer of shop.offers) {
+      if ((offer.cost?.shells || 0) > VL.TUNING.shellCap) problems.push(`${id} ${offer.id} costs ${offer.cost.shells}`);
+    }
+  }
+  for (const [id, price] of Object.entries(VL.TUNING.prices)) {
+    if ((price.shells || 0) > VL.TUNING.shellCap) problems.push(`price ${id} is ${price.shells}`);
+  }
+  assert.deepEqual(problems, []);
+});
+
