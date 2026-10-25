@@ -768,7 +768,12 @@ the copy's "you are here" (`w15-woods-copy.png`), every room
 (`w15-rope-popup.png`), the hook out and the pull across the vault's pits
 (`w15-rope-throw.png`, `w15-rope-pull.png`), key B dragged off its island
 (`w15-rope-fetch.png`) and the Thornback up, flipped by the hook, hit and
-beaten (`w15-boss.png`, `w15-boss-flipped.png`, `w15-boss-beaten.png`). It runs
+beaten (`w15-boss.png`, `w15-boss-flipped.png`, `w15-boss-beaten.png`).
+Then W29's playtest notes with real keys: the driftwood at the hut beach
+(`w29-driftwood.png`), the first shovel's dig-key popup and X digging with
+the sword and shield in hand (`w29-dig-key-popup.png`, `w29-dig-x.png`), a
+wood sword clinking off a thorny spitter (`w29-tough-spitter.png`) and the
+path the copied map opens before the Oak (`w29-woods-path.png`). It runs
 for 240 s at most (about twice its run time). A test file
 that runs no tests, and an `async` test function, both fail the node run.
 

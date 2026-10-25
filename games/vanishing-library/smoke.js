@@ -1594,6 +1594,80 @@ async function main() {
       for (const problem of oakProblems) console.log(`     ${problem}`);
     }
 
+    // W29, Matthew's second playtest notes, with real keys: the driftwood at
+    // the hut beach's east end, the first shovel's dig-key popup and X digging
+    // with the sword and shield in hand, a wood sword clinking off a thorny
+    // spitter, the dirt path the copied map opens, and the Woods berry bush.
+    // Saved as w29-*.png. A block of its own, so its names never clash.
+    {
+      errors.length = 0;
+      const notesProblems = [];
+      const codes = { KeyS: [83, 's'], KeyX: [88, 'x'], Space: [32, ' '] };
+      const hit = async (code) => {
+        const [vk, keyName] = codes[code];
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+        if (!(await settle())) notesProblems.push(`animation frames stopped after ${code}`);
+      };
+      const shoot = async (name) => {
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      };
+      const read = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const stage = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        g.popups.seen.controls = true;
+        for (const id of ['woodSword', 'woodShield']) VL.giveItem(g, id);
+        g.popups.queue.length = 0;
+        ${setup}
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e) || ${JSON.stringify(where.screen)} === '7,-2');
+        document.getElementById('game').focus();
+      })()`);
+
+      await stage({ area: 'overworld', screen: '1,1', tx: 13, ty: 7, facing: 'right' });
+      await sleep(200);
+      await shoot('w29-driftwood');
+      if ((await read("VL.tileAt('overworld', '1,1', 15, 8, g.room)")) !== 'j') notesProblems.push('no driftwood at the hut beach\'s east end');
+
+      await stage({ area: 'overworld', screen: '1,1', tx: 5, ty: 7, facing: 'down' }, "VL.giveItem(g, 'woodShovel');");
+      await sleep(300);
+      if ((await read('VL.app.sceneId')) !== 'popup') notesProblems.push('the first shovel did not explain the dig key');
+      // The shovel's popup, then the dig key's: S through both.
+      for (let i = 0; i < 6 && (await read('VL.app.sceneId')) === 'popup'; i += 1) {
+        if ((await read('VL.currentPopup(g)?.id')) === 'digKey') await shoot('w29-dig-key-popup');
+        await sleep(400);
+        await hit('KeyS');
+        await sleep(300);
+      }
+      await hit('KeyX');
+      await sleep(120);
+      await shoot('w29-dig-x');
+      const dug = await read("[VL.tileAt('overworld', '1,1', 5, 8, g.room), g.hands.mainHand, g.hands.offHand]");
+      if (dug.join() !== '@,woodSword,woodShield') notesProblems.push(`X digging = ${dug}`);
+
+      await stage({ area: 'overworld', screen: '7,-2', tx: 4, ty: 6, facing: 'down' }, 'g.items.woodsMapCopy = true; g.popups.seen.woodsWithMap = true;');
+      await sleep(800);
+      const hp = await read("g.room.entities.find((e) => e.type === 'spitter' && e.x === 4).hp");
+      await hit('Space');
+      await sleep(60);
+      await shoot('w29-tough-spitter');
+      if ((await read("g.room.entities.find((e) => e.type === 'spitter' && e.x === 4)?.hp")) !== hp) notesProblems.push('a wood sword hurt a tough spitter');
+
+      await stage({ area: 'overworld', screen: '7,-1', tx: 7, ty: 4, facing: 'up' }, 'g.items.woodsMapCopy = true; g.popups.seen.woodsWithMap = true;');
+      await sleep(200);
+      await shoot('w29-woods-path');
+      if ((await read("VL.tileAt('overworld', '7,-1', 7, 2, g.room)")) !== 'P') notesProblems.push('the copied map did not open the path before the Oak');
+
+      notesProblems.push(...errors);
+      if (notesProblems.length) failures += 1;
+      console.log(`${notesProblems.length ? 'FAIL' : 'ok  '} playtest notes 2: driftwood, the dig key, a tough spitter, the Woods path, ${path.join(outDir, 'w29-*.png')}`);
+      for (const problem of notesProblems) console.log(`     ${problem}`);
+    }
+
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();
   } finally {
