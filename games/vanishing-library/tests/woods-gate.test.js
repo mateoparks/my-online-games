@@ -138,6 +138,7 @@ test('the pathfinder never crosses an edge that turns back: no way to the Hollow
   assert.equal(findPath(VL, from, { area: 'overworld', screen: '7,-2', tx: 7, ty: 5 }, t.game), null);
   assert.ok(findPath(VL, from, { area: 'overworld', screen: '5,-1', tx: 6, ty: 8 }, t.game), 'the edge of the Woods is open to all');
   t.game.items.woodsMapCopy = true;
+  t.hold([], 0.05); // the copy opens the tree before the Oak (W29)
   assert.ok(findPath(VL, from, { area: 'overworld', screen: '7,-2', tx: 7, ty: 5 }, t.game));
 });
 

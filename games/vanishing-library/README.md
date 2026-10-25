@@ -1419,6 +1419,16 @@ through"), in `systems/woods-map.js`. Tests: `tests/woods-gate.test.js`.
   scribes' blue mark (`woodsBlaze`, added as the room is built) on the tree
   beside its way on (`VL.woodsBlaze(key)`), and the copy (E, or its hand
   key) blinks where the hero stands (`VL.woodsMapHere`).
+- **The trees before the Oak (W29):** the pass from 7,-1 up to the Hollow
+  Oak's clearing is closed by trees, one of them the gate tile `J`
+  (`gate: 'woodsMapCopy'`, at `VL.WOODS_GATE_TREE`). Once the copy is owned
+  it becomes a dirt path for good (`VL.saveTile` with an explicit screen),
+  checked as each room is built and every step, so an old save that copied
+  the map finds it open as it loads. The turn-back rule above still keeps a
+  hero without the copy from reaching 7,-1 at all; the trees are the same
+  lock shown on the map, and on the drawn map the path appears with the
+  copy. `VL.saveTile(state, tx, ty, ch, { area, screen })` saves a tile on
+  any screen.
 - **Edge rules** (`engine.js`): `VL.defineEdgeRule(id, (state, area, from,
   to) => Place | null)` sends a crossing somewhere other than the neighbour.
   `systems/movement.js` follows it and pushes `{ type: 'edgeTurned', rule,

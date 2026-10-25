@@ -427,7 +427,9 @@ test('the Woods: one route from the east road to the Hollow Oak, and a dead end 
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const next = at(gx + dx, gy + dy);
       const id = `${gx + dx},${gy + dy}`;
-      if (!next || next.info.solid || !woods.has(next.key) || prev.has(id)) continue;
+      // With the copied map, as the route is walked (its tree opens, W29).
+      const open = !next?.info.solid || next.info.gate === VL.REGIONS.woods.softGate;
+      if (!next || !open || !woods.has(next.key) || prev.has(id)) continue;
       prev.set(id, `${gx},${gy}`);
       queue.push([gx + dx, gy + dy]);
     }
@@ -524,8 +526,9 @@ test('the hero walks with real input from the hut to every region open today', (
 
 test('with the gates opened, the hero walks through the Woods maze and up to the lair', () => {
   const { VL } = loadGame();
-  // Stand-ins for W14's gloves, W19's Almanac and W7's flight: open the gate tiles.
-  for (const ch of ['O', 'h', 'V']) VL.TILESETS.base[ch].solid = false;
+  // Stand-ins for W14's gloves, W19's Almanac, W7's flight and the tree the
+  // copied map opens (W29): open the gate tiles.
+  for (const ch of ['O', 'h', 'V', 'J']) VL.TILESETS.base[ch].solid = false;
   const { drive } = createPlaythrough(VL);
   drive.state.items.woodsMapCopy = true;
   drive.state.popups.seen.woodsWithMap = true;

@@ -150,3 +150,48 @@ test('they never block the way (enemies are never solid), so the metal sword sta
   assert.deepEqual(plain(VL.LOCKS.oreShallows.needs), ['beach']);
   assert.deepEqual(plain(VL.LOCKS.oreScriptorium.needs), ['scriptoriumEntered', 'liftingGloves']);
 });
+
+// ---------- the trees before the Hollow Oak ----------
+
+test('trees close the pass from 7,-1 up to the Hollow Oak until the Woods map is copied', () => {
+  const { VL } = loadGame();
+  const { findPath, isWalkable } = require('./playthrough');
+  const gate = VL.WOODS_GATE_TREE;
+  assert.deepEqual(plain(gate), { area: 'overworld', screen: '7,-1', tx: 7, ty: 2, opensTo: 'P' });
+  const screen = VL.getScreen('overworld', '7,-1');
+  assert.equal(VL.tileInfo('overworld', screen.tiles[2][7]).gate, 'woodsMapCopy', 'a tree that the map opens');
+  assert.ok(VL.tileInfo('overworld', screen.tiles[2][6]).tree, 'and its neighbour, a plain tree');
+  // Every way from the south of 7,-1 to the north of it crosses row 2 there.
+  const state = playState(VL, ow('7,-1', 7, 3));
+  assert.equal(isWalkable(VL, 'overworld', '7,-1', 7, 2, state), false);
+  state.items.woodsMapCopy = true;
+  const below = { area: 'overworld', screen: '7,-1', tx: 7, ty: 3 };
+  const above = { area: 'overworld', screen: '7,-1', tx: 7, ty: 1 };
+  assert.equal(findPath(VL, below, above, state), null, 'the map alone is not a path until the tree is gone');
+});
+
+test('copying the map turns one tree into a dirt path, saved for good (VL.saveTile) and walked through to the Oak', () => {
+  const { VL } = loadGame();
+  const { findPath } = require('./playthrough');
+  const state = playState(VL, ow('3,-1', 8, 5));
+  hold(VL, state, [], 0.1);
+  assert.equal(VL.savedTile(state, 'overworld', '7,-1', 7, 2), null, 'no map, no path');
+  VL.giveItem(state, 'woodsMapCopy');
+  hold(VL, state, [], 0.1);
+  assert.equal(VL.savedTile(state, 'overworld', '7,-1', 7, 2), 'P');
+  const save = plain(VL.serializeSave(state));
+  assert.equal(save.tileChanges['overworld:7,-1']['7,2'], 'P', 'in the save');
+  VL.place(state, ow('7,-1', 7, 3));
+  assert.equal(VL.tileAt('overworld', '7,-1', 7, 2, state.room), 'P');
+  assert.equal(VL.tileAt('overworld', '7,-1', 6, 2, state.room), 'F', 'only one tree moves');
+  const route = findPath(VL, { area: 'overworld', screen: '7,-1', tx: 7, ty: 3 }, { area: 'overworld', screen: '7,-2', tx: 7, ty: 5 }, state);
+  assert.ok(route, 'up the new path to the clearing');
+});
+
+test('a save that copied the map before the trees existed finds the path open as it loads', () => {
+  const { VL } = loadGame();
+  const state = playState(VL, ow('5,0', 6, 2));
+  state.items.woodsMapCopy = true;
+  VL.place(state, ow('5,-1', 6, 8));
+  assert.equal(VL.savedTile(state, 'overworld', '7,-1', 7, 2), 'P');
+});

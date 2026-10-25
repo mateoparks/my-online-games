@@ -20,6 +20,8 @@
     F: { solid: true, tree: true, art: 'woodsTree', ground: 'moss' },
     // Solid ground under the Hollow Oak's roots.
     G: { solid: true, footprint: true, art: 'moss' },
+    // The tree in the pass below the Hollow Oak that the copied map opens.
+    J: { solid: true, tree: true, art: 'woodsTree', ground: 'moss', gate: 'woodsMapCopy' },
   });
 
   // Shady forest floor with tufts, the odd fern and a few red mushrooms; never
@@ -164,7 +166,7 @@
       tiles: [
         'FFFFFFFffFFFFFFF',
         'FFFFFFfffFFFFFFF',
-        'FFFFFFffFFFFFFFF',
+        'FFFFFFFJFFFFFFFF',
         'fffFFffffFFFFFFF',
         'ffffffFFffFFFFFF',
         'FFFFFFFFfffFFFFF',
