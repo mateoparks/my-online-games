@@ -31,7 +31,7 @@
       copy.closed = true;
       copy.solid = false;
     },
-    passable: (state, entity) => VL.dungeonCondition(state, entity.open, { room: null }),
+    passable: (state, entity, area) => VL.dungeonCondition(state, entity.open, { room: null, dungeon: VL.dungeonOfArea(area)?.id }),
     draw(ctx, shutter, x, y) {
       if (!shutter.closed) return;
       VL.ART.drawSprite(ctx, 'prop-shutter', x, y + 1);

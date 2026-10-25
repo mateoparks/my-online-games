@@ -452,6 +452,7 @@
     if (!dx && !dy) return false;
     // Off the world, isSolidAt has already said solid.
     const other = VL.neighborKey(screen, dx, dy);
+    if (VL.edgeTurn(state, area, screen, other)) return true;
     const lx = tx - dx * T.cols;
     const ly = ty - dy * T.rows;
     return VL.getScreen(area, other).entities.some((e) => e.x === lx && e.y === ly && (e.solid || VL.ENTITIES[e.type]?.solid));

@@ -91,6 +91,13 @@
       player.y = VL.clamp(player.y, 0, height - 1e-3);
       return;
     }
+    const turn = VL.edgeTurn(state, player.area, player.screen, next);
+    if (turn) {
+      const from = player.screen;
+      VL.enterScreen(state, turn, dir);
+      state.events.push({ type: 'edgeTurned', rule: turn.rule, from, to: next });
+      return;
+    }
     VL.enterScreen(state, {
       area: player.area,
       screen: next,
@@ -126,8 +133,9 @@
       }
       let dx = (held.right ? 1 : 0) - (held.left ? 1 : 0);
       let dy = (held.down ? 1 : 0) - (held.up ? 1 : 0);
-      // Carried by a chicken (systems/chickens.js): the flight moves the hero.
-      if (player.flight) {
+      // Carried by a chicken (systems/chickens.js), or the grappling rope
+      // is out (systems/grappling-rope.js): the hero stands, or is pulled.
+      if (player.flight || player.rope) {
         player.moving = false;
         return;
       }

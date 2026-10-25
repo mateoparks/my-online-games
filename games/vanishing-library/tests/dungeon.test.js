@@ -1082,6 +1082,23 @@ test("the boss warp makes the dungeon's entrance the save point, so Continue aft
   assert.ok(readme.includes('**The warp out is a save') && readme.includes('records it as his save point'), 'README: the boss room and How to build a dungeon');
 });
 
+test("every dungeon's entrance is a walkable tile just outside its door (a saved respawn point since W27)", () => {
+  const { VL } = loadDungeon();
+  const { isWalkable } = require('./playthrough');
+  const ids = Object.keys(VL.DUNGEONS);
+  assert.ok(['sample', 'scriptorium', 'hollowOak'].every((id) => ids.includes(id)), ids.join());
+  for (const [id, dungeon] of Object.entries(VL.DUNGEONS)) {
+    const { area, screen, tx, ty, facing } = dungeon.entrance;
+    assert.notEqual(area, dungeon.area, `${id}: outside the dungeon`);
+    assert.ok(isWalkable(VL, area, screen, tx, ty), `${id}: ${area} ${screen} (${tx},${ty}) is walkable`);
+    const door = VL.getScreen(area, screen).entities.find((e) => e.type === 'door' && e.to?.area === dungeon.area);
+    assert.ok(door, `${id}: a door into it on ${screen}`);
+    assert.equal(Math.abs(door.x - tx) + Math.abs(door.y - ty), 1, `${id}: the entrance is beside the door`);
+    const [dx, dy] = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] }[facing];
+    assert.deepEqual([tx - dx, ty - dy], [door.x, door.y], `${id}: facing away from the door`);
+  }
+});
+
 test('keys in hand are derived (keys found + keys given - doors opened), so a renamed door or key id heals itself after a save', () => {
   const t = setup({ storage: true, where: at('0,0', 7, 1, 'up') });
   const { VL } = t;

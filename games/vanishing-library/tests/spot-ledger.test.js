@@ -23,7 +23,6 @@ function squatters(VL) {
 }
 
 const LEDGER = {
-  W15: ['hollowOakDoor'],
   W17: ['oreLakeIsland', 'shipwreckHatch'],
   W18: ['lighthouseDoor'],
   W19: ['lairDoor'],

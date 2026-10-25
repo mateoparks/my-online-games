@@ -58,10 +58,12 @@ function moves(VL, keys, { blocked = [], launch = null, flight: maxFlight = Infi
   const passable = (t) => Boolean(t) && !closed.has(t.key) && (
     !t.info.solid || t.info.cuttable || (t.info.gate && have.has(t.info.gate))
     || (t.info.rock && have.has('liftingGloves')) || (t.info.water && have.has('rafting')));
+  // A soft gate (the Woods' map, W15) lets anyone onto the region's edge
+  // and turns back every step from one of its screens to another.
   const entering = (from, to) => {
     const region = VL.regionOf(AREA, to.key);
     const gate = region && VL.REGIONS[region].softGate;
-    return !gate || VL.regionOf(AREA, from.key) === region || have.has(gate);
+    return !gate || from.key === to.key || VL.regionOf(AREA, from.key) !== region || have.has(gate);
   };
   const longest = Math.min(maxFlight, Math.max(0, ...Object.entries(FLIGHT).filter(([key]) => have.has(key)).map(([, n]) => n)));
   return (gx, gy) => {
@@ -240,7 +242,10 @@ test('each region opens with exactly the keys and places its lock needs', () => 
   const VL = shared;
   const problems = [];
   for (const region of Object.values(VL.REGIONS)) {
-    const inRegion = (r) => region.screens.some((key) => r.screen(key));
+    // A soft-gated region's place is its heart (the Woods: the Hollow Oak's
+    // clearing); its edge is open to all.
+    const heart = region.softGate && VL.LOCKS[region.place]?.place;
+    const inRegion = (r) => (heart ? r.screen(heart.screen) : region.screens.some((key) => r.screen(key)));
     if (!region.place) {
       if (!inRegion(reach(VL, GATES))) problems.push(`${region.id} is out of reach`);
       continue;
@@ -260,7 +265,8 @@ test('the gates hold: boulders, the hidden path, the lake island, the chasms, th
   const noRaft = reach(VL, GATES.filter((key) => key !== 'rafting'));
   assert.ok(!noRaft.has('3,-3', 7, 4), 'the island is more than a long flight from every shore');
   assert.ok(!noRaft.screen('5,2'), 'the wreck too');
-  assert.ok(!reach(VL, GATES.filter((key) => key !== 'woodsMapCopy')).screen('5,-1'), 'the Woods need the copied map');
+  const noMap = reach(VL, GATES.filter((key) => key !== 'woodsMapCopy'));
+  assert.deepEqual([...VL.REGIONS.woods.screens.filter((key) => noMap.screen(key))], ['5,-1'], 'without the copied map, only the edge of the Woods');
 });
 
 // ---------- spots ----------
@@ -521,6 +527,8 @@ test('with the gates opened, the hero walks through the Woods maze and up to the
   // Stand-ins for W14's gloves, W19's Almanac and W7's flight: open the gate tiles.
   for (const ch of ['O', 'h', 'V']) VL.TILESETS.base[ch].solid = false;
   const { drive } = createPlaythrough(VL);
+  drive.state.items.woodsMapCopy = true;
+  drive.state.popups.seen.woodsWithMap = true;
   drive.walkTo({ area: AREA, screen: '7,-2', tx: 7, ty: 4 });
   drive.walkTo({ area: AREA, screen: '-1,-5', tx: 7, ty: 5 });
   assert.equal(drive.state.player.screen, '-1,-5');

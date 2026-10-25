@@ -207,12 +207,12 @@
     about: 'Your copy of the Woods mural.',
     seen: 'A painted map of the Whispering Woods.',
     popup: { title: 'You copied the Woods map!', text: 'Now the Whispering Woods can\'t fool you. Hold the map in a hand and press its key to look at it.' },
-    picture(ctx, box, t) {
-      VL.drawWoodsMapPicture(ctx, box, t);
+    picture(ctx, box, t, state) {
+      VL.drawWoodsMapPicture(ctx, box, t, state);
     },
   });
 
-  VL.drawWoodsMapPicture = function drawWoodsMapPicture(ctx, box) {
+  VL.drawWoodsMapPicture = function drawWoodsMapPicture(ctx, box, t = 0, state = null) {
     const route = VL.WOODS_ROUTE || [];
     const screens = VL.REGIONS.woods ? VL.REGIONS.woods.screens : route;
     const cells = screens.map((key) => key.split(',').map(Number));
@@ -259,6 +259,13 @@
       VL.ART.rect(ctx, 'mapInk', end.x - 4, end.y - 4, 9, 9);
       VL.ART.rect(ctx, 'mapTree', end.x - 3, end.y - 3, 7, 5);
       VL.ART.rect(ctx, 'mapWood', end.x - 1, end.y + 1, 3, 3);
+    }
+    // Where the hero stands, blinking, when he looks at it in the Woods (W15).
+    const here = state && VL.woodsMapHere ? VL.woodsMapHere(state) : null;
+    if (here && Math.floor(t * 3) % 3 !== 2) {
+      const at = centre(here);
+      VL.ART.rect(ctx, 'mapInk', at.x - 3, at.y - 2, 6, 6);
+      VL.ART.rect(ctx, 'heart', at.x - 2, at.y - 1, 4, 4);
     }
     VL.ART.text(ctx, 'HOLLOW OAK', end ? end.x : box.x, end ? end.y - 12 : box.y, { size: 'small', align: 'center', color: 'mapInk' });
     VL.ART.text(ctx, 'FROM THE EAST ROAD', points[0] ? points[0].x : box.x, box.y + box.h - 7, { size: 'small', align: 'center', color: 'mapInk' });

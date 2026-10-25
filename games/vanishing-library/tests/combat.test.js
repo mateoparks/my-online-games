@@ -721,6 +721,8 @@ test('damage budget: walking from the hut through the Woods to the Hollow Oak, n
     drive.fight = true;
     drive.state.popups.seen.controls = true;
     drive.state.rngState = seed * 7919;
+    drive.state.items.woodsMapCopy = true;
+    drive.state.popups.seen.woodsWithMap = true;
     const lost = steerTo(drive, { screen: '7,-2', tx: 7, ty: 4 });
     assert.equal(drive.state.player.screen, '7,-2');
     assert.ok(lost <= VL.TUNING.startMaxHp / 2, `seed ${seed}: lost ${lost} half hearts of ${VL.TUNING.startMaxHp}`);

@@ -80,3 +80,23 @@ VL.updateWorld = function updateWorld(state, actions, dt) {
   }
   for (const system of VL.SYSTEMS) system.update(state, actions, dt);
 };
+
+// A screen edge can lead somewhere other than the neighbour (the Whispering
+// Woods without their map, W15): `turn(state, area, from, to)` returns the
+// Place to go instead, or null. Walking follows it (movement.js), a chicken
+// flight stops short of such an edge, and the playthrough never paths
+// across one.
+VL.EDGE_RULES = [];
+VL.defineEdgeRule = function defineEdgeRule(id, turn) {
+  if (VL.EDGE_RULES.some((rule) => rule.id === id)) throw new Error(`edge rule ${id} is already defined`);
+  VL.EDGE_RULES.push({ id, turn });
+};
+
+// The first rule's Place, with `rule` naming it, or null.
+VL.edgeTurn = function edgeTurn(state, area, from, to) {
+  for (const rule of VL.EDGE_RULES) {
+    const place = rule.turn(state, area, from, to);
+    if (place) return { ...place, rule: rule.id };
+  }
+  return null;
+};
