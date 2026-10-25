@@ -263,9 +263,9 @@ test('the sword cuts the bush in front: it opens for this visit, rolls a drop, a
   t.closePopups();
   t.hold(['down'], 0.3);
   assert.ok(VL.heroTile(t.game).ty >= 5, 'below the bushes');
-  t.hold(['right'], 2.5);
+  t.hold(['right'], 3.2);
   assert.equal(t.game.player.screen, '1,0');
-  t.hold(['left'], 2.5);
+  t.hold(['left'], 3.2);
   assert.equal(t.game.player.screen, '0,0');
   assert.equal(VL.isSolidAt('grove', '0,0', 4, 4, t.game.room), true, 'the bush grew back');
 });

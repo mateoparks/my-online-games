@@ -10,7 +10,9 @@
   }
 
   // Sub-pixel steps so the hero stops flush against a wall instead of short
-  // of it. Returns the distance it could not move.
+  // of it. Walls sit on the half-pixel grid, so a blocked half step at any
+  // speed first tries the part that reaches the grid line. Returns the
+  // distance it could not move.
   function moveAxis(state, axis, amount) {
     const player = state.player;
     const direction = Math.sign(amount);
@@ -19,7 +21,17 @@
       const step = Math.min(0.5, remaining) * direction;
       const x = axis === 'x' ? player.x + step : player.x;
       const y = axis === 'y' ? player.y + step : player.y;
-      if (blocked(state, x, y)) break;
+      if (blocked(state, x, y)) {
+        const at = player[axis] * 2;
+        const line = (direction > 0 ? Math.floor(at + 1e-6) + 1 : Math.ceil(at - 1e-6) - 1) / 2;
+        const gap = Math.abs(line - player[axis]);
+        const spot = { x: player.x, y: player.y, [axis]: line };
+        if (gap > 1e-9 && gap <= Math.abs(step) + 1e-9 && !blocked(state, spot.x, spot.y)) {
+          player[axis] = line;
+          remaining = Math.max(0, remaining - gap);
+        }
+        break;
+      }
       player.x = x;
       player.y = y;
       remaining -= Math.abs(step);

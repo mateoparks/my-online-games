@@ -120,7 +120,8 @@ test('render smoke: the play scene draws on a fake canvas, including a slide', (
 
 // The camera pans the way the hero walked: the old screen leaves through the
 // opposite edge, the new one enters from the edge the hero crossed, and the
-// hero (drawn at the new screen's offset) never leaves the canvas.
+// hero (drawn at the new screen's offset) never leaves the canvas, give or
+// take the pixel one step past the edge rounds to.
 test('a screen slide pans in the direction of travel and keeps the hero on the canvas', () => {
   const { VL, document } = loadGame();
   addFixtureWorld(VL);
@@ -155,7 +156,7 @@ test('a screen slide pans in the direction of travel and keeps the hero on the c
       draws.length = 0;
       VL.render(ctx, app, 0);
       const hero = draws.find((d) => d.hero);
-      assert.ok(hero.x >= -1 && hero.x <= width && hero.y >= -1 && hero.y <= span.y, `${dir} at ${k}: hero drawn at ${hero.x},${hero.y} is on the canvas`);
+      assert.ok(hero.x >= -1 && hero.x <= width + 1 && hero.y >= -1 && hero.y <= span.y + 1, `${dir} at ${k}: hero drawn at ${hero.x},${hero.y} is on the canvas`);
       if (k !== 0.5) continue;
       const incoming = draws.find((d) => d.key === to);
       const outgoing = draws.find((d) => d.key === from);

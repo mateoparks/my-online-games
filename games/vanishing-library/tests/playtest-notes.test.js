@@ -161,3 +161,18 @@ test('the solver stays green and every library reward is still reachable before 
   for (const id of ['heartLibrary', 'shellPurse', 'swiftfootBoots', 'bookPrimer', 'bookHerbalist', 'bookChickenAlmanac']) assert.ok(beforeShockwave.includes(id), id);
   for (const id of ['bookSmithsLedger', 'bookTideTables', 'bookDragons']) assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
 });
+
+// ---------- walking speed ----------
+
+test('the hero starts about 12% slower, and the Swiftfoot Boots are still clearly faster', () => {
+  const { VL } = loadGame();
+  const before = 80;
+  assert.ok(Math.abs(VL.TUNING.heroSpeed / before - 0.88) < 0.02, `start speed ${VL.TUNING.heroSpeed}`);
+  const state = VL.newGame();
+  const walking = VL.heroSpeed(state);
+  state.items.swiftfootBoots = true;
+  const booted = VL.heroSpeed(state);
+  assert.equal(walking, VL.TUNING.heroSpeed);
+  assert.ok(booted >= walking * 1.3, `boots ${booted} vs ${walking}`);
+  assert.ok(booted > before, 'the boots beat even the old starting pace');
+});
