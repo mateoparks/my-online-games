@@ -284,6 +284,40 @@
     lib(state).noticed = lib(state).gone.length;
   });
 
+  // What he says about books gone since he last remarked on it: one line
+  // picked by how many, turning through the variants with each loss noticed.
+  const NUMBER_WORDS = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+  const remarksFor = (n) => {
+    if (n === 1) {
+      return [
+        'One of the books you brought me is already gone, {name}! They vanish so quickly here.',
+        'Oh dear. Another book has vanished from the shelves since you were last here.',
+        'A book is missing again, {name}. I only turned my back for a moment!',
+      ];
+    }
+    if (n === 2) {
+      return [
+        'Since you were last here, two more books vanished! Where do they go?',
+        'Two books gone since your last visit, {name}. I looked under every table!',
+      ];
+    }
+    if (n < NUMBER_WORDS.length) {
+      const word = NUMBER_WORDS[n];
+      return [
+        `Oh, {name}, ${word.toLowerCase()} more books have vanished since you were last here! The shelves look so bare.`,
+        `${word} books gone since your last visit! Whatever is taking them must be very hungry.`,
+      ];
+    }
+    return ['So many books have vanished since you were last here, {name}! I hardly know where to begin.'];
+  };
+  VL.VANISHED_REMARKS = Array.from({ length: NUMBER_WORDS.length }, (_, n) => n).slice(1).flatMap(remarksFor).concat(remarksFor(NUMBER_WORDS.length));
+  VL.vanishedRemark = function vanishedRemark(state) {
+    const n = lib(state).gone.length - lib(state).noticed;
+    if (n <= 0) return null;
+    const lines = remarksFor(n);
+    return lines[lib(state).noticed % lines.length];
+  };
+
   VL.LIBRARIAN = 'Mr. Fenwick';
 
   // What he says about the books just handed in: a line for each untitled

@@ -294,3 +294,61 @@ test('every handover holds up: librarian rewards, the Scriptorium key, heart con
   VL.giveHeartContainer(quiet);
   assert.ok(quiet.events.find((e) => e.type === 'holdUp').quiet, 'a heart container keeps its own fanfare, no jingle on top');
 });
+
+// ---------- the librarian notices ----------
+
+function libraryWithLosses(VL, lost, { carrying = [] } = {}) {
+  const state = VL.newGame();
+  state.flags['met:fenwick'] = true;
+  const ids = ['bookRiverside', 'bookCliffRoad', 'bookLighthouse', 'bookMeadowRock', 'bookEastRoad', 'bookWoods', 'bookLakeShore'];
+  for (const id of ids) VL.markFound(state, id);
+  VL.returnBooks(state);
+  state.library.gone.push(...ids.slice(0, lost));
+  for (const id of carrying) VL.markFound(state, id);
+  return state;
+}
+const talk = (VL, state) => {
+  const entry = VL.pickDialogue(state, 'librarian');
+  VL.endTalk(state, { set: entry.set, give: entry.give });
+  return [].concat(entry.say).map((line) => VL.popupText(line, state));
+};
+
+test('the librarian remarks on books that vanished since the last visit, first thing, once per loss', () => {
+  const { VL } = loadGame();
+  const state = libraryWithLosses(VL, 1);
+  const first = talk(VL, state);
+  assert.match(first[0], /one of the books|a book|another book/i);
+  assert.match(first[0], /gone|vanish|missing/i);
+  const again = talk(VL, state);
+  assert.ok(!/gone|vanish|missing/i.test(again.join(' ')), `said once for the same loss: ${again}`);
+  state.library.gone.push('bookCliffRoad', 'bookLighthouse');
+  assert.match(talk(VL, state)[0], /\btwo\b/i, 'two more since last time');
+  state.library.gone.push('bookMeadowRock', 'bookEastRoad', 'bookWoods');
+  assert.match(talk(VL, state)[0], /\bthree\b/i);
+});
+
+test('carrying books in, he says what vanished first and then takes the new ones', () => {
+  const { VL } = loadGame();
+  const state = libraryWithLosses(VL, 2, { carrying: ['bookBeachBuried'] });
+  const words = talk(VL, state);
+  assert.match(words[0], /two/i);
+  assert.match(words[1], /books\?|found books/i);
+  assert.ok(VL.bookReturned(state, 'bookBeachBuried'), 'the books were handed in');
+  assert.equal(state.library.noticed, 2);
+});
+
+test('his remarks vary, read cleanly and fit the font', () => {
+  const { VL } = loadGame();
+  const seen = new Set();
+  const state = libraryWithLosses(VL, 0);
+  for (let i = 0; i < 4; i += 1) {
+    state.library.gone.push(state.library.returned[i]);
+    seen.add(talk(VL, state)[0]);
+  }
+  assert.ok(seen.size >= 3, `${seen.size} different lines for four single losses`);
+  for (const line of VL.VANISHED_REMARKS) {
+    const text = VL.popupText(line, { name: 'Ñandú Élodïe' });
+    assert.deepEqual([...VL.ART.missingGlyphs(text)], [], line);
+    for (const sentence of sentencesOf(text)) assert.deepEqual(repeatedWords(sentence), [], line);
+  }
+});

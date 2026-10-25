@@ -506,9 +506,9 @@ test('the librarian notices a missing book once', () => {
   t.game.flags['met:fenwick'] = true;
   returnAndRead(VL, t.game, ['bookRiverside']);
   t.game.library.gone.push('bookRiverside');
-  assert.ok(VL.pickDialogue(t.game, 'librarian').say.includes('I was sure I put a book'));
+  assert.ok(VL.pickDialogue(t.game, 'librarian').say.includes('already gone'));
   t.visitLibrarian();
-  assert.ok(!VL.pickDialogue(t.game, 'librarian').say.includes('I was sure'));
+  assert.ok(!VL.pickDialogue(t.game, 'librarian').say.includes('already gone'));
 });
 
 // ---------- hints by progress ----------

@@ -1164,8 +1164,13 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   Primer before `d3Boss`; after it the Primer goes first and `primerTaken`
   is reached. Story events only: coming back after a week changes nothing.
   Every book has its own place on the shelves (`VL.shelfPlace`), and a taken
-  one leaves a dusty gap; the librarian notices once ("I was sure I put a
-  book right here").
+  one leaves a dusty gap. The next time the hero talks to him, the librarian
+  first remarks on the books gone since he last did (W28,
+  `VL.vanishedRemark(state)`): a line picked by how many ("One of the books
+  you brought me is already gone…", "Since you were last here, two more
+  books vanished!"), turning through `VL.VANISHED_REMARKS` loss by loss, then
+  whatever else he has to say (the hand-in, "where were we?"). Each loss is
+  remarked on once (`library.noticed`).
 - **Hints:** `VL.nextMilestone(state)` is the first story beat not reached,
   and `VL.LIBRARY_HINTS[beat]` the librarian's nudge (variants with `when`:
   the Almanac at the highlands, the dragon book before the shield). A test

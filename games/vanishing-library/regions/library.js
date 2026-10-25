@@ -132,7 +132,7 @@
 
   const carrying = (state) => VL.booksCarried(state).length > 0;
   const beatsWaiting = (state) => Boolean(VL.nextReading(state) || VL.pendingReward(state));
-  const noticing = (state) => state.library.gone.length > state.library.noticed;
+  const remarking = (line, also) => (state) => VL.vanishedRemark(state) === line && (!also || also(state));
   const nextIs = (id, when) => (state) => VL.nextMilestone(state) === id && (!when || when(state));
   const hintEntries = Object.entries(VL.LIBRARY_HINTS).flatMap(([id, hints]) => hints.map((hint) => ({ when: { test: nextIs(id, hint.when) }, say: hint.say })));
 
@@ -142,14 +142,24 @@
     'If you ever find one, bring it here and we\'ll read it together. Ask me any time if you\'re stuck.',
   ];
   const booksHandedIn = 'Are those... books? You found books, {name}! Let me put them on the shelves.';
+  const whereWereWe = 'Now, where were we? Ah, yes!';
+  // Books gone since his last remark come first, whatever else he has to say.
+  const remarks = (also, after, give) => VL.VANISHED_REMARKS.map((line) => ({
+    when: { test: remarking(line, also) },
+    say: after ? [line, after] : line,
+    give: { noticeTheft: true, ...give },
+    repeat: true,
+  }));
 
   VL.defineDialogue('librarian', [
     // A kid who walks in already carrying the first book still meets him first.
     { when: { notFlag: 'met:fenwick', test: carrying }, say: [...introduction, booksHandedIn], set: 'met:fenwick', give: { returnBooks: true } },
+    ...remarks(carrying, booksHandedIn, { returnBooks: true }),
     { when: { test: carrying }, say: booksHandedIn, give: { returnBooks: true }, repeat: true },
-    { when: { test: beatsWaiting }, say: 'Now, where were we? Ah, yes!', give: { libraryChain: true }, repeat: true },
+    ...remarks(beatsWaiting, whereWereWe, { libraryChain: true }),
+    { when: { test: beatsWaiting }, say: whereWereWe, give: { libraryChain: true }, repeat: true },
     { when: { notFlag: 'met:fenwick' }, say: introduction, set: 'met:fenwick' },
-    { when: { test: noticing }, say: 'That\'s odd. I was sure I put a book right here on this shelf. My memory must be going.', give: { noticeTheft: true }, repeat: true },
+    ...remarks(null, null, {}),
     ...hintEntries,
     { say: 'Every book you bring back makes this old room a little brighter, {name}.' },
   ]);
