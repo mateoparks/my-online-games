@@ -783,7 +783,14 @@ Then W29's playtest notes with real keys: the driftwood at the hut beach
 (`w29-driftwood.png`), the first shovel's dig-key popup and X digging with
 the sword and shield in hand (`w29-dig-key-popup.png`, `w29-dig-x.png`), a
 wood sword clinking off a thorny spitter (`w29-tough-spitter.png`) and the
-path the copied map opens before the Oak (`w29-woods-path.png`). It runs
+path the copied map opens before the Oak (`w29-woods-path.png`). Then W30's
+notes with real keys: the word a wood sword gets from a thorny spitter
+(`w30-wood-sword-message.png`), the Hollow Oak's moss room and the key X
+digs out of its grass with the metal shovel (`w30-grass-room.png`,
+`w30-grass-key.png`), and the boss gate shut behind the hero, still shut
+with the heart on the floor, and open with the warp once it is taken
+(`w30-boss-gate-closed.png`, `w30-boss-gate-heart.png`,
+`w30-boss-gate-open.png`). It runs
 for 240 s at most (about twice its run time). A test file
 that runs no tests, and an `async` test function, both fail the node run.
 

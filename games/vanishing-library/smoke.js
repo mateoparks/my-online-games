@@ -1105,7 +1105,8 @@ async function main() {
       await sTo('play');
       if ((await look('g.library.noticed')) !== 2) libProblems.push('the vanished books were not noticed');
 
-      await libGame(atDesk, `${returnAll(['bookRiverside', 'bookCliffRoad', 'bookWoods', 'bookEastRoad'])} VL.markFound(g, 'bookChickenAlmanac');`);
+      // Nine books on the shelves and the Almanac makes ten: the heart (W30's 10/20/30).
+      await libGame(atDesk, `${returnAll(['bookRiverside', 'bookCliffRoad', 'bookWoods', 'bookEastRoad', 'bookLighthouse', 'bookMeadowRock', 'bookLakeShore', 'bookScriptoriumRock', 'bookBeachBuried'])} VL.markFound(g, 'bookChickenAlmanac');`);
       const heldUp = async (name) => {
         for (let i = 0; i < 40 && !(await look('Boolean(g.holdUp) && VL.app.sceneId === "play"')); i += 1) {
           if ((await evaluate('VL.app.sceneId')) !== 'play') await tapS();
@@ -1124,15 +1125,15 @@ async function main() {
       await sleep(300);
       await picture('w11-reading-popup');
       if (!(await look('g.flags.chickenAlmanacRead'))) libProblems.push('the Almanac reading did not switch the long flight on');
-      if (!(await sTo('dialogue'))) libProblems.push('five books did not bring the reward talk');
+      if (!(await sTo('dialogue'))) libProblems.push('ten books did not bring the reward talk');
       await sleep(1600);
       await picture('w11-reward');
       const rewardHeld = await heldUp('w28-reward-hold-up');
-      if (String(rewardHeld) !== 'pickup-heart-container') libProblems.push(`the five-book reward was held up as ${rewardHeld}`);
+      if (String(rewardHeld) !== 'pickup-heart-container') libProblems.push(`the ten-book reward was held up as ${rewardHeld}`);
       if (!(await sTo('popup'))) libProblems.push('the reward talk did not end in its popup');
       await sleep(300);
       await picture('w11-reward-popup');
-      if (!(await look("VL.rewardGiven(g, 'heartLibrary') && g.maxHp === VL.TUNING.startMaxHp + VL.TUNING.heartContainerHp"))) libProblems.push('five books did not give the heart container');
+      if (!(await look("VL.rewardGiven(g, 'heartLibrary') && g.maxHp === VL.TUNING.startMaxHp + VL.TUNING.heartContainerHp"))) libProblems.push('ten books did not give the heart container');
 
       // The stage-3 show also needs Dungeons 1 and 2 beaten; this new game has beaten neither, so their locks stand in for the show.
       await evaluate("VL.smokeBossLocks = ['d1Boss', 'd2Boss'].map((id) => [id, VL.LOCKS[id].reached]); VL.LOCKS.d1Boss.reached = VL.LOCKS.d2Boss.reached = () => true;");
@@ -1466,7 +1467,8 @@ async function main() {
       await sleep(300);
       await shot('w14-reward-popup');
       const reward = await see("[VL.hasItem(g, 'mortarPestle'), VL.BOOKWORM_BUNDLE.every((id) => VL.booksCarried(g).includes(id)), g.room.entities.some((e) => e.type === 'heartContainer'), g.room.entities.some((e) => e.type === 'warp')]");
-      if (reward.join() !== 'true,true,true,true') scrProblems.push(`the Bookworm's rewards (mortar, books, heart, warp) = ${reward}`);
+      // The warp waits for the heart (W30's boss gate).
+      if (reward.join() !== 'true,true,true,false') scrProblems.push(`the Bookworm's rewards (mortar, books, heart, no warp yet) = ${reward}`);
       for (let i = 0; i < 6 && (await evaluate('VL.app.sceneId')) === 'popup'; i += 1) {
         await sleep(450);
         await tapKey('KeyS');
@@ -1605,7 +1607,8 @@ async function main() {
       await sleep(300);
       await shot('w15-boss-beaten');
       const reward = await see("[g.room.entities.some((e) => e.type === 'heartContainer' && e.id === 'heartD2'), g.room.entities.some((e) => e.type === 'warp')]");
-      if (reward.join() !== 'true,true') oakProblems.push(`the Thornback's heart and warp = ${reward}`);
+      // The warp waits for the heart (W30's boss gate).
+      if (reward.join() !== 'true,false') oakProblems.push(`the Thornback's heart, and no warp yet = ${reward}`);
 
       oakProblems.push(...errors);
       if (oakProblems.length) failures += 1;
@@ -1786,6 +1789,96 @@ async function main() {
       if (notesProblems.length) failures += 1;
       console.log(`${notesProblems.length ? 'FAIL' : 'ok  '} playtest notes 2: driftwood, the dig key, a tough spitter, the Woods path, ${path.join(outDir, 'w29-*.png')}`);
       for (const problem of notesProblems) console.log(`     ${problem}`);
+    }
+    // W30, Matthew's third playtest notes, with real keys: the word a wood
+    // sword gets from a thorny spitter, the Hollow Oak's moss room and the key
+    // the metal shovel digs out of its grass (X), and the boss gate: shut
+    // behind the hero while the Thornback lives, still shut with its heart on
+    // the floor, open with the warp once the heart is taken. Saved as w30-*.png.
+    {
+      errors.length = 0;
+      const w30Problems = [];
+      const codes = { KeyS: [83, 's'], KeyX: [88, 'x'], Space: [32, ' '], ArrowUp: [38, 'ArrowUp'] };
+      const keyEvent = (type, code) => {
+        const [vk, keyName] = codes[code];
+        return call('Input.dispatchKeyEvent', { type, key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+      };
+      const hit = async (code) => {
+        await keyEvent('keyDown', code);
+        await keyEvent('keyUp', code);
+        if (!(await settle())) w30Problems.push(`animation frames stopped after ${code}`);
+      };
+      const shoot = async (name) => {
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      };
+      const read = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await read(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      const stage = (where, setup = '', keepEnemies = false) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        g.popups.seen.controls = true;
+        g.popups.seen.digKey = true;
+        for (const id of ['woodSword', 'woodShield']) VL.giveItem(g, id);
+        g.popups.queue.length = 0;
+        ${setup}
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        if (!${keepEnemies}) g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+
+      await stage({ area: 'overworld', screen: '7,-2', tx: 4, ty: 6, facing: 'down' }, 'g.items.woodsMapCopy = true; g.popups.seen.woodsWithMap = true;', true);
+      await sleep(800);
+      await hit('Space');
+      if (!(await waitFor("VL.app.sceneId === 'popup' && VL.app.popupView.t >= 0.3"))) w30Problems.push('no word when the wood sword clinked off a thorny spitter');
+      await shoot('w30-wood-sword-message');
+      const word = await read('VL.currentPopup(g)?.text');
+      if (!/wood sword seems to do nothing/.test(word || '')) w30Problems.push(`the wood sword's word = ${word}`);
+      await hit('KeyS');
+
+      await stage({ area: 'hollowOak', screen: '-1,0', tx: 8, ty: 5, facing: 'right' }, "VL.giveItem(g, 'metalShovel'); g.popups.queue.length = 0;");
+      await settle();
+      await shoot('w30-grass-room');
+      await hit('KeyX');
+      if (!(await waitFor("g.room.entities.some((e) => e.id === 'd2KeyMoss' && !e.hidden)"))) w30Problems.push('the metal shovel did not dig up the moss room\'s key');
+      await waitFor('!g.player.dig');
+      await shoot('w30-grass-key');
+
+      const den = "g.dungeons.hollowOak.doors.d2BossDoor = true; g.flags.shockwaveDue = true; g.flags.shockwave = true; g.flags.shockwaveWoke = true; g.items.grapplingRope = true;";
+      await stage({ area: 'hollowOak', screen: '0,-3', tx: 7, ty: 10, facing: 'up' }, den, true);
+      await keyEvent('keyDown', 'ArrowUp');
+      await waitFor('VL.heroTile(g).ty <= 8');
+      await keyEvent('keyUp', 'ArrowUp');
+      if (!(await waitFor("g.room.entities.some((e) => e.bossGate && e.solid)"))) w30Problems.push('the boss gate did not shut behind him');
+      await shoot('w30-boss-gate-closed');
+      await evaluate(`(() => { const g = VL.app.game; g.room.entities = g.room.entities.filter((e) => e.type !== 'thornback'); VL.bossDefeated(g, 'hollowOak'); })()`);
+      await waitFor("g.room.entities.some((e) => e.type === 'heartContainer')");
+      await settle();
+      await shoot('w30-boss-gate-heart');
+      const shut = await read("[g.room.entities.some((e) => e.bossGate && e.closed), g.room.entities.some((e) => e.type === 'warp')]");
+      if (shut.join() !== 'true,false') w30Problems.push(`with the heart on the floor: gate shut, warp = ${shut}`);
+      await evaluate(`(() => { const g = VL.app.game; const h = g.room.entities.find((e) => e.type === 'heartContainer'); VL.ENTITIES.heartContainer.onStand(g, h); })()`);
+      await waitFor('!g.holdUp', 3000);
+      for (let i = 0; i < 4 && (await read('VL.app.sceneId')) === 'popup'; i += 1) {
+        await waitFor("VL.app.sceneId !== 'popup' || VL.app.popupView.t >= 0.3");
+        await hit('KeyS');
+      }
+      if (!(await waitFor("g.room.entities.some((e) => e.type === 'warp') && g.room.entities.some((e) => e.bossGate && !e.closed)"))) w30Problems.push('the heart taken did not open the gate and bring the warp');
+      await settle();
+      await shoot('w30-boss-gate-open');
+
+      w30Problems.push(...errors);
+      if (w30Problems.length) failures += 1;
+      console.log(`${w30Problems.length ? 'FAIL' : 'ok  '} playtest notes 3: the wood sword's word, the moss room's key, the boss gate, ${path.join(outDir, 'w30-*.png')}`);
+      for (const problem of w30Problems) console.log(`     ${problem}`);
     }
 
 
