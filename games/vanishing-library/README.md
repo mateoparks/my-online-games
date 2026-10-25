@@ -759,7 +759,12 @@ the copy's "you are here" (`w15-woods-copy.png`), every room
 (`w15-rope-popup.png`), the hook out and the pull across the vault's pits
 (`w15-rope-throw.png`, `w15-rope-pull.png`), key B dragged off its island
 (`w15-rope-fetch.png`) and the Thornback up, flipped by the hook, hit and
-beaten (`w15-boss.png`, `w15-boss-flipped.png`, `w15-boss-beaten.png`). It runs
+beaten (`w15-boss.png`, `w15-boss-flipped.png`, `w15-boss-beaten.png`). Then W16's
+shockwave with real keys: the ground shaking, the flash, the story on black,
+waking at home holding up the Glowstone, and Gran Ottie's talk and wood
+(`w16-rumble.png`, `w16-flash.png`, `w16-story.png`, `w16-waking.png`,
+`w16-glowstone.png`, `w16-glowstone-popup.png`, `w16-helper.png`,
+`w16-helper-wood.png`, `w16-helper-wood-popup.png`). It runs
 for 240 s at most (about twice its run time). A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
@@ -1522,6 +1527,46 @@ again, with `afterThornbackDone`.
   `d2DoorB`, `d2BossKey`, `d2BossDoor`. Ids are `d2…` (and `heartD2`).
 - **Sounds:** events `thornStomp`, `thornBonk`, `thornFlip`, `thornTink`
   (`wormTink`).
+
+## The shockwave (W16)
+
+Design: The path through the game, 4. Rules in `systems/shockwave.js`; the
+scene, the hook and Gran Ottie's words in `scenes/shockwave.js` (they need
+`VL.afterThornback` and her dialogue, which load after the systems).
+Tests: `tests/shockwave.test.js`; playthrough step `tests/steps/w16.steps.js`.
+Fixture: `tests/fixtures/save-v1-W16.json` (after the shockwave and the gift).
+
+- **When:** its `VL.afterThornback('shockwave')` hook only saves
+  `flags.shockwaveDue`. The `shockwave` system then waits while the hero is
+  in the Hollow Oak and the heart container is still on the floor (the reward
+  comes first), then `TUNING.shockwaveDelay` more, then opens the
+  `shockwave` scene. Leaving the Oak without the heart starts it outside, and
+  the heart is given anyway on waking (hearts are kept), held up with its
+  fanfare beside the Glowstone.
+- **The scene:** `rumble` (the world shakes, rings of light, a white-out),
+  `flash` (here `VL.applyShockwave` runs and the hero is placed at
+  `VL.SHOCKWAVE_WAKE`, in his hut), `dark` (`VL.SHOCKWAVE_LINES`, a page per
+  press) and `wake` (the hut fades in, "z z z"). Then `VL.wakeFromShockwave`
+  holds the Glowstone up (W28's `VL.holdUp`) and names it.
+- **The losses** are read from `VL.LOCKS.shockwave.loses`, so the game and
+  the solver can't drift apart: items are taken, resources emptied, whole
+  shells become broken shells, the map goes through `VL.loseWorldMap`; a key
+  it doesn't know throws. It gives the `glowstone` (worn, like the gloves) and
+  sets the save point to the hut. Everything else is kept.
+- **Reloads:** before the flash nothing is saved, so the scene plays again;
+  after it (`flags.shockwave`) the story resumes on black at home; after
+  waking (`flags.shockwaveWoke`) it never comes back.
+- **The helper, Gran Ottie:** she is added to the hut's room
+  (`VL.SHOCKWAVE_HELPER`, `VL.onRoomBuilt`) until she has given the wood,
+  starts talking once the Glowstone's popup closes (once per visit), and her
+  entry gives `{ helperWood: TUNING.helperWood }`: a gift kind that adds the
+  wood, holds it up and queues the `helperWood` popup. Afterwards she is back
+  at her well, nudging a swordless hero to the smithy.
+- **The climb back:** while he owns no sword after the shockwave, the home
+  corner (`VL.SHOCKWAVE_QUIET`: 0,0, 1,0, 0,1, 1,1) has no enemies. A pull
+  that faints the hero keeps what the bush dropped (`VL.onFaint`), anywhere.
+- **Locks claimed:** `shockwave` and `helperWood`, with the planned rules.
+- **Sounds:** `shockRumble`, `shockFlash`, `shockWake` (played by the scene).
 
 ## Dungeons (W13)
 

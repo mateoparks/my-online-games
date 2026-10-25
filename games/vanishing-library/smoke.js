@@ -1593,6 +1593,99 @@ async function main() {
       for (const problem of oakProblems) console.log(`     ${problem}`);
     }
 
+    // W16, the shockwave with real keys: the Thornback beaten and its heart
+    // taken, the ground shaking, the white flash, the story on black, waking
+    // at home holding up the Glowstone and its popup, then Gran Ottie's talk
+    // and her wood held up. Saved as w16-*.png.
+    {
+      errors.length = 0;
+      const shockProblems = [];
+      const tapS = async () => {
+        const event = { key: 's', code: 'KeyS', windowsVirtualKeyCode: 83, nativeVirtualKeyCode: 83 };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) shockProblems.push('animation frames stopped after S');
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+
+      await evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
+        for (const id of ['woodSword', 'woodShield', 'grapplingRope', 'liftingGloves', 'mortarPestle', 'woodsMapCopy']) g.items[id] = true;
+        g.hands = { mainHand: 'woodSword', offHand: 'woodShield' };
+        Object.assign(g.inventory, { wood: 3, shells: 6, paper: 1, berries: 2 });
+        g.dungeons.hollowOak.boss = true;
+        g.dungeons.hollowOak.doors.d2BossDoor = true;
+        g.flags['found:heartD2'] = true;
+        g.maxHp = 10;
+        g.hp = 10;
+        VL.app.setScene('play');
+        VL.place(g, { area: 'hollowOak', screen: '0,-3', tx: 7, ty: 5, facing: 'down' });
+        document.getElementById('game').focus();
+      })()`);
+      if (!(await waitFor("VL.app.sceneId === 'shockwave'", 4000))) shockProblems.push(`the shockwave did not start after the Thornback: scene ${await see('VL.app.sceneId')}`);
+      await sleep(1200);
+      await shot('w16-rumble');
+      if (!(await waitFor("VL.app.shockwave.phase === 'flash'", 2000))) shockProblems.push('no flash');
+      await sleep(150);
+      await shot('w16-flash');
+      const lost = await see("[g.flags.shockwave, VL.hasItem(g, 'woodSword'), g.inventory.shells, g.inventory.brokenShells, VL.hasItem(g, 'glowstone')]");
+      if (lost.join() !== 'true,false,0,6,true') shockProblems.push(`at the flash: shockwave, sword, shells, broken, glowstone = ${lost}`);
+      if (!(await waitFor("VL.app.shockwave.phase === 'dark'", 2000))) shockProblems.push('no story on black');
+      await sleep(2500);
+      await shot('w16-story');
+      for (let i = 0; i < 6 && (await see("VL.app.sceneId === 'shockwave' && VL.app.shockwave.phase === 'dark'")); i += 1) {
+        await tapS();
+        await sleep(300);
+      }
+      await sleep(500);
+      await shot('w16-waking');
+      if (!(await waitFor("VL.app.sceneId === 'play' && g.holdUp", 3000))) shockProblems.push(`he did not wake holding something up: scene ${await see('VL.app.sceneId')}`);
+      await sleep(300);
+      await shot('w16-glowstone');
+      if ((await see("g.holdUp && g.holdUp.sprites.join()")) !== 'item-glowstone') shockProblems.push('he is not holding up the Glowstone');
+      if (!(await waitFor("VL.app.sceneId === 'popup'", 2000))) shockProblems.push('no Glowstone popup');
+      // The popup takes S only once it has been up 0.3 s (scenes/popup.js).
+      await waitFor('VL.app.popupView && VL.app.popupView.t >= 0.35', 2000);
+      await shot('w16-glowstone-popup');
+      await tapS();
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'", 2000))) shockProblems.push(`Gran did not start talking: scene ${await see('VL.app.sceneId')}`);
+      await sleep(1500);
+      await shot('w16-helper');
+      const where = await see("[g.player.area, g.room.entities.some((e) => e.type === 'npc' && e.id === 'gran'), VL.app.dialogue && VL.app.dialogue.speaker]");
+      if (where.join() !== 'hut,true,Gran Ottie') shockProblems.push(`waking: area, Gran there, speaker = ${where}`);
+      for (let i = 0; i < 30 && (await see("VL.app.sceneId === 'dialogue'")); i += 1) {
+        await tapS();
+        await sleep(120);
+      }
+      if (!(await waitFor('g.holdUp', 1000))) shockProblems.push('the wood was not held up');
+      await sleep(300);
+      await shot('w16-helper-wood');
+      if (!(await waitFor("VL.app.sceneId === 'popup'", 2000))) shockProblems.push('no popup for the wood');
+      await sleep(200);
+      await shot('w16-helper-wood-popup');
+      const gift = await see("[g.inventory.wood, g.flags['gave:helperWood']]");
+      if (gift.join() !== '2,true') shockProblems.push(`Gran's gift: wood, flag = ${gift}`);
+
+      shockProblems.push(...errors);
+      if (shockProblems.length) failures += 1;
+      console.log(`${shockProblems.length ? 'FAIL' : 'ok  '} shockwave: the ground shakes, the flash and the losses, the story, waking with the Glowstone, Gran's wood, ${path.join(outDir, 'w16-*.png')}`);
+      for (const problem of shockProblems) console.log(`     ${problem}`);
+    }
+
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();
   } finally {
