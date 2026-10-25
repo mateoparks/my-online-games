@@ -398,7 +398,8 @@ test('the W19 fixture (played through to the Dragon) loads with no field reset',
   assert.deepEqual(Object.keys(d.doors).sort(), ['d4BossDoor', 'd4DoorA', 'd4DoorB']);
   assert.ok(VL.hasItem(game, 'mirrorShield') && VL.hasItem(game, 'climbersAlmanac') && VL.LOCKS.d4Boss.reached(game));
   assert.equal(game.tileChanges['overworld:-1,-2']['10,4'], 'i', 'the hidden path open');
-  assert.deepEqual(plain([game.savePoint.area, game.savePoint.screen]), ['overworld', '-1,-5'], 'Continue starts on the lair\'s doorstep');
+  assert.deepEqual(plain([game.savePoint.area, game.savePoint.screen]), ['overworld', '-1,-5'], 'saved on the lair\'s doorstep, not rewritten');
+  assert.deepEqual(plain([game.player.area, game.player.screen]), [VL.HOME_SAVE.area, VL.HOME_SAVE.screen], 'the Lair is finished, so Continue starts at the hut (W31)');
 });
 
 // ---------- the playthrough, one lock at a time ----------
@@ -410,7 +411,8 @@ test('the W19 steps drive the story milestones from the title to the Dragon, rel
   for (const id of ['climbersAlmanac', 'highlands', 'dragonsLairEntered', 'mirrorShield', 'd4Boss']) assert.equal(typeof registry[id], 'function', id);
   const drive = createPlaythrough(VL).playTo('d4Boss');
   assert.ok(VL.LOCKS.d4Boss.reached(drive.state) && VL.spotFound(drive.state, 'heartD4'));
-  assert.deepEqual(plain([drive.state.player.area, drive.state.player.screen]), ['overworld', '-1,-5'], 'out on the doorstep');
+  assert.deepEqual(plain([drive.state.savePoint.area, drive.state.savePoint.screen]), ['overworld', '-1,-5'], 'the warp saved the doorstep');
+  assert.deepEqual(plain([drive.state.player.area, drive.state.player.screen]), [VL.HOME_SAVE.area, VL.HOME_SAVE.screen], 'the reload after the win wakes him at the hut (W31)');
 });
 
 test('a faint anywhere in the lair, after each lock, never leaves it unsolvable', () => {

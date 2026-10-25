@@ -1872,7 +1872,7 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
 
 - **The way in:** W8's `lighthouseDoor` spot on the headland (-1,1) is a
   `door` with `needs: 'glowstone'`: without the Glowstone it is solid and
-  says it is pitch dark. The headland has no gull, since Continue after the
+  says it is pitch dark. The headland has no gull, since the warp out after the
   boss lands on its doorstep.
 - **Dark rooms:** the cellar, the cistern, the gallery, the map stair and
   the workshop. The cellar and the map stair are dark floors (one narrow way
@@ -1955,8 +1955,8 @@ flies, the door spot `lairDoor`, the hoard, the locks), `systems/fire.js`
 Tests: `tests/lair.test.js`, `tests/lair-route.js`, `tests/steps/w19.steps.js`,
 and the lair in `tests/playtest-3.test.js`'s boss-gate loop. Fixture:
 `tests/fixtures/save-v1-W19.json`, the real playthrough's save after the
-Dragon (the heart taken, out through the warp, so Continue starts on the
-lair's doorstep, -1,-5).
+Dragon (the heart taken, out through the warp, so the save point is the
+lair's doorstep, -1,-5, and Continue starts at the hut: W31).
 
 ```
                        hoard (0,-3): the Dragon
