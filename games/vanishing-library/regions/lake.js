@@ -60,7 +60,7 @@
         'WWWWWWWwwWWWWWWW',
         'WWWWWWwsswwWWWWW',
         'WWWWWwsstsswWWWW',
-        'WWWWWwsssrswWWWW',
+        'WWWWWwsssjswWWWW',
         'WWWWWWwssswWWWWW',
         'WWWWWWWwwwWWWWWW',
         'WWWWWWWWWWWWWWWW',

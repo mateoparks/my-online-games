@@ -258,9 +258,9 @@ VL.ART.defineTileStyle('ore', {
 
 Props such as trees, rocks and bushes draw grass under themselves (`under`).
 A legend entry's `ground` picks another floor: any style with a ground pass,
-matching what is around the prop. `'r': { solid: true, rock: true, art: 'rock',
-ground: 'sand' }` is a beach rock; `ground: 'shallow'` stands a rock in the
-shallows, and shores and foam then run round it as water. A name that is
+matching what is around the prop. `'t': { solid: true, tree: true, art: 'tree',
+ground: 'sand' }` is a tree on the beach; `ground: 'shallow'` stands a prop in
+the shallows, and shores and foam then run round it as water. A name that is
 unknown, or has no ground pass, throws. The test `every prop in every area
 sits on a ground one of its neighbours shares` catches exactly one thing: a
 prop no neighbour's ground supports, such as a grass square on the beach or a
@@ -805,6 +805,12 @@ that runs no tests, and an `async` test function, both fail the node run.
   owns the key makes them passable (W14 lifts boulders for good with
   `VL.saveTile`, see Lifting; W19 opens the hidden path). Rocks (`rock: true`) are liftable with the gloves and bushes are
   always passable (bare hands), so neither is used as a wall between areas.
+- **Shore barriers (W29):** where a beach or its shallows meet a screen edge
+  that leads nowhere, the sand shows driftwood (`j`, solid, never lifted)
+  and the shallows end in deep water (`W`). Nothing liftable stands on sand
+  or in the shallows at all: a rock there would promise a way through.
+  `tests/playtest-2.test.js` checks both on every screen, so a new beach
+  follows the same rule.
 - **Spots** (`spots.js`) are placement markers,
   `{ type: 'spot', id, x, y, how, by, lock }`, for everything another item
   puts on the map: books, pages, hearts, ore, chickens, building and dungeon
@@ -851,7 +857,7 @@ that runs no tests, and an `async` test function, both fail the node run.
 - **New tile characters** (all in `base`): `b` bridge/pier, `q` stage, `Z`
   trapdoor, `x` `y` `G` footprints, `e` reeds, `O` boulder, `f` woods floor,
   `F` woods tree, `C` cliff, `h` hidden path, `V` chasm (`flyOver`), `:`
-  scree, `k` rock on scree.
+  scree, `k` rock on scree, `j` driftwood (W29).
 
 `tests/overworld.test.js` walks the whole map tile by tile with any set of
 keys (walking, bushes, gloves on rocks, the raft on deep water, chicken

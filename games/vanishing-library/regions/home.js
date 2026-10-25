@@ -4,10 +4,44 @@ VL.defineArea('overworld', { tileset: 'base' });
 VL.defineArea('hut', { tileset: 'base' });
 
 // Beach props stand on the floor around them, not on a square of grass.
+// Where the shore is blocked it shows driftwood, which nothing lifts: a rock
+// there would promise a way through (README "Overworld map", shore barriers).
 VL.extendTileset('base', {
   t: { solid: true, tree: true, art: 'tree', ground: 'sand' },
-  r: { solid: true, rock: true, art: 'rock', ground: 'sand' },
-  o: { solid: true, rock: true, art: 'rock', ground: 'shallow' },
+  j: { solid: true, driftwood: true, art: 'driftwood', ground: 'sand' },
+});
+
+VL.ART.addColors({
+  driftwood: '#b09a78',
+  driftwoodLight: '#ddd0b2',
+  driftwoodDark: '#5e4a36',
+  driftwoodEnd: '#8a7254',
+});
+
+// A bleached log washed up with a branch still reaching out of it.
+VL.ART.defineSprite('tile-driftwood', {
+  outline: false,
+  colors: { d: 'driftwoodDark', l: 'driftwood', L: 'driftwoodLight', e: 'driftwoodEnd', k: 'bark' },
+  rows: [
+    '..d.........dd..',
+    '..dd.......dLd..',
+    '...dd.....dLd...',
+    '....dd...dLd....',
+    '.....dddddd.....',
+    '...ddLLLLLLddd..',
+    '..dLLLLLLLLLLLd.',
+    '.dLLllllllllllLd',
+    'deeLlllllkllllld',
+    'deelllllllllklld',
+    'deeelllkllllllld',
+    '.deelllllllllldd',
+    '..ddddddddddddd.',
+  ],
+});
+VL.ART.defineTileStyle('driftwood', {
+  under: 'sand',
+  shadow: (ctx, cell) => VL.ART.rect(ctx, 'shadow', cell.x + 2, cell.y + 13, 15, 3),
+  raised: (ctx, cell) => VL.ART.drawSprite(ctx, 'tile-driftwood', cell.x, cell.y + 2),
 });
 
 VL.addScreens('overworld', {
@@ -57,8 +91,8 @@ VL.addScreens('overworld', {
       'T...............',
       'T......R........',
       'T...............',
-      'rsssssssssssssss',
-      'rsssssssssssssss',
+      'jsssssssssssssss',
+      'jsssssssssssssss',
       'Wwwwwwwwwwwwwwww',
       'WWWWWWWWWWWWWWWW',
     ],
@@ -78,8 +112,8 @@ VL.addScreens('overworld', {
       '........PPPPPPPP',
       '....B...P..B....',
       'ssssssssssssssss',
-      'ssssssssssssssst',
-      'wwwwwwwwwwwwwwwo',
+      'sssssssssssssssj',
+      'wwwwwwwwwwwwwwwW',
       'WWWWWWWWWWWWWWWW',
     ],
     entities: [
