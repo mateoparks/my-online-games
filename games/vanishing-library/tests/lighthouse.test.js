@@ -157,6 +157,15 @@ test('the map tells the truth: key A and door A on foot; key B, door B and the b
   d.switches.d3CrystalCistern = true;
   t.place(lh('1,0', 7, 1));
   assert.ok(findPath(VL, at('1,0', 7, 1), at('1,0', 14, 8), t.game), 'lit, the bars lift on key B');
+  // The boss key: only past the workshop's bars, which its crystal lifts.
+  const bossKeyFromDoor = () => {
+    t.place(lh('1,-2', 1, 5));
+    const key = t.game.room.entities.find((e) => e.id === 'd3BossKey');
+    return [[0, 1], [0, -1], [1, 0], [-1, 0]].some(([dx, dy]) => findPath(VL, at('1,-2', 1, 5), at('1,-2', key.x + dx, key.y + dy), t.game));
+  };
+  assert.ok(!bossKeyFromDoor(), 'the boss key sits behind the workshop\'s bars');
+  d.switches.d3CrystalWorkshop = true;
+  assert.ok(bossKeyFromDoor(), 'lit, the bars lift on the boss key');
 });
 
 // ---------- dark rooms ----------
@@ -225,9 +234,17 @@ test('render: a dark room draws the dark over the room, with glints past the lig
     sparkles.push([x, y]);
     return sparkle(c, x, y, time);
   };
+  const eyes = [];
+  const rect = VL.ART.rect;
+  VL.ART.rect = (c, color, ...rest) => {
+    if (color === 'darkEye') eyes.push(rest);
+    return rect(c, color, ...rest);
+  };
   VL.render(ctx, t.app, 1);
+  VL.ART.rect = rect;
   assert.equal(gradients, 2, 'the dark and the area light');
   assert.ok(sparkles.length >= 2, 'the lamp and key glint past the light');
+  assert.ok(eyes.length >= 2, 'a creature out in the dark shows its eyes');
   t.d.switches.d3LampCellarA = true;
   t.d.switches.d3LampCellarB = true;
   t.place(lh('-1,0', 14, 5));
@@ -296,6 +313,16 @@ test('the Slingshot: each shot costs one broken shell; with none it says where t
   t.press('mainHand');
   assert.ok(!t.game.room.entities.some((e) => e.type === 'slingPellet'), 'nothing fired');
   assert.equal(t.game.dungeonNote.text, VL.OUT_OF_SHELLS.dungeon);
+  // Carrying something, his hands are full.
+  t.game.inventory.brokenShells = 5;
+  for (const hands of [{ carrying: { type: 'chicken' } }, { lifted: { type: 'pot' } }]) {
+    Object.assign(t.game.player, { carrying: null, lifted: null }, hands);
+    assert.equal(VL.fireSlingshot(t.game), false, `no shot with full hands (${Object.keys(hands)})`);
+  }
+  t.game.player.lifted = null;
+  assert.ok(!t.find('slingPellet') && t.game.inventory.brokenShells === 5, 'no shot while carrying');
+  t.game.player.carrying = null;
+  t.game.inventory.brokenShells = 0;
   // Outside, the beaches.
   t.place({ area: 'overworld', screen: '1,1', tx: 7, ty: 6 });
   t.game.player.sling = 0;
@@ -329,12 +356,40 @@ test('the Slingshot: a shell flies over pits and water, stops at a wall, and goe
     t.step();
   }
   assert.ok(dist <= VL.TUNING.slingshotTiles * VL.TUNING.tile);
+  // Short of the wall, the range alone stops it.
+  VL.TUNING.slingshotTiles = 3;
+  t.place(lh('1,0', 10, 3, 'left'));
+  t.game.player.sling = 0;
+  t.press('mainHand');
+  let reach = 0;
+  for (let s = 0; s < 2 && t.find('slingPellet'); s += STEP) {
+    reach = Math.max(reach, t.game.player.x - t.find('slingPellet').gx);
+    t.step();
+  }
+  assert.ok(!t.find('slingPellet') && reach <= 3 * VL.TUNING.tile + 4 && reach >= 2 * VL.TUNING.tile, `stopped at its 3-tile range, short of the wall (${reach})`);
 });
 
 test('targets across a gap: a shot throws one for good; S, the sword and the rope\'s hook do not', () => {
   const t = setup({ where: lh('0,-1', 2, 4, 'up') });
   const { VL } = t;
-  // The rope first: it reaches, but a target is not a switch.
+  // S and a sword swing right beside it (the target moved in front of him): nothing.
+  const target = t.find('shellTarget');
+  const home = { x: target.x, y: target.y };
+  Object.assign(target, { x: 2, y: 3 });
+  VL.giveItem(t.game, 'woodSword');
+  t.game.popups.queue.length = 0;
+  t.game.hands = { mainHand: 'woodSword', offHand: null };
+  t.press('mainHand');
+  assert.ok(t.game.events.some((e) => e.type === 'swing' && e.tiles.some(({ tx, ty }) => tx === 2 && ty === 3)), 'the swing reaches it');
+  t.hold([], 0.5);
+  assert.ok(!t.d.switches.d3TargetStair && !target.on, 'a sword does not throw a target');
+  t.press('interact');
+  assert.ok(!t.d.switches.d3TargetStair && !target.on, 'S does not throw a target');
+  assert.equal(VL.currentPopup(t.game)?.text, VL.TARGET_WORDS, 'S reads it instead');
+  for (let s = 0; s < 3 && t.app.sceneId !== 'play'; s += STEP) t.press('interact');
+  assert.equal(t.app.sceneId, 'play');
+  Object.assign(target, home);
+  // The rope: it reaches, but a target is not a switch.
   VL.giveItem(t.game, 'grapplingRope');
   t.game.popups.queue.length = 0;
   t.game.hands = { mainHand: 'grapplingRope', offHand: null };
@@ -349,6 +404,7 @@ test('targets across a gap: a shot throws one for good; S, the sword and the rop
   assert.equal(shutter.closed, false, 'the bars are up');
   t.place(lh('0,-1', 7, 3));
   assert.equal(t.game.room.entities.find((e) => e.id === 'd3ShutterStair').closed, false, 'and stay up');
+  assert.equal(t.find('shellTarget').on, true, 'and the target still looks hit');
 });
 
 test('a shot throws a W13 lever across a pit too', () => {
