@@ -43,13 +43,13 @@
     'Berries heal you, and crushed with a mortar and pestle they make fine ink. If you ever draw a map, I\'ll mark the bushes on it.',
   ], popupOnRead('herbalistRead', { title: 'Herbalist\'s Notes', text: 'Three berry bushes: by your hut, on the cliffs and by the lake. A map you draw will show them.' }));
   titled('bookTideTables', 'Tide Tables', 'water', 'reading-wave', [
-    'Every high tide and low tide for a hundred years. Rather dry reading... ha!',
+    'Every high and low tide for a hundred years. Rather dry reading... ha!',
     'But see this note in the margin: "Dig just after the tide goes out. The best shells are left behind."',
   ], popupOnRead('tideTablesRead', { title: 'Tide Tables', text: 'Digging on the beach turns up whole shells more often now.' }));
   titled('bookSmithsLedger', 'The Smith\'s Ledger', 'roof', 'reading-anvil', [
     'Brannock\'s great-grandfather kept this. Every lump of ore he ever used!',
     'Here: "Best ore of my life, found deep in the Whispering Woods." So there\'s ore hiding in the Woods!',
-    'And his trick for using fewer shells at the forge. I\'ll tell Brannock. He\'ll charge you less now.',
+    'And here\'s his trick for using fewer shells at the forge! I\'ll tell Brannock, and he\'ll charge you less.',
   ], popupOnRead('smithsLedgerRead', { title: 'The Smith\'s Ledger', text: 'Ore lies hidden deep in the Whispering Woods. The smith forges metal gear for fewer shells now.' }));
   titled('bookPrimer', 'The Cartographer\'s Primer', 'gold', 'reading-map', [
     'How to draw a map of every place you have ever been. How wonderful!',
@@ -58,7 +58,7 @@
   ], popupOnRead('primerRead', { title: 'The Cartographer\'s Primer', text: 'With paper and ink you can draw a map of everywhere you have been, while the Primer is on the shelf. For ink, grind berries with the Old Scriptorium\'s Mortar & Pestle.' }));
   titled('bookDragons', 'A Child\'s Book of Dragons', 'berry', 'reading-dragon', [
     'I read this to my wife when we were young. She never did like the ending.',
-    'Dragons breathe fire, but here\'s a funny thing: they can\'t stand their own fire! Bounce it back, and whoosh!',
+    'Dragons breathe fire, but here\'s a funny thing: they can\'t stand their own flames! Bounce them back, and whoosh!',
     'Something shiny might do the trick. A mirror, perhaps?',
   ], popupOnRead('dragonsRead', { title: 'A Child\'s Book of Dragons', text: 'Dragons can\'t stand their own fire. Something shiny might bounce it back.' }));
   titled('bookChickenAlmanac', 'The Chicken Keeper\'s Almanac', 'goldLight', 'reading-chicken', [
@@ -109,12 +109,12 @@
     d2Boss: [{ say: 'Something with a hard shell guards the Hollow Oak. Hook its plates, then strike!' }],
     shockwave: [{ say: 'You beat the beast in the Hollow Oak? Well done, {name}! Funny... the shelves have been rattling all day.' }],
     raft: [{ say: 'You\'ll want to get out on the water. Rope and wood make a fine raft, or so I\'ve read.' }],
-    lakeIsland: [{ say: 'A raft needs an oar: the shop sells them, or make one. Then the island in the lake isn\'t far at all.' }],
+    lakeIsland: [{ say: 'A raft needs an oar. Buy one at the shop or make your own, and the island in the lake isn\'t far at all.' }],
     shipwreck: [{ say: 'There\'s an old wreck off the beach, past the tide pools. Who knows what washed up inside it?' }],
     lighthouseEntered: [{ say: 'That glowing stone you carry... the old Lighthouse on the cliffs is pitch dark inside. Perhaps it\'s time for a visit.' }],
     slingshot: [{ say: 'The Lighthouse has switches far out of reach. Look high and low in there for a way to hit them.' }],
     d3Boss: [{ say: 'A great crab has taken the Lighthouse lens for its shell! Aim for its eyes, {name}.' }],
-    climbersAlmanac: [{ say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow everywhere: by the library, the lake, even a chicken coop. Little Pip in the harbour might know!' }],
+    climbersAlmanac: [{ say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow all over: by the library, by the lake, even into a chicken coop. Little Pip in the harbour might know something!' }],
     highlands: [
       { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think someone hid it down by the harbour coop.' },
       { say: 'The Climber\'s Almanac shows a hidden path at the foot of the cliffs. From there, let the chickens carry you up!' },

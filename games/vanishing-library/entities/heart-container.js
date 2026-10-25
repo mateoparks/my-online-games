@@ -11,7 +11,7 @@
 
   VL.definePopup('heartContainer', {
     title: 'A Heart Container!',
-    text: 'You have one more heart now, and every heart is full again.',
+    text: 'You have one more heart, and you are fully healed!',
   });
 
   VL.defineSfx('fanfare', [

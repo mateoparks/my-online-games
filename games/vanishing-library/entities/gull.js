@@ -40,7 +40,7 @@
     flies: true,
     size: 'big',
     body: { w: 12, h: 8 },
-    faint: 'A cliff gull swooped you.',
+    faint: 'A cliff gull swooped down on you.',
     harmful: (gull) => gull.mode === 'dive',
     setup(state, gull) {
       gull.mode = 'circle';

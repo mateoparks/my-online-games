@@ -265,7 +265,7 @@
     { when: { flag: 'shopThief' }, say: 'Back again, Sticky Fingers? Keep your hands where I can see them!', shop: 'store' },
     {
       when: { notFlag: 'met:mabel' },
-      say: ['Welcome to the General Store, {name}! I\'m Mabel.', 'Paper, berries, a shovel for the beach... and I buy berries too, a whole shell each.'],
+      say: ['Welcome to the General Store, {name}! I\'m Mabel.', 'I sell paper, berries and shovels for the beach. I buy berries too, at a whole shell each!'],
       set: 'met:mabel', shop: 'store',
     },
     { when: { test: onlyBroken }, say: 'Broken shells? Oh dear, those are only good for the craft basket. Whole shells spend here, {name}!', shop: 'store' },
@@ -275,7 +275,7 @@
   VL.defineDialogue('miller', [
     {
       when: { notFlag: 'met:pell' },
-      say: ['The wheel turns and the paper comes! Pell\'s the name, miller by trade.', 'Bring me wood: five pieces buys a whole shell. And I sell the finest paper in town.'],
+      say: ['The wheel turns and the paper comes! Pell\'s the name, miller by trade.', 'Bring me wood: five pieces buy a whole shell. And I sell the finest paper in town.'],
       set: 'met:pell', shop: 'mill',
     },
     { say: 'Wood for shells, shells for paper. Round and round, like my wheel!', shop: 'mill' },
@@ -284,7 +284,7 @@
   VL.defineDialogue('smith', [
     {
       when: { notFlag: 'met:brannock' },
-      say: ['Brannock\'s the name, and smithing\'s the game! Swords, shields and shovels.', 'Wood gear, I make from wood. For metal, bring me a lump of ore and some shells. One lump for each piece, mind!'],
+      say: ['Brannock\'s the name, and smithing\'s the game! Swords, shields and shovels.', 'Bring me wood and I\'ll make you wooden gear. For metal, bring me a lump of ore and some shells. One lump for each piece, mind!'],
       set: 'met:brannock', shop: 'smithy',
     },
     { when: { item: 'metalShovel', notFlag: 'dugSecret' }, say: 'That metal shovel bites hard ground, {name}. My gran always said folk buried their savings under the flowers in the fields by your hut.', shop: 'smithy' },
