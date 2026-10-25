@@ -174,7 +174,7 @@
     return true;
   };
 
-  const heroBoxOverlaps = (state, tx, ty) => {
+  VL.heroBoxOverlaps = (state, tx, ty) => {
     const { tile, heroBox } = VL.TUNING;
     const { x, y } = state.player;
     return x + heroBox.w / 2 > tx * tile && x - heroBox.w / 2 < (tx + 1) * tile
@@ -218,7 +218,7 @@
     } else if (!open) {
       shutter.closed = true;
     }
-    shutter.solid = shutter.closed && !heroBoxOverlaps(state, shutter.x, shutter.y);
+    shutter.solid = shutter.closed && !VL.heroBoxOverlaps(state, shutter.x, shutter.y);
   }
 
   // The tile an entity stands on: its body's centre when it has one (an
@@ -226,7 +226,7 @@
   const tileOfEntity = (e) => (e.cx === undefined ? { tx: e.x, ty: e.y } : VL.tileOf(e.cx, e.cy));
 
   // What presses a plate: the hero (unless `weight: 'block'`) and any entity
-  // whose type says `weighsPlate: true` (a push block; W14's pots).
+  // whose type says `weighsPlate: true` (a push block).
   function settlePlate(state, plate) {
     const hero = VL.heroTile(state);
     const held = state.room.entities.some((e) => {

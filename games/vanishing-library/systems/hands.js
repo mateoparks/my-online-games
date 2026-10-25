@@ -148,10 +148,17 @@
   // S tries the tile ahead first, then the ones the hero half faces, so a
   // hero standing a little off the chest still opens it. One thing per press,
   // tile by tile: an entity or berries there, else (bare-handed) one bush.
+  // Whether S on this entity is its own: it has onInteract, and its type's
+  // takesS (if any) says it wants the press now.
+  VL.takesS = (state, e) => {
+    const type = VL.ENTITIES[e.type];
+    return Boolean(type?.onInteract) && (!type.takesS || type.takesS(state, e));
+  };
+
   VL.interact = function interact(state) {
     const tiles = VL.facingTiles(state);
     for (const { tx, ty } of tiles) {
-      const entity = state.room.entities.find((e) => e.x === tx && e.y === ty && VL.ENTITIES[e.type]?.onInteract);
+      const entity = state.room.entities.find((e) => e.x === tx && e.y === ty && VL.takesS(state, e));
       if (entity) {
         VL.ENTITIES[entity.type].onInteract(state, entity);
         return true;

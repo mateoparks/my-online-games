@@ -1,0 +1,125 @@
+{
+  "v": 1,
+  "name": "Hero",
+  "rngState": 2967354760,
+  "maxHp": 8,
+  "flags": {
+    "found:hutChest": true,
+    "found:hiddenBookSealed": true,
+    "met:fenwick": true,
+    "found:d1KeyA": true,
+    "found:d1Map": true,
+    "found:d1GlovesChest": true,
+    "found:d1KeyB": true,
+    "found:oreScriptorium": true,
+    "found:d1BossKey": true,
+    "found:bookWormAtlas": true,
+    "found:bookWormRiddles": true,
+    "found:bookWormScribes": true,
+    "found:heartD1": true
+  },
+  "visited": {
+    "overworld:1,1": true,
+    "hut:0,0": true,
+    "overworld:2,1": true,
+    "overworld:2,0": true,
+    "overworld:2,-1": true,
+    "library:0,0": true,
+    "overworld:2,-2": true,
+    "scriptorium:1,0": true,
+    "scriptorium:0,0": true,
+    "scriptorium:1,-1": true,
+    "scriptorium:2,-1": true,
+    "scriptorium:2,0": true,
+    "scriptorium:3,0": true,
+    "scriptorium:1,-2": true,
+    "overworld:3,-2": true,
+    "overworld:3,-1": true,
+    "overworld:3,0": true,
+    "overworld:4,0": true
+  },
+  "savePoint": {
+    "area": "scriptorium",
+    "screen": "1,0",
+    "tx": 3,
+    "ty": 2,
+    "facing": "down"
+  },
+  "finished": false,
+  "inventory": {
+    "wood": 0,
+    "shells": 0,
+    "brokenShells": 0,
+    "berries": 0,
+    "ore": 1,
+    "paper": 0,
+    "ink": 0
+  },
+  "items": {
+    "woodSword": true,
+    "woodShield": true,
+    "scriptoriumKey": true,
+    "liftingGloves": true,
+    "mortarPestle": true
+  },
+  "hands": {
+    "mainHand": "woodSword",
+    "offHand": "woodShield"
+  },
+  "popups": {
+    "seen": {
+      "woodSword": true,
+      "woodShield": true,
+      "firstBook": true,
+      "scriptoriumKey": true,
+      "dungeonMap": true,
+      "liftingGloves": true,
+      "ore": true,
+      "mortarPestle": true,
+      "heartContainer": true
+    },
+    "queue": []
+  },
+  "dungeons": {
+    "scriptorium": {
+      "keysGiven": 0,
+      "bossKey": true,
+      "map": true,
+      "doors": {
+        "d1DoorA": true,
+        "d1DoorB": true,
+        "d1BossDoor": true
+      },
+      "plates": {
+        "d1PlateGallery": true
+      },
+      "switches": {
+        "d1SwitchPit": true,
+        "d1SwitchDesk": true
+      },
+      "boss": true
+    }
+  },
+  "tileChanges": {
+    "overworld:4,0": {
+      "5,5": "P",
+      "6,5": "P"
+    }
+  },
+  "library": {
+    "returned": [
+      "hiddenBookSealed"
+    ],
+    "read": [
+      "hiddenBookSealed"
+    ],
+    "gone": [],
+    "trips": 1,
+    "lastTripAt": 0,
+    "stolen": {
+      "trips": 0,
+      "bosses": 0
+    },
+    "noticed": 0
+  }
+}

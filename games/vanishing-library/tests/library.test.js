@@ -80,12 +80,15 @@ function returnAndRead(VL, game, ids) {
 test('every book on the map has words: ten untitled, six titled and the sealed one', () => {
   const { VL } = loadGame();
   const books = Object.values(VL.BOOKS);
-  assert.deepEqual(plain(books.filter((b) => b.kind === 'generic').map((b) => b.id).sort()), [...GENERIC].sort());
+  assert.deepEqual(plain(books.filter((b) => b.kind === 'generic').map((b) => b.id).sort()), [...GENERIC, ...VL.BOOKWORM_BUNDLE].sort());
   assert.deepEqual(plain(books.filter((b) => b.kind === 'titled').map((b) => b.id).sort()), [...TITLED].sort());
   assert.deepEqual(plain(books.filter((b) => b.kind === 'sealed').map((b) => b.id)), ['hiddenBookSealed']);
   for (const book of books) {
-    assert.ok(VL.SPOTS[book.id], `${book.id} has a spot on the map`);
-    assert.ok(VL.LOCKS[book.id]?.reached, `${book.id}'s lock is claimed`);
+    // The Bookworm's bundle is counted by W14's d1Boss lock, not found on the map.
+    if (!VL.BOOKWORM_BUNDLE.includes(book.id)) {
+      assert.ok(VL.SPOTS[book.id], `${book.id} has a spot on the map`);
+      assert.ok(VL.LOCKS[book.id]?.reached, `${book.id}'s lock is claimed`);
+    }
     VL.ART.color(book.color);
     VL.ART.sprite(book.icon);
     const words = [book.title, book.blurb || '', ...[].concat(book.reading || [])].map((text) => VL.popupText(text, { name: 'Ñandú Élodïe' })).join(' ');
@@ -96,7 +99,7 @@ test('every book on the map has words: ten untitled, six titled and the sealed o
 test('the 17 books on the map plus the Bookworm\'s bundle reach every reward', () => {
   const { VL } = loadGame();
   const supplied = Object.values(VL.LOCKS).reduce((sum, lock) => sum + (lock.supplies.books || 0), 0);
-  assert.equal(Object.keys(VL.BOOKS).length, 17);
+  assert.equal(Object.keys(VL.BOOKS).length, 17 + VL.BOOKWORM_BUNDLE.length);
   assert.ok(supplied >= Math.max(...Object.values(VL.TUNING.libraryRewards)), `${supplied} books in the table`);
 });
 
@@ -406,9 +409,8 @@ test('books vanish only on the next visit after a return trip or a boss, never o
   t.leaveAndEnterLibrary();
   t.leaveAndEnterLibrary();
   assert.deepEqual(plain(t.game.library.gone), ['bookRiverside'], 'coming back again changes nothing');
-  // A dungeon boss beaten (W14 claims it): two more on the next visit.
-  VL.defineLock('d1Boss', { ...VL.LOCKS.d1Boss, reached: (state) => Boolean(state.flags.testBoss) });
-  t.game.flags.testBoss = true;
+  // A dungeon boss beaten: two more on the next visit.
+  VL.dungeonState(t.game, 'scriptorium').boss = true;
   t.leaveAndEnterLibrary();
   assert.deepEqual(plain(t.game.library.gone), ['bookRiverside', 'bookBeachBuried', 'bookCliffRoad']);
   assert.equal(VL.booksReturned(t.game), 5, 'the count never goes down');
