@@ -1881,7 +1881,10 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   the tile the hero enters by** (the edge tile, or the tile a door lands him
   on): it stays up while he is on it (he can still turn round and leave) and
   drops once he has stepped in. Enemies come back on re-entry, so a `cleared`
-  shutter closes again, and so can never softlock.
+  shutter closes again, and so can never softlock. The lint checks every
+  `switch` and `plate` id a shutter names is a lever (or an entity type with
+  `isSwitch: true`: a target, a crystal, a lamp) or a plate in its own
+  dungeon, and those need ids.
 - **Save statue:** `{ type: 'saveStatue', x, y }` at the entrance: (x, y) is
   the step in front, where standing saves and sets the respawn point; the
   statue stands in the wall niche above, so `(x, y - 1)` must be a wall. A

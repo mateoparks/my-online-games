@@ -185,6 +185,7 @@
   });
 
   VL.defineEntity('beamCrystal', {
+    isSwitch: true,
     solid: true,
     lightsRoom: true,
     glintsInDark: true,

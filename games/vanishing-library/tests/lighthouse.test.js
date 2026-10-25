@@ -132,6 +132,20 @@ test('every lint is clean: locks, doors, blocks; 8 to 14 rooms', () => {
   assert.equal(VL.TILESETS.lighthouse.x.flyOver, undefined, 'the cistern water is no chicken flight');
 });
 
+test('the lint knows targets, crystals and lamps: a shutter naming no such switch in its dungeon fails, and each needs an id', () => {
+  const { VL } = loadGame();
+  assert.deepEqual(plain(VL.dungeonProblems()), []);
+  const shutter = VL.getScreen(AREA, '1,-1').entities.find((e) => e.id === 'd3ShutterStore');
+  shutter.open = { switch: 'd3TargetStor' };
+  assert.ok(VL.dungeonProblems().some((p) => p.includes('d3ShutterStore') && p.includes('d3TargetStor')), VL.dungeonProblems().join('\n'));
+  shutter.open = { switch: 'd2SwitchSap' };
+  assert.ok(VL.dungeonProblems().some((p) => p.includes('d3ShutterStore') && p.includes('d2SwitchSap')), 'a switch in another dungeon does not count');
+  shutter.open = { switch: 'd3TargetStore' };
+  const crystal = VL.getScreen(AREA, '1,0').entities.find((e) => e.type === 'beamCrystal');
+  delete crystal.id;
+  assert.ok(VL.dungeonProblems().some((p) => p.includes('beamCrystal') && p.includes('needs an id')));
+});
+
 test('the map tells the truth: key A and door A on foot; key B, door B and the boss key only past targets a shot must hit', () => {
   const t = setup();
   const { VL } = t;

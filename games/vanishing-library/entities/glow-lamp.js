@@ -40,6 +40,7 @@
   VL.LAMP_COLD = 'A cold old lamp. It needs a light to get it going.';
 
   VL.defineEntity('glowLamp', {
+    isSwitch: true,
     solid: true,
     lightsRoom: true,
     glintsInDark: true,

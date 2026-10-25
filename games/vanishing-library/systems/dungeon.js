@@ -506,7 +506,7 @@
       for (const [key, screen] of Object.entries(VL.AREAS[dungeon.area].screens)) {
         for (const e of screen.entities) {
           const where = `${dungeon.id} ${key} ${e.type} ${e.id || ''}`.trim();
-          if (NEEDS_ID.includes(e.type) && !e.id) {
+          if ((NEEDS_ID.includes(e.type) || VL.ENTITIES[e.type]?.isSwitch) && !e.id) {
             problems.push(`${where} needs an id`);
             continue;
           }
@@ -523,6 +523,27 @@
           if (expect.gives && !lock.gives.includes(expect.gives) && lock.id !== expect.gives) problems.push(`${where}: lock ${e.lock} must give '${expect.gives}'`);
           if (expect.needs && !lock.needs.flat().includes(expect.needs)) problems.push(`${where}: lock ${e.lock} must need '${expect.needs}'`);
           if (e.wants && !lock.needs.some((need) => [need].flat().every((id) => e.wants.items.includes(id)))) problems.push(`${where} wants ${e.wants.items.join(' or ')}: lock ${e.lock} must need them`);
+        }
+      }
+    }
+    // A shutter opens on a switch (a lever, or any entity type marked
+    // isSwitch: a target, a crystal, a lamp) or plates of its own dungeon.
+    for (const dungeon of Object.values(VL.DUNGEONS)) {
+      const ids = { switch: new Set(), plate: new Set() };
+      const screens = Object.entries(VL.AREAS[dungeon.area].screens);
+      for (const [, screen] of screens) {
+        for (const e of screen.entities) {
+          if (e.type === 'switch' || VL.ENTITIES[e.type]?.isSwitch) ids.switch.add(e.id);
+          if (e.type === 'pressurePlate') ids.plate.add(e.id);
+        }
+      }
+      for (const [key, screen] of screens) {
+        for (const e of screen.entities) {
+          if (e.type !== 'shutter' || !e.open) continue;
+          const named = [['switch', e.open.switch], ...[e.open.plate, ...(e.open.plates || [])].map((id) => ['plate', id])].filter(([, id]) => id);
+          for (const [kind, id] of named) {
+            if (!ids[kind].has(id)) problems.push(`${dungeon.id} ${key} shutter ${e.id || ''} opens on ${kind} ${id}, but dungeon ${dungeon.id} has no ${kind} with that id`);
+          }
         }
       }
     }

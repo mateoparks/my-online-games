@@ -40,6 +40,7 @@
   VL.TARGET_WORDS = 'A painted target. You\'d need to hit it from afar.';
 
   VL.defineEntity('shellTarget', {
+    isSwitch: true,
     solid: true,
     glintsInDark: true,
     prepare(state, target) {
