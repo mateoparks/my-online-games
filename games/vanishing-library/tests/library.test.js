@@ -285,29 +285,67 @@ test('a book found but not returned does nothing yet', () => {
 
 // ---------- rewards ----------
 
-test('rewards at 5, 10 and 15 books returned: the Big Shell Purse, a heart, the Swiftfoot Boots', () => {
+test('rewards at 5, 10 and 15 books returned: a heart, the Big Shell Purse, the Swiftfoot Boots', () => {
   const t = setup({ storage: true });
   const { VL } = t;
-  assert.deepEqual(plain(VL.TUNING.libraryRewards), { shellPurse: 5, heartLibrary: 10, swiftfootBoots: 15 });
+  assert.deepEqual(plain(VL.TUNING.libraryRewards), { heartLibrary: 5, shellPurse: 10, swiftfootBoots: 15 });
+  assert.deepEqual([VL.LOCKS.heartLibrary.count.books, VL.LOCKS.shellPurse.count.books], [5, 10], 'the solver counts the same books');
+  const hearts = t.game.maxHp;
   find(VL, t.game, GENERIC.slice(0, 4));
   t.visitLibrarian();
   assert.equal(VL.pendingReward(t.game), null);
-  assert.ok(!VL.hasItem(t.game, 'shellPurse'), 'four books is not enough');
+  assert.equal(t.game.maxHp, hearts, 'four books is not enough');
   find(VL, t.game, GENERIC.slice(4, 5));
+  t.visitLibrarian();
+  assert.equal(t.game.maxHp, hearts + VL.TUNING.heartContainerHp, 'a heart at five: felt at once');
+  assert.ok(VL.LOCKS.heartLibrary.reached(t.game));
+  assert.ok(!VL.hasItem(t.game, 'shellPurse'));
+  find(VL, t.game, GENERIC.slice(5, 10));
   t.visitLibrarian();
   assert.ok(VL.hasItem(t.game, 'shellPurse'));
   assert.equal(t.game.hands.mainHand, null, 'worn, not held');
-  const hearts = t.game.maxHp;
-  find(VL, t.game, GENERIC.slice(5, 10));
-  t.visitLibrarian();
-  assert.equal(t.game.maxHp, hearts + VL.TUNING.heartContainerHp);
-  assert.ok(VL.LOCKS.heartLibrary.reached(t.game));
   find(VL, t.game, [...TITLED.slice(0, 4), 'hiddenBookSealed']);
   t.visitLibrarian();
   assert.ok(VL.hasItem(t.game, 'swiftfootBoots'));
   for (const id of ['shellPurse', 'heartLibrary', 'swiftfootBoots']) assert.ok(VL.LOCKS[id].reached(t.game), id);
   t.visitLibrarian();
   assert.equal(t.game.maxHp, hearts + VL.TUNING.heartContainerHp, 'each reward once');
+  assert.equal(t.game.dirty, false);
+});
+
+test('the librarian\'s words match each reward and its count', () => {
+  const { VL } = loadGame();
+  const words = (id) => VL.REWARD_SPEECH[id].join(' ');
+  assert.match(words('heartLibrary'), /^Five books/);
+  assert.doesNotMatch(words('heartLibrary'), /purse/i);
+  assert.match(words('shellPurse'), /^Ten books/);
+  assert.match(words('shellPurse'), /shell purse/);
+  assert.match(words('swiftfootBoots'), /^Fifteen books/);
+});
+
+test('a save that got the Big Shell Purse at five books keeps it, gets the heart once, and never a second purse', () => {
+  const text = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W26.json'), 'utf8');
+  const t = setup({ slotText: text });
+  const { VL } = t;
+  const fixture = JSON.parse(text);
+  assert.equal(VL.booksReturned(t.game), 7);
+  assert.ok(VL.hasItem(t.game, 'shellPurse'));
+  t.step();
+  assert.equal(t.game.inventory.shells, 140, 'the purse still holds more than 99');
+  assert.equal(VL.pendingReward(t.game), 'heartLibrary', 'the heart is owed now (unknown reward ids are ignored)');
+  t.visitLibrarian();
+  assert.equal(t.game.maxHp, fixture.maxHp + VL.TUNING.heartContainerHp);
+  assert.ok(VL.hasItem(t.game, 'shellPurse'));
+  find(VL, t.game, ['bookWoods']);
+  t.visitLibrarian();
+  assert.equal(VL.booksReturned(t.game), 8);
+  assert.ok(VL.returnSpeech(t.game, []).at(-1).includes('Bring me 7 more'), 'the next goal is the boots, not the purse it already has');
+  find(VL, t.game, ['bookScriptoriumRock', 'bookLakeShore']);
+  const seen = t.visitLibrarian();
+  assert.equal(VL.booksReturned(t.game), 10);
+  assert.equal(VL.pendingReward(t.game), null);
+  assert.ok(!seen.includes('popup'), 'no second purse at ten');
+  assert.equal(t.game.maxHp, fixture.maxHp + VL.TUNING.heartContainerHp, 'and no second heart');
   assert.equal(t.game.dirty, false);
 });
 
@@ -525,21 +563,55 @@ test('a new game\'s first hint points at the trunk by the puppet stage', () => {
 
 // ---------- the librarian's wife ----------
 
-test('her stages follow the books returned ever, and her greetings get shorter', () => {
+// The boss locks belong to the dungeon items; a test flag stands in for them.
+function bossesBeaten(VL, game, ...ids) {
+  for (const id of ['d1Boss', 'd2Boss']) {
+    VL.LOCKS[id].reached = (state) => Boolean(state.flags[`test:${id}`]);
+    game.flags[`test:${id}`] = ids.includes(id);
+  }
+}
+
+test('her stages follow the books returned ever and the bosses beaten, and her greetings get shorter', () => {
   const { VL } = loadGame();
   const game = VL.newGame({ name: 'Robin' });
   game.flags['met:wife'] = true;
   game.room = { wifeTalked: false };
+  const stagesBy = (...bosses) => {
+    bossesBeaten(VL, game, ...bosses);
+    return GENERIC.concat(TITLED).map((_, n) => {
+      game.library.returned = GENERIC.concat(TITLED).slice(0, n);
+      return VL.wifeStage(game);
+    });
+  };
+  assert.deepEqual(stagesBy(), [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'no stage 2 before Dungeon 1 is beaten');
+  assert.deepEqual(stagesBy('d1Boss'), [0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2], 'no stage 3 before Dungeon 2 is beaten');
+  assert.deepEqual(stagesBy('d1Boss', 'd2Boss'), [0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3]);
+  assert.deepEqual(stagesBy('d2Boss').slice(12), [1, 1, 1, 1], 'each stage needs the one before it');
   const greetings = [];
-  const stages = [];
-  for (let n = 0; n <= 12; n += 1) {
+  bossesBeaten(VL, game, 'd1Boss', 'd2Boss');
+  for (const n of [0, 3, 7, 12]) {
     game.library.returned = GENERIC.concat(TITLED).slice(0, n);
-    stages.push(VL.wifeStage(game));
     greetings[VL.wifeStage(game)] = [].concat(VL.pickDialogue(game, 'librarianWife').say).join(' ');
   }
-  assert.deepEqual(stages, [0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3]);
   for (let i = 1; i < greetings.length; i += 1) assert.ok(greetings[i].length < greetings[i - 1].length, `stage ${i} is shorter: ${greetings[i]}`);
   assert.equal(greetings[3], 'Hm. Hello.');
+});
+
+test('every book the overworld holds, returned before Dungeon 1, keeps her friendly-ish: no cool greeting, no Nosy Ned, no misdirection', () => {
+  const t = setup();
+  const { VL } = t;
+  t.game.flags['met:wife'] = true;
+  t.game.library.returned = GENERIC.concat(TITLED, ['hiddenBookSealed']);
+  bossesBeaten(VL, t.game);
+  assert.equal(VL.wifeStage(t.game), 1);
+  t.game.room.wifeTalked = true;
+  for (const id of Object.keys(VL.WIFE_MISDIRECTION)) {
+    VL.nextMilestone = () => id;
+    assert.ok(!Object.values(VL.WIFE_MISDIRECTION).includes(VL.pickDialogue(t.game, 'librarianWife').say), id);
+  }
+  t.at({ area: 'overworld', screen: '2,0', tx: 4, ty: 3, facing: 'up' });
+  t.press('interact');
+  assert.equal(t.app.puppetShow.show.title, 'Sir Bumble\'s Busy Day');
 });
 
 test('from her third stage, her second talk in a visit points the wrong way; his hint points the right way', () => {
@@ -550,6 +622,8 @@ test('from her third stage, her second talk in a visit points the wrong way; his
   VL.LOCKS.chestGear.reached = () => true;
   t.game.library.returned = GENERIC.slice(0, 8);
   t.game.flags['reward:shellPurse'] = true;
+  t.game.flags['reward:heartLibrary'] = true;
+  bossesBeaten(VL, t.game, 'd1Boss');
   assert.equal(VL.wifeStage(t.game), 2);
   t.at({ area: 'overworld', screen: '2,0', tx: 6, ty: 4, facing: 'up' });
   const talk = () => {
@@ -584,6 +658,7 @@ test('S at the stage plays the show for her stage; the shows run to the end and 
   const t = setup();
   const { VL } = t;
   assert.equal(VL.PUPPET_SHOWS.length, 4);
+  bossesBeaten(VL, t.game, 'd1Boss', 'd2Boss');
   for (let stage = 0; stage < 4; stage += 1) {
     t.game.library.returned = GENERIC.concat(TITLED).slice(0, [0, 3, 7, 12][stage]);
     t.at({ area: 'overworld', screen: '2,0', tx: 4, ty: 3, facing: 'up' });
@@ -621,6 +696,21 @@ test('the meddling hero comes to a bad end only in her later shows, and every sh
     app.draw(ctx, 1);
   }
   assert.ok(ctx.calls.fillRect > 0);
+});
+
+test('Nosy Ned is a meddling young hero, but not the player\'s own hero: his own colours and a cap', () => {
+  const { VL } = loadGame();
+  const nedShows = VL.PUPPET_SHOWS.filter((show) => show.beats.some((beat) => /Ned/.test(beat.say)));
+  assert.equal(nedShows.length, 2);
+  for (const show of nedShows) {
+    for (const beat of show.beats) assert.equal(beat.cast.hero, undefined, `${show.title}: "${beat.say}" casts the hero puppet`);
+    assert.ok(show.beats.some((beat) => beat.cast.ned !== undefined), `${show.title} casts Ned`);
+  }
+  const colours = (id) => new Set(VL.ART.SPRITES[id].def.rows.join('').split('').filter((ch) => ch !== '.').map((ch) => VL.ART.SPRITES[id].def.colors[ch]));
+  const ned = colours('puppet-ned');
+  for (const heroColour of ['hair', 'tunic', 'tunicDark']) assert.ok(!ned.has(heroColour), `Ned has the hero's ${heroColour}`);
+  assert.ok(VL.ART.SPRITES['puppet-ned'].def.rows.length > VL.ART.SPRITES['puppet-hero'].def.rows.length, 'a cap on top');
+  assert.ok(colours('puppet-ned').has('skin'), 'still a young hero, face and all');
 });
 
 test('the trapdoor in front of the stage is there all game and can\'t be opened', () => {

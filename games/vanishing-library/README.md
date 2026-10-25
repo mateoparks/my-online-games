@@ -18,9 +18,11 @@ Keyboard only for now (laptop or desktop).
 | M | The map, once you have one (the world map, or a dungeon's map) |
 | N | Sound on or off |
 | Esc | Pause, or Save & Quit |
+| Enter | Confirm a name or a menu choice (in menus, Space and S work too) |
+| Backspace | Delete a letter, or a saved game on the title screen |
 
 Two-handed tools work with Space or D. The first time you play, a popup
-teaches the arrows, S and E; Esc lists every key you can use so far. Some
+teaches the arrows, S, E and Esc; Esc lists every key you can use so far. Some
 friends in the world may teach you a trick or two of their own.
 
 ## Layout
@@ -1119,8 +1121,11 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   Shield. The Chicken Keeper's Almanac sets `flags.chickenAlmanacRead` (W7's
   long flight) and its popup tells about F. The sealed book gives the
   Scriptorium key (`VL.hasItem(state, 'scriptoriumKey')`, for W14's door).
-- **Rewards:** `TUNING.libraryRewards` (5 the Big Shell Purse, 10 a heart
-  container, 15 the Swiftfoot Boots), books returned ever. The purse raises
+- **Rewards:** `TUNING.libraryRewards` (5 a heart container, 10 the Big
+  Shell Purse, 15 the Swiftfoot Boots), books returned ever, each given once
+  by id (`reward:<id>`), so a save from before the swap that got the purse at
+  5 gets the heart on its next visit and nothing at 10
+  (`tests/fixtures/save-v1-W26.json`). The purse raises
   `TUNING.shellCap` (99 whole shells) to `shellCapPurse` (999); the
   `shellPurse` system trims anything over (a drop, a dig) and says who might
   help; a shop trade at the cap is refused instead ("Your purse is full!",
@@ -1142,14 +1147,16 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   the Almanac at the highlands, the dragon book before the shield). A test
   keeps a hint for every milestone, so a new beat needs its hint.
 - **His wife, Mrs. Fenwick** (at the puppet stage in the square):
-  `VL.wifeStage(state)` counts how many of `TUNING.wifeStages` (3, 7, 12
-  books) are passed. Her greetings get shorter; from stage 2 her second talk
+  `VL.wifeStage(state)` counts how many of `TUNING.wifeStages` are passed in
+  turn: 3 books; 7 books and `d1Boss`; 12 books and `d2Boss`, so a first
+  play meets no cool side before Dungeon 1. Her greetings get shorter; from stage 2 her second talk
   in a visit (`room.wifeTalked`) is `VL.WIFE_MISDIRECTION[beat]` when there
   is one: plausible, wrong, and contradicted by her husband. S facing a stage
   tile plays `VL.PUPPET_SHOWS[stage]` in the `puppetShow` scene: beats of
   words and puppets (`cast`: where each stands, 0..1 across the stage;
   `move`: hop, shake, run, fly). The meddling young hero, Nosy Ned, appears
-  from stage 2. The trapdoor in front of the stage (`trapdoor` entity, tile
+  from stage 2, as his own puppet (`ned`: a green cap, fair hair, a red
+  shirt), never the hero's. The trapdoor in front of the stage (`trapdoor` entity, tile
   `Z`) only answers S with a message until W20 opens it.
 - **The lost chicken:** Pip in the harbour asks about Henrietta (W7's lost
   chicken on the cliffs). Talking to Pip while she is with the hero (carried
@@ -1196,7 +1203,8 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
   hand key and S on the equipment screen only say so, and the `mapReady`
   popup waits until he is outside) calls
   `VL.openWorldMap`. With no map, `VL.mapNeeds(state)` says why not (the
-  Primer read and still on the shelf, then `TUNING.mapCost`); when nothing is
+  Primer read and still on the shelf, then `TUNING.mapCost`, and where ink
+  comes from while the hero has no `mortarPestle`); when nothing is
   missing, the `worldMap` scene asks first, `VL.makeWorldMap` spends the paper
   and ink and gives the `worldMap` item, and every visited overworld screen is
   inked in, one after another, over `TUNING.mapRevealSeconds` (a press skips).

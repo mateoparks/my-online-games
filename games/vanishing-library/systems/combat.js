@@ -13,7 +13,7 @@
     // Enemies hold still and harmless this long after the hero walks in.
     enemyArrivalSeconds: 0.6,
     // Nothing hurts the hero this long after a popup or a talk closes: the
-    // world was frozen mid-dive under it (wave-3 QA: a gull hit in 0.5 s).
+    // world was frozen mid-dive under it.
     popupGraceSeconds: 0.8,
     knockbackSpeed: 170,
     knockbackSeconds: 0.16,

@@ -6,7 +6,7 @@ const { test, loadGame, playApp, fakeDocument, memoryStorage } = require('./harn
 
 // ---------- 1. the tally never promises a reward he is about to give ----------
 
-test('handing in the fifth book, the tally skips "Bring me N more": the purse comes right after', () => {
+test('handing in the fifth book, the tally skips "Bring me N more": the heart comes right after', () => {
   const { VL } = loadGame();
   const game = VL.newGame({ name: 'Robin' });
   ['bookRiverside', 'bookBeachBuried', 'bookCliffRoad', 'bookLighthouse'].forEach((id) => VL.markFound(game, id));
@@ -14,9 +14,9 @@ test('handing in the fifth book, the tally skips "Bring me N more": the purse co
   assert.ok(four.at(-1).includes('Bring me 1 more'), four.at(-1));
   VL.markFound(game, 'bookEastRoad');
   const five = VL.returnSpeech(game, VL.returnBooks(game));
-  assert.equal(VL.pendingReward(game), 'shellPurse');
+  assert.equal(VL.pendingReward(game), 'heartLibrary');
   assert.ok(five.at(-1).includes('5 books') && !five.at(-1).includes('more'), five.at(-1));
-  VL.giveLibraryReward(game, 'shellPurse');
+  VL.giveLibraryReward(game, 'heartLibrary');
   VL.markFound(game, 'bookWoods');
   const six = VL.returnSpeech(game, VL.returnBooks(game));
   assert.ok(six.at(-1).includes('Bring me 4 more'), 'the next goal again once the reward is given');

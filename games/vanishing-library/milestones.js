@@ -67,8 +67,8 @@
   lock('bookPrimer', { type: 'item', needs: ['town', 'library'], gives: ['primerOnShelf'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Cartographer\'s Primer', by: 'W8' });
   lock('bookDragons', { type: 'item', needs: ['town', 'library'], gives: ['dragonsRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: A Child\'s Book of Dragons', by: 'W8' });
   lock('bookChickenAlmanac', { type: 'item', needs: ['town', 'library'], gives: ['chickenAlmanacRead'], supplies: { books: 1 }, doc: '§ Books, pages and the library: The Chicken Keeper\'s Almanac', by: 'W8' });
-  lock('shellPurse', { type: 'item', needs: ['library'], count: { books: 5 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
-  lock('heartLibrary', { type: 'item', needs: ['library'], count: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
+  lock('heartLibrary', { type: 'item', needs: ['library'], count: { books: 5 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
+  lock('shellPurse', { type: 'item', needs: ['library'], count: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('swiftfootBoots', { type: 'item', needs: ['library'], count: { books: 15 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('lostChicken', { needs: ['chickens', 'town'], doc: '§ Chickens: The lost chicken', by: 'W11' });
   lock('pageLostChicken', { type: 'item', needs: ['lostChicken'], supplies: { pages: 1 }, doc: '§ Chickens: The lost chicken', by: 'W11' });

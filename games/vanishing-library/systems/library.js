@@ -6,14 +6,18 @@
 // again on story events, never on real time. README "Library".
 (() => {
   VL.tune({
-    // Rewards for books returned ever (design: Rewards for books returned).
-    libraryRewards: { shellPurse: 5, heartLibrary: 10, swiftfootBoots: 15 },
+    // Rewards for books returned ever (design: Rewards for books returned),
+    // in order. Each is given once, by id, so an older save that got the
+    // purse at 5 gets the heart on its next visit and nothing at 10.
+    libraryRewards: { heartLibrary: 5, shellPurse: 10, swiftfootBoots: 15 },
     // Books the thief takes the next time the hero visits after a return trip
     // or a dungeon boss.
     libraryTheftPerTrip: 1,
     libraryTheftPerBoss: 2,
-    // Books returned ever at which the librarian's wife turns a little cooler.
-    wifeStages: [3, 7, 12],
+    // When the librarian's wife turns a little cooler: books returned ever,
+    // and a boss beaten too, so a first play doesn't meet her cool side
+    // before Dungeon 1 (design: Anti-goals).
+    wifeStages: [{ books: 3 }, { books: 7, boss: 'd1Boss' }, { books: 12, boss: 'd2Boss' }],
     shellCap: 99,
     shellCapPurse: 999,
     swiftfootSpeed: 1.35,
@@ -135,7 +139,8 @@
     VL.earned(state);
     return true;
   };
-  VL.nextRewardAt = (state) => Object.values(VL.TUNING.libraryRewards).find((least) => least > VL.booksReturned(state)) ?? null;
+  VL.nextRewardAt = (state) => Object.entries(VL.TUNING.libraryRewards)
+    .find(([id, least]) => least > VL.booksReturned(state) && !VL.rewardGiven(state, id))?.[1] ?? null;
 
   const BOOT_ROWS = ['..gg.....', '.gggg....', '.gGgg....', '.gggg....', '.ggggggg.', 'gggggGggg', 'ddddddddd'];
   VL.ART.defineSprite('item-swiftfoot', { colors: { g: 'tunicLight', G: 'white', d: 'tunicDark' }, rows: BOOT_ROWS });
@@ -215,7 +220,10 @@
 
   // ---------- the librarian's wife ----------
 
-  VL.wifeStage = (state) => VL.TUNING.wifeStages.filter((least) => VL.booksReturned(state) >= least).length;
+  VL.wifeStage = function wifeStage(state) {
+    const stage = VL.TUNING.wifeStages.findIndex(({ books, boss }) => VL.booksReturned(state) < books || (boss && !reached(state, boss)));
+    return stage === -1 ? VL.TUNING.wifeStages.length : stage;
+  };
 
   // ---------- what to do next ----------
 
@@ -299,8 +307,8 @@
   };
 
   VL.REWARD_SPEECH = {
-    shellPurse: ['Five books, {name}! You deserve something for all that searching.', 'This was my grandmother\'s shell purse. It holds a great many shells. Take it, please!'],
-    heartLibrary: ['Ten books! The library hasn\'t been this full in years.', 'I found this tucked behind the oldest shelf. I think it wants to be yours, {name}.'],
+    heartLibrary: ['Five books, {name}! You deserve something for all that searching.', 'I found this tucked behind the oldest shelf. I think it wants to be yours, {name}.'],
+    shellPurse: ['Ten books! The library hasn\'t been this full in years.', 'This was my grandmother\'s shell purse. It holds a great many shells. Take it, please!'],
     swiftfootBoots: ['Fifteen books! I can hardly believe it.', 'These are Swiftfoot Boots. I ran messages for the old scribes in them, long ago. They\'ll put a spring in your step!'],
   };
 
