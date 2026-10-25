@@ -10,6 +10,6 @@ const run = (...ids) => (drive) => {
 
 module.exports = (step) => {
   step('hollowOakEntered', run('hollowOakEntered'));
-  step('grapplingRope', run('d2KeyA', 'd2DoorA', 'grapplingRope'));
+  step('grapplingRope', run('d2KeyA', 'd2KeyMoss', 'd2DoorC', 'd2DoorA', 'grapplingRope'));
   step('d2Boss', run('d2KeyB', 'd2DoorB', 'd2BossKey', 'd2BossDoor', 'd2Boss'));
 };

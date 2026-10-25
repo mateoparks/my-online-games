@@ -562,7 +562,7 @@ test('beating the boss is saved, leaves a heart container and the warp out; the 
   const t = setup({ where: at('0,-2', 7, 7, 'up'), storage: true, enemies: true });
   const { VL } = t;
   t.step();
-  assert.ok(t.find('shutter', 'sampleBossShutter').solid, 'the way back is barred while the boss lives');
+  assert.ok(t.find('shutter', 'sampleBossGate').solid, 'the way back is barred while the boss lives');
   assert.equal(VL.roomCleared(t.game), true, 'a boss does not count as an ordinary enemy');
   beatBoss(t);
   assert.equal(t.d.boss, true);
@@ -571,15 +571,19 @@ test('beating the boss is saved, leaves a heart container and the warp out; the 
   const heart = t.find('heartContainer');
   assert.deepEqual([heart.id, heart.x, heart.y], ['heartSample', 7, 4], 'where the boss stood');
   assert.equal(VL.bossDefeated(t.game, 'sample'), false, 'beaten once');
-  assert.equal(t.game.room.entities.filter((e) => e.type === 'warp').length, 1);
-  const warp = t.find('warp');
-  assert.deepEqual([warp.x, warp.y], [7, 7]);
+  // The boss gate (W30): the warp and the open bars wait for the heart.
+  assert.equal(t.find('warp'), undefined);
   t.step();
-  assert.ok(!t.find('shutter', 'sampleBossShutter').solid, 'the bars lift');
+  assert.ok(t.find('shutter', 'sampleBossGate').solid, 'the bars stay down until the heart is taken');
   const maxHp = t.game.maxHp;
   t.until((g) => g.maxHp > maxHp, 3, ['up']);
   assert.ok(VL.spotFound(t.game, 'heartSample'));
   t.closePopups();
+  t.step();
+  assert.equal(t.game.room.entities.filter((e) => e.type === 'warp').length, 1);
+  const warp = t.find('warp');
+  assert.deepEqual([warp.x, warp.y], [7, 7]);
+  assert.ok(!t.find('shutter', 'sampleBossGate').solid, 'the bars lift');
   t.until((g) => g.player.area === 'sampleYard', 4, ['down']);
   assert.deepEqual(t.tile(), [8, 4], 'out at the entrance');
   assert.equal(events(t, 'warp').length + 1 >= 1, true);
@@ -854,6 +858,7 @@ test('render smoke: every dungeon entity draws in each of its states, and every 
   }
   // Open doors, a thrown switch, a down plate, a sliding block, the heart and warp.
   Object.assign(t.d, { doors: { sampleDoorNorth: true, sampleBossDoor: true }, switches: { sampleSwitch: true }, plates: { samplePlate: true }, boss: true });
+  t.game.flags['found:heartSample'] = true;
   t.place(at('1,0', 10, 8, 'right'));
   t.until(() => t.find('pushBlock').x === 12, 1, ['right']);
   assert.ok(draw() > 50);
@@ -1051,6 +1056,7 @@ test("a chest can hold a small key: { smallKey: '<dungeon>' } gives one of that 
 test('the boss warp waits for the keys to be let go, so a direction held through it never walks the hero straight back in', () => {
   const t = setup({ where: at('0,-2', 7, 9, 'up') });
   t.d.boss = true;
+  t.game.flags['found:heartSample'] = true;
   t.d.doors.sampleBossDoor = true;
   t.place(at('0,-2', 7, 9, 'up'));
   t.hold(['up'], 1.5);
@@ -1065,6 +1071,7 @@ test("the boss warp makes the dungeon's entrance the save point, so Continue aft
   const t = setup({ where: at('0,0', 2, 2, 'up'), storage: true });
   t.until((g) => g.savePoint?.area === 'sample', 1, ['up']);
   t.d.boss = true;
+  t.game.flags['found:heartSample'] = true;
   t.d.doors.sampleBossDoor = true;
   t.place(at('0,-2', 7, 9, 'up'));
   t.hold(['up'], 0.5);

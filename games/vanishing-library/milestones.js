@@ -67,9 +67,9 @@
   lock('bookPrimer', { type: 'item', needs: ['eastRoad', 'library'], gives: ['primerOnShelf'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Cartographer\'s Primer', by: 'W8' });
   lock('bookDragons', { type: 'item', needs: ['highlands', 'library'], gives: ['dragonsRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: A Child\'s Book of Dragons', by: 'W8' });
   lock('bookChickenAlmanac', { type: 'item', needs: ['woods', 'library'], gives: ['chickenAlmanacRead'], supplies: { books: 1 }, doc: '§ Books, pages and the library: The Chicken Keeper\'s Almanac', by: 'W8' });
-  lock('heartLibrary', { type: 'item', needs: ['library'], count: { books: 5 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
-  lock('shellPurse', { type: 'item', needs: ['library'], count: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
-  lock('swiftfootBoots', { type: 'item', needs: ['library'], count: { books: 15 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
+  lock('heartLibrary', { type: 'item', needs: ['library'], count: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
+  lock('shellPurse', { type: 'item', needs: ['library'], count: { books: 20 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
+  lock('swiftfootBoots', { type: 'item', needs: ['library'], count: { books: 30 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('lostChicken', { needs: ['chickens', 'town'], doc: '§ Chickens: The lost chicken', by: 'W11' });
   lock('pageLostChicken', { type: 'item', needs: ['lostChicken'], supplies: { pages: 1 }, doc: '§ Chickens: The lost chicken', by: 'W11' });
   lock('pageFieldA', { type: 'item', needs: ['town'], supplies: { pages: 1 }, doc: '§ Books, pages and the library: Missing pages', by: 'W8' });
@@ -99,7 +99,8 @@
   lock('oreWoods', { type: 'item', needs: ['woods'], supplies: { ore: 1 }, doc: '§ Tools: two tiers, Ore is scarce (3)', by: 'W8' });
   lock('hollowOakEntered', { type: 'place', needs: ['woods'], doc: '§ The path through the game, 3', by: 'W15' });
   lock('grapplingRope', { type: 'item', needs: ['hollowOakEntered'], doc: '§ The path through the game, 3', by: 'W15' });
-  lock('d2Boss', { needs: ['hollowOakEntered', 'grapplingRope', anySword], gives: ['heartD2'], doc: '§ The path through the game, 3', by: 'W15' });
+  // W30: the Hollow Oak's thorny spitters and the key under its grass.
+  lock('d2Boss', { needs: ['hollowOakEntered', 'grapplingRope', 'metalSword', 'metalShovel'], gives: ['heartD2'], doc: '§ The path through the game, 3', by: 'W15' });
 
   // ---------- the shockwave and rebuilding ----------
 

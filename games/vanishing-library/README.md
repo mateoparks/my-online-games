@@ -535,12 +535,15 @@ holds the heart containers.
   Woods; gulls (wheel, squawk, dive where the hero stood; `big`, so only metal
   blocks them) on the cliffs and highlands. Every one does half a heart and
   takes one to three wood-sword hits, except one placed with `tough: true`
-  (W29: the two thorny spitters in the Hollow Oak's clearing), which only a
-  sword in `TUNING.toughSwords` (the metal one) hurts. The rule lives in
+  (W29: the two thorny spitters in the Hollow Oak's clearing; W30: two more
+  in its tangle), which only a sword in `TUNING.toughSwords` (the metal one)
+  hurts; a wood sword that clinks off one says so once a visit ("Hmm, this
+  wood sword seems to do nothing to them..."). The rule lives in
   `VL.hitEnemy(state, enemy, damage, from, weapon)`: a wood blade, a thrown
   rock or pot, or any hit without a listed `weapon` just clinks off
-  (`tink`); the rope still only stuns. Enemies are never solid, so they never make the
-  metal sword required. The start screen, the home meadow (0,0)
+  (`tink`); the rope still only stuns. Enemies are never solid, so the clearing's never
+  block the way; the tangle's guard a key (`reveal: 'cleared'`), which is
+  what makes the metal sword required for Dungeon 2. The start screen, the home meadow (0,0)
   and the town have none.
 - **Heart containers:** `VL.giveHeartContainer(state, id?)` adds
   `TUNING.heartContainerHp` (one heart) to `maxHp`, fills every heart, marks
@@ -794,7 +797,14 @@ Then W29's playtest notes with real keys: the driftwood at the hut beach
 (`w29-driftwood.png`), the first shovel's dig-key popup and X digging with
 the sword and shield in hand (`w29-dig-key-popup.png`, `w29-dig-x.png`), a
 wood sword clinking off a thorny spitter (`w29-tough-spitter.png`) and the
-path the copied map opens before the Oak (`w29-woods-path.png`). Then W17's
+path the copied map opens before the Oak (`w29-woods-path.png`). Then W30's
+notes with real keys: the word a wood sword gets from a thorny spitter
+(`w30-wood-sword-message.png`), the Hollow Oak's moss room and the key X
+digs out of its grass with the metal shovel (`w30-grass-room.png`,
+`w30-grass-key.png`), and the boss gate shut behind the hero, still shut
+with the heart on the floor, and open with the warp once it is taken
+(`w30-boss-gate-closed.png`, `w30-boss-gate-heart.png`,
+`w30-boss-gate-open.png`). Then W17's
 raft and water with real keys: Nell's talk, her raft yard, the question and
 the raft's popup (`w17-nell.png`, `w17-raft-shop.png`, `w17-raft-ask.png`,
 `w17-raft-popup.png`), pushing off from the lake shore, sailing over the
@@ -1226,12 +1236,20 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   Tide Tables on the shipwreck's deck (by raft, after the shockwave, when
   gear and shells are needed again); A Child's Book of Dragons in the
   highlands, on the way to the Mirror Shield. Their locks' `needs` say so,
-  and `tests/overworld.test.js` checks each spot against them. Fifteen books
-  can still be returned before the shockwave.
-- **Rewards:** `TUNING.libraryRewards` (5 a heart container, 10 the Big
-  Shell Purse, 15 the Swiftfoot Boots), books returned ever, each given once
-  by id (`reward:<id>`), so a save from before the swap that got the purse at
-  5 gets the heart on its next visit and nothing at 10
+  and `tests/overworld.test.js` checks each spot against them. Sixteen books
+  can be returned before the shockwave. **W30's late books:** twelve more
+  untitled books in trunks in the late places (one on the cliff-base
+  ledge, nine across the highlands and the lair's doorstep, one on the lake
+  island, one on the shipwreck's deck; `regions/finds.js` gives their
+  locks), so 32 books can be returned in all and the 30-book reward is in
+  reach even for a kid who misses a couple. A later item (W18's Lighthouse,
+  W19's lair) may add more the same way: a spot, a lock supplying
+  `books: 1`, a `defineBook`.
+- **Rewards:** `TUNING.libraryRewards` (10 a heart container, 20 the Big
+  Shell Purse, 30 the Swiftfoot Boots; W30, was 5/10/15), books returned
+  ever, each given once by id (`reward:<id>`), so a save that got a reward
+  under an older count keeps it and is never given it twice: the W26 save
+  that got the purse at 5 gets the heart at 10 and nothing at 20
   (`tests/fixtures/save-v1-W26.json`). The purse raises
   `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (250); every price in town fits the first purse (a test checks); the
   `shellPurse` system trims anything over (a drop, a dig) and says who might
@@ -1548,18 +1566,28 @@ again, with `afterThornbackDone`.
 ```
                        boss (0,-3): the Thornback
                             | boss door (oneWay)
-  tangle N (-1,-2) -- great hollow (0,-2) --door A-- rope vault (1,-2): the rope
-  key A   |                |                          | pits, posts both ways
+  tangle N (-1,-2)    great hollow (0,-2) --door A-- rope vault (1,-2): the rope
+  key A (cleared)          | door C                   | pits, posts both ways
   tangle S (-1,-1) -- root hall (0,-1) --ledge-- pit garden (1,-1): key B on an island
   map                      |                          | door B
-                       entrance (0,0) --bars-- sap well (1,0): switch + boss key on an island
-                       statue, door out to 7,-2
+  moss room (-1,0) -- entrance (0,0) --bars-- sap well (1,0): switch + boss key on an island
+  key under the grass  statue, door out to 7,-2
 ```
 
 - **The way in:** W8's `hollowOakDoor` spot in the clearing (7,-2) is a
   plain door; the Woods are the gate.
-- **The order:** key A lies deep in the tangle (two looping rooms of roots;
-  the map in a nook of the south one), door A opens the vault, the big chest
+- **Metal gear (W30):** the tangle's two thorny spitters (`tough: true`)
+  fall only to the metal sword, and key A (`reveal: 'cleared'`) appears once
+  both are beaten. West of the entrance, the moss room's odd patch of grass
+  (`,` grass, `*` its dug hole) hides a small key (`d2KeyMoss`,
+  `reveal: 'dug'`) that only the metal shovel digs up; no sign says so.
+  Door C (`d2DoorC`) stands between the root hall and the great hollow, so
+  both keys are spent on doors C and A. Juniper in town mentions the metal
+  shovel and grass between Dungeon 1 and Dungeon 2. A save from before W30
+  that had opened door A finds door C open, with a key given for it, so its
+  keys in hand are unchanged.
+- **The order:** key A lies deep in the tangle (two rooms of roots;
+  the map in a nook of the south one), door C opens the way up, door A opens the vault, the big chest
   holds the rope (mid-dungeon), and only then can the pits be crossed: posts
   over the vault's pits down into the pit garden, the hook drags key B off its
   island, door B leads down to the sap well, posts over its pit, and the hook
@@ -1597,8 +1625,13 @@ again, with `afterThornbackDone`.
   next load: the game keeps playing and the save stays as it was.
 - **Locks:** claims `hollowOakEntered` (a visit to the entrance hall) with the
   planned rule, and `grapplingRope` (`needs` adds `d2DoorA`) and `d2Boss`
-  (adds `d2BossDoor`) with `replan`; adds `d2KeyA`, `d2DoorA`, `d2KeyB`,
-  `d2DoorB`, `d2BossKey`, `d2BossDoor`. Ids are `d2…` (and `heartD2`).
+  (adds `d2BossDoor`; W30 plans it with `metalSword` and `metalShovel`) with
+  `replan`; adds `d2KeyA` (needs `metalSword`), `d2KeyMoss` (needs
+  `metalShovel`), `d2DoorC`, `d2DoorA`, `d2KeyB`, `d2DoorB`, `d2BossKey`,
+  `d2BossDoor`. Ids are `d2…` (and `heartD2`). The playthrough earns both
+  metal tools for real first (`tests/metal-gear-route.js`: berries sold for
+  shells, the shallows ore, the shovel, the meadow's buried shells, the
+  sword with the Scriptorium's ore).
 - **Sounds:** events `thornStomp`, `thornBonk`, `thornFlip`, `thornTink`
   (`wormTink`).
 
@@ -1614,7 +1647,10 @@ Fixture: `tests/fixtures/save-v1-W16.json` (after the shockwave and the gift).
   `flags.shockwaveDue`. The `shockwave` system then waits while the hero is
   in the Hollow Oak and the heart container is still on the floor (the reward
   comes first), then `TUNING.shockwaveDelay` more, then opens the
-  `shockwave` scene. Leaving the Oak without the heart starts it outside, and
+  `shockwave` scene. Since W30's boss gate keeps the hero in the den until he
+  takes the heart, in play the knock-out always follows the heart; only a
+  Save & Quit before taking it (Continue starts at the statue) can still
+  leave the Oak without it. Leaving the Oak without the heart starts it outside, and
   the heart is given anyway on waking (hearts are kept), held up with its
   fanfare beside the Glowstone.
 - **The scene:** `rumble` (the world shakes, rings of light, a white-out),
@@ -1845,7 +1881,9 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
 - **Rewards** (`boss.onDefeat`): a lump of ore (`oreLighthouse`, ore + 1)
   and the last loose page (`VL.findPage(state, 'pageLighthouse')`), held up
   together (`VL.holdUp`), and a message; the framework adds the heart
-  container `heartD3` where the crab began and the warp out. W11's thief
+  container `heartD3` where the crab began, and the warp out once it is
+  taken. The lamp room's boss gate (`lighthouseBossGate`, on the boss door's
+  landing (7,10)) is the framework's too (W30). W11's thief
   takes the Primer on the next library visit once `d3Boss` is reached.
 - **Locks:** claims `lighthouseEntered` (a visit to the entrance) with the
   planned rule, and `slingshot` (`needs` adds `d3DoorA`) and `d3Boss` (adds
@@ -1898,7 +1936,9 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   door or key renamed after a save re-locks or reappears *and gives the key
   back*; a door opened is the key spent, one saved fact. `{ type: 'smallKey',
   id, x, y, lock, reveal?: 'cleared' }` is found once; `reveal: 'cleared'`
-  keeps it hidden until every enemy in the room is beaten. `{ type: 'bossKey',
+  keeps it hidden until every enemy in the room is beaten; `reveal: 'dug'`
+  until a shovel that digs its ground digs its tile (W30, the Hollow Oak's
+  moss room). `{ type: 'bossKey',
   id, x, y, lock }` likewise. From code (a chest, a drop, a script):
   `VL.giveSmallKey(state, dungeonId, n)` (counted in `keysGiven`),
   `VL.giveBossKey`, `VL.giveDungeonMap`; a chest holds one as
@@ -1998,16 +2038,26 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   alive**. Then `VL.bossDefeated` saves it, puts the heart container (`heart`
   is its found id) where the boss stood on the map and the warp out (to
   `entrance`) at `warp`, and calls `onDefeat(state)` for the dungeon's own
-  rewards (the Mortar & Pestle, books). On later visits the boss is gone, the
-  warp is there and the heart waits until taken. **The warp out is a save
+  rewards (the Mortar & Pestle, books). **The warp appears only once the
+  heart is taken** (W30). On later visits the boss is gone and the heart
+  waits until taken, then the warp. **The warp out is a save
   point:** stepping on it records `entrance` (outside the dungeon) as the
   save point (`savePoint: true` on the warp), so Continue after the win
-  starts on the doorstep, not back at the statue. A shutter
-  `{ bossBeaten: true }` on the entry tile bars the way back once the hero
-  has stepped in; since he is then shut in until the boss falls or he
-  faints, a boss behind such bars must be able to make him faint, or the
-  boss door's lock should need the weapon (the sample's boss *lock* needs a
-  sword, its door does not). `VL.bossBeaten(state, id)`.
+  starts on the doorstep, not back at the statue. **The boss gate (W30) is
+  the framework's:** `defineDungeon` puts bars (`shutter`, `bossGate: true`,
+  id `<dungeon>BossGate`, `open: { bossDone: true }`) on the tile the boss
+  door lands the hero on (the boss door's twin tile across the edge into
+  `boss.screen`; pass `boss.gate: { tx, ty }` when the room is not entered
+  through a boss door across an edge). They shut once he has stepped in and
+  open only when the boss is beaten **and its heart taken**
+  (`VL.bossDone(state, id)`), together with the warp. Fainting in there
+  wakes him at the statue with everything kept, and the gate always lets
+  him back in (its `passable` is true for the pathfinder). A boss room with
+  its own `{ bossBeaten: true }` shutter is refused at load: delete it.
+  Since he is shut in until the boss falls or he faints, a boss must be
+  able to make him faint, or the boss door's lock should need the weapon
+  (the sample's boss *lock* needs a sword, its door does not).
+  `VL.bossBeaten(state, id)`.
 - **Entering and leaving:** ordinary `door` entities link the overworld and
   the dungeon both ways (fill W8's door spot from the dungeon's file). The
   hero is always placed with `VL.enterScreen`, so W6's arrival grace for
@@ -2047,7 +2097,9 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
      light: 'indoor',   // dark rooms: VL.defineDarkRooms (W18)
    });
    ```
-2. Fill the overworld door spot with a `door` into the first room and put a
+2. Don't place bars in the boss room: the framework adds the boss gate on
+   the boss door's landing tile (or `boss.gate`), and the warp after the
+   heart. Fill the overworld door spot with a `door` into the first room and put a
    `door` on the mat tile back out; a `saveStatue` by the entrance. Make
    `entrance` a safe, walkable tile outside the door: the boss warp lands
    the hero there and records it as his save point, so every Continue after
@@ -2165,7 +2217,7 @@ Rules of the table:
   books) is split from the item's own file with
   `VL.splitLock('hiddenBooks', { bookUnderRock: {...}, ... })`, which removes
   the placeholder and defines the parts; their `supplies` must add up to the
-  placeholder's, so the 5/10/15 book rewards keep adding up. A split only
+  placeholder's, so the 10/20/30 book rewards keep adding up. A split only
   shares out counters: the placeholder must supply one, the parts may not give
   the placeholder's id or `gives` or supply a counter it did not, and the split
   id can never be defined again (a looser single lock is a claim with

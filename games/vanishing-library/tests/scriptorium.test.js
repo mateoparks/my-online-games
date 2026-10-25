@@ -298,13 +298,24 @@ test('beating it: the heart container where it began, the warp out, the Mortar &
   assert.match(t.game.message.text, /three books/);
   const heart = t.game.room.entities.find((e) => e.type === 'heartContainer');
   assert.deepEqual([heart.id, heart.x, heart.y], ['heartD1', 7, 5]);
-  assert.deepEqual([t.find('warp').x, t.find('warp').y], [7, 8]);
-  assert.equal(t.find('shutter').closed, false, 'the bars behind him lift');
+  // W30's boss gate: no warp and the bars stay down until the heart is taken.
+  assert.equal(t.find('warp'), undefined);
+  assert.equal(t.find('shutter').closed, true, 'the gate holds until the heart is taken');
   t.reload(scr('1,-2', 6, 6, 'up'));
   assert.ok(VL.LOCKS.d1Boss.reached(t.game));
   assert.ok(VL.hasItem(t.game, 'mortarPestle'));
   assert.equal(t.find('bookworm'), undefined, 'gone for good');
-  assert.ok(t.find('heartContainer'), 'the heart waits until taken');
+  const waiting = t.find('heartContainer');
+  assert.ok(waiting, 'the heart waits until taken');
+  assert.equal(t.find('warp'), undefined, 'and so does the warp');
+  assert.equal(t.find('shutter').closed, true, 'and so do the bars');
+  // Take it for real; its popup and hold-up pause the world, so step it directly.
+  VL.ENTITIES.heartContainer.onStand(t.game, waiting);
+  t.game.holdUp = null;
+  VL.updateWorld(t.game, VL.noActions(), 1 / 60);
+  assert.ok(VL.spotFound(t.game, 'heartD1'));
+  assert.deepEqual([t.find('warp').x, t.find('warp').y], [7, 8]);
+  assert.equal(t.find('shutter').closed, false, 'the bars behind him lift');
   // The library counts the bundle once it is handed in.
   const before = VL.booksReturned(t.game);
   VL.returnBooks(t.game);

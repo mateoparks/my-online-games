@@ -241,6 +241,7 @@
       entities: [
         { type: 'gull', x: 12, y: 8 },
         spot('chickenLedge', 7, 3, 'chicken', 'W7', null),
+        spot('bookCliffLedge', 5, 3, 'trunk', 'W11'),
       ],
     },
   });

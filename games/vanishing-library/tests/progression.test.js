@@ -99,7 +99,7 @@ test('an item splits a planned placeholder into its own locks without editing mi
   assert.throws(() => VL.splitLock('fixtureOre', { hiddenBooks: { type: 'item', needs: ['start'], supplies: { ore: 1 }, doc: '§ Tools: two tiers', by: 'W99' } }), /lock hiddenBooks was split into its parts/);
   const report = VL.solveProgression();
   assert.deepEqual([...report.problems], []);
-  assert.ok(report.stages[0].reached.includes('swiftfootBoots'), 'the 15-book reward still adds up');
+  assert.ok(report.stages.some((stage) => stage.reached.includes('swiftfootBoots')), 'the 30-book reward still adds up');
 });
 
 test('defineLock insists on a design-doc citation, an owner for planned locks and a known type', () => {
@@ -138,7 +138,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 119);
+  assert.equal(Object.keys(VL.LOCKS).length, 133, 'W17 2, W18 7, and W30 twelve late books, the moss key and door C');
 });
 
 test('implemented place locks name screens that exist', () => {
@@ -459,7 +459,8 @@ test('broken: access opened by gear an event takes does not stay open', () => {
   table.blacksmith.needs = ['woods'];
   const real = problemsOf(VL, table);
   for (const key of ['woodSword', 'metalSword', 'woodShield']) assert.ok(real.includes(`after shockwave, ${key} cannot be regained`), real.join('\n'));
-  assert.ok(real.includes('blacksmith is required but unreachable after shockwave'));
+  // W30: the Hollow Oak needs metal gear, so the smithy is forced before the shockwave (like the road).
+  assert.ok(!real.includes('blacksmith is required but unreachable after shockwave'), real.join('\n'));
   // The Lighthouse's boss door wants a sword (a swordless kid would be shut in with the crab).
   assert.ok(real.includes('d3BossDoor is unreachable: needs metalSword|woodSword after shockwave'), real.join('\n'));
   assert.ok(!real.includes('eastRoad is required but unreachable after shockwave'), 'the road was forced before the shockwave');

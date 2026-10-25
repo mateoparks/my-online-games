@@ -51,11 +51,37 @@
       if (!VL.ENEMIES[def.boss.type]) throw new Error(`dungeon ${id}: boss ${def.boss.type} is not an enemy (VL.defineEnemy it first)`);
       if (!def.boss.heart) throw new Error(`dungeon ${id}: the boss needs a heart container id (boss.heart)`);
       if (!def.boss.warp) throw new Error(`dungeon ${id}: the boss room needs an exit warp (boss.warp: { tx, ty })`);
+      addBossGate(id, def);
     }
     if (!VL.ART.AREA_LIGHT[def.area]) VL.ART.setAreaLight(def.area, def.light || 'indoor');
     VL.DUNGEONS[id] = { id, name: id, light: 'indoor', ...def };
     return VL.DUNGEONS[id];
   };
+
+  // The boss gate (W30, README "The boss room"): bars on the tile the boss
+  // door lands the hero on, shut once he steps in and open only when the boss
+  // is beaten and its heart taken. Every dungeon gets it from here.
+  function bossDoorLanding(area, bossScreen) {
+    const { cols, rows } = VL.TUNING;
+    for (const [key, screen] of Object.entries(VL.AREAS[area].screens)) {
+      for (const e of screen.entities) {
+        if (e.type !== 'lockedDoor' || e.kind !== 'boss') continue;
+        const [dx, dy] = edgeStep(e.x, e.y);
+        if (!(dx || dy) || VL.neighborKey(key, dx, dy) !== bossScreen) continue;
+        return { tx: dx ? (dx < 0 ? cols - 1 : 0) : e.x, ty: dy ? (dy < 0 ? rows - 1 : 0) : e.y };
+      }
+    }
+    return null;
+  }
+  function addBossGate(id, def) {
+    const screen = VL.getScreen(def.area, def.boss.screen);
+    if (screen.entities.some((e) => e.type === 'shutter' && e.open?.bossBeaten)) {
+      throw new Error(`dungeon ${id}: the boss gate is the framework's now: remove the shutter on { bossBeaten: true } from ${def.boss.screen} (README "The boss room")`);
+    }
+    const gate = def.boss.gate || bossDoorLanding(def.area, def.boss.screen);
+    if (!gate) throw new Error(`dungeon ${id}: no boss door across an edge into ${def.boss.screen}, so say where the gate goes (boss.gate: { tx, ty })`);
+    screen.entities.push({ type: 'shutter', id: `${id}BossGate`, x: gate.tx, y: gate.ty, open: { bossDone: true }, bossGate: true });
+  }
 
   VL.dungeonOf = function dungeonOf(state) {
     const area = state?.player?.area;
@@ -202,18 +228,21 @@
   // A shutter's `open` condition (any field may be given; all must hold):
   // { cleared: true } every enemy in the room beaten this visit;
   // { plate: id } / { plates: [ids] } those plates down; { switch: id };
-  // { flag: id } a saved flag; { bossBeaten: true }; { door: id } that door opened.
+  // { flag: id } a saved flag; { bossBeaten: true }; { bossDone: true } beaten
+  // and its heart taken (the boss gate); { door: id } that door opened.
   // `dungeon` names the dungeon to read when the hero may be elsewhere (the
   // playthrough's pathfinder plans a route into it from outside).
   VL.dungeonCondition = function dungeonCondition(state, cond, { room = state.room, dungeon = null } = {}) {
     if (!cond) return true;
-    const d = dungeon ? VL.dungeonState(state, dungeon) : VL.dungeonHere(state);
+    const dungeonId = dungeon || here(state).id;
+    const d = VL.dungeonState(state, dungeonId);
     const checks = [];
     if (cond.cleared) checks.push(!room || !room.entities.some((e) => VL.isEnemy(e) && !e.boss));
     for (const id of [cond.plate, ...(cond.plates || [])].filter(Boolean)) checks.push(Boolean(d.plates[id]) || Boolean(room?.entities.find((e) => e.type === 'pressurePlate' && e.id === id)?.down));
     if (cond.switch) checks.push(Boolean(d.switches[cond.switch]));
     if (cond.flag) checks.push(Boolean(state.flags[cond.flag]));
     if (cond.bossBeaten) checks.push(Boolean(d.boss));
+    if (cond.bossDone) checks.push(VL.bossDone(state, dungeonId));
     if (cond.door) checks.push(Boolean(d.doors[cond.door]));
     return checks.every(Boolean);
   };
@@ -390,7 +419,8 @@
     if (!VL.spotFound(state, boss.heart) && !room.entities.some((e) => e.type === 'heartContainer' && e.id === boss.heart)) {
       room.entities.push({ type: 'heartContainer', id: boss.heart, x: stood.x, y: stood.y });
     }
-    if (room.entities.some((e) => e.type === 'warp')) return;
+    // The way out waits for the heart (W30's boss gate).
+    if (!VL.spotFound(state, boss.heart) || room.entities.some((e) => e.type === 'warp')) return;
     // savePoint: Continue after the win starts outside, not back at the statue.
     const warp = { type: 'warp', x: boss.warp.tx, y: boss.warp.ty, to: dungeon.entrance, savePoint: true };
     room.entities.push(warp);
@@ -429,6 +459,7 @@
   };
 
   VL.bossBeaten = (state, dungeonId) => Boolean(VL.dungeonState(state, dungeonId).boss);
+  VL.bossDone = (state, dungeonId) => VL.bossBeaten(state, dungeonId) && VL.spotFound(state, VL.DUNGEONS[dungeonId].boss.heart);
 
   // ---------- saved tile changes (for W14's boulders and anything else that outlasts a visit) ----------
 
@@ -482,6 +513,7 @@
       if (boss && !VL.dungeonState(state, dungeon.id).boss && !room.entities.includes(boss) && (boss.hp <= 0 || boss.defeated)) {
         VL.bossDefeated(state, dungeon.id);
       }
+      if (dungeon.boss && room.screen === dungeon.boss.screen && VL.bossBeaten(state, dungeon.id)) bossRewards(state, dungeon);
       settleRoom(state);
     },
   });

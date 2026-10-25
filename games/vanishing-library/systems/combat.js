@@ -359,11 +359,22 @@
     state.events.push({ type: 'enemyDefeated', enemy: enemy.type, drop: tile ? kind : null });
   }
 
+  // A sword that only clinks off a tough enemy says so, once a visit (W30).
+  function toughNote(state, weapon) {
+    if (!state.room || state.room.toughNoted) return;
+    state.room.toughNoted = true;
+    VL.showMessage(state, {
+      title: 'Clink!',
+      text: `Hmm, this ${VL.ITEMS[weapon].name.toLowerCase()} seems to do nothing to them. Perhaps you need something a bit stronger.`,
+    });
+  }
+
   // `weapon` is the sword's item id; a throw passes none.
   VL.hitEnemy = function hitEnemy(state, enemy, damage, from, weapon) {
     if (enemy.hp <= 0) return false;
     if (enemy.tough && !VL.TUNING.toughSwords.includes(weapon)) {
       state.events.push({ type: 'tink' });
+      if (VL.TUNING.swordDamage[weapon]) toughNote(state, weapon);
       return false;
     }
     if (enemy.hurt > 0) return false;

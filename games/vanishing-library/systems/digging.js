@@ -132,7 +132,7 @@
     const room = state.room;
     const info = VL.tileInfo(room.area, VL.tileAt(room.area, room.screen, tx, ty, room));
     if (info.solid || info.hole) return null;
-    if (room.entities.some((e) => e.x === tx && e.y === ty && e.type !== 'buried')) return null;
+    if (room.entities.some((e) => e.x === tx && e.y === ty && e.type !== 'buried' && !(e.hidden && e.reveal === 'dug'))) return null;
     if (info.sand) return 'sand';
     if (info.grass && VL.ITEMS[shovel]?.digsDirt) return 'dirt';
     return null;
@@ -152,6 +152,13 @@
     }
     VL.setRoomTile(state, tx, ty, VL.DIG_HOLES[ground]);
     state.events.push({ type: 'dig', tx, ty, ground });
+    // A dungeon key buried under the grass (W30) comes up into the hole.
+    const dug = state.room.entities.find((e) => e.hidden && e.reveal === 'dug' && e.x === tx && e.y === ty);
+    if (dug) {
+      dug.hidden = false;
+      state.events.push({ type: 'revealed', id: dug.id });
+      return 'find';
+    }
     const buried = state.room.entities.find((e) => e.type === 'buried' && e.x === tx && e.y === ty);
     if (buried) {
       state.room.entities = state.room.entities.filter((e) => e !== buried);

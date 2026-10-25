@@ -125,7 +125,6 @@
         '#######_########',
       ],
       entities: [
-        { type: 'shutter', id: 'sampleBossShutter', x: 7, y: 10, open: { bossBeaten: true } },
         { type: 'sampleGolem', x: 7, y: 4 },
       ],
     },

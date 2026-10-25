@@ -133,6 +133,7 @@
         { type: 'decor', art: 'wreck', x: 3, y: 4 },
         spot('shipwreckHatch', 8, 5, 'door', 'W17', 'shipwreck'),
         spot('bookTideTables', 10, 6, 'trunk', 'W11'),
+        spot('bookWreckDeck', 5, 5, 'trunk', 'W11'),
       ],
     },
   });

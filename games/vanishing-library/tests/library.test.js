@@ -65,6 +65,8 @@ function setup({ storage = false, slotText = null } = {}) {
 }
 
 const GENERIC = ['bookRiverside', 'bookBeachBuried', 'bookCliffRoad', 'bookLighthouse', 'bookEastRoad', 'bookWoods', 'bookScriptoriumRock', 'bookLakeShore', 'bookHighlands', 'bookMeadowRock'];
+// W30: twelve more untitled books in the late places.
+const LATE = ['bookCliffLedge', 'bookHighShelfA', 'bookHighShelfB', 'bookHighScree', 'bookHighGapA', 'bookHighGapB', 'bookHighPathA', 'bookHighPathB', 'bookLairA', 'bookLairB', 'bookLakeIsland', 'bookWreckDeck'];
 const TITLED = ['bookHerbalist', 'bookTideTables', 'bookSmithsLedger', 'bookPrimer', 'bookDragons', 'bookChickenAlmanac'];
 const find = (VL, game, ids) => ids.forEach((id) => VL.markFound(game, id));
 
@@ -77,10 +79,10 @@ function returnAndRead(VL, game, ids) {
 
 // ---------- the books ----------
 
-test('every book on the map has words: ten untitled, six titled and the sealed one', () => {
+test('every book on the map has words: twenty-two untitled, six titled and the sealed one', () => {
   const { VL } = loadGame();
   const books = Object.values(VL.BOOKS);
-  assert.deepEqual(plain(books.filter((b) => b.kind === 'generic').map((b) => b.id).sort()), [...GENERIC, ...VL.BOOKWORM_BUNDLE].sort());
+  assert.deepEqual(plain(books.filter((b) => b.kind === 'generic').map((b) => b.id).sort()), [...GENERIC, ...LATE, ...VL.BOOKWORM_BUNDLE].sort());
   assert.deepEqual(plain(books.filter((b) => b.kind === 'titled').map((b) => b.id).sort()), [...TITLED].sort());
   assert.deepEqual(plain(books.filter((b) => b.kind === 'sealed').map((b) => b.id)), ['hiddenBookSealed']);
   for (const book of books) {
@@ -96,10 +98,10 @@ test('every book on the map has words: ten untitled, six titled and the sealed o
   }
 });
 
-test('the 17 books on the map plus the Bookworm\'s bundle reach every reward', () => {
+test('the 29 books on the map plus the Bookworm\'s bundle reach every reward', () => {
   const { VL } = loadGame();
   const supplied = Object.values(VL.LOCKS).reduce((sum, lock) => sum + (lock.supplies.books || 0), 0);
-  assert.equal(Object.keys(VL.BOOKS).length, 17 + VL.BOOKWORM_BUNDLE.length);
+  assert.equal(Object.keys(VL.BOOKS).length, 29 + VL.BOOKWORM_BUNDLE.length);
   assert.ok(supplied >= Math.max(...Object.values(VL.TUNING.libraryRewards)), `${supplied} books in the table`);
 });
 
@@ -210,7 +212,7 @@ test('handing books in, he says a line about each untitled one and the count', (
   const speech = VL.returnSpeech(game, ids);
   assert.equal(speech.length, 2, 'one untitled book, then the tally');
   assert.ok(speech[0].includes('Rocks and How to Lift Them'));
-  assert.ok(speech[1].includes('2 books') && speech[1].includes('3 more'));
+  assert.ok(speech[1].includes('2 books') && speech[1].includes('8 more'));
 });
 
 // ---------- readings ----------
@@ -285,26 +287,27 @@ test('a book found but not returned does nothing yet', () => {
 
 // ---------- rewards ----------
 
-test('rewards at 5, 10 and 15 books returned: a heart, the Big Shell Purse, the Swiftfoot Boots', () => {
+test('rewards at 10, 20 and 30 books returned (W30): a heart, the Big Shell Purse, the Swiftfoot Boots', () => {
   const t = setup({ storage: true });
   const { VL } = t;
-  assert.deepEqual(plain(VL.TUNING.libraryRewards), { heartLibrary: 5, shellPurse: 10, swiftfootBoots: 15 });
-  assert.deepEqual([VL.LOCKS.heartLibrary.count.books, VL.LOCKS.shellPurse.count.books], [5, 10], 'the solver counts the same books');
+  assert.deepEqual(plain(VL.TUNING.libraryRewards), { heartLibrary: 10, shellPurse: 20, swiftfootBoots: 30 });
+  assert.deepEqual([VL.LOCKS.heartLibrary.count.books, VL.LOCKS.shellPurse.count.books, VL.LOCKS.swiftfootBoots.count.books], [10, 20, 30], 'the solver counts the same books');
   const hearts = t.game.maxHp;
-  find(VL, t.game, GENERIC.slice(0, 4));
+  const books = [...GENERIC, ...LATE];
+  find(VL, t.game, books.slice(0, 9));
   t.visitLibrarian();
   assert.equal(VL.pendingReward(t.game), null);
-  assert.equal(t.game.maxHp, hearts, 'four books is not enough');
-  find(VL, t.game, GENERIC.slice(4, 5));
+  assert.equal(t.game.maxHp, hearts, 'nine books is not enough');
+  find(VL, t.game, books.slice(9, 10));
   t.visitLibrarian();
-  assert.equal(t.game.maxHp, hearts + VL.TUNING.heartContainerHp, 'a heart at five: felt at once');
+  assert.equal(t.game.maxHp, hearts + VL.TUNING.heartContainerHp, 'a heart at ten: felt at once');
   assert.ok(VL.LOCKS.heartLibrary.reached(t.game));
   assert.ok(!VL.hasItem(t.game, 'shellPurse'));
-  find(VL, t.game, GENERIC.slice(5, 10));
+  find(VL, t.game, books.slice(10, 20));
   t.visitLibrarian();
   assert.ok(VL.hasItem(t.game, 'shellPurse'));
   assert.equal(t.game.hands.mainHand, null, 'worn, not held');
-  find(VL, t.game, [...TITLED.slice(0, 4), 'hiddenBookSealed']);
+  find(VL, t.game, [...books.slice(20), ...TITLED.slice(0, 5), 'hiddenBookSealed', ...VL.BOOKWORM_BUNDLE.slice(0, 2)]);
   t.visitLibrarian();
   assert.ok(VL.hasItem(t.game, 'swiftfootBoots'));
   for (const id of ['shellPurse', 'heartLibrary', 'swiftfootBoots']) assert.ok(VL.LOCKS[id].reached(t.game), id);
@@ -316,14 +319,14 @@ test('rewards at 5, 10 and 15 books returned: a heart, the Big Shell Purse, the 
 test('the librarian\'s words match each reward and its count', () => {
   const { VL } = loadGame();
   const words = (id) => VL.REWARD_SPEECH[id].join(' ');
-  assert.match(words('heartLibrary'), /^Five books/);
+  assert.match(words('heartLibrary'), /^Ten books/);
   assert.doesNotMatch(words('heartLibrary'), /purse/i);
-  assert.match(words('shellPurse'), /^Ten books/);
+  assert.match(words('shellPurse'), /^Twenty books/);
   assert.match(words('shellPurse'), /shell purse/);
-  assert.match(words('swiftfootBoots'), /^Fifteen books/);
+  assert.match(words('swiftfootBoots'), /^Thirty books/);
 });
 
-test('a save that got the Big Shell Purse at five books keeps it, gets the heart once, and never a second purse', () => {
+test('a save that got the Big Shell Purse at five books keeps it, gets the heart once (now at ten, W30), and never a second purse', () => {
   const text = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W26.json'), 'utf8');
   const t = setup({ slotText: text });
   const { VL } = t;
@@ -332,19 +335,20 @@ test('a save that got the Big Shell Purse at five books keeps it, gets the heart
   assert.ok(VL.hasItem(t.game, 'shellPurse'));
   t.step();
   assert.equal(t.game.inventory.shells, 140, 'the purse still holds more than the first one');
-  assert.equal(VL.pendingReward(t.game), 'heartLibrary', 'the heart is owed now (unknown reward ids are ignored)');
-  t.visitLibrarian();
-  assert.equal(t.game.maxHp, fixture.maxHp + VL.TUNING.heartContainerHp);
-  assert.ok(VL.hasItem(t.game, 'shellPurse'));
+  assert.equal(VL.pendingReward(t.game), null, 'the heart now waits for ten books');
   find(VL, t.game, ['bookWoods']);
   t.visitLibrarian();
   assert.equal(VL.booksReturned(t.game), 8);
-  assert.ok(VL.returnSpeech(t.game, []).at(-1).includes('Bring me 7 more'), 'the next goal is the boots, not the purse it already has');
+  assert.ok(VL.returnSpeech(t.game, []).at(-1).includes('Bring me 2 more'), 'the next goal is the heart, not the purse it already has');
   find(VL, t.game, ['bookScriptoriumRock', 'bookLakeShore']);
   const seen = t.visitLibrarian();
   assert.equal(VL.booksReturned(t.game), 10);
+  assert.equal(t.game.maxHp, fixture.maxHp + VL.TUNING.heartContainerHp, 'the heart, once');
+  assert.ok(VL.hasItem(t.game, 'shellPurse'));
   assert.equal(VL.pendingReward(t.game), null);
-  assert.ok(!seen.includes('popup'), 'no second purse at ten');
+  assert.equal(seen.filter((scene) => scene === 'popup').length <= 1, true, 'no second purse');
+  assert.equal(VL.nextRewardAt(t.game), 30, 'the boots next');
+  t.visitLibrarian();
   assert.equal(t.game.maxHp, fixture.maxHp + VL.TUNING.heartContainerHp, 'and no second heart');
   assert.equal(t.game.dirty, false);
 });
@@ -352,7 +356,7 @@ test('a save that got the Big Shell Purse at five books keeps it, gets the heart
 test('two rewards earned in one trip both come, one after the other', () => {
   const t = setup();
   const { VL } = t;
-  find(VL, t.game, GENERIC);
+  find(VL, t.game, [...GENERIC, ...LATE]);
   t.visitLibrarian();
   assert.ok(VL.hasItem(t.game, 'shellPurse'));
   assert.ok(VL.rewardGiven(t.game, 'heartLibrary'));

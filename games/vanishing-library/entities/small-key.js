@@ -1,12 +1,13 @@
-// { type: 'smallKey', id, x, y, lock, reveal?: 'cleared' }: a small key of
-// the dungeon it lies in, found once (its found flag) and counted in that
-// dungeon's keys. With `reveal: 'cleared'` it appears once every enemy in
-// the room is beaten (Zelda's key drop).
+// { type: 'smallKey', id, x, y, lock, reveal?: 'cleared' | 'dug' }: a small
+// key of the dungeon it lies in, found once (its found flag) and counted in
+// that dungeon's keys. With `reveal: 'cleared'` it appears once every enemy
+// in the room is beaten (Zelda's key drop); with `reveal: 'dug'` once a
+// shovel that digs its ground digs its tile (W30).
 (() => {
   VL.defineEntity('smallKey', {
     prepare(state, copy) {
       if (VL.spotFound(state, copy.id)) return false;
-      copy.hidden = copy.reveal === 'cleared';
+      copy.hidden = copy.reveal === 'cleared' || copy.reveal === 'dug';
       return true;
     },
     onStand(state, key) {

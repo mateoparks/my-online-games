@@ -31,7 +31,8 @@
       copy.closed = true;
       copy.solid = false;
     },
-    passable: (state, entity, area) => VL.dungeonCondition(state, entity.open, { room: null, dungeon: VL.dungeonOfArea(area)?.id }),
+    // The boss gate only ever shuts behind him, so the way in is always open.
+    passable: (state, entity, area) => Boolean(entity.bossGate) || VL.dungeonCondition(state, entity.open, { room: null, dungeon: VL.dungeonOfArea(area)?.id }),
     draw(ctx, shutter, x, y) {
       if (!shutter.closed) return;
       VL.ART.drawSprite(ctx, 'prop-shutter', x, y + 1);

@@ -39,6 +39,9 @@
 
   VL.defineNpc('juniper', { name: 'Juniper', look: 'townsfolk', wander: 1 });
   VL.defineDialogue('juniper', [
+    // W30: between Dungeon 1 and Dungeon 2, a word about the metal shovel
+    // (the Hollow Oak hides a key under grass).
+    { when: { progress: 'd1Boss', notProgress: 'd2Boss' }, say: ['Have you got a metal shovel yet, {name}? Brannock makes them at the smithy.', 'They\'re very handy for digging in grass. You never know what\'s hiding under it!'] },
     { say: 'Clang, clang, clang! The smithy hammers all day long. I could listen to it forever. Could you, {name}?' },
   ]);
 })();

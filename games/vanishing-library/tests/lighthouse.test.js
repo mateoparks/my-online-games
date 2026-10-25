@@ -685,7 +685,7 @@ test('the Lens Crab takes three shoot-and-strike rounds; it throws light bolts a
   t.until(() => VL.bossBeaten(t.game, AREA), VL.TUNING.lensCrabDyingSeconds + 0.5);
 });
 
-test('beaten: the ore and the last page held up together, a heart container where it stood, the warp out, and d3Boss reached', () => {
+test('beaten: the ore and the last page held up together, a heart container where it stood, the gate shut and no warp until the heart is taken, and d3Boss reached', () => {
   const t = bossRoom();
   const { VL } = t;
   const c = crabOf(t);
@@ -698,9 +698,19 @@ test('beaten: the ore and the last page held up together, a heart container wher
   assert.equal(t.game.inventory.ore, ore + 1);
   assert.ok(VL.spotFound(t.game, 'pageLighthouse') && VL.spotFound(t.game, 'oreLighthouse'));
   assert.deepEqual(plain(t.game.holdUp.sprites), ['pickup-ore', 'pickup-page']);
-  assert.ok(t.game.room.entities.some((e) => e.type === 'heartContainer' && e.id === 'heartD3' && e.x === 7 && e.y === 3));
-  assert.ok(t.game.room.entities.some((e) => e.type === 'warp' && e.x === 7 && e.y === 8));
+  const heart = t.game.room.entities.find((e) => e.type === 'heartContainer' && e.id === 'heartD3');
+  assert.deepEqual([heart?.x, heart?.y], [7, 3]);
+  const gate = t.game.room.entities.find((e) => e.type === 'shutter' && e.bossGate);
+  assert.ok(gate.closed, 'the boss gate stays shut with the heart on the floor');
+  assert.ok(!t.game.room.entities.some((e) => e.type === 'warp'), 'and no warp yet');
   assert.ok(VL.LOCKS.d3Boss.reached(t.game));
+  VL.ENTITIES.heartContainer.onStand(t.game, heart);
+  t.game.holdUp = null;
+  t.game.popups.queue.length = 0;
+  t.step();
+  assert.ok(VL.spotFound(t.game, 'heartD3'));
+  assert.ok(t.game.room.entities.some((e) => e.type === 'warp' && e.x === 7 && e.y === 8), 'the warp out once the heart is taken');
+  assert.ok(!gate.closed && !gate.solid, 'and the gate opens');
   assert.ok(VL.loosePages(t.game) >= 1, 'the bindery counts the page');
 });
 

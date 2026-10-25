@@ -298,7 +298,6 @@
         '#######_########',
       ],
       entities: [
-        { type: 'shutter', id: 'd3ShutterBoss', x: 7, y: 10, open: { bossBeaten: true } },
         { type: 'lensCrab', x: 7, y: 3 },
         heap(2, 9),
         heap(13, 9),
