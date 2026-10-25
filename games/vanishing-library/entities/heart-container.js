@@ -27,6 +27,7 @@
     state.hp = state.maxHp;
     if (id) VL.markFound(state, id);
     VL.showPopup(state, 'heartContainer');
+    VL.holdUp(state, 'pickup-heart-container', { quiet: true });
     state.events.push({ type: 'heartContainer' });
     VL.earned(state);
   };

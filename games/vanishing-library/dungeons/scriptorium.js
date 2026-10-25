@@ -348,6 +348,8 @@
       onDefeat(state) {
         VL.giveItem(state, 'mortarPestle');
         VL.giveBookBundle(state, VL.BOOKWORM_BUNDLE);
+        VL.holdUp(state, VL.itemSprite('mortarPestle'));
+        VL.holdUp(state, 'pickup-book');
       },
     },
     light: 'indoor',

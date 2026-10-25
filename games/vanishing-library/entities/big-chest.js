@@ -47,6 +47,7 @@
       VL.markFound(state, chest.id);
       if (VL.ITEMS[chest.item].worn) VL.giveWornItem(state, chest.item);
       else VL.giveItem(state, chest.item);
+      VL.holdUp(state, VL.itemSprite(chest.item), { quiet: true });
       VL.earned(state);
       state.events.push({ type: 'bigChestOpened', item: chest.item });
     },

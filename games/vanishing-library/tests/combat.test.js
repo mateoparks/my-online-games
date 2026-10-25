@@ -944,6 +944,8 @@ test('a heart container adds a heart, fills every heart, and explains itself onc
   assert.equal(t.game.hp, t.game.maxHp);
   assert.ok(VL.spotFound(t.game, 'heartFieldA'));
   assert.ok(VL.LOCKS.heartFieldA.reached(t.game));
+  assert.equal(t.app.sceneId, 'play', 'held up first');
+  t.hold([], VL.TUNING.holdUpSeconds);
   assert.equal(t.app.sceneId, 'popup');
   assert.equal(VL.currentPopup(t.game).id, 'heartContainer');
   assert.ok(t.sounds.includes('fanfare'));

@@ -45,6 +45,7 @@ VL.FILES = {
     'systems/library.js',
     'systems/lifting.js',
     'systems/paper-ink.js',
+    'systems/hold-up.js',
   ],
 
   entities: [

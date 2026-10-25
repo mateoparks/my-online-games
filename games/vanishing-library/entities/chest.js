@@ -38,6 +38,7 @@
   });
 
   const found = (state, id) => Boolean(state.flags[`found:${id}`]);
+  const RESOURCE_ICONS = { wood: 'icon-wood', shells: 'icon-shell', brokenShells: 'icon-shell-broken', berries: 'icon-berry', ore: 'icon-ore', paper: 'icon-paper', ink: 'icon-ink' };
 
   VL.defineEntity('chest', {
     solid: true,
@@ -52,6 +53,8 @@
         if (thing.item) VL.giveItem(state, thing.item);
         else if (thing.smallKey) VL.giveSmallKey(state, thing.smallKey);
         else VL.addResource(state, thing.resource, thing.amount ?? 1);
+        const sprite = thing.item ? VL.itemSprite(thing.item) : thing.smallKey ? 'item-small-key' : RESOURCE_ICONS[thing.resource];
+        if (sprite) VL.holdUp(state, sprite);
       }
       VL.earned(state);
       state.events.push({ type: 'pickup', kind: 'chest' });

@@ -3,7 +3,7 @@
 // slower start, the "hold it up" moment and the librarian noticing gaps.
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const { test, read, loadGame } = require('./harness');
+const { test, read, loadGame, playApp, fakeDocument } = require('./harness');
 
 // ---------- the words ----------
 
@@ -175,4 +175,122 @@ test('the hero starts about 12% slower, and the Swiftfoot Boots are still clearl
   assert.equal(walking, VL.TUNING.heroSpeed);
   assert.ok(booted >= walking * 1.3, `boots ${booted} vs ${walking}`);
   assert.ok(booted > before, 'the boots beat even the old starting pace');
+});
+
+// ---------- holding it up ----------
+
+function heldApp() {
+  const document = fakeDocument();
+  const { VL } = loadGame({ document });
+  const sounds = [];
+  VL.sfx = (name) => {
+    sounds.push(name);
+    return true;
+  };
+  const app = playApp(VL);
+  app.game.popups.seen.controls = true;
+  app.game.popups.queue.length = 0;
+  const step = (actions = VL.noActions()) => app.update(actions, 1 / 60);
+  const hold = (held, seconds) => {
+    for (let t = 0; t < seconds - 1e-9; t += 1 / 60) step(VL.actions({ held }));
+  };
+  const drawn = () => {
+    const ids = [];
+    const draw = VL.ART.drawSprite;
+    VL.ART.drawSprite = (ctx, id, ...rest) => {
+      ids.push(id);
+      return draw(ctx, id, ...rest);
+    };
+    VL.render(document.createElement('canvas').getContext('2d'), app, 0);
+    VL.ART.drawSprite = draw;
+    return ids;
+  };
+  return { VL, app, sounds, step, hold, drawn };
+}
+
+test('opening the hut chest: the hero holds the sword and shield up with a jingle, then the popup names them', () => {
+  const { VL, app, sounds, step, hold, drawn } = heldApp();
+  VL.place(app.game, { area: 'hut', screen: '0,0', tx: 12, ty: 3, facing: 'up' });
+  step(VL.actions({ pressed: ['interact'] }));
+  assert.ok(VL.hasItem(app.game, 'woodSword'));
+  assert.deepEqual([...app.game.holdUp.sprites], ['item-sword-wood', 'item-shield-wood']);
+  assert.ok(sounds.includes('holdUpJingle'), 'a jingle');
+  assert.equal(app.sceneId, 'play', 'held up before any popup');
+  const sprites = drawn();
+  assert.ok(sprites.includes('hero-hold') && sprites.includes('item-sword-wood') && sprites.includes('item-shield-wood'), 'arms up, both items overhead');
+  const x = app.game.player.x;
+  hold(['left'], VL.TUNING.holdUpSeconds * 0.8);
+  assert.equal(app.game.player.x, x, 'the world waits while he holds it');
+  assert.equal(app.sceneId, 'play');
+  hold([], VL.TUNING.holdUpSeconds * 0.3);
+  assert.equal(app.sceneId, 'popup');
+  assert.equal(VL.currentPopup(app.game).id, 'woodSword');
+  assert.ok(drawn().includes('hero-hold'), 'still holding it while the popup names it');
+  for (let i = 0; i < 6 && app.sceneId === 'popup'; i += 1) {
+    hold([], 0.4);
+    step(VL.actions({ pressed: ['interact'] }));
+  }
+  step();
+  assert.equal(app.sceneId, 'play');
+  assert.equal(app.game.holdUp, null);
+  assert.ok(!drawn().includes('hero-hold'), 'arms down again');
+  hold(['left'], 0.3);
+  assert.ok(app.game.player.x < x, 'and he walks on');
+});
+
+test('every handover holds up: librarian rewards, the Scriptorium key, heart containers, big chests, the Bookworm and Pip', () => {
+  const { VL } = loadGame();
+  const fresh = () => {
+    const state = VL.newGame();
+    VL.place(state, { area: 'overworld', screen: VL.START.screen, tx: VL.START.tx, ty: VL.START.ty });
+    return state;
+  };
+  const cases = {
+    shellPurse: (state) => {
+      state.library.returned = Array.from({ length: 10 }, (_, i) => `b${i}`);
+      state.flags['reward:heartLibrary'] = true;
+      VL.giveLibraryReward(state, 'shellPurse');
+      return 'item-purse';
+    },
+    swiftfootBoots: (state) => {
+      state.library.returned = Array.from({ length: 15 }, (_, i) => `b${i}`);
+      state.flags['reward:heartLibrary'] = true;
+      state.flags['reward:shellPurse'] = true;
+      VL.giveLibraryReward(state, 'swiftfootBoots');
+      return 'item-swiftfoot';
+    },
+    heartLibrary: (state) => {
+      state.library.returned = Array.from({ length: 5 }, (_, i) => `b${i}`);
+      VL.giveLibraryReward(state, 'heartLibrary');
+      return 'pickup-heart-container';
+    },
+    scriptoriumKey: (state) => {
+      VL.markFound(state, 'hiddenBookSealed');
+      VL.returnBooks(state);
+      VL.finishReading(state, 'hiddenBookSealed');
+      return 'item-scriptorium-key';
+    },
+    bigChest: (state) => {
+      VL.ENTITIES.bigChest.onInteract(state, { id: 'testBigChest', item: 'liftingGloves' });
+      return 'item-lifting-gloves';
+    },
+    bookworm: (state) => {
+      VL.DUNGEONS.scriptorium.boss.onDefeat(state);
+      return 'item-mortar';
+    },
+    pip: (state) => {
+      VL.endTalk(state, { give: { lostChicken: true } });
+      return 'pickup-page';
+    },
+  };
+  for (const [name, give] of Object.entries(cases)) {
+    const state = fresh();
+    const sprite = give(state);
+    assert.ok(state.holdUp, `${name} is held up`);
+    assert.ok(state.holdUp.sprites.includes(sprite), `${name} shows ${sprite} (got ${[...state.holdUp.sprites]})`);
+    assert.ok(state.events.some((e) => e.type === 'holdUp'), `${name} plays the hold-up`);
+  }
+  const quiet = fresh();
+  VL.giveHeartContainer(quiet);
+  assert.ok(quiet.events.find((e) => e.type === 'holdUp').quiet, 'a heart container keeps its own fanfare, no jingle on top');
 });

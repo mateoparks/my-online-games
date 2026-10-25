@@ -423,6 +423,19 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   `VL.showMessage(state, { title, text })` shows words every time and is never
   saved (signs). The controls popup is queued as the intro hands over to play.
   Keep a popup to 4 lines: a test checks every popup and sign.
+- **Hold it up (W28, `systems/hold-up.js`):** whatever a person hands the
+  hero or a chest gives him, he lifts over his head facing the player
+  (`hero-hold`) for `TUNING.holdUpSeconds` with the `holdUpJingle`, the world
+  waiting, and only then does the popup name it; he keeps holding it while
+  the popup is up. Every handover calls **`VL.holdUp(state, sprite, { quiet })`**
+  (`VL.itemSprite(id)` for an item's HUD sprite; several calls in one go are
+  held up side by side, like the hut chest's sword and shield). `quiet` skips
+  the jingle when the reward has its own fanfare (heart containers, big
+  chests). Today: chests, big chests, heart containers, the librarian's
+  rewards and the Scriptorium key, the Bookworm's mortar and books, Pip's
+  page. Shop and smithy purchases do not hold up. `state.holdUp` is play
+  state; `VL.tickHoldUp` is the play scene's clock, and a test that drives
+  the app waits it out before closing popups.
 - **Equipment screen (`'equipment'`, E):** arrows choose, Space or D puts the
   item in that hand, S uses it (eats a berry), E or Esc goes back. The grid
   shows 4×2 items and scrolls a row at a time (arrows at its side show more

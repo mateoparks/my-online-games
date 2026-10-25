@@ -72,6 +72,8 @@ function setup({ where = null, storage = false, enemies = false } = {}) {
     find: (type, id) => app.game.room.entities.find((e) => e.type === type && (id === undefined || e.id === id)),
     tile: () => [VL.heroTile(app.game).tx, VL.heroTile(app.game).ty],
     closePopups() {
+      // Something just received is held up before its popup (W28).
+      if (app.sceneId === 'play' && app.game.holdUp) t.until((g) => app.sceneId !== 'play' || !g.holdUp, VL.TUNING.holdUpSeconds + 0.5);
       for (let i = 0; i < 10 && app.sceneId === 'popup'; i += 1) {
         t.hold([], 0.4);
         t.press('interact');

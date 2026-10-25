@@ -118,6 +118,7 @@
   // Worn, not held: owned without filling a hand.
   const wear = (state, id) => {
     state.items[id] = true;
+    VL.holdUp(state, VL.itemSprite(id));
     VL.showPopup(state, id);
     VL.earned(state);
   };
@@ -364,5 +365,6 @@
     VL.takeChicken(state, 'lostChicken');
     VL.markFound(state, 'lostChicken');
     VL.findPage(state, 'pageLostChicken');
+    VL.holdUp(state, 'pickup-page');
   });
 })();
