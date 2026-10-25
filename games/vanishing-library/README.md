@@ -454,7 +454,10 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   pass) => {})` draws with the hero, once behind (`pass === 'behind'`), once
   in front (`'front'`) and once more after the light (`'overlay'`, outside
   the hurt-flash gate: the dungeon keys HUD); the swing and the raised
-  shield are the `hands` layer.
+  shield are the `hands` layer. A third argument `{ steady: true }` marks a
+  layer that draws things in the room, not on the hero (the dark, the beam,
+  stun stars): it keeps its place in the order but is drawn on the hurt
+  hero's off frames too, so no large area ever flashes with him.
 - **Sounds:** events `swing`, `pickup` (`kind`; shells chime), `bushCut`
   (`rustle`), `pullHurt` (`hurt`), `tink` (a sword on a berry bush) and `eat`
   (`munch`). `systems/sound.js` maps the core `faint` event to `faint`.
@@ -788,7 +791,12 @@ Then W29's playtest notes with real keys: the driftwood at the hut beach
 (`w29-driftwood.png`), the first shovel's dig-key popup and X digging with
 the sword and shield in hand (`w29-dig-key-popup.png`, `w29-dig-x.png`), a
 wood sword clinking off a thorny spitter (`w29-tough-spitter.png`) and the
-path the copied map opens before the Oak (`w29-woods-path.png`). It runs
+path the copied map opens before the Oak (`w29-woods-path.png`). Last, the
+flash guard (WCAG 2.3.1 in spirit): dark rooms while hurt, the beam, the Lens
+Crab's rounds, the shockwave, the chicken swarm, popups and a faint are each
+stepped by hand and drawn offscreen at 60 fps; it fails when over a quarter of
+the canvas (16 px cells) flips brightness (0.05 relative luminance) more than
+3 times in a second. A control run with the steady layers off must fail. It runs
 for 240 s at most (about twice its run time). A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
