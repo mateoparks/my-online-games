@@ -554,6 +554,20 @@ test('the workshop\'s beam: three mirrors (one on an island) reach the crystal, 
   assert.deepEqual(plain(VL.reflectBeam('/', 1, 0)), [0, -1]);
 });
 
+test('the dungeon keys HUD never covers a Lighthouse thing: nothing stands in the top-right tiles it is drawn over (W18 QA note 3)', () => {
+  const { VL } = loadGame();
+  const { width, tile } = VL.TUNING;
+  // systems/dungeon.js draws the boss key at width - 34 and the key count
+  // up to y 24 of the play area: tiles from column 13 and in rows 0 and 1.
+  const fromCol = Math.floor((width - 34) / tile);
+  const toRow = Math.floor(24 / tile);
+  const under = [];
+  for (const [screen, data] of Object.entries(VL.AREAS[AREA].screens)) {
+    for (const e of data.entities || []) if (e.x >= fromCol && e.y <= toRow) under.push(`${screen} ${e.type} (${e.x},${e.y})`);
+  }
+  assert.deepEqual(under, []);
+});
+
 test('the beam passes the hero and pits but a closed shutter stops it', () => {
   const t = setup({ where: lh('1,0', 5, 2) });
   const { VL } = t;

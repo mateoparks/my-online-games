@@ -213,7 +213,7 @@ const route = {
     if (!d3(drive).map) pickUp(drive, at('-1,-2', 6, 2), 'right', () => d3(drive).map);
     if (drive.state.inventory.brokenShells < 1) scoop(drive, at('0,-2', 2, 8), 'down');
     if (!d3(drive).switches.d3CrystalWorkshop) {
-      walk(drive, at('1,-2', 5, 1));
+      walk(drive, at('1,-2', 5, 2));
       face(drive, 'left');
       drive.press('interact');
       walk(drive, at('1,-2', 5, 8));
