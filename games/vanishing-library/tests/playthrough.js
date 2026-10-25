@@ -67,6 +67,8 @@ function findPath(VL, from, to, state = null) {
         continue;
       }
       const screen = VL.neighborKey(node.screen, dx, dy);
+      // An edge that turns the hero elsewhere (the Woods without their map) is no way through.
+      if (state && VL.edgeTurn?.(state, node.area, node.screen, screen)) continue;
       if (VL.screenExists(node.area, screen)) nexts.push(stepTo(VL, node.area, screen, tx - dx * cols, ty - dy * rows, dir, 'edge', state));
     }
     for (const next of nexts.filter(Boolean)) {

@@ -226,7 +226,7 @@
       shade(ctx, app, t);
       paper(ctx, BOX.x, BOX.y, BOX.w, BOX.h);
       VL.ART.text(ctx, copy.name.toUpperCase(), BOX.x + BOX.w / 2, BOX.y + 7, { align: 'center', color: 'mapInk', shadow: 'parchmentLight' });
-      copy.picture(ctx, { x: BOX.x + 10, y: BOX.y + 22, w: BOX.w - 20, h: BOX.h - 34 }, t);
+      copy.picture(ctx, { x: BOX.x + 10, y: BOX.y + 22, w: BOX.w - 20, h: BOX.h - 34 }, t, app.game);
     },
 
     smokeData() {

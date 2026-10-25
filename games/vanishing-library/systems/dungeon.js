@@ -195,9 +195,11 @@
   // { cleared: true } every enemy in the room beaten this visit;
   // { plate: id } / { plates: [ids] } those plates down; { switch: id };
   // { flag: id } a saved flag; { bossBeaten: true }; { door: id } that door opened.
-  VL.dungeonCondition = function dungeonCondition(state, cond, { room = state.room } = {}) {
+  // `dungeon` names the dungeon to read when the hero may be elsewhere (the
+  // playthrough's pathfinder plans a route into it from outside).
+  VL.dungeonCondition = function dungeonCondition(state, cond, { room = state.room, dungeon = null } = {}) {
     if (!cond) return true;
-    const d = VL.dungeonHere(state);
+    const d = dungeon ? VL.dungeonState(state, dungeon) : VL.dungeonHere(state);
     const checks = [];
     if (cond.cleared) checks.push(!room || !room.entities.some((e) => VL.isEnemy(e) && !e.boss));
     for (const id of [cond.plate, ...(cond.plates || [])].filter(Boolean)) checks.push(Boolean(d.plates[id]) || Boolean(room?.entities.find((e) => e.type === 'pressurePlate' && e.id === id)?.down));
