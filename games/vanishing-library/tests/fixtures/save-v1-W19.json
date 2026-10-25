@@ -1,0 +1,357 @@
+{
+  "v": 1,
+  "name": "Hero",
+  "rngState": 1368824835,
+  "maxHp": 14,
+  "flags": {
+    "found:hutChest": true,
+    "found:hiddenBookSealed": true,
+    "met:fenwick": true,
+    "found:d1KeyA": true,
+    "found:d1Map": true,
+    "found:d1GlovesChest": true,
+    "found:d1KeyB": true,
+    "found:oreScriptorium": true,
+    "found:d1BossKey": true,
+    "found:bookWormAtlas": true,
+    "found:bookWormRiddles": true,
+    "found:bookWormScribes": true,
+    "found:heartD1": true,
+    "pickedBerries": true,
+    "met:mabel": true,
+    "boughtPaper": true,
+    "madeInk": true,
+    "found:oreShallows": true,
+    "met:brannock": true,
+    "found:secretMeadow": true,
+    "dugSecret": true,
+    "found:d2Map": true,
+    "found:d2KeyA": true,
+    "found:d2KeyMoss": true,
+    "found:d2RopeChest": true,
+    "found:d2KeyB": true,
+    "found:d2BossKey": true,
+    "shockwaveDue": true,
+    "found:heartD2": true,
+    "shockwave": true,
+    "shockwaveWoke": true,
+    "gave:helperWood": true,
+    "met:gran": true,
+    "pulledBush": true,
+    "cutBush": true,
+    "found:pageFieldB": true,
+    "found:oreLakeIsland": true,
+    "found:bookSmithsLedger": true,
+    "foundBrokenShell": true,
+    "found:bookTideTables": true,
+    "found:oreShipwreck": true,
+    "found:wreckKeyChest": true,
+    "found:pageShipwreck": true,
+    "found:d3KeyA": true,
+    "found:d3SlingChest": true,
+    "lighthouseShells": true,
+    "found:d3KeyB": true,
+    "found:d3Map": true,
+    "found:d3BossKey": true,
+    "found:oreLighthouse": true,
+    "found:pageLighthouse": true,
+    "found:heartD3": true,
+    "found:pageFieldA": true,
+    "thanked:pip": true,
+    "found:lostChicken": true,
+    "found:pageLostChicken": true,
+    "found:bookChickenAlmanac": true,
+    "primerTaken": true,
+    "chickenAlmanacRead": true,
+    "met:quill": true,
+    "pagesBound": true,
+    "found:d4KeyA": true,
+    "found:d4ShieldChest": true,
+    "found:d4Map": true,
+    "found:d4KeyB": true,
+    "found:d4BossKey": true,
+    "found:bookHoardRecipes": true,
+    "found:bookHoardLullabies": true,
+    "found:bookHoardMaps": true,
+    "found:heartD4": true
+  },
+  "visited": {
+    "overworld:1,1": true,
+    "hut:0,0": true,
+    "overworld:2,1": true,
+    "overworld:2,0": true,
+    "overworld:2,-1": true,
+    "library:0,0": true,
+    "overworld:2,-2": true,
+    "scriptorium:1,0": true,
+    "scriptorium:0,0": true,
+    "scriptorium:1,-1": true,
+    "scriptorium:2,-1": true,
+    "scriptorium:2,0": true,
+    "scriptorium:3,0": true,
+    "scriptorium:1,-2": true,
+    "overworld:1,0": true,
+    "overworld:0,0": true,
+    "shop:0,0": true,
+    "overworld:3,0": true,
+    "blacksmith:0,0": true,
+    "overworld:0,1": true,
+    "overworld:3,1": true,
+    "overworld:4,0": true,
+    "overworld:5,0": true,
+    "overworld:5,-1": true,
+    "overworld:5,-2": true,
+    "overworld:6,-2": true,
+    "overworld:6,-1": true,
+    "overworld:7,-1": true,
+    "overworld:7,-2": true,
+    "hollowOak:0,0": true,
+    "hollowOak:0,-1": true,
+    "hollowOak:-1,-1": true,
+    "hollowOak:-1,-2": true,
+    "hollowOak:-1,0": true,
+    "hollowOak:0,-2": true,
+    "hollowOak:1,-2": true,
+    "hollowOak:1,-1": true,
+    "hollowOak:1,0": true,
+    "hollowOak:0,-3": true,
+    "overworld:2,-3": true,
+    "overworld:3,-3": true,
+    "overworld:3,-1": true,
+    "overworld:3,-2": true,
+    "overworld:4,1": true,
+    "overworld:5,1": true,
+    "overworld:5,2": true,
+    "wreck:0,0": true,
+    "wreck:0,1": true,
+    "wreck:1,0": true,
+    "overworld:1,-1": true,
+    "overworld:0,-1": true,
+    "overworld:-1,-1": true,
+    "overworld:-1,0": true,
+    "overworld:-1,1": true,
+    "lighthouse:0,0": true,
+    "lighthouse:-1,0": true,
+    "lighthouse:0,-1": true,
+    "lighthouse:1,-1": true,
+    "lighthouse:1,0": true,
+    "lighthouse:0,-2": true,
+    "lighthouse:-1,-2": true,
+    "lighthouse:1,-2": true,
+    "lighthouse:0,-3": true,
+    "bindery:0,0": true,
+    "overworld:-1,-2": true,
+    "overworld:-1,-3": true,
+    "overworld:-2,-3": true,
+    "overworld:-2,-4": true,
+    "overworld:-1,-4": true,
+    "overworld:-1,-5": true,
+    "lair:0,0": true,
+    "lair:-1,0": true,
+    "lair:0,-1": true,
+    "lair:-1,-1": true,
+    "lair:0,-2": true,
+    "lair:-1,-2": true,
+    "lair:1,-2": true,
+    "lair:0,-3": true
+  },
+  "savePoint": {
+    "area": "overworld",
+    "screen": "-1,-5",
+    "tx": 7,
+    "ty": 5,
+    "facing": "down"
+  },
+  "finished": false,
+  "inventory": {
+    "wood": 0,
+    "shells": 0,
+    "brokenShells": 9,
+    "berries": 0,
+    "ore": 3,
+    "paper": 0,
+    "ink": 0
+  },
+  "items": {
+    "scriptoriumKey": true,
+    "liftingGloves": true,
+    "mortarPestle": true,
+    "woodsMapCopy": true,
+    "grapplingRope": true,
+    "glowstone": true,
+    "woodSword": true,
+    "oar": true,
+    "raft": true,
+    "slingshot": true,
+    "climbersAlmanac": true,
+    "mirrorShield": true
+  },
+  "hands": {
+    "mainHand": "woodSword",
+    "offHand": "mirrorShield"
+  },
+  "popups": {
+    "seen": {
+      "woodSword": true,
+      "woodShield": true,
+      "firstBook": true,
+      "scriptoriumKey": true,
+      "dungeonMap": true,
+      "liftingGloves": true,
+      "ore": true,
+      "mortarPestle": true,
+      "heartContainer": true,
+      "berries": true,
+      "woodsMapCopy": true,
+      "metalShovel": true,
+      "digKey": true,
+      "buriedSecret": true,
+      "metalSword": true,
+      "woodsWithMap": true,
+      "grapplingRope": true,
+      "glowstone": true,
+      "helperWood": true,
+      "pull": true,
+      "shell": true,
+      "wood": true,
+      "oar": true,
+      "raft": true,
+      "pageFound": true,
+      "brokenShell": true,
+      "slingshot": true,
+      "tideTablesRead": true,
+      "smithsLedgerRead": true,
+      "chickenAlmanacRead": true,
+      "pagesBound": true,
+      "climbersAlmanac": true,
+      "hiddenPathFound": true,
+      "mirrorShield": true
+    },
+    "queue": []
+  },
+  "dungeons": {
+    "scriptorium": {
+      "keysGiven": 0,
+      "bossKey": true,
+      "map": true,
+      "doors": {
+        "d1DoorA": true,
+        "d1DoorB": true,
+        "d1BossDoor": true
+      },
+      "plates": {
+        "d1PlateGallery": true
+      },
+      "switches": {
+        "d1SwitchPit": true,
+        "d1SwitchDesk": true
+      },
+      "boss": true
+    },
+    "hollowOak": {
+      "keysGiven": 0,
+      "bossKey": true,
+      "map": true,
+      "doors": {
+        "d2DoorC": true,
+        "d2DoorA": true,
+        "d2DoorB": true,
+        "d2BossDoor": true
+      },
+      "plates": {},
+      "switches": {
+        "d2SwitchSap": true
+      },
+      "boss": true
+    },
+    "lighthouse": {
+      "keysGiven": 0,
+      "bossKey": true,
+      "map": true,
+      "doors": {
+        "d3DoorA": true,
+        "d3DoorB": true,
+        "d3BossDoor": true
+      },
+      "plates": {},
+      "switches": {
+        "d3TargetStore": true,
+        "d3CrystalCistern": true,
+        "d3TargetStair": true,
+        "d3CrystalWorkshop": true
+      },
+      "boss": true
+    },
+    "wreck": {
+      "keysGiven": 1,
+      "bossKey": false,
+      "map": false,
+      "doors": {
+        "wreckDoor": true
+      },
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "lair": {
+      "keysGiven": 0,
+      "bossKey": true,
+      "map": true,
+      "doors": {
+        "d4DoorA": true,
+        "d4DoorB": true,
+        "d4BossDoor": true
+      },
+      "plates": {
+        "d4PlateCellar": true
+      },
+      "switches": {
+        "d4SpoutHall": true,
+        "d4SpoutLedge": true,
+        "d4SpoutForge": true
+      },
+      "boss": true
+    }
+  },
+  "tileChanges": {
+    "overworld:7,-1": {
+      "7,2": "P"
+    },
+    "overworld:4,0": {
+      "5,5": "P",
+      "6,5": "P"
+    },
+    "overworld:-1,-2": {
+      "10,4": "i",
+      "10,5": "i"
+    }
+  },
+  "library": {
+    "returned": [
+      "hiddenBookSealed",
+      "bookTideTables",
+      "bookSmithsLedger",
+      "bookChickenAlmanac",
+      "bookWormAtlas",
+      "bookWormRiddles",
+      "bookWormScribes"
+    ],
+    "read": [
+      "hiddenBookSealed",
+      "bookTideTables",
+      "bookSmithsLedger",
+      "bookChickenAlmanac"
+    ],
+    "gone": [],
+    "trips": 2,
+    "lastTripAt": 1,
+    "stolen": {
+      "trips": 1,
+      "bosses": 3
+    },
+    "noticed": 0
+  },
+  "afterThornbackDone": [
+    "shockwave"
+  ]
+}

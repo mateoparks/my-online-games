@@ -78,6 +78,7 @@ const BOSS_ROOMS = {
   scriptorium: { screen: '1,-2', gate: [7, 10], boss: 'bookworm', heart: 'heartD1', inside: [7, 8] },
   hollowOak: { screen: '0,-3', gate: [7, 10], boss: 'thornback', heart: 'heartD2', inside: [7, 8] },
   lighthouse: { screen: '0,-3', gate: [7, 10], boss: 'lensCrab', heart: 'heartD3', inside: [7, 8] },
+  lair: { screen: '0,-3', gate: [7, 10], boss: 'dragon', heart: 'heartD4', inside: [7, 8] },
 };
 
 // A game standing just inside a dungeon's boss room, the boss door open.
