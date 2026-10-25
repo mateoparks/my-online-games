@@ -136,12 +136,17 @@
   // point)` returns where to wake instead, or nothing to leave it.
   const wakeRules = [];
   VL.moveSavePoint = (rule) => wakeRules.push(rule);
+  // `rule(state, point)` true holds the save point where it is, whatever any
+  // move rule says (a story moment that must start there).
+  const keepRules = [];
+  VL.keepSavePoint = (rule) => keepRules.push(rule);
 
   // Where the hero reappears: the last save point touched (or where a rule
   // moved it), or the start when there is none or a later map change removed its screen.
   VL.respawnPlace = function respawnPlace(state) {
     const point = state.savePoint;
     if (!(isPlainObject(point) && VL.screenExists(point.area, point.screen) && Number.isInteger(point.tx) && Number.isInteger(point.ty))) return VL.START;
+    if (keepRules.some((rule) => rule(state, point))) return point;
     for (const rule of wakeRules) {
       const moved = rule(state, point);
       if (moved) return moved;

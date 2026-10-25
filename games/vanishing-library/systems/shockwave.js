@@ -34,6 +34,10 @@
 
   const SWORDS = ['woodSword', 'metalSword'];
 
+  // The Thornback's fall knocks him out in the Oak: until then the finished
+  // Hollow Oak keeps its own save point (systems/dungeon.js would send it home).
+  VL.keepSavePoint((state, point) => !state.flags.shockwave && VL.bossBeaten(state, 'hollowOak') && VL.savePointInDungeon(point, 'hollowOak'));
+
   // Takes exactly what VL.LOCKS.shockwave `loses`, so the game and the solver
   // can't drift apart: whole shells crack into broken ones. A key it can't
   // take throws; this runs from the scene's update, outside any guard, so
