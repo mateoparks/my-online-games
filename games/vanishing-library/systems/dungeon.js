@@ -174,11 +174,14 @@
     return true;
   };
 
+  // A hair of slack: a hero flush against the tile, a rounding error past
+  // its edge, is beside it, not on it (else a shutter beside him lifts).
   VL.heroBoxOverlaps = (state, tx, ty) => {
     const { tile, heroBox } = VL.TUNING;
     const { x, y } = state.player;
-    return x + heroBox.w / 2 > tx * tile && x - heroBox.w / 2 < (tx + 1) * tile
-      && y + heroBox.h / 2 > ty * tile && y - heroBox.h / 2 < (ty + 1) * tile;
+    const slack = 1e-6;
+    return x + heroBox.w / 2 > tx * tile + slack && x - heroBox.w / 2 < (tx + 1) * tile - slack
+      && y + heroBox.h / 2 > ty * tile + slack && y - heroBox.h / 2 < (ty + 1) * tile - slack;
   };
 
   // Whether a plate is down now: latched for good, held by a block, or stood on.

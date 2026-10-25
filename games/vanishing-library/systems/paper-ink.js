@@ -316,7 +316,7 @@
 
   // Why the hero can't draw the map right now, or null when he can.
   VL.mapNeeds = function mapNeeds(state) {
-    if (!VL.bookRead(state, 'bookPrimer')) return 'You have no map yet. A book about map drawing would help.';
+    if (!VL.bookRead(state, 'bookPrimer')) return 'You have no map yet. A book about drawing maps would help.';
     if (!VL.primerOnShelf(state)) return 'You have no map, and without the Cartographer\'s Primer you can\'t remember how to draw one.';
     const missing = costText(VL.TUNING.mapCost, state);
     if (!missing) return null;

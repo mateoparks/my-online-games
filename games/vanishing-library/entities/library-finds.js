@@ -126,7 +126,7 @@
   VL.defineEntity('trapdoor', {
     onInteract(state) {
       const text = VL.wifeStage(state) >= 2
-        ? 'Shut fast, with no handle on this side. Mrs. Fenwick calls over: "Just where I keep spare puppets, dear!"'
+        ? 'Shut fast, with no handle on this side. Mrs. Fenwick calls over: "That\'s just where I keep my spare puppets, dear!"'
         : 'A wooden trapdoor in front of the stage. It\'s shut fast, with no handle on this side.';
       VL.showMessage(state, { title: 'Trapdoor', text });
     },
@@ -198,10 +198,10 @@
 
   // ---------- filling W8's spots ----------
 
-  for (const id of ['bookTideTables', 'bookLighthouse', 'bookWoods', 'bookPrimer', 'hiddenBookSealed', 'bookSmithsLedger', 'bookChickenAlmanac', 'bookDragons']) {
+  for (const id of ['bookTideTables', 'bookLighthouse', 'bookWoods', 'bookPrimer', 'hiddenBookSealed', 'bookSmithsLedger', 'bookChickenAlmanac', 'bookDragons', 'bookHerbalist']) {
     VL.fillSpot(id, { type: 'bookTrunk', id });
   }
-  for (const id of ['bookCliffRoad', 'bookEastRoad', 'bookRiverside', 'bookHerbalist']) {
+  for (const id of ['bookCliffRoad', 'bookEastRoad', 'bookRiverside']) {
     VL.fillSpot(id, { type: 'bushBook', id });
   }
   VL.fillSpot('pageFieldA', { type: 'page', id: 'pageFieldA' });

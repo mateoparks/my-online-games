@@ -16,7 +16,7 @@
   function close(app, { shop = app.dialogue.shop } = {}) {
     VL.endTalk(app.game, app.dialogue.end);
     if (shop) app.setScene('shop', { shop });
-    else if (VL.currentPopup(app.game)) app.setScene('popup');
+    else if (VL.currentPopup(app.game) && !app.game.holdUp) app.setScene('popup');
     else {
       VL.graceAfterPopup(app.game);
       app.setScene('play');

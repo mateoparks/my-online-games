@@ -22,7 +22,8 @@
     G: { solid: true, footprint: true, art: 'moss' },
   });
 
-  // Shady forest floor with tufts, the odd fern and a few red mushrooms.
+  // Shady forest floor with tufts, the odd fern and a few red mushrooms; never
+  // a mushroom under a tree, where its red would read as a hidden book.
   VL.ART.defineTileStyle('moss', {
     ground(ctx, cell) {
       const { x, y } = cell;
@@ -33,7 +34,7 @@
         rect(ctx, i % 2 ? 'woodsFloorDark' : 'woodsFloorLight', x + gx, y + gy, 1, 2);
         rect(ctx, 'woodsFloorDark', x + gx + 2, y + gy + 1, 1, 2);
       }
-      if (cell.seed(20) > 0.86) {
+      if (cell.seed(20) > 0.86 && !cell.info?.tree) {
         const mx = x + 3 + Math.floor(cell.seed(21) * 9);
         const my = y + 4 + Math.floor(cell.seed(22) * 8);
         rect(ctx, 'white', mx + 1, my + 2, 1, 2);
@@ -192,7 +193,9 @@
         'FFFffFFFFFFFFFFF',
         'FFFffFFFFFFFFFFF',
       ],
-      entities: [],
+      entities: [
+        spot('bookHerbalist', 11, 5, 'trunk', 'W11'),
+      ],
     },
     '6,-2': {
       tiles: [
@@ -232,6 +235,7 @@
         { type: 'spitter', x: 12, y: 6 },
         { type: 'decor', art: 'hollowOak', x: 5, y: 1 },
         spot('hollowOakDoor', 7, 3, 'door', 'W15', 'hollowOakEntered'),
+        spot('bookChickenAlmanac', 10, 8, 'trunk', 'W11'),
       ],
     },
     // Wrong turns (VL.WOODS_WRONG_EXITS): look-alike screens that wind back

@@ -123,6 +123,8 @@ function createDrive(VL, initialApp, reload) {
     // Reads and closes every popup that is up or waiting, as a player would (S).
     closePopups() {
       for (let i = 0; i < 20; i += 1) {
+        // Something just received is held up first (systems/hold-up.js).
+        if (app.sceneId === 'play' && app.game.holdUp) drive.until((state) => app.sceneId !== 'play' || !state.holdUp, VL.TUNING.holdUpSeconds + 0.5);
         if (app.sceneId === 'play' && VL.currentPopup(app.game)) drive.update();
         if (app.sceneId !== 'popup') return;
         drive.hold([], 0.4);

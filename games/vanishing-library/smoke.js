@@ -446,8 +446,13 @@ async function main() {
       await sleep(300);
       await shot('w5-hut');
       await press('KeyS');
-      await sleep(300);
-      await expect('popup', 'S at the chest');
+      await sleep(450);
+      await expect('play', 'S at the chest (holding the sword and shield up)');
+      await shot('w28-hold-up');
+      const holding = JSON.parse(await evaluate('JSON.stringify([VL.app.game.player.holding, VL.app.game.holdUp && VL.app.game.holdUp.sprites])'));
+      if (!holding[0] || String(holding[1]) !== 'item-sword-wood,item-shield-wood') loopProblems.push(`the chest hold-up: ${JSON.stringify(holding)}`);
+      await sleep(900);
+      await expect('popup', 'the hold-up after the chest');
       await shot('w5-chest-popup');
       const hands = JSON.parse(await evaluate('JSON.stringify(VL.app.game.hands)'));
       if (hands.mainHand !== 'woodSword' || hands.offHand !== 'woodShield') loopProblems.push(`the chest put ${JSON.stringify(hands)} in the hands`);
@@ -660,7 +665,7 @@ async function main() {
       await key('keyDown', 'ArrowLeft');
       await sleep(80);
       await key('keyUp', 'ArrowLeft');
-      await sleep(400);
+      await sleep(1400);
       await shot('w6-heart-container');
       const container = await read('[VL.app.sceneId, g.maxHp, VL.spotFound(g, "heartFieldA")]');
       if (container[0] !== 'popup' || container[1] !== 8 || !container[2]) combatProblems.push(`the heart container: ${JSON.stringify(container)}`);
@@ -1047,7 +1052,26 @@ async function main() {
       await sleep(300);
       await picture('w11-library-emptied');
 
+      // Two books gone since the last visit: he says so first (W28).
+      await libGame(atDesk, `${returnAll(shelfIds.slice(0, 4))} g.library.gone.push(g.library.returned[0], g.library.returned[1]);`);
+      await tapS();
+      await sleep(2200);
+      await picture('w28-librarian-remark');
+      const remarked = await look("[VL.app.sceneId, g.library.noticed]");
+      if (remarked[0] !== 'dialogue') libProblems.push(`S at the desk after two books vanished gave scene ${remarked[0]}`);
+      await sTo('play');
+      if ((await look('g.library.noticed')) !== 2) libProblems.push('the vanished books were not noticed');
+
       await libGame(atDesk, `${returnAll(['bookRiverside', 'bookCliffRoad', 'bookWoods', 'bookEastRoad'])} VL.markFound(g, 'bookChickenAlmanac');`);
+      const heldUp = async (name) => {
+        for (let i = 0; i < 40 && !(await look('Boolean(g.holdUp) && VL.app.sceneId === "play"')); i += 1) {
+          if ((await evaluate('VL.app.sceneId')) !== 'play') await tapS();
+          await sleep(60);
+        }
+        await sleep(250);
+        await picture(name);
+        return look('g.holdUp && g.holdUp.sprites');
+      };
       await tapS();
       if ((await evaluate('VL.app.sceneId')) !== 'dialogue') libProblems.push(`S at the desk gave scene ${await evaluate('VL.app.sceneId')}`);
       if (!(await sTo('reading'))) libProblems.push('handing in the Almanac never reached its reading');
@@ -1060,6 +1084,8 @@ async function main() {
       if (!(await sTo('dialogue'))) libProblems.push('five books did not bring the reward talk');
       await sleep(1600);
       await picture('w11-reward');
+      const rewardHeld = await heldUp('w28-reward-hold-up');
+      if (String(rewardHeld) !== 'pickup-heart-container') libProblems.push(`the five-book reward was held up as ${rewardHeld}`);
       if (!(await sTo('popup'))) libProblems.push('the reward talk did not end in its popup');
       await sleep(300);
       await picture('w11-reward-popup');
@@ -1353,7 +1379,7 @@ async function main() {
 
       await scrGame(scr('2,-1', 7, 5), '');
       await tapKey('KeyS');
-      await sleep(250);
+      await sleep(1250);
       await shot('w14-gloves-popup');
       const gloves = await see("[VL.hasItem(g, 'liftingGloves'), VL.app.sceneId, VL.currentPopup(g) && VL.currentPopup(g).title]");
       if (gloves.join() !== 'true,popup,You got the Lifting Gloves!') scrProblems.push(`the big chest: gloves, scene, popup = ${gloves}`);
@@ -1512,7 +1538,7 @@ async function main() {
 
       await oakGame(oak('1,-2', 7, 4), '');
       await tapKey('KeyS');
-      await sleep(250);
+      await sleep(1250);
       await shot('w15-rope-popup');
       const got = await see("[VL.hasItem(g, 'grapplingRope'), VL.app.sceneId, VL.currentPopup(g) && VL.currentPopup(g).title]");
       if (got.join() !== 'true,popup,You got the Grappling Rope!') oakProblems.push(`the big chest: rope, scene, popup = ${got}`);

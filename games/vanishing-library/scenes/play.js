@@ -15,6 +15,14 @@
         app.setScene('pause');
         return;
       }
+      // Holding up something just received (systems/hold-up.js): the world
+      // waits, then the popup names it.
+      const hold = VL.tickHoldUp(game, dt);
+      if (hold === 'raise') return;
+      if (hold === 'popup') {
+        app.setScene('popup');
+        return;
+      }
       if (actions.pressed.equipment && !game.transition) {
         app.setScene('equipment');
         return;
@@ -23,7 +31,7 @@
       if (game.hp <= 0) app.setScene('fainted');
       // A talk asked for this step (VL.requestScene) goes first; a popup the
       // same step queued waits for play again.
-      else if (VL.currentPopup(game) && !game.transition && !game.sceneRequest) app.setScene('popup');
+      else if (VL.currentPopup(game) && !game.transition && !game.sceneRequest && !game.holdUp) app.setScene('popup');
     },
     draw(ctx, app, t) {
       VL.drawWorld(ctx, app.game, t);

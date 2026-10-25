@@ -10,7 +10,7 @@
   function close(app) {
     const game = app.game;
     if (VL.finishReading(game, app.reading.id)) VL.sfx('libraryChime');
-    app.setScene(VL.currentPopup(game) ? 'popup' : 'play');
+    app.setScene(VL.currentPopup(game) && !game.holdUp ? 'popup' : 'play');
   }
 
   // A sprite at a whole-number scale, top-left at (x, y).

@@ -209,7 +209,7 @@ test('handing books in, he says a line about each untitled one and the count', (
   const ids = VL.returnBooks(game);
   const speech = VL.returnSpeech(game, ids);
   assert.equal(speech.length, 2, 'one untitled book, then the tally');
-  assert.ok(speech[0].includes('Turnip'));
+  assert.ok(speech[0].includes('Rocks and How to Lift Them'));
   assert.ok(speech[1].includes('2 books') && speech[1].includes('3 more'));
 });
 
@@ -506,9 +506,9 @@ test('the librarian notices a missing book once', () => {
   t.game.flags['met:fenwick'] = true;
   returnAndRead(VL, t.game, ['bookRiverside']);
   t.game.library.gone.push('bookRiverside');
-  assert.ok(VL.pickDialogue(t.game, 'librarian').say.includes('I was sure I put a book'));
+  assert.ok(VL.pickDialogue(t.game, 'librarian').say.includes('already gone'));
   t.visitLibrarian();
-  assert.ok(!VL.pickDialogue(t.game, 'librarian').say.includes('I was sure'));
+  assert.ok(!VL.pickDialogue(t.game, 'librarian').say.includes('already gone'));
 });
 
 // ---------- hints by progress ----------
@@ -636,7 +636,7 @@ test('from her third stage, her second talk in a visit points the wrong way; his
   assert.ok(first.includes('Another book'), first);
   const second = talk();
   assert.equal(second, VL.WIFE_MISDIRECTION.scriptoriumKey, 'books in the lake: the wrong way');
-  assert.ok(VL.pickDialogue(t.game, 'librarian').say.includes('trunks'), 'the librarian sends you to the trunks');
+  assert.match([].concat(VL.pickDialogue(t.game, 'librarian').say).join(' '), /trunk by the puppet stage/, 'the librarian sends you to the trunk');
   // A fresh visit starts with a greeting again.
   t.at({ area: 'overworld', screen: '2,0', tx: 6, ty: 4, facing: 'up' });
   assert.ok(talk().includes('Another book'));
