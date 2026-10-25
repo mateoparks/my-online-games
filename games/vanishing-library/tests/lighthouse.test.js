@@ -313,6 +313,41 @@ test('a hurt hero flashing in a dark room never flashes the dark or the beam wit
   }
 });
 
+test('leaving an unlit dark room, it slides away dark, not lit', () => {
+  const t = setup({ where: lh('-1,0', 15, 5, 'right') });
+  const { VL } = t;
+  const base = fakeDocument().createElement('canvas').getContext('2d');
+  const fills = [];
+  let gradient = null;
+  const ctx = new Proxy(base, {
+    get(target, property) {
+      if (property === 'createRadialGradient') return (...args) => (gradient = base.createRadialGradient(...args));
+      if (property === 'fillRect') return (...args) => fills.push({ style: gradient, args });
+      return base[property];
+    },
+    set: () => true,
+  });
+  t.until((g) => g.transition && g.transition.t > g.transition.duration / 3, 3, ['right']);
+  assert.equal(t.game.player.screen, '0,0', 'sliding into the lit entrance');
+  assert.ok(!VL.roomIsDark(t.game));
+  gradient = null;
+  VL.render(ctx, t.app, 1);
+  const { width, rows, tile } = VL.TUNING;
+  const slide = t.game.transition;
+  const k = VL.smoothstep(slide.t / slide.duration);
+  const fromX = -k * width;
+  assert.ok(fills.some(({ style, args }) => style && args[0] === fromX && args[2] === width && args[3] === rows * tile), `the cellar is covered by the dark at x ${fromX}`);
+  t.d.switches.d3LampCellarA = true;
+  t.d.switches.d3LampCellarB = true;
+  t.until((g) => !g.transition, 2);
+  t.place(lh('-1,0', 15, 5, 'right'));
+  t.until((g) => g.transition && g.transition.t > g.transition.duration / 3, 3, ['right']);
+  fills.length = 0;
+  gradient = null;
+  VL.render(ctx, t.app, 1);
+  assert.ok(!fills.some(({ style, args }) => style && args[2] === width && args[3] === rows * tile && args[1] === 0 && args[0] < 0), 'lit, it slides away lit');
+});
+
 // ---------- the Slingshot ----------
 
 test('the Slingshot: each shot costs one broken shell; with none it says where to find more and fires nothing', () => {
