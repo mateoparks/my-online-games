@@ -138,21 +138,23 @@ test('the wreck keeps W17\'s harbour once its page is found, with every boss dun
 });
 
 // The shockwave (W16; W30 ratify 2): until it has happened, the Hollow Oak
-// keeps its statue, so a reload in the breath after the heart (or an old save
-// from before W16) still starts the rumble in the Oak, not at home.
-test('the Hollow Oak before the shockwave: beaten and its heart taken, a reload still wakes him at the statue and the shockwave starts there', () => {
-  const statue = statueOf(shared, 'hollowOak');
-  const t = savedAt('hollowOak', statue, 'done', (_, game) => {
-    for (const flag of ['shockwave', 'shockwaveWoke', 'gave:helperWood']) delete game.flags[flag];
+// keeps its save point, the statue or the doorstep the warp out saves, so a
+// reload in the breath after the heart (or an old save from before W16)
+// still starts the rumble where he was, not at home.
+for (const [where, point] of [['statue', statueOf(shared, 'hollowOak')], ['doorstep', plain(shared.DUNGEONS.hollowOak.entrance)]]) {
+  test(`the Hollow Oak before the shockwave: beaten and its heart taken, a reload still wakes him at the ${where} and the shockwave starts there`, () => {
+    const t = savedAt('hollowOak', point, 'done', (_, game) => {
+      for (const flag of ['shockwave', 'shockwaveWoke', 'gave:helperWood']) delete game.flags[flag];
+    });
+    const { VL, drive } = t;
+    assert.deepEqual(woke(VL, VL.loadSlot(t.storage, 0)), at(point), 'Continue');
+    drive.reload();
+    assert.deepEqual(woke(VL, drive.state), at(point), 'reload');
+    drive.until(() => drive.app.sceneId === 'shockwave', 3);
+    assert.equal(drive.app.shockwave.phase, 'rumble');
+    assert.deepEqual(woke(VL, drive.state), at(point), 'the ground shakes where he woke');
   });
-  const { VL, drive } = t;
-  assert.deepEqual(woke(VL, VL.loadSlot(t.storage, 0)), at(statue), 'Continue');
-  drive.reload();
-  assert.deepEqual(woke(VL, drive.state), at(statue), 'reload');
-  drive.until(() => drive.app.sceneId === 'shockwave', 3);
-  assert.equal(drive.app.shockwave.phase, 'rumble');
-  assert.equal(drive.state.player.area, 'hollowOak', 'the ground shakes in the Oak');
-});
+}
 
 test('the W15 fixture (the Thornback beaten and its heart taken, before W16) still continues at the Hollow Oak\'s statue', () => {
   const { VL } = loadGame();
