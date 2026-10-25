@@ -454,7 +454,10 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   pass) => {})` draws with the hero, once behind (`pass === 'behind'`), once
   in front (`'front'`) and once more after the light (`'overlay'`, outside
   the hurt-flash gate: the dungeon keys HUD); the swing and the raised
-  shield are the `hands` layer.
+  shield are the `hands` layer. A third argument `{ steady: true }` marks a
+  layer that draws things in the room, not on the hero (the dark, the beam,
+  stun stars): it keeps its place in the order but is drawn on the hurt
+  hero's off frames too, so no large area ever flashes with him.
 - **Sounds:** events `swing`, `pickup` (`kind`; shells chime), `bushCut`
   (`rustle`), `pullHurt` (`hurt`), `tink` (a sword on a berry bush) and `eat`
   (`munch`). `systems/sound.js` maps the core `faint` event to `faint`.
@@ -778,7 +781,15 @@ shockwave with real keys: the ground shaking, the flash, the story on black,
 waking at home holding up the Glowstone, and Gran Ottie's talk and wood
 (`w16-rumble.png`, `w16-flash.png`, `w16-story.png`, `w16-waking.png`,
 `w16-glowstone.png`, `w16-glowstone-popup.png`, `w16-helper.png`,
-`w16-helper-wood.png`, `w16-helper-wood-popup.png`).
+`w16-helper-wood.png`, `w16-helper-wood-popup.png`). Then W18's
+Lighthouse with real keys: the door shut without the Glowstone
+(`w18-door-dark.png`), every room (`w18-room-<x>_<y>.png`), a dark floor
+unlit and lit by its lamps (`w18-dark-unlit.png`, `w18-dark-lit.png`), the
+Slingshot from the big chest (`w18-slingshot-popup.png`), a shot across the
+pits at a target (`w18-slingshot.png`, `w18-target-hit.png`), the cistern's
+beam as found and solved (`w18-beam.png`, `w18-beam-solved.png`) and the Lens
+Crab up, dazed and beaten (`w18-boss.png`, `w18-boss-dazed.png`,
+`w18-boss-beaten.png`).
 Then W29's playtest notes with real keys: the driftwood at the hut beach
 (`w29-driftwood.png`), the first shovel's dig-key popup and X digging with
 the sword and shield in hand (`w29-dig-key-popup.png`, `w29-dig-x.png`), a
@@ -792,9 +803,16 @@ screen edge and landing on the island for its ore (`w17-launch.png`,
 beach to the wreck and aboard by its stove-in side (`w17-wreck.png`,
 `w17-wreck-aboard.png`), every room below deck (`w17-room-<x>_<y>.png`), the
 rope over the bilge (`w17-bilge-rope.png`) and the cabin's page
-(`w17-page.png`). It runs
-for 240 s at most (about twice its run time). A test file
-that runs no tests, and an `async` test function, both fail the node run.
+(`w17-page.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
+the beam, the Lens Crab's rounds, the shockwave, the chicken swarm, popups and
+a faint are each stepped by hand and drawn offscreen at 60 fps, in 16 px
+cells. It fails when, within any one second, over a quarter of the canvas
+flips brightness (0.05 relative luminance) more than 3 times, or over 4% of
+it (about a quarter of a 10 degree field at this scale) flips by WCAG's 0.1
+more than 6 times (over 3 flash pairs). A control run with the steady layers
+off must fail both. It runs for 240 s at most (about twice its run time). A
+test file that runs no tests, and an `async` test function, both fail the
+node run.
 
 ## Overworld map
 
@@ -1699,6 +1717,145 @@ down.
   `pageShipwreck` (`needs` adds `wreckDoor`) with `replan`; adds
   `wreckKeyChest` and `wreckDoor`.
 
+## The Slingshot (W18)
+
+`systems/slingshot.js` (design: The path through the game, 6: "broken shells
+as ammo (hit far switches, stun enemies)"). Tests: `tests/lighthouse.test.js`.
+
+- **The item** `slingshot` goes in a hand (E); the big chest in the
+  Lighthouse's store room holds it. Its key fires one broken shell
+  (`VL.fireSlingshot`, `inventory.brokenShells` minus one, earned) straight
+  ahead from the hero's middle, `TUNING.slingshotTiles` (10) tiles at
+  `slingshotSpeed`, one shot per `slingshotCooldown`. The shell
+  (`{ type: 'slingPellet', gx, gy, dx, dy }`, play state, drawn at its pixel
+  `gx, gy`) flies over pits, water, chasms and low tiles and stops at walls,
+  solid things and the screen's edge. With no broken shells it fires nothing
+  and says where to find some (a heap in a dungeon, the beaches outside).
+  The HUD writes the broken shells left in the slingshot's slot.
+- **What a shot meets:** an entity whose type has **`onShot(state, entity,
+  pellet)`** answers it (a `shellTarget` is thrown, a `beamMirror` turns), a
+  W13 `switch` is thrown; an
+  enemy whose definition has `onShot` answers it (the Lens Crab), any other
+  enemy is stunned (`VL.stunEnemy`: W6's arrival hold, so it stands still and
+  is harmless for `slingshotStunSeconds`, stars over its head, no damage, so
+  W29's `weapon` argument to `VL.hitEnemy` never comes into it).
+- **Targets across gaps:** `{ type: 'shellTarget', id, x, y }` (solid) is a
+  switch only a shot throws, saved in the dungeon's `switches` like a
+  lever, so a shutter opens on `{ switch: id }`. S only describes it, and
+  neither the sword nor the rope's hook throws it, so what it opens stays
+  behind the Slingshot.
+- **Shell heaps:** `{ type: 'shellHeap', x, y }` (solid): S tops the broken
+  shells up to `TUNING.shellHeapFill` (15), as often as he likes
+  (`VL.scoopShells`, flag `lighthouseShells`), so a kid never runs dry in a
+  dungeon. The Lighthouse has one in the entrance, the store room, the
+  cistern, the gallery and two in the boss room.
+- **Sounds:** events `slingFire`, `slingTink`, `slingHit`, `slingStun`,
+  `slingEmpty` (`bump`).
+
+## Dark rooms (W18)
+
+`systems/darkness.js` and `entities/glow-lamp.js` (design: The path through
+the game, 6: "The Glowstone lets you enter", "dark floors").
+
+- **`VL.defineDarkRooms(area, screens)`** names dark rooms. In one, the
+  `darkness` hero layer (front pass, under the light's vignette and the keys
+  HUD) covers the room past a circle round the hero: `TUNING.glowInner`
+  (40 px) clear, fading to black by `glowOuter` (84 px) with the Glowstone
+  (`VL.hasItem(state, 'glowstone')`, W16's worn item), a hand's breadth
+  without (`VL.glowRadius`).
+- **Never a guessing game:** past the light, keys, switches, targets,
+  mirrors, lamps, chests, locked doors, closed bars and heaps glint
+  (`VL.DARK_GLINTS`, or `glintsInDark: true` on an entity type), a
+  creature shows two red eyes, and anything `glowsInDark` (the beam's
+  source, a lit crystal, a shell in flight) is drawn over the dark. The beam
+  itself is drawn after it.
+- **Lights:** an entity type with `lightsRoom: true` (`glowLamp`,
+  `beamCrystal`) counts as one of the room's lights; once every light in a
+  room is `on`, the room is lit for good (`VL.roomLit`, `VL.roomIsDark`).
+  `{ type: 'glowLamp', id, x, y }` (solid): S with the Glowstone lights it,
+  saved in the dungeon's `switches` (`VL.throwSwitch`); without it, it stays
+  cold. A dark room with no lights stays dark.
+- **Sounds:** `lampLit`.
+
+## The beam (W18)
+
+`entities/beam.js` (design: The path through the game, 6: "mirrors that
+bounce the lighthouse beam").
+
+- `{ type: 'beamSource', x, y, dir }` shines a beam along its row or column
+  over floor, pits and water; `{ type: 'beamMirror', x, y, turn: '/' | '\\' }`
+  bends it a quarter turn (`VL.reflectBeam`); S or a shot turns the mirror
+  the other way, for this visit only (back as found on re-entry, so it can
+  never be left stuck); walls, solid things and closed bars stop it; the
+  hero never does. `VL.beamPath(room, source)` gives its `points` and the
+  `crystal` it reaches; `VL.roomBeams(room)` every source's.
+- `{ type: 'beamCrystal', id, x, y }` the beam reaches is lit for good (the
+  `beams` system, order 42, through `VL.throwSwitch`), so a shutter opens on
+  `{ switch: id }`, and it lights a dark room.
+- A mirror on an island (no floor beside it) can only be turned by a shot.
+- **Sounds:** `mirrorTurn`, `crystalLit`.
+
+## The Lighthouse (W18)
+
+Dungeon 3 (design: The path through the game, 6), in `dungeons/lighthouse.js`
+on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
+`tests/lighthouse.test.js`; its play, lock by lock, is
+`tests/lighthouse-route.js`, strung into milestones by
+`tests/steps/w18.steps.js`. Fixture: `tests/fixtures/save-v1-W18.json`
+(played from the W16 save through to the Lens Crab).
+
+```
+                       lamp room (0,-3): the Lens Crab
+                            | boss door (oneWay)
+  map stair (-1,-2) -- gallery (0,-2) --door B-- workshop (1,-2): 3 mirrors -> crystal -> boss key
+  dark floor, map           | bars (stair target)
+                       stairwell (0,-1) --door A-- store (1,-1): the Slingshot
+                            |                         | bars (store target)
+  cellar (-1,0) ----- entrance (0,0)              cistern (1,0): 2 mirrors -> crystal -> key B
+  dark floor, key A   statue, door out
+```
+
+- **The way in:** W8's `lighthouseDoor` spot on the headland (-1,1) is a
+  `door` with `needs: 'glowstone'`: without the Glowstone it is solid and
+  says it is pitch dark. The headland has no gull, since Continue after the
+  boss lands on its doorstep.
+- **Dark rooms:** the cellar, the cistern, the gallery, the map stair and
+  the workshop. The cellar and the map stair are dark floors (one narrow way
+  between pits) with two lamps each; the gallery has two lamps; the cistern
+  and the workshop light up with their crystal.
+- **The order:** key A at the end of the cellar's dark floor opens door A,
+  behind which the big chest holds the Slingshot (mid-dungeon). Only then:
+  the store's target lifts the bars into the cistern (key B behind the
+  crystal's bars), and the stairwell's target lifts the bars up to the
+  gallery (door B, the boss door). Key A can't be wasted: door B lies past
+  the stairwell's target. The workshop's crystal lifts the bars on the boss
+  key.
+- **The Lens Crab** (`lensCrab`, `rooted`, `size: 'big'`): it scuttles along
+  the top of the lamp room after the hero (`scuttle`), and every
+  `lensCrabGlintEvery` the lens glints (`glint`) and throws a bolt of light
+  at him (a `small` projectile: the wood shield blocks it). A sword clinks
+  off the lens (`VL.LENS_CRAB_SWORD_NOTE`); a shot flying up at its face
+  shuts the nearer open eye (`eyes`, open again after
+  `lensCrabEyeSeconds`), and with both shut it is `dazed` (harmless) for
+  `lensCrabDazedSeconds`; then the sword takes the round's `life`
+  (`lensCrabRoundLife`, 2: two wood hits or one metal; `hp` is refilled on
+  every hit). A shot from above or the side bounces off. Three rounds; each
+  round taken (or a daze that runs out) is `recover`, then eyes open. After
+  the third it is `dying`, then marked `defeated` before it leaves.
+- **Rewards** (`boss.onDefeat`): a lump of ore (`oreLighthouse`, ore + 1)
+  and the last loose page (`VL.findPage(state, 'pageLighthouse')`), held up
+  together (`VL.holdUp`), and a message; the framework adds the heart
+  container `heartD3` where the crab began and the warp out. W11's thief
+  takes the Primer on the next library visit once `d3Boss` is reached.
+- **Locks:** claims `lighthouseEntered` (a visit to the entrance) with the
+  planned rule, and `slingshot` (`needs` adds `d3DoorA`) and `d3Boss` (adds
+  `d3BossDoor`) with `replan`; adds `d3KeyA`, `d3DoorA`, `d3KeyB`, `d3DoorB`,
+  `d3BossKey`, `d3BossDoor` and `lighthouseShells` (the heaps, renewable
+  broken shells). Ids are `d3…` (and `heartD3`, `oreLighthouse`,
+  `pageLighthouse`).
+- **Sounds:** events `crabEye`, `crabDazed`, `lensGlint`, `lensBolt`
+  (`slingFire`), `crabTink` (`slingTink`).
+
 ## Dungeons (W13)
 
 `systems/dungeon.js` is the framework the four dungeons (W14, W15, W18, W19)
@@ -1769,6 +1926,10 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   on the two sides of one edge, and one lock per door id (the game spends a
   key per id, the solver one per lock).
   `VL.openLockedDoor(state, door)` returns `'opened'`, `'open'` or `'locked'`.
+  A door with `wants: { items: [...], note }` also stays shut, saying `note`,
+  until the hero holds one of `items` (the Lighthouse's boss door wants a
+  sword, so a swordless kid is never shut in with the Lens Crab); the lint
+  checks its lock needs the same items.
 - **Push blocks:** `{ type: 'pushBlock', x, y, once = true }` slides a tile
   after the hero leans on it for `TUNING.blockPushSeconds`, once per visit
   (Zelda's rule; `once: false` for a free block), never onto a wall, another
@@ -1814,7 +1975,10 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   the tile the hero enters by** (the edge tile, or the tile a door lands him
   on): it stays up while he is on it (he can still turn round and leave) and
   drops once he has stepped in. Enemies come back on re-entry, so a `cleared`
-  shutter closes again, and so can never softlock.
+  shutter closes again, and so can never softlock. The lint checks every
+  `switch` and `plate` id a shutter names is a lever (or an entity type with
+  `isSwitch: true`: a target, a crystal, a lamp) or a plate in its own
+  dungeon, and those need ids.
 - **Save statue:** `{ type: 'saveStatue', x, y }` at the entrance: (x, y) is
   the step in front, where standing saves and sets the respawn point; the
   statue stands in the wall niche above, so `(x, y - 1)` must be a wall. A
@@ -1880,7 +2044,7 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
      area: 'scriptorium', name: 'Old Scriptorium',
      entrance: { area: 'overworld', screen: '2,-2', tx: 8, ty: 4, facing: 'down' },   // outside its door
      boss: { screen: '1,-2', type: 'bookworm', heart: 'heartD1', warp: { tx: 7, ty: 8 }, onDefeat(state) { VL.giveItem(state, 'mortarPestle'); } },
-     light: 'indoor',   // or 'dark' (W18)
+     light: 'indoor',   // dark rooms: VL.defineDarkRooms (W18)
    });
    ```
 2. Fill the overworld door spot with a `door` into the first room and put a

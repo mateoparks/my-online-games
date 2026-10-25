@@ -1789,6 +1789,147 @@ async function main() {
     }
 
 
+    // W18, the Lighthouse with real keys: the door shut without the
+    // Glowstone, every room, a dark floor unlit and then lit by its lamps (S),
+    // the Slingshot from the big chest, a shot at a target across the pits
+    // (D) and the bars going up, the cistern's beam before and after its
+    // mirrors are turned (S, then a shot), and the Lens Crab: up, both eyes
+    // shot shut (dazed), struck and beaten. Saved as w18-*.png.
+    {
+      errors.length = 0;
+      const lhProblems = [];
+      const codes = { KeyS: [83, 's'], KeyD: [68, 'd'], Space: [32, ' '] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) lhProblems.push(`animation frames stopped after ${code}`);
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      // A new game in play at `where`: the Glowstone worn, the sword in the
+      // main hand and the slingshot in the off hand, unless `setup` says otherwise.
+      const ARMED = "g.items.glowstone = true; g.items.woodSword = true; g.items.slingshot = true; g.hands = { mainHand: 'woodSword', offHand: 'slingshot' }; g.inventory.brokenShells = 15;";
+      const lhGame = (where, setup = ARMED) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e) || e.type === 'lensCrab');
+        document.getElementById('game').focus();
+      })()`);
+      const lh = (screen, tx, ty, facing = 'up') => ({ area: 'lighthouse', screen, tx, ty, facing });
+
+      await lhGame({ area: 'overworld', screen: '-1,1', tx: 7, ty: 5, facing: 'up' }, '');
+      await holdArrowUntil('Up', "VL.app.sceneId === 'popup'", 1500);
+      await sleep(250);
+      await shot('w18-door-dark');
+      if ((await see("[g.player.area, VL.currentPopup(g) && VL.currentPopup(g).text]")).join() !== `overworld,${await see('VL.LIGHTHOUSE_DARK_WORDS')}`) lhProblems.push('the door let him in without the Glowstone, or said nothing');
+      await lhGame({ area: 'overworld', screen: '-1,1', tx: 7, ty: 5, facing: 'up' });
+      await holdArrowUntil('Up', "g.player.area === 'lighthouse'", 1500);
+      if ((await see('g.player.area')) !== 'lighthouse') lhProblems.push('the Glowstone did not let him in');
+
+      for (const screen of ['0,0', '-1,0', '0,-1', '1,-1', '1,0', '0,-2', '-1,-2', '1,-2', '0,-3']) {
+        const where = { '-1,0': lh(screen, 13, 5), '-1,-2': lh(screen, 12, 5), '0,-3': lh(screen, 7, 8) }[screen] || lh(screen, 7, 5);
+        await lhGame(where, `${ARMED} g.dungeons.lighthouse.doors.d3BossDoor = true;`);
+        await sleep(250);
+        await shot(`w18-room-${screen.replace(',', '_')}`);
+      }
+
+      // A dark floor: unlit, then both lamps lit with S.
+      await lhGame(lh('-1,0', 14, 5, 'down'));
+      await sleep(300);
+      await shot('w18-dark-unlit');
+      if (!(await see('VL.roomIsDark(g)'))) lhProblems.push('the cellar is not dark');
+      await tapKey('KeyS');
+      await evaluate("VL.place(VL.app.game, { area: 'lighthouse', screen: '-1,0', tx: 2, ty: 2, facing: 'right' })");
+      await sleep(100);
+      await tapKey('KeyS');
+      await sleep(300);
+      await shot('w18-dark-lit');
+      if (await see('VL.roomIsDark(g)')) lhProblems.push('the cellar\'s lamps did not light it');
+
+      // The Slingshot from the big chest.
+      await lhGame(lh('1,-1', 5, 3), "g.items.glowstone = true; g.items.woodSword = true; g.hands = { mainHand: 'woodSword', offHand: null };");
+      await tapKey('KeyS');
+      await sleep(1250);
+      await shot('w18-slingshot-popup');
+      const got = await see("[VL.hasItem(g, 'slingshot'), VL.app.sceneId, VL.currentPopup(g) && VL.currentPopup(g).title]");
+      if (got.join() !== 'true,popup,You got the Slingshot!') lhProblems.push(`the big chest: slingshot, scene, popup = ${got}`);
+
+      // A shot across the pits at the store's target.
+      await lhGame(lh('1,-1', 12, 4));
+      await tapKey('KeyD');
+      await sleep(60);
+      await shot('w18-slingshot');
+      if (!(await waitFor("g.dungeons.lighthouse.switches.d3TargetStore", 1500))) lhProblems.push('the shot did not hit the store\'s target');
+      await sleep(300);
+      await shot('w18-target-hit');
+      if (await see("g.room.entities.find((e) => e.id === 'd3ShutterStore').closed")) lhProblems.push('the store\'s bars did not lift');
+
+      // The cistern's beam: as found, then the floor mirror turned (S) and the island one shot (D).
+      await lhGame(lh('1,0', 9, 2, 'right'));
+      await sleep(300);
+      await shot('w18-beam');
+      await tapKey('KeyS');
+      await evaluate("VL.place(VL.app.game, { area: 'lighthouse', screen: '1,0', tx: 10, ty: 3, facing: 'down' }); VL.app.game.room.entities.find((e) => e.type === 'beamMirror' && e.y === 2).turn = '\\\\';");
+      await tapKey('KeyD');
+      if (!(await waitFor('g.dungeons.lighthouse.switches.d3CrystalCistern', 1500))) lhProblems.push('the beam did not light the cistern\'s crystal');
+      await sleep(400);
+      await shot('w18-beam-solved');
+      if (await see('VL.roomIsDark(g)')) lhProblems.push('the lit crystal did not light the cistern');
+
+      // The Lens Crab: line up below it, shoot both eyes shut, strike.
+      await lhGame(lh('0,-3', 7, 8), `${ARMED} g.dungeons.lighthouse.doors.d3BossDoor = true;`);
+      await sleep(900);
+      await shot('w18-boss');
+      for (let i = 0; i < 2; i += 1) {
+        await evaluate(`(() => {
+          const g = VL.app.game;
+          const c = g.room.entities.find((e) => e.type === 'lensCrab');
+          c.arriving = 0;
+          Object.assign(g.player, VL.tileCenter(VL.tileOf(c.cx, c.cy).tx, 6), { facing: 'up', invuln: 5, sling: 0 });
+        })()`);
+        await tapKey('KeyD');
+        await waitFor("!g.room.entities.some((e) => e.type === 'slingPellet')", 1000);
+      }
+      if (!(await waitFor("g.room.entities.some((e) => e.type === 'lensCrab' && e.mode === 'dazed')", 1000))) lhProblems.push('two shots did not daze the Lens Crab');
+      await sleep(150);
+      await shot('w18-boss-dazed');
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        const c = g.room.entities.find((e) => e.type === 'lensCrab');
+        Object.assign(c, { rounds: 1, life: 1 });
+        Object.assign(g.player, VL.tileCenter(VL.tileOf(c.cx, c.cy).tx, VL.tileOf(c.cx, c.cy + 30).ty), { facing: 'up', invuln: 5 });
+      })()`);
+      await tapKey('Space');
+      if (!(await waitFor("VL.bossBeaten(g, 'lighthouse')", 4000))) lhProblems.push('the Lens Crab was not beaten by the sword while dazed');
+      await sleep(400);
+      await shot('w18-boss-beaten');
+      const reward = await see("[g.room.entities.some((e) => e.type === 'heartContainer' && e.id === 'heartD3'), g.room.entities.some((e) => e.type === 'warp'), g.inventory.ore, VL.spotFound(g, 'pageLighthouse')]");
+      if (reward.join() !== 'true,true,1,true') lhProblems.push(`the Lens Crab's heart, warp, ore and page = ${reward}`);
+
+      lhProblems.push(...errors);
+      if (lhProblems.length) failures += 1;
+      console.log(`${lhProblems.length ? 'FAIL' : 'ok  '} lighthouse: the dark door, 9 rooms, a dark floor lit by its lamps, the slingshot (chest, target), the beam solved, the Lens Crab dazed and beaten, ${path.join(outDir, 'w18-*.png')}`);
+      for (const problem of lhProblems) console.log(`     ${problem}`);
+    }
+
     // W17, the raft and the water with real keys: Nell's raft yard after the
     // shockwave (her talk, the offer, the question, the raft's popup), pushing
     // off from the lake shore, sailing across a screen edge and landing on the
@@ -1924,6 +2065,226 @@ async function main() {
       if (raftProblems.length) failures += 1;
       console.log(`${raftProblems.length ? 'FAIL' : 'ok  '} raft and water: Nell's raft, sailing over an edge to the island and its ore, the wreck, below deck, the bilge rope, the page, ${path.join(outDir, 'w17-*.png')}`);
       for (const problem of raftProblems) console.log(`     ${problem}`);
+    }
+
+    // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
+    // app of their own and drawn to an offscreen canvas every 1/60 s. In 16x16
+    // cells, a flip is a change in mean relative luminance against the last
+    // extreme, the darker side under 0.8. Two checks, each over any one
+    // second: a broad one (a change of 0.05, half WCAG's, so dark rooms' dim
+    // floors count too; fails when over a quarter of the canvas flips more
+    // than 3 times) and WCAG's own numbers (a change of 0.1, more than 3 flash
+    // pairs, so over 6 flips; fails past 4% of the canvas, about 25% of a 10
+    // degree field at this game's scale). A control run with the steady layers
+    // switched off must fail both, so each is known to see a strobe.
+    {
+      errors.length = 0;
+      const flashProblems = [];
+      const scan = JSON.parse(await evaluate(`(() => {
+        const { width, height, step } = VL.TUNING;
+        const cell = 16;
+        const checks = [
+          { id: 'broad', flipBy: 0.05, over: 3, bound: 0.25 },
+          { id: 'wcag', flipBy: 0.1, over: 6, bound: 0.04 },
+        ];
+        const cols = width / cell;
+        const rows = height / cell;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.imageSmoothingEnabled = false;
+        const linear = [];
+        for (let i = 0; i < 256; i += 1) {
+          const c = i / 255;
+          linear.push(c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+        }
+        const luminance = () => {
+          const { data } = ctx.getImageData(0, 0, width, height);
+          const sums = new Float64Array(cols * rows);
+          for (let y = 0; y < height; y += 1) {
+            for (let x = 0; x < width; x += 1) {
+              const i = (y * width + x) * 4;
+              sums[Math.floor(y / cell) * cols + Math.floor(x / cell)] += 0.2126 * linear[data[i]] + 0.7152 * linear[data[i + 1]] + 0.0722 * linear[data[i + 2]];
+            }
+          }
+          return Array.from(sums, (s) => s / (cell * cell));
+        };
+        // reached(app, game) says the scene really showed what it samples.
+        const run = (name, seconds, setup, tick, reached = () => true) => {
+          const app = VL.createApp();
+          app.game = VL.newGame({ name: 'Robin' });
+          const g = app.game;
+          for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
+          app.setScene('play');
+          setup(app, g);
+          const cells = checks.map(() => []);
+          const worst = checks.map(() => ({ area: 0, at: 0, flips: 0 }));
+          let shown = false;
+          for (let s = 0; s < seconds; s += step) {
+            const actions = tick?.(app, app.game, s) || VL.noActions();
+            app.update(actions, step);
+            shown = shown || Boolean(reached(app, app.game));
+            VL.render(ctx, app, s);
+            const now = luminance();
+            checks.forEach(({ flipBy, over }, k) => {
+              // Each cell follows its brightest (rising) or darkest (falling)
+              // value since its last flip; a big enough turn the other way flips it.
+              now.forEach((l, i) => {
+                const c = cells[k][i] || (cells[k][i] = { dir: 0, hi: l, lo: l, flips: [] });
+                const flip = (dir) => {
+                  c.flips.push(s);
+                  Object.assign(c, { dir, hi: l, lo: l });
+                };
+                if (c.dir >= 0 && c.hi - l >= flipBy && l < 0.8) flip(-1);
+                else if (c.dir <= 0 && l - c.lo >= flipBy && c.lo < 0.8) flip(1);
+                else {
+                  c.hi = Math.max(c.hi, l);
+                  c.lo = Math.min(c.lo, l);
+                }
+              });
+              let flashing = 0;
+              let most = 0;
+              for (const c of cells[k]) {
+                const recent = c.flips.filter((f) => f > s - 1).length;
+                most = Math.max(most, recent);
+                if (recent > over) flashing += 1;
+              }
+              const area = flashing / (cols * rows);
+              const w = worst[k];
+              if (area > w.area || (area === w.area && most > w.flips)) worst[k] = { area, at: Math.round(s * 100) / 100, flips: most };
+            });
+          }
+          return { name, shown, checks: checks.map((check, k) => ({ ...check, ...worst[k] })) };
+        };
+        const lh = (screen, tx, ty, facing = 'up') => ({ area: 'lighthouse', screen, tx, ty, facing });
+        const arm = (g) => {
+          g.items.glowstone = true;
+          g.items.woodSword = true;
+          g.items.slingshot = true;
+          g.hands = { mainHand: 'woodSword', offHand: 'slingshot' };
+          g.inventory.brokenShells = 15;
+        };
+        // Hurt again the moment he can be: as flashing as a fight ever gets.
+        const hurtOften = (app, g) => {
+          g.hp = Math.max(g.hp, 3);
+          if (app.sceneId === 'play' && !(g.player.invuln > 0)) VL.hurtHero(g, { damage: 0, size: 'big', from: { x: g.player.x + 8, y: g.player.y }, cause: 'bat' });
+        };
+        const hurtInDark = (app, g) => g.player.flash > 0 && VL.roomIsDark(g);
+        const darkHurt = (app, g) => {
+          arm(g);
+          VL.place(g, lh('-1,0', 13, 5));
+          g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        };
+        const chickenSpot = (() => {
+          for (const [area, def] of Object.entries(VL.AREAS)) {
+            for (const [screen, data] of Object.entries(def.screens)) {
+              const hen = data.entities?.find((e) => e.type === 'chicken' && !e.lost);
+              if (hen) return { area, screen, hen };
+            }
+          }
+          return null;
+        })();
+        const results = [];
+        const steady = VL.HERO_LAYERS.filter((layer) => layer.steady);
+        for (const layer of steady) layer.steady = false;
+        try {
+          results.push({ control: true, ...run('control: the dark cellar, hurt, steady layers off', 3, darkHurt, hurtOften, hurtInDark) });
+        } finally {
+          for (const layer of steady) layer.steady = true;
+        }
+        results.push(run('the dark cellar, hurt over and over', 4, darkHurt, hurtOften, hurtInDark));
+        results.push(run('the dark cellar with its bats', 4, (app, g) => {
+          arm(g);
+          VL.place(g, lh('-1,0', 13, 5));
+        }, (app, g) => { g.hp = Math.max(g.hp, 3); }, (app, g) => VL.roomIsDark(g) && g.room.entities.some((e) => VL.isEnemy(e))));
+        results.push(run('the cistern beam, hurt over and over', 4, (app, g) => {
+          arm(g);
+          VL.place(g, lh('1,0', 9, 2, 'right'));
+          g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        }, hurtOften, (app, g) => g.player.flash > 0 && g.room.entities.some((e) => e.type === 'beamSource')));
+        results.push(run('leaving the unlit cellar (the slide)', 2, (app, g) => {
+          arm(g);
+          VL.place(g, lh('-1,0', 15, 5, 'right'));
+          g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        }, () => VL.actions({ held: ['right'] }), (app, g) => g.transition));
+        results.push(run('the Lens Crab shot and struck, round after round', 6, (app, g) => {
+          arm(g);
+          g.dungeons.lighthouse.doors.d3BossDoor = true;
+          VL.place(g, lh('0,-3', 7, 7));
+          g.popups.queue.length = 0;
+        }, (app, g) => {
+          g.player.invuln = 99;
+          const c = g.room.entities.find((e) => e.type === 'lensCrab');
+          if (!c || c.hp <= 0) return null;
+          c.arriving = 0;
+          if (c.mode === 'scuttle' || c.mode === 'glint') {
+            VL.ENEMIES.lensCrab.onShot(g, c, { dy: -1, gx: c.cx - 1 });
+            VL.ENEMIES.lensCrab.onShot(g, c, { dy: -1, gx: c.cx - 1 });
+          } else if (c.mode === 'dazed' && !(c.hurt > 0)) {
+            VL.hitEnemy(g, c, 1, { x: c.cx, y: c.cy + 20 }, 'woodSword');
+          }
+          return null;
+        }, (app, g) => g.room.entities.some((e) => e.type === 'lensCrab' && e.rounds < 3)));
+        results.push(run('the shockwave: rumble, white flash, story, waking', 12, (app) => {
+          app.setScene('shockwave', { from: 'rumble' });
+        }, (app, g, s) => VL.actions({ pressed: s > 4 && Math.round(s * 60) % 30 === 0 ? ['interact'] : [] }), (app) => app.sceneId === 'play'));
+        if (chickenSpot) {
+          results.push(run('the chicken swarm', 7, (app, g) => {
+            g.items.woodSword = true;
+            g.hands = { mainHand: 'woodSword', offHand: null };
+            VL.place(g, { area: chickenSpot.area, screen: chickenSpot.screen, tx: chickenSpot.hen.x - 1, ty: chickenSpot.hen.y, facing: 'right' });
+            g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+          }, (app, g, s) => {
+            const frame = Math.round(s * 60);
+            const swarming = g.room.entities.some((e) => e.type === 'chickenSwarm');
+            if (swarming || frame % 30 !== 0) return null;
+            const hen = g.room.entities.find((e) => e.type === 'chicken' && e.spot === chickenSpot.hen.spot);
+            if (!hen) return null;
+            g.player.facing = 'right';
+            Object.assign(hen, { px: g.player.x + 12, py: g.player.y, mode: 'idle', idle: 99 });
+            return VL.actions({ pressed: ['mainHand'] });
+          }, (app, g) => g.room.entities.some((e) => e.type === 'chickenSwarm')));
+        } else {
+          results.push({ name: 'the chicken swarm', missing: true });
+        }
+        results.push(run('popups one after another, each closed after a beat', 6, (app, g) => {
+          g.popups.queue.length = 0;
+        }, (app, g, s) => {
+          const frame = Math.round(s * 60);
+          if (app.sceneId === 'play' && frame % 40 === 0) {
+            const next = ['woodSword', 'woodShield', 'slingshot', 'woodShovel'].find((id) => !g.items[id]);
+            if (next) VL.giveItem(g, next);
+          }
+          return VL.actions({ pressed: app.sceneId === 'popup' && frame % 40 === 30 ? ['interact'] : [] });
+        }, (app, g) => g.items.woodShovel && app.sceneId === 'popup'));
+        results.push(run('fainting in the dark cellar', 5, (app, g) => {
+          darkHurt(app, g);
+          g.hp = 1;
+        }, (app, g, s) => {
+          if (app.sceneId === 'play' && g.hp > 0 && !(g.player.invuln > 0) && s < 0.5) VL.hurtHero(g, { damage: 1, size: 'big', from: { x: g.player.x + 8, y: g.player.y }, cause: 'bat' });
+          return VL.actions({ pressed: s > 3 && Math.round(s * 60) % 30 === 0 ? ['interact'] : [] });
+        }, (app) => app.sceneId === 'fainted'));
+        return JSON.stringify(results);
+      })()`));
+      for (const r of scan) {
+        if (r.missing || !r.shown) {
+          flashProblems.push(`${r.name}: the scene never showed what it samples`);
+          continue;
+        }
+        const summary = r.checks.map((c) => `${c.id} (${c.flipBy}, over ${c.over}) ${Math.round(c.area * 100)}%, ${c.flips} flips/s in the busiest cell`);
+        for (const c of r.checks) {
+          const pct = Math.round(c.area * 100);
+          const label = `${c.id} check (a change of ${c.flipBy}, over ${c.over} flips a second, past ${c.bound * 100}% of the canvas)`;
+          if (r.control && !(c.area > c.bound)) flashProblems.push(`${r.name}: the ${label} did not see the strobe (${pct}%, ${c.flips} flips/s at most)`);
+          else if (!r.control && c.area > c.bound) flashProblems.push(`${r.name}: fails the ${label}: ${pct}% at ${c.at} s, ${c.flips} flips in a cell`);
+        }
+        console.log(`     ${r.control ? 'control ' : ''}${r.name}: ${summary.join('; ')}`);
+      }
+      flashProblems.push(...errors);
+      if (flashProblems.length) failures += 1;
+      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 4% more than 3 flash pairs (WCAG 2.3.1), in the dark, hurt, beam, boss, shockwave, swarm, popup and faint scenes`);
+      for (const problem of flashProblems) console.log(`     ${problem}`);
     }
 
     await cdp.send('Browser.close').catch(() => {});

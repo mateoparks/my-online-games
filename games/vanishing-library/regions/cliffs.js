@@ -215,8 +215,8 @@
         'WWWWWWWWWWWWWWWC',
         'WWWWWWWWWWWWWWWC',
       ],
+      // No gull: the Lighthouse doorstep is where Continue lands after its boss (W18).
       entities: [
-        { type: 'gull', x: 3, y: 6 },
         { type: 'decor', art: 'lighthouse', x: 6, y: 2 },
         spot('lighthouseDoor', 7, 4, 'door', 'W18', 'lighthouseEntered'),
         spot('bookLighthouse', 2, 3, 'trunk', 'W11'),

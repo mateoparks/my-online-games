@@ -61,13 +61,14 @@ test('a later item claims a planned lock by defining it with a reached predicate
 
 test('a claim that changes the planned rule must say why (replan), so a loosened gate shows in the diff', () => {
   const { VL } = loadGame();
-  const planned = { type: 'place', needs: ['cliffs', 'glowstone'], doc: '§ The path through the game, 6' };
-  assert.throws(() => VL.defineLock('lighthouseEntered', { ...planned, needs: ['cliffs'], reached: () => true }), /lighthouseEntered is claimed with a different rule than planned \(needs\); say why with replan/);
-  assert.throws(() => VL.defineLock('lighthouseEntered', { ...planned, optional: true, gives: ['view'], reached: () => true }), /than planned \(gives, optional\)/);
-  assert.equal(VL.LOCKS.lighthouseEntered.reached, undefined, 'a refused claim leaves the plan in place');
+  // A lock no item has claimed yet (W18 claimed the Lighthouse this test used to try).
+  const planned = { type: 'place', needs: ['cliffs', 'climbersAlmanac', 'chickenFlightLong'], doc: '§ The path through the game, 7' };
+  assert.throws(() => VL.defineLock('highlands', { ...planned, needs: ['cliffs', 'climbersAlmanac'], reached: () => true }), /highlands is claimed with a different rule than planned \(needs\); say why with replan/);
+  assert.throws(() => VL.defineLock('highlands', { ...planned, optional: true, gives: ['view'], reached: () => true }), /than planned \(gives, optional\)/);
+  assert.equal(VL.LOCKS.highlands.reached, undefined, 'a refused claim leaves the plan in place');
   // Order inside needs (and inside an any-of) does not count as a change.
-  const same = VL.defineLock('lighthouseEntered', { ...planned, needs: ['glowstone', 'cliffs'], reached: () => true });
-  assert.equal(VL.LOCKS.lighthouseEntered, same);
+  const same = VL.defineLock('highlands', { ...planned, needs: ['chickenFlightLong', 'cliffs', 'climbersAlmanac'], reached: () => true });
+  assert.equal(VL.LOCKS.highlands, same);
   const d4 = VL.LOCKS.d4Boss;
   VL.defineLock('d4Boss', { ...d4, needs: ['dragonsLairEntered', 'mirrorShield', ['metalSword', 'woodSword']], by: undefined, reached: () => true });
   const loosened = VL.defineLock('dragonsLairEntered', { type: 'place', needs: ['town'], doc: '§ The path through the game, 8', replan: 'the lair opens off the square; the highlands are scenery', reached: () => true });
@@ -137,7 +138,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 112);
+  assert.equal(Object.keys(VL.LOCKS).length, 119);
 });
 
 test('implemented place locks name screens that exist', () => {
@@ -459,7 +460,8 @@ test('broken: access opened by gear an event takes does not stay open', () => {
   const real = problemsOf(VL, table);
   for (const key of ['woodSword', 'metalSword', 'woodShield']) assert.ok(real.includes(`after shockwave, ${key} cannot be regained`), real.join('\n'));
   assert.ok(real.includes('blacksmith is required but unreachable after shockwave'));
-  assert.ok(real.includes('d3Boss is unreachable: needs metalSword|woodSword after shockwave'));
+  // The Lighthouse's boss door wants a sword (a swordless kid would be shut in with the crab).
+  assert.ok(real.includes('d3BossDoor is unreachable: needs metalSword|woodSword after shockwave'), real.join('\n'));
   assert.ok(!real.includes('eastRoad is required but unreachable after shockwave'), 'the road was forced before the shockwave');
 });
 

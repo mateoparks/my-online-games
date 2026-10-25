@@ -23,7 +23,6 @@ function squatters(VL) {
 }
 
 const LEDGER = {
-  W18: ['lighthouseDoor'],
   W19: ['lairDoor'],
 };
 
