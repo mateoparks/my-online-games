@@ -50,10 +50,18 @@
 
   // A new item goes into an empty hand: the main hand first, a shield the off
   // hand. A two-handed item (the shovel) fills both, so only when both are empty.
+  // An item with `takesHand` (the Mirror Shield, needed for its boss) goes into
+  // that hand the first time even when it is full; the old item stays owned.
   VL.giveItem = function giveItem(state, id) {
     const item = VL.ITEMS[id];
     if (!item) throw new Error(`no item ${id}`);
+    const isNew = !state.items[id];
     state.items[id] = true;
+    if (isNew && item.takesHand && VL.heldItem(state, item.takesHand) !== id) {
+      const other = item.takesHand === 'mainHand' ? 'offHand' : 'mainHand';
+      if (twoHanded(state.hands[item.takesHand]) || state.hands[other] === id) state.hands[other] = null;
+      state.hands[item.takesHand] = id;
+    }
     VL.tidyHands(state);
     const held = VL.HANDS.some((hand) => state.hands[hand] === id);
     if (item.twoHanded) {
