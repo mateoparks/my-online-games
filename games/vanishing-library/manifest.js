@@ -51,6 +51,7 @@ VL.FILES = {
     'systems/shockwave.js',
     'systems/darkness.js',
     'systems/slingshot.js',
+    'systems/raft.js',
   ],
 
   entities: [
@@ -114,6 +115,7 @@ VL.FILES = {
     'dungeons/scriptorium.js',
     'dungeons/hollow-oak.js',
     'dungeons/lighthouse.js',
+    'dungeons/shipwreck.js',
   ],
 
   scenes: [

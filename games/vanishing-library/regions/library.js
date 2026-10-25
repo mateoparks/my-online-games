@@ -108,7 +108,7 @@
     grapplingRope: [{ say: 'The Hollow Oak is full of gaps and pits. Look for something in there that can pull you across.' }],
     d2Boss: [{ say: 'Something with a hard shell guards the Hollow Oak. Hook its plates, then strike!' }],
     shockwave: [{ say: 'You beat the beast in the Hollow Oak? Well done, {name}! Funny... the shelves have been rattling all day.' }],
-    raft: [{ say: 'You\'ll want to get out on the water. Rope and wood make a fine raft, or so I\'ve read.' }],
+    raft: [{ say: 'You\'ll want to get out on the water. Nell in the harbour knows boats: take her your rope and some wood, and she\'ll lash you a raft.' }],
     lakeIsland: [{ say: 'A raft needs an oar. Buy one at the shop or make your own, and the island in the lake isn\'t far at all.' }],
     shipwreck: [{ say: 'There\'s an old wreck off the beach, past the tide pools. Who knows what washed up inside it?' }],
     lighthouseEntered: [{ say: 'That glowing stone you carry... the old Lighthouse on the cliffs is pitch dark inside. Perhaps it\'s time for a visit.' }],
