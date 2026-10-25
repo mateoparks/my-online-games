@@ -85,3 +85,36 @@ test('a titled book\'s last page and the popup after it never end on the same wo
   }
   assert.deepEqual(problems, []);
 });
+
+// ---------- the bindery ----------
+
+// Every fillRect a draw makes, as [x, y, w, h].
+function rectsDrawn(draw) {
+  const rects = [];
+  const ctx = new Proxy({}, {
+    get: (target, property) => (property === 'fillRect' ? (...box) => rects.push(box) : (property in target ? target[property] : () => ({ addColorStop() {} }))),
+    set: (target, property, value) => { target[property] = value; return true; },
+  });
+  draw(ctx);
+  return rects;
+}
+
+test('the bindery\'s shelves are nearly bare: a few loose pages and tools, hardly a book', () => {
+  const { VL } = loadGame();
+  const decor = VL.getScreen('bindery', '0,0').entities.filter((e) => e.type === 'decor');
+  const shelves = decor.filter((e) => /shelf/i.test(e.art));
+  assert.equal(shelves.length, 2, 'two wall shelves behind the counter');
+  // A standing book on a shelf is a 2×5 spine; the old bookcases drew about 90.
+  const spines = shelves.flatMap((e) => rectsDrawn((ctx) => VL.DECOR[e.art](ctx, e.x * 16, e.y * 16, 0, e))).filter(([, , w, h]) => w === 2 && h === 5);
+  assert.ok(spines.length <= 3, `${spines.length} books on the bindery shelves`);
+  assert.ok(!decor.some((e) => e.art === 'bookcase'), 'no full bookcase left in the bindery');
+});
+
+test('Miss Quill\'s first words: business is down, since nobody wants a book that might vanish', () => {
+  const { VL } = loadGame();
+  const state = VL.newGame();
+  const first = [].concat(VL.pickDialogue(state, 'binder').say).join(' ');
+  assert.match(first, /business/i);
+  assert.match(first, /vanish|disappear/i);
+  assert.match(first, /five/i, 'she still asks for five loose pages');
+});

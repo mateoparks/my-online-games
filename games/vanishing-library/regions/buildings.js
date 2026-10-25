@@ -187,21 +187,44 @@
     rect(ctx, 'metal', x + 2, y + 3, 12, 1);
   });
 
-  // Floor-to-ceiling bookcases: the binder still has books, for now.
-  VL.defineDecor('bookcase', (ctx, x, y, t, e) => {
+  // The binder's wall shelves, nearly bare: nobody orders a book that might
+  // just vanish (design: People). Dusty boards with a few loose pages, her
+  // tools and one lonely book. `side` 0 or 1 picks which odds and ends.
+  VL.defineDecor('binderShelf', (ctx, x, y, t, e) => {
     const w = (e.w || 6) * 16;
     shade(ctx, x, y - 4, w, 18);
     rect(ctx, 'outline', x, y - 6, w, 22);
     rect(ctx, 'woodDark', x + 1, y - 5, w - 2, 20);
-    const spines = ['heart', 'jarBlue', 'jarGreen', 'gold', 'npcPlum', 'roof', 'paperWhite'];
     for (let board = 0; board < 3; board += 1) {
       const by = y - 4 + board * 7;
-      for (let bx = x + 2; bx < x + w - 3; bx += 2) {
-        if (VL.ART.hash(bx, by, 3) < 0.12) continue;
-        const pick = Math.floor(VL.ART.hash(bx, by, e.x + 1) * spines.length);
-        rect(ctx, spines[pick], bx, by + (VL.ART.hash(bx, by, 7) > 0.7 ? 1 : 0), 2, 5);
-      }
       rect(ctx, 'wood', x + 1, by + 5, w - 2, 2);
+      for (let dx = 6; dx < w - 6; dx += 13) if (VL.ART.hash(x + dx, by, 5) < 0.5) rect(ctx, 'paperShade', x + dx, by + 4, 3, 1);
+    }
+    const top = y - 4;
+    const mid = y + 3;
+    const low = y + 10;
+    if (!e.side) {
+      // A stack of loose pages, a pot of glue and a ball of red thread.
+      rect(ctx, 'paperShade', x + 8, top + 2, 10, 3);
+      rect(ctx, 'paperWhite', x + 8, top + 2, 10, 1);
+      rect(ctx, 'paperWhite', x + 9, top + 4, 9, 1);
+      rect(ctx, 'jarBlue', x + 60, mid + 1, 5, 4);
+      rect(ctx, 'paperWhite', x + 61, mid, 3, 1);
+      rect(ctx, 'heart', x + 30, low + 2, 4, 3);
+      rect(ctx, 'heartLight', x + 30, low + 2, 2, 1);
+      // The one book left, standing alone.
+      rect(ctx, 'npcPlum', x + 80, low, 2, 5);
+    } else {
+      // Scissors, an awl and a single page curling at the edge.
+      rect(ctx, 'metalDark', x + 14, mid + 3, 6, 1);
+      rect(ctx, 'metal', x + 12, mid + 2, 2, 2);
+      rect(ctx, 'metal', x + 12, mid + 4, 2, 1);
+      rect(ctx, 'woodLight', x + 50, top + 4, 6, 1);
+      rect(ctx, 'metal', x + 56, top + 4, 3, 1);
+      rect(ctx, 'paperWhite', x + 72, low + 4, 7, 1);
+      rect(ctx, 'paperShade', x + 78, low + 3, 1, 1);
+      rect(ctx, 'gold', x + 34, low + 1, 3, 4);
+      rect(ctx, 'woodDark', x + 34, low + 1, 3, 1);
     }
   });
 
@@ -295,7 +318,11 @@
   VL.defineDialogue('binder', [
     {
       when: { notFlag: 'met:quill' },
-      say: ['Oh! A visitor. I\'m Miss Quill. I bind books.', 'Loose pages blow away and get lost. Bring me five and I\'ll bind them into a proper book.'],
+      say: [
+        'Oh! A customer? I\'m Miss Quill. I bind books... or I used to.',
+        'Business has been slow, {name}. Nobody wants a new book made if it might just vanish from the shelf.',
+        'Still, loose pages blow away and get lost. Bring me five and I\'ll bind them into a proper book.',
+      ],
       set: 'met:quill', shop: 'bookbinder',
     },
     { when: { flag: 'pagesBound' }, say: 'A fine book, that. Look after it, {name}.', shop: 'bookbinder' },
@@ -498,7 +525,7 @@
         '#______m_______#',
         '################',
       ],
-      entities: [decor('bookcase', 1, 1, { w: 6 }), decor('bookcase', 9, 1, { w: 6 }), decor('press', 2, 5), decor('threadTable', 11, 5)],
+      entities: [decor('binderShelf', 1, 1, { w: 6 }), decor('binderShelf', 9, 1, { w: 6, side: 1 }), decor('press', 2, 5), decor('threadTable', 11, 5)],
     },
   };
 
