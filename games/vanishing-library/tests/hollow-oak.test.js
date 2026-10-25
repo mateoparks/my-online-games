@@ -72,6 +72,26 @@ test('the Hollow Oak door: in from the clearing to the entrance hall, and the ma
   assert.ok(!VL.unfilledSpots().includes('hollowOakDoor'));
 });
 
+test('the doorstep is safe: Continue or a faint after the win lands there, out of the spitters\' lines, and nobody hurts him while he stands still', () => {
+  const t = setup({ enemies: true });
+  const { VL } = t;
+  const step = VL.DUNGEONS.hollowOak.entrance;
+  const spitters = VL.getScreen('overworld', step.screen).entities.filter((e) => e.type === 'spitter');
+  assert.ok(spitters.length >= 1);
+  for (const e of spitters) assert.ok(Math.abs(e.x - step.tx) >= 2 && Math.abs(e.y - step.ty) >= 2, `the spitter at (${e.x},${e.y}) is out of line with the doorstep`);
+  t.game.savePoint = { ...step };
+  t.place(oak('0,0', 7, 7));
+  VL.faint(t.game);
+  t.hold([], 0.7);
+  t.press('interact');
+  assert.deepEqual([t.game.player.area, t.game.player.screen, VL.heroTile(t.game).tx, VL.heroTile(t.game).ty], [step.area, step.screen, step.tx, step.ty], 'woke on the doorstep');
+  const plants = t.game.room.entities.filter((e) => e.type === 'spitter');
+  assert.ok(plants.length === spitters.length && plants.every((e) => !VL.enemyHarmful(e)), 'W6\'s arrival grace');
+  const hp = t.game.hp;
+  t.hold([], 15);
+  assert.equal(t.game.hp, hp, 'fifteen seconds standing on the doorstep, not a scratch');
+});
+
 // ---------- layout ----------
 
 test('every lint is clean: locks, doors, blocks', () => {
