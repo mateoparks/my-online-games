@@ -1789,6 +1789,143 @@ async function main() {
     }
 
 
+    // W17, the raft and the water with real keys: Nell's raft yard after the
+    // shockwave (her talk, the offer, the question, the raft's popup), pushing
+    // off from the lake shore, sailing across a screen edge and landing on the
+    // island for its ore, then off the far beach to the wreck, aboard by its
+    // stove-in side, down the hatch, every room below, over the bilge on the
+    // rope and the page in the cabin. Saved as w17-*.png.
+    {
+      errors.length = 0;
+      const raftProblems = [];
+      const codes = { KeyS: [83, 's'], KeyD: [68, 'd'], Escape: [27, 'Escape'] };
+      const hit = async (code) => {
+        const [vk, keyName] = codes[code];
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+        if (!(await settle())) raftProblems.push(`animation frames stopped after ${code}`);
+      };
+      const shoot = async (name) => {
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      };
+      const read = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await read(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      // S through popups and talk pages, each once it takes a press.
+      const pressThrough = async (scene) => {
+        for (let i = 0; i < 12 && (await read('VL.app.sceneId')) === scene; i += 1) {
+          await sleep(450);
+          await hit('KeyS');
+        }
+      };
+      // After the shockwave with the rope and four wood; no enemies about.
+      const stage = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        g.popups.seen.controls = true;
+        Object.assign(g.flags, { shockwave: true, shockwaveWoke: true, 'gave:helperWood': true });
+        for (const id of ['woodSword', 'grapplingRope', 'glowstone', 'liftingGloves']) g.items[id] = true;
+        g.hands = { mainHand: 'woodSword', offHand: 'grapplingRope' };
+        g.inventory.wood = 4;
+        ${setup}
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+
+      // Nell's raft yard.
+      await stage({ area: 'overworld', screen: '2,1', tx: 9, ty: 5, facing: 'down' });
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        const nell = g.room.entities.find((e) => e.type === 'npc' && e.id === 'nell');
+        Object.assign(g.player, VL.tileCenter(nell.x, nell.y + 1), { facing: 'up' });
+      })()`);
+      await settle();
+      await hit('KeyS');
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'"))) raftProblems.push('Nell did not talk');
+      await sleep(1200);
+      await shoot('w17-nell');
+      await pressThrough('dialogue');
+      if (!(await waitFor("VL.app.sceneId === 'shop' && VL.app.shopView.shop.id === 'raftyard'"))) raftProblems.push(`Nell's raft yard did not open: ${await read('VL.app.sceneId')}`);
+      await sleep(300);
+      await shoot('w17-raft-shop');
+      await hit('KeyS');
+      await waitFor("VL.app.shopView.mode === 'ask'");
+      await shoot('w17-raft-ask');
+      await hit('KeyS');
+      if (!(await waitFor("VL.hasItem(g, 'raft')"))) raftProblems.push('the raft was not built');
+      await hit('Escape');
+      if (!(await waitFor("VL.app.sceneId === 'popup'"))) raftProblems.push(`no raft popup: ${await read('VL.app.sceneId')}`);
+      await waitFor('VL.app.popupView && VL.app.popupView.t >= 0.35');
+      await shoot('w17-raft-popup');
+      const built = await read("[VL.hasItem(g, 'raft'), g.inventory.wood, VL.currentPopup(g)?.id]");
+      if (built.join() !== 'true,0,raft') raftProblems.push(`raft, wood, popup = ${built}`);
+
+      // Pushing off from the lake shore, over the screen edge, onto the island.
+      await stage({ area: 'overworld', screen: '2,-3', tx: 8, ty: 5, facing: 'right' }, 'g.items.raft = true; g.items.oar = true;');
+      await settle();
+      await holdArrowUntil('Right', 'g.player.afloat && VL.heroTile(g).tx >= 10');
+      await shoot('w17-launch');
+      await holdArrowUntil('Right', "g.player.screen === '3,-3' && VL.heroTile(g).tx >= 4", 6000);
+      await shoot('w17-sailing');
+      await holdArrowUntil('Right', '!g.player.afloat', 3000);
+      await shoot('w17-island');
+      const landed = await read('[g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty, g.player.afloat]');
+      if (landed.join() !== '3,-3,6,5,false') raftProblems.push(`landing on the island: screen, tx, ty, afloat = ${landed}`);
+      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(6, 4), { facing: 'right' }); })()");
+      await holdArrowUntil('Right', "VL.spotFound(g, 'oreLakeIsland')");
+      await waitFor("VL.app.sceneId === 'popup'");
+      await sleep(400);
+      await shoot('w17-island-ore');
+      if (!(await read("VL.spotFound(g, 'oreLakeIsland') && g.inventory.ore === 1"))) raftProblems.push('the island\'s ore was not taken');
+
+      // Off the far beach to the wreck, aboard, and below.
+      await stage({ area: 'overworld', screen: '5,1', tx: 2, ty: 9, facing: 'down' }, 'g.items.raft = true; g.items.oar = true;');
+      await settle();
+      await holdArrowUntil('Down', "g.player.screen === '5,2' && VL.heroTile(g).ty >= 6", 6000);
+      await shoot('w17-wreck');
+      await holdArrowUntil('Right', '!g.player.afloat');
+      await shoot('w17-wreck-aboard');
+      const aboard = await read("[g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty, VL.LOCKS.shipwreck.reached(g)]");
+      if (aboard.join() !== '5,2,4,6,true') raftProblems.push(`aboard the wreck: screen, tx, ty, reached = ${aboard}`);
+      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(8, 6), { facing: 'up' }); })()");
+      await holdArrowUntil('Up', "g.player.area === 'wreck'");
+      await sleep(300);
+      if ((await read('g.player.area')) !== 'wreck') raftProblems.push('the hatch did not lead below deck');
+      for (const [screen, ty] of [['0,0', 2], ['0,1', 2], ['1,0', 4]]) {
+        await evaluate(`VL.place(VL.app.game, { area: 'wreck', screen: '${screen}', tx: 7, ty: ${ty}, facing: 'down' }); VL.app.game.room.entities = VL.app.game.room.entities.filter((e) => !VL.isEnemy(e));`);
+        await settle();
+        await shoot(`w17-room-${screen.replace(',', '_')}`);
+      }
+      await evaluate("VL.place(VL.app.game, { area: 'wreck', screen: '0,1', tx: 11, ty: 3, facing: 'down' })");
+      await settle();
+      await hit('KeyD');
+      await sleep(250);
+      await shoot('w17-bilge-rope');
+      await waitFor('!g.player.rope', 3000);
+      const crossed = await read('[VL.heroTile(g).tx, VL.heroTile(g).ty]');
+      if (crossed.join() !== '11,7') raftProblems.push(`the rope over the bilge landed him at ${crossed}`);
+      await evaluate("(() => { const g = VL.app.game; VL.place(g, { area: 'wreck', screen: '1,0', tx: 10, ty: 3, facing: 'right' }); })()");
+      await holdArrowUntil('Right', "VL.spotFound(g, 'pageShipwreck')");
+      await waitFor("VL.app.sceneId === 'popup'");
+      await sleep(400);
+      await shoot('w17-page');
+      if (!(await read("VL.spotFound(g, 'pageShipwreck')"))) raftProblems.push('the cabin\'s page was not found');
+
+      raftProblems.push(...errors);
+      if (raftProblems.length) failures += 1;
+      console.log(`${raftProblems.length ? 'FAIL' : 'ok  '} raft and water: Nell's raft, sailing over an edge to the island and its ore, the wreck, below deck, the bilge rope, the page, ${path.join(outDir, 'w17-*.png')}`);
+      for (const problem of raftProblems) console.log(`     ${problem}`);
+    }
+
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();
   } finally {

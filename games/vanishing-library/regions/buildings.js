@@ -334,6 +334,9 @@
   const owns = (id) => (state) => VL.hasItem(state, id);
   const flagOnce = (flag) => (state) => VL.firstTimeFlag(state, flag);
   const forge = (id) => (state) => VL.giveItem(state, id);
+  const wear = (id) => (state) => VL.giveWornItem(state, id);
+  // The oar (W17): bought for shells or made from wood, like the shovel.
+  const oar = (cost, about) => ({ id: 'oar', name: 'Oar', icon: 'item-oar', cost, give: wear('oar'), soldOut: owns('oar'), about });
 
   VL.defineShop('store', {
     title: 'General Store',
@@ -346,6 +349,7 @@
         id: 'woodShovel', name: 'Wood Shovel', icon: 'item-shovel-wood', cost: prices.shopShovel, give: forge('woodShovel'),
         soldOut: owns('woodShovel'), hidden: owns('metalShovel'), about: 'Digs the beach for shells. The smith makes them from wood, too.',
       },
+      oar(prices.oarShells, 'Paddles a raft. The smith makes them from wood, too.'),
     ],
   });
 
@@ -379,7 +383,25 @@
   VL.defineShop('smithy', {
     title: 'Smithy',
     greeting: 'Wood or metal, {name}?',
-    offers: [...woodOffers, ...metalOffers(false), ...metalOffers(true)],
+    offers: [...woodOffers, ...metalOffers(false), ...metalOffers(true), oar(prices.oarWood, 'Carved from good wood. Paddles a raft.')],
+  });
+
+  // Nell lashes a raft on the harbour (W17) once the shockwave has calmed the
+  // currents (design: The path through the game, 5); her words are in
+  // regions/townsfolk.js.
+  VL.defineShop('raftyard', {
+    title: 'Nell\'s Rafts',
+    greeting: 'Logs and rope, {name}!',
+    offers: [
+      {
+        id: 'raft', name: 'Raft', icon: 'item-raft', cost: prices.raft, give: wear('raft'), soldOut: owns('raft'), verb: 'Build',
+        refuse(state) {
+          if (!VL.LOCKS.shockwave.reached?.(state)) return 'The currents are far too wild out there just now!';
+          return VL.hasItem(state, 'grapplingRope') ? null : 'I\'ll need a good strong rope to lash the logs.';
+        },
+        about: 'Logs lashed with your rope. Needs an oar.',
+      },
+    ],
   });
 
   VL.definePopup('pagesBound', { title: 'Pages bound!', text: 'Miss Quill sews your loose pages into a real book at last.' });

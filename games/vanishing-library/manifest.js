@@ -49,6 +49,7 @@ VL.FILES = {
     'systems/woods-map.js',
     'systems/grappling-rope.js',
     'systems/shockwave.js',
+    'systems/raft.js',
   ],
 
   entities: [
@@ -106,6 +107,7 @@ VL.FILES = {
   dungeons: [
     'dungeons/scriptorium.js',
     'dungeons/hollow-oak.js',
+    'dungeons/shipwreck.js',
   ],
 
   scenes: [

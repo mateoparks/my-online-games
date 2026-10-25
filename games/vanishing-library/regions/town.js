@@ -297,12 +297,13 @@
       ],
     },
     // The paper mill and its water wheel on the river, the bindery across it.
+    // The wheel turns over solid water (`y`), so no raft paddles through it.
     '3,-1': {
       tiles: [
         'TTTTPTTTTWWTTTTT',
-        'T...P....WW....T',
-        'T...PHHHHWWHHH.T',
-        'T...PHDHHWWHDH.T',
+        'T...P....yy....T',
+        'T...PHHHHyyHHH.T',
+        'T...PHDHHyyHDH.T',
         'T...P...wWWwP..T',
         '.PPPP...wWWwP..T',
         '.P..PPPPPbbPP..T',
