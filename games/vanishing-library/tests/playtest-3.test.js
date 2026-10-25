@@ -249,6 +249,52 @@ test('at least 30 books can be returned over the game: 12 new untitled books lie
   }
 });
 
+// The trunks are solid, and the overworld's reach test counts tiles only, so
+// check here that no new trunk cuts its screen in two or stands boxed in: the
+// open ground of its screen (tiles and the screen's other solid things) falls
+// into as many connected pieces with the trunk as without it.
+test('no new book trunk blocks a passage on its screen, and each can be walked up to', () => {
+  const { VL } = loadGame();
+  const { cols, rows } = VL.TUNING;
+  const pieces = (blocked) => {
+    const seen = new Set();
+    let count = 0;
+    for (let ty = 0; ty < rows; ty += 1) {
+      for (let tx = 0; tx < cols; tx += 1) {
+        if (blocked(tx, ty) || seen.has(`${tx},${ty}`)) continue;
+        count += 1;
+        const todo = [[tx, ty]];
+        seen.add(`${tx},${ty}`);
+        while (todo.length) {
+          const [x, y] = todo.pop();
+          for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+            if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || blocked(nx, ny) || seen.has(`${nx},${ny}`)) continue;
+            seen.add(`${nx},${ny}`);
+            todo.push([nx, ny]);
+          }
+        }
+      }
+    }
+    return count;
+  };
+  for (const id of Object.keys(LATE_BOOKS)) {
+    const spot = VL.SPOTS[id];
+    const screen = VL.getScreen(spot.area, spot.screen);
+    const trunk = screen.entities.find((e) => e.spot === id);
+    assert.ok(VL.ENTITIES.bookTrunk.solid || trunk.solid, 'the trunk is solid, so this check matters');
+    const others = screen.entities.filter((e) => e !== trunk && (e.solid || VL.ENTITIES[e.type]?.solid));
+    const ground = (tx, ty) => VL.tileInfo(spot.area, screen.tiles[ty][tx]).solid || others.some((e) => e.x === tx && e.y === ty);
+    assert.equal(ground(trunk.x, trunk.y), false, `${id} stands on open ground`);
+    const withTrunk = (tx, ty) => ground(tx, ty) || (tx === trunk.x && ty === trunk.y);
+    assert.equal(pieces(withTrunk), pieces(ground), `${id} at ${spot.screen} (${trunk.x},${trunk.y}) splits the open ground or stands alone`);
+    const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => {
+      const [x, y] = [trunk.x + dx, trunk.y + dy];
+      return x >= 0 && y >= 0 && x < cols && y < rows && !ground(x, y);
+    });
+    assert.ok(sides.length >= 1, `${id} has an open side to stand on`);
+  }
+});
+
 test('old saves: rewards given under 5/10/15 are never given twice, and none is lost', () => {
   const { VL } = loadGame();
   const ids = Object.keys(VL.BOOKS);
