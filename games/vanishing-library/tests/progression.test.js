@@ -459,7 +459,8 @@ test('broken: access opened by gear an event takes does not stay open', () => {
   const real = problemsOf(VL, table);
   for (const key of ['woodSword', 'metalSword', 'woodShield']) assert.ok(real.includes(`after shockwave, ${key} cannot be regained`), real.join('\n'));
   assert.ok(real.includes('blacksmith is required but unreachable after shockwave'));
-  assert.ok(real.includes('d3Boss is unreachable: needs metalSword|woodSword after shockwave'));
+  // The Lighthouse's boss door wants a sword (a swordless kid would be shut in with the crab).
+  assert.ok(real.includes('d3BossDoor is unreachable: needs metalSword|woodSword after shockwave'), real.join('\n'));
   assert.ok(!real.includes('eastRoad is required but unreachable after shockwave'), 'the road was forced before the shockwave');
 });
 

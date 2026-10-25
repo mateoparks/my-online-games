@@ -461,6 +461,30 @@ test('the beam passes the hero and pits but a closed shutter stops it', () => {
 
 // ---------- the Lens Crab ----------
 
+test('the boss door: with the boss key but no sword it stays shut and says a sword is needed; with one it opens', () => {
+  const t = setup({ where: null });
+  const { VL } = t;
+  t.arm();
+  t.place(lh('0,-2', 7, 1, 'up'));
+  t.hold(['up'], 0.6);
+  assert.equal(t.game.dungeonNote.text, 'The big lock needs the boss key.', 'no key: the key comes first');
+  t.d.bossKey = true;
+  t.game.dungeonNote = null;
+  t.hold([], 0.1);
+  t.hold(['up'], 0.6);
+  assert.ok(!t.d.doors.d3BossDoor, 'no sword: still shut');
+  assert.equal(t.game.player.screen, '0,-2');
+  assert.equal(t.game.dungeonNote.text, VL.LIGHTHOUSE_SWORD_WORDS);
+  VL.giveItem(t.game, 'woodSword');
+  t.game.popups.queue.length = 0;
+  t.hold([], 0.1);
+  t.hold(['up'], 0.6);
+  assert.ok(t.d.doors.d3BossDoor, 'a wood sword opens it');
+  assert.ok(VL.LOCKS.d3BossDoor.needs.some((need) => Array.isArray(need) && need.includes('woodSword') && need.includes('metalSword')), 'the solver knows: any sword');
+  VL.LOCKS.d3BossDoor.needs = VL.LOCKS.d3BossDoor.needs.filter((need) => !Array.isArray(need));
+  assert.ok(VL.dungeonProblems().some((p) => p.includes('d3BossDoor wants woodSword or metalSword')), 'the lint sees a door that wants what its lock does not need');
+});
+
 function bossRoom() {
   const t = setup({ where: null });
   const { VL } = t;
@@ -656,7 +680,7 @@ test('every word the Lighthouse says fits its box and its font', () => {
     assert.deepEqual(plain(VL.ART.missingGlyphs(`${box.title || ''} ${box.text}`)), [], box.text);
     assert.ok(!VL.ART.popupLayout(box).overflow, `fits: ${box.text}`);
   }
-  const notes = [VL.LENS_CRAB_SWORD_NOTE, VL.LENS_CRAB_BACK_NOTE, VL.OUT_OF_SHELLS.dungeon, VL.SHELL_HEAP_WORDS.full, VL.SHELL_HEAP_WORDS.scooped(VL.TUNING.shellHeapFill), 'The Lens Crab is beaten!'];
+  const notes = [VL.LIGHTHOUSE_SWORD_WORDS, VL.LENS_CRAB_SWORD_NOTE, VL.LENS_CRAB_BACK_NOTE, VL.OUT_OF_SHELLS.dungeon, VL.SHELL_HEAP_WORDS.full, VL.SHELL_HEAP_WORDS.scooped(VL.TUNING.shellHeapFill), 'The Lens Crab is beaten!'];
   for (const note of notes) {
     assert.deepEqual(plain(VL.ART.missingGlyphs(note, 'small')), [], note);
     assert.ok(VL.ART.measureText(note, 'small') <= VL.TUNING.width - 8, note);

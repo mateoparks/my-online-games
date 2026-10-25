@@ -1832,6 +1832,10 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   on the two sides of one edge, and one lock per door id (the game spends a
   key per id, the solver one per lock).
   `VL.openLockedDoor(state, door)` returns `'opened'`, `'open'` or `'locked'`.
+  A door with `wants: { items: [...], note }` also stays shut, saying `note`,
+  until the hero holds one of `items` (the Lighthouse's boss door wants a
+  sword, so a swordless kid is never shut in with the Lens Crab); the lint
+  checks its lock needs the same items.
 - **Push blocks:** `{ type: 'pushBlock', x, y, once = true }` slides a tile
   after the hero leans on it for `TUNING.blockPushSeconds`, once per visit
   (Zelda's rule; `once: false` for a free block), never onto a wall, another
