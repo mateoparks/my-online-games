@@ -97,7 +97,7 @@ test('an item splits a planned placeholder into its own locks without editing mi
   assert.throws(() => VL.splitLock('oreLakeIsland', { hiddenBooks: { type: 'item', needs: ['lakeIsland'], supplies: { ore: 1 }, doc: '§ Tools: two tiers', by: 'W17' } }), /lock hiddenBooks was split into its parts/);
   const report = VL.solveProgression();
   assert.deepEqual([...report.problems], []);
-  assert.ok(report.stages[0].reached.includes('swiftfootBoots'), 'the 15-book reward still adds up');
+  assert.ok(report.stages.some((stage) => stage.reached.includes('swiftfootBoots')), 'the 30-book reward still adds up');
 });
 
 test('defineLock insists on a design-doc citation, an owner for planned locks and a known type', () => {
@@ -136,7 +136,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 110);
+  assert.equal(Object.keys(VL.LOCKS).length, 122, 'W30 added twelve late books');
 });
 
 test('implemented place locks name screens that exist', () => {

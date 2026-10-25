@@ -167,12 +167,16 @@ test('the Herbalist\'s trunk keeps away from the Woods\' secret ore, so the Smit
   assert.match(VL.BOOKS.bookSmithsLedger.reading.join(' '), /ore hiding in the Woods/);
 });
 
-test('the solver stays green and every library reward is still reachable before the shockwave', () => {
+test('the solver stays green; the 10-book heart comes before the shockwave, the purse and the boots after it (W30)', () => {
   const { VL } = loadGame();
   const result = VL.solveProgression();
   assert.deepEqual([...result.problems], []);
   const beforeShockwave = result.stages[0].reached;
-  for (const id of ['heartLibrary', 'shellPurse', 'swiftfootBoots', 'bookPrimer', 'bookHerbalist', 'bookChickenAlmanac']) assert.ok(beforeShockwave.includes(id), id);
+  for (const id of ['heartLibrary', 'bookPrimer', 'bookHerbalist', 'bookChickenAlmanac']) assert.ok(beforeShockwave.includes(id), id);
+  for (const id of ['shellPurse', 'swiftfootBoots']) {
+    assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
+    assert.ok(result.stages.some((stage) => stage.reached.includes(id)), `${id} is reachable`);
+  }
   for (const id of ['bookSmithsLedger', 'bookTideTables', 'bookDragons']) assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
 });
 
@@ -267,20 +271,20 @@ test('every handover holds up: librarian rewards, the Scriptorium key, heart con
   };
   const cases = {
     shellPurse: (state) => {
-      state.library.returned = Array.from({ length: 10 }, (_, i) => `b${i}`);
+      state.library.returned = Array.from({ length: 20 }, (_, i) => `b${i}`);
       state.flags['reward:heartLibrary'] = true;
       VL.giveLibraryReward(state, 'shellPurse');
       return 'item-purse';
     },
     swiftfootBoots: (state) => {
-      state.library.returned = Array.from({ length: 15 }, (_, i) => `b${i}`);
+      state.library.returned = Array.from({ length: 30 }, (_, i) => `b${i}`);
       state.flags['reward:heartLibrary'] = true;
       state.flags['reward:shellPurse'] = true;
       VL.giveLibraryReward(state, 'swiftfootBoots');
       return 'item-swiftfoot';
     },
     heartLibrary: (state) => {
-      state.library.returned = Array.from({ length: 5 }, (_, i) => `b${i}`);
+      state.library.returned = Array.from({ length: 10 }, (_, i) => `b${i}`);
       VL.giveLibraryReward(state, 'heartLibrary');
       return 'pickup-heart-container';
     },
@@ -387,7 +391,8 @@ test('a reward at the end of a talk or a reading is held up before its popup, no
   const { VL, app, step } = heldApp();
   const g = app.game;
   g.flags['met:fenwick'] = true;
-  for (const id of ['bookRiverside', 'bookCliffRoad', 'bookWoods', 'bookEastRoad', 'hiddenBookSealed']) VL.markFound(g, id);
+  const nine = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic').slice(0, 9);
+  for (const id of [...nine, 'hiddenBookSealed']) VL.markFound(g, id);
   VL.place(g, { area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT, facing: 'up' });
   const seen = [];
   for (let i = 0; i < 60 * 30 && !(VL.rewardGiven(g, 'heartLibrary') && !g.holdUp && app.sceneId === 'play'); i += 1) {
@@ -401,12 +406,12 @@ test('a reward at the end of a talk or a reading is held up before its popup, no
   for (const shown of [key, heart]) assert.ok(shown.holding && shown.held >= VL.TUNING.holdUpSeconds, `${shown.popup} only after the hold-up: ${JSON.stringify(shown)}`);
 });
 
-test('every reward the librarian hands over is heard: the 5-book heart\'s fanfare, the 10-book purse\'s jingle, the sealed book\'s key', () => {
+test('every reward the librarian hands over is heard: the 10-book heart\'s fanfare, the 20-book purse\'s jingle, the sealed book\'s key', () => {
   const { VL, app, sounds, step } = heldApp();
   const g = app.game;
   g.flags['met:fenwick'] = true;
-  const generic = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic').slice(0, 9);
-  assert.equal(generic.length, 9);
+  const generic = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic').slice(0, 19);
+  assert.equal(generic.length, 19);
   for (const id of [...generic, 'hiddenBookSealed']) VL.markFound(g, id);
   VL.place(g, { area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT, facing: 'up' });
   const heard = {};

@@ -199,3 +199,81 @@ test('the framework refuses a hand-made boss gate and needs a boss door (or boss
   const gate = VL.getScreen('w30Gate', '0,0').entities.find((e) => e.bossGate);
   assert.deepEqual([gate.x, gate.y, gate.id], [7, 10, 'w30GateBossGate']);
 });
+
+// ---------- note 4: the library's rewards at 10, 20 and 30 books ----------
+
+const LATE_BOOKS = {
+  bookCliffLedge: 'climbersAlmanac', bookHighShelfA: 'highlands', bookHighShelfB: 'highlands', bookHighScree: 'highlands',
+  bookHighGapA: 'highlands', bookHighGapB: 'highlands', bookHighPathA: 'highlands', bookHighPathB: 'highlands',
+  bookLairA: 'highlands', bookLairB: 'highlands', bookLakeIsland: 'lakeIsland', bookWreckDeck: 'shipwreck',
+};
+
+test('rewards come at 10, 20 and 30 books returned, in the order heart, Big Shell Purse, Swiftfoot Boots, and the solver counts the same', () => {
+  const { VL } = loadGame();
+  assert.deepEqual(JSON.parse(JSON.stringify(VL.TUNING.libraryRewards)), { heartLibrary: 10, shellPurse: 20, swiftfootBoots: 30 });
+  assert.deepEqual(['heartLibrary', 'shellPurse', 'swiftfootBoots'].map((id) => VL.LOCKS[id].count.books), [10, 20, 30]);
+  const state = VL.createGame();
+  const ids = Object.keys(VL.BOOKS);
+  const owed = [];
+  for (let n = 1; n <= 30; n += 1) {
+    state.library.returned = ids.slice(0, n);
+    const reward = VL.pendingReward(state);
+    if (reward) {
+      owed.push(`${reward}@${n}`);
+      state.flags[`reward:${reward}`] = true;
+    }
+  }
+  assert.deepEqual(owed, ['heartLibrary@10', 'shellPurse@20', 'swiftfootBoots@30']);
+});
+
+test('the librarian names the new counts', () => {
+  const { VL } = loadGame();
+  const words = (id) => VL.REWARD_SPEECH[id].join(' ');
+  assert.match(words('heartLibrary'), /^Ten books/);
+  assert.match(words('shellPurse'), /^Twenty books/);
+  assert.match(words('swiftfootBoots'), /^Thirty books/);
+});
+
+test('at least 30 books can be returned over the game: 12 new untitled books lie in the late places (the highlands, the cliff ledge, the lake island, the shipwreck deck)', () => {
+  const { VL } = loadGame();
+  const supplied = Object.values(VL.LOCKS).reduce((sum, lock) => sum + (lock.supplies.books || 0), 0);
+  assert.ok(supplied >= 32, `${supplied} books in the table`);
+  assert.ok(Object.keys(VL.BOOKS).length >= 32);
+  for (const [id, place] of Object.entries(LATE_BOOKS)) {
+    const book = VL.BOOKS[id];
+    assert.equal(book?.kind, 'generic', id);
+    assert.deepEqual([...VL.ART.missingGlyphs(`${book.title} ${book.blurb}`, 'normal')], [], id);
+    assert.ok(VL.LOCKS[id].needs.flat().includes(place), `${id} needs ${place}`);
+    assert.ok(VL.SPOTS[id]?.filled, `${id} lies on the map`);
+    assert.equal(VL.getScreen(VL.SPOTS[id].area, VL.SPOTS[id].screen).entities.find((e) => e.spot === id).type, 'bookTrunk');
+  }
+});
+
+test('old saves: rewards given under 5/10/15 are never given twice, and none is lost', () => {
+  const { VL } = loadGame();
+  const ids = Object.keys(VL.BOOKS);
+  // Heart taken at 5, 7 books now: nothing at 10, the purse at 20.
+  const a = VL.createGame();
+  a.library.returned = ids.slice(0, 7);
+  a.flags['reward:heartLibrary'] = true;
+  assert.equal(VL.pendingReward(a), null);
+  a.library.returned = ids.slice(0, 10);
+  assert.equal(VL.pendingReward(a), null, 'no second heart at 10');
+  a.library.returned = ids.slice(0, 20);
+  assert.equal(VL.pendingReward(a), 'shellPurse');
+  // Heart and purse at 5 and 10, 12 books now: nothing until the boots at 30.
+  const b = VL.createGame();
+  b.library.returned = ids.slice(0, 12);
+  b.flags['reward:heartLibrary'] = true;
+  b.flags['reward:shellPurse'] = true;
+  b.items.shellPurse = true;
+  assert.equal(VL.pendingReward(b), null);
+  assert.equal(VL.nextRewardAt(b), 30);
+  assert.ok(VL.hasItem(b, 'shellPurse'), 'kept');
+  // All three at 15: kept, nothing more.
+  const c = VL.createGame();
+  c.library.returned = ids.slice(0, 16);
+  for (const id of ['heartLibrary', 'shellPurse', 'swiftfootBoots']) c.flags[`reward:${id}`] = true;
+  assert.equal(VL.pendingReward(c), null);
+  assert.equal(VL.nextRewardAt(c), null);
+});

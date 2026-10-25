@@ -201,6 +201,10 @@
   for (const id of ['bookTideTables', 'bookLighthouse', 'bookWoods', 'bookPrimer', 'hiddenBookSealed', 'bookSmithsLedger', 'bookChickenAlmanac', 'bookDragons', 'bookHerbalist']) {
     VL.fillSpot(id, { type: 'bookTrunk', id });
   }
+  // W30's books in the late places.
+  for (const id of ['bookCliffLedge', 'bookHighShelfA', 'bookHighShelfB', 'bookHighScree', 'bookHighGapA', 'bookHighGapB', 'bookHighPathA', 'bookHighPathB', 'bookLairA', 'bookLairB', 'bookLakeIsland', 'bookWreckDeck']) {
+    VL.fillSpot(id, { type: 'bookTrunk', id });
+  }
   for (const id of ['bookCliffRoad', 'bookEastRoad', 'bookRiverside']) {
     VL.fillSpot(id, { type: 'bushBook', id });
   }

@@ -71,6 +71,7 @@
       entities: [
         spot('oreLakeIsland', 7, 4, 'pickup', 'W17'),
         spot('bookSmithsLedger', 10, 3, 'trunk', 'W11'),
+        spot('bookLakeIsland', 7, 2, 'trunk', 'W11'),
       ],
     },
   });

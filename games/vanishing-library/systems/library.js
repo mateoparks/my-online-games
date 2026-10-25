@@ -2,14 +2,14 @@
 // library; People). Books are found out in the world (VL.markFound with the
 // book's id), carried until the hero talks to the librarian, then returned
 // for good. The librarian reads each titled book once and its effect switches
-// on; rewards come at 5, 10 and 15 books returned ever; the shelves empty
+// on; rewards come at 10, 20 and 30 books returned ever (W30); the shelves empty
 // again on story events, never on real time. README "Library".
 (() => {
   VL.tune({
     // Rewards for books returned ever (design: Rewards for books returned),
-    // in order. Each is given once, by id, so an older save that got the
-    // purse at 5 gets the heart on its next visit and nothing at 10.
-    libraryRewards: { heartLibrary: 5, shellPurse: 10, swiftfootBoots: 15 },
+    // in order. Each is given once, by id, so a save that got one under an
+    // older count is never given it again (W26's swap, W30's 10/20/30).
+    libraryRewards: { heartLibrary: 10, shellPurse: 20, swiftfootBoots: 30 },
     // Books the thief takes the next time the hero visits after a return trip
     // or a dungeon boss.
     libraryTheftPerTrip: 1,
@@ -343,9 +343,9 @@
   };
 
   VL.REWARD_SPEECH = {
-    heartLibrary: ['Five books, {name}! You deserve something for all that searching.', 'I found this tucked behind the oldest shelf. I think it wants to be yours, {name}.'],
-    shellPurse: ['Ten books! The library hasn\'t been this full in years.', 'This was my grandmother\'s shell purse. It holds a great many shells. Take it, please!'],
-    swiftfootBoots: ['Fifteen books! I can hardly believe it.', 'These are Swiftfoot Boots. I ran messages for the old scribes in them, long ago. They\'ll put a spring in your step!'],
+    heartLibrary: ['Ten books, {name}! You deserve something for all that searching.', 'I found this tucked behind the oldest shelf. I think it wants to be yours, {name}.'],
+    shellPurse: ['Twenty books! The library hasn\'t been this full in years.', 'This was my grandmother\'s shell purse. It holds a great many shells. Take it, please!'],
+    swiftfootBoots: ['Thirty books! I can hardly believe it.', 'These are Swiftfoot Boots. I ran messages for the old scribes in them, long ago. They\'ll put a spring in your step!'],
   };
 
   // In the library, plays the next beat as soon as nothing else is showing.

@@ -23,6 +23,13 @@
     bookHighlands: book(['highlands', 'liftingGloves']),
     bookMeadowRock: book(['start', 'liftingGloves']),
   });
+  // W30: twelve more untitled books in the late places, so the 30-book
+  // reward is in reach even for a kid who misses a few.
+  const late = (place, ids) => ids.forEach((id) => VL.defineLock(id, { ...book(place), doc: '§ Books, pages and the library: Rewards for books returned' }));
+  late(['cliffs', 'climbersAlmanac'], ['bookCliffLedge']);
+  late(['highlands'], ['bookHighShelfA', 'bookHighShelfB', 'bookHighScree', 'bookHighGapA', 'bookHighGapB', 'bookHighPathA', 'bookHighPathB', 'bookLairA', 'bookLairB']);
+  late(['lakeIsland'], ['bookLakeIsland']);
+  late(['shipwreck'], ['bookWreckDeck']);
   for (const id of ['hiddenBookSealed', 'bookHerbalist', 'bookTideTables', 'bookSmithsLedger', 'bookPrimer', 'bookDragons', 'bookChickenAlmanac']) {
     VL.defineLock(id, { ...VL.LOCKS[id], by: 'W11' });
   }

@@ -18,6 +18,19 @@
   generic('bookLakeShore', 'Fish I Have Known', 'waterLight', 'Every fish gets its own chapter. Chapter twelve just says "splash".');
   generic('bookHighlands', 'Songs for Tired Legs', 'roof', 'A songbook from the highlands. Every song is about wanting to sit down.');
   generic('bookMeadowRock', 'A Field Guide to Flowers', 'berryLight', 'Pressed flowers between the pages! Somebody loved this book.');
+  // W30: the late places' books.
+  generic('bookCliffLedge', 'Knots for Nervous Climbers', 'wood', 'Every knot is called "the tight one." The author was clearly very nervous.');
+  generic('bookHighShelfA', 'A Goat\'s Guide to Mountains', 'rockLight', 'Chapter one: jump. Chapter two: jump higher. A goat wrote it, I think.');
+  generic('bookHighShelfB', 'Clouds and What They Mean', 'waterLight', 'Fluffy means sunshine. Grey means rain. One shaped like a chicken? Nobody knows.');
+  generic('bookHighScree', 'Pebbles of Every Colour', 'rock', 'Two hundred pages about pebbles. Somebody liked pebbles very much.');
+  generic('bookHighGapA', 'How to Talk to Gulls', 'sand', 'Step one: say "squawk." Step two: run. That seems to be all the advice there is.');
+  generic('bookHighGapB', 'The Windy Cookbook', 'leafLight', 'Every recipe ends with "and then the wind blew it away." Very short meals.');
+  generic('bookHighPathA', 'The Brave Little Hedgehog', 'roof', 'A hedgehog who is scared of nothing at all. Except balloons. Fair enough.');
+  generic('bookHighPathB', 'Snoring Through the Ages', 'tunic', 'A history of snoring. It says dragons snore the loudest of all. Hmm!');
+  generic('bookLairA', 'Warm Socks for Cold Toes', 'berry', 'Knitting patterns for the highlands. One sock is long enough for a giraffe.');
+  generic('bookLairB', 'Stars Over the Highlands', 'gold', 'A map of the night sky. Someone drew a smiling face on the moon.');
+  generic('bookLakeIsland', 'Island Living for Beginners', 'leaf', 'Lesson one: bring a boat. Lesson two: see above.');
+  generic('bookWreckDeck', 'The Captain\'s Logbook', 'water', 'Day one: sailing. Day two: more sailing. Day three: "Oops." The last page is very wet.');
 
   VL.defineBook('hiddenBookSealed', {
     kind: 'sealed',

@@ -1191,12 +1191,20 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   Tide Tables on the shipwreck's deck (by raft, after the shockwave, when
   gear and shells are needed again); A Child's Book of Dragons in the
   highlands, on the way to the Mirror Shield. Their locks' `needs` say so,
-  and `tests/overworld.test.js` checks each spot against them. Fifteen books
-  can still be returned before the shockwave.
-- **Rewards:** `TUNING.libraryRewards` (5 a heart container, 10 the Big
-  Shell Purse, 15 the Swiftfoot Boots), books returned ever, each given once
-  by id (`reward:<id>`), so a save from before the swap that got the purse at
-  5 gets the heart on its next visit and nothing at 10
+  and `tests/overworld.test.js` checks each spot against them. Sixteen books
+  can be returned before the shockwave. **W30's late books:** twelve more
+  untitled books in trunks in the late places (one on the cliff-base
+  ledge, nine across the highlands and the lair's doorstep, one on the lake
+  island, one on the shipwreck's deck; `regions/finds.js` gives their
+  locks), so 32 books can be returned in all and the 30-book reward is in
+  reach even for a kid who misses a couple. A later item (W18's Lighthouse,
+  W19's lair) may add more the same way: a spot, a lock supplying
+  `books: 1`, a `defineBook`.
+- **Rewards:** `TUNING.libraryRewards` (10 a heart container, 20 the Big
+  Shell Purse, 30 the Swiftfoot Boots; W30, was 5/10/15), books returned
+  ever, each given once by id (`reward:<id>`), so a save that got a reward
+  under an older count keeps it and is never given it twice: the W26 save
+  that got the purse at 5 gets the heart at 10 and nothing at 20
   (`tests/fixtures/save-v1-W26.json`). The purse raises
   `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (250); every price in town fits the first purse (a test checks); the
   `shellPurse` system trims anything over (a drop, a dig) and says who might
@@ -1919,7 +1927,7 @@ Rules of the table:
   books) is split from the item's own file with
   `VL.splitLock('hiddenBooks', { bookUnderRock: {...}, ... })`, which removes
   the placeholder and defines the parts; their `supplies` must add up to the
-  placeholder's, so the 5/10/15 book rewards keep adding up. A split only
+  placeholder's, so the 10/20/30 book rewards keep adding up. A split only
   shares out counters: the placeholder must supply one, the parts may not give
   the placeholder's id or `gives` or supply a counter it did not, and the split
   id can never be defined again (a looser single lock is a claim with

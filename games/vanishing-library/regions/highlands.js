@@ -106,6 +106,8 @@
       entities: [
         { type: 'gull', x: 9, y: 6 },
         spot('chickenHighlands', 6, 5, 'chicken', 'W7', null),
+        spot('bookHighShelfA', 12, 7, 'trunk', 'W11'),
+        spot('bookHighShelfB', 3, 7, 'trunk', 'W11'),
       ],
     },
     '-2,-3': {
@@ -125,6 +127,7 @@
       entities: [
         spot('bookHighlands', 9, 8, 'rock', 'W14'),
         spot('bookDragons', 11, 5, 'trunk', 'W11'),
+        spot('bookHighScree', 5, 7, 'trunk', 'W11'),
       ],
     },
     // A chasm to the east: the next shelf is a long flight away.
@@ -145,6 +148,8 @@
       entities: [
         { type: 'gull', x: 6, y: 5 },
         spot('chickenGap', 11, 4, 'chicken', 'W7', null),
+        spot('bookHighGapA', 3, 7, 'trunk', 'W11'),
+        spot('bookHighGapB', 10, 2, 'trunk', 'W11'),
       ],
     },
     '-1,-4': {
@@ -164,6 +169,8 @@
       // The way back west over the chasm (W7 keeps a chicken here).
       entities: [
         spot('chickenLair', 2, 5, 'chicken', 'W7', null),
+        spot('bookHighPathA', 12, 4, 'trunk', 'W11'),
+        spot('bookHighPathB', 5, 8, 'trunk', 'W11'),
       ],
     },
     // The Dragon's Lair.
@@ -184,6 +191,8 @@
       entities: [
         { type: 'decor', art: 'lairCave', x: 6, y: 3 },
         spot('lairDoor', 7, 4, 'door', 'W19', 'dragonsLairEntered'),
+        spot('bookLairA', 13, 6, 'trunk', 'W11'),
+        spot('bookLairB', 3, 8, 'trunk', 'W11'),
       ],
     },
   });
