@@ -29,7 +29,7 @@
     return turn === '/' ? [-dy, -dx] : [dy, dx];
   };
 
-  const stopsBeam = (room, e) => e.type !== 'beamMirror' && e.type !== 'beamCrystal' && (e.type === 'shutter' ? e.closed : e.solid || VL.ENTITIES[e.type]?.solid);
+  const stopsBeam = (e) => e.type !== 'beamMirror' && e.type !== 'beamCrystal' && (e.type === 'shutter' ? e.closed : e.solid || VL.ENTITIES[e.type]?.solid);
 
   // The beam from one source through this visit's room: `points` in
   // play-area pixels (the source, every mirror, where it stops) and the
@@ -66,7 +66,7 @@
         break;
       }
       const info = VL.tileInfo(room.area, VL.tileAt(room.area, room.screen, nx, ny, room));
-      if ((info.solid && !(info.pit || info.water || info.low)) || here.some((e) => stopsBeam(room, e))) {
+      if ((info.solid && !(info.pit || info.water || info.low)) || here.some(stopsBeam)) {
         stop();
         break;
       }
@@ -159,8 +159,6 @@
   ];
   VL.ART.defineSprite('prop-crystal', { colors: { c: 'crystal', l: 'crystalLight', d: 'crystalDark', k: 'dgnStoneDark' }, rows: crystalRows });
   VL.ART.defineSprite('prop-crystal-lit', { outline: 'gold', colors: { c: 'crystalLit', l: 'beamCore', d: 'gold', k: 'dgnStoneDark' }, rows: crystalRows });
-
-  VL.MIRROR_WORDS = 'A mirror on a stand. S turns it.';
 
   VL.defineEntity('beamSource', {
     solid: true,
