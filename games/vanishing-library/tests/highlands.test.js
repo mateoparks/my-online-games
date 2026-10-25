@@ -88,6 +88,10 @@ test('the opened path survives a reload: a fresh game from the save finds it ope
   hold(VL, state, [], 0.05);
   const storage = VL.createStorage(memoryStorage());
   VL.saveSlot(storage, 0, state);
+  // The save itself holds the cleft: read it as data, before any room build
+  // could reopen it from the Almanac.
+  const { save } = VL.readSlot(storage, 0);
+  for (const ty of [4, 5]) assert.equal(VL.savedTile(save, 'overworld', '-1,-2', 10, ty), 'i', `saved open at (10,${ty})`);
   const again = VL.loadSlot(storage, 0);
   VL.place(again, ow('-1,-2', 10, 6));
   assert.equal(VL.tileAt('overworld', '-1,-2', 10, 4, again.room), 'i');

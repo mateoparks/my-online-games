@@ -836,8 +836,9 @@ metal shield, a stone head's fire bounced home, the shockwave, the chicken
 swarm, popups and a faint are each stepped by hand and drawn offscreen at 60 fps, in 16 px
 cells. It fails when, within any one second, over a quarter of the canvas
 flips brightness (0.05 relative luminance) more than 3 times, or over 2.8% of
-it (about a quarter of a 10 degree field at the smallest scale the game
-is drawn at; 4% matched scale 3 only) flips by WCAG's 0.1
+it (a quarter of WCAG's 341x256 px field at scale 4, where the canvas fills
+WCAG's 1024x768 reference screen; stricter than WCAG at scale 3, where a
+quarter of the field is about 4.9%) flips by WCAG's 0.1
 more than 6 times (over 3 flash pairs). A control run with the steady layers
 off must fail both. It runs for 240 s at most (about twice its run time). A
 test file that runs no tests, and an `async` test function, both fail the

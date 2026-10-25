@@ -2372,9 +2372,11 @@ async function main() {
     // second: a broad one (a change of 0.05, half WCAG's, so dark rooms' dim
     // floors count too; fails when over a quarter of the canvas flips more
     // than 3 times) and WCAG's own numbers (a change of 0.1, more than 3 flash
-    // pairs, so over 6 flips; fails past 2.8% of the canvas, about 25% of a
-    // 10 degree field at the smallest scale the game is drawn at). A control run with the steady layers
-    // switched off must fail both, so each is known to see a strobe.
+    // pairs, so over 6 flips; fails past 2.8% of the canvas: a quarter of
+    // WCAG's 341x256 px field at scale 4, where the canvas fills WCAG's
+    // 1024x768 reference screen, so stricter than WCAG at scale 3). A control
+    // run with the steady layers switched off must fail both, so each is
+    // known to see a strobe.
     {
       errors.length = 0;
       const flashProblems = [];

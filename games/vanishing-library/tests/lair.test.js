@@ -87,7 +87,7 @@ test('the lair door at the top of the highlands leads into the entrance hall, an
   assert.equal(VL.DUNGEONS.lair.name, 'Dragon\'s Lair');
 });
 
-test('the doorstep is safe: Continue after the win lands there, and nothing hurts him while he stands still', () => {
+test('the doorstep is safe: a faint with the doorstep as save point (the Lair not finished) wakes him there, and nothing hurts him while he stands still', () => {
   const t = setup({ enemies: true });
   const { VL } = t;
   const step = VL.DUNGEONS.lair.entrance;
@@ -198,7 +198,7 @@ test('a stone head breathes fire at the hero in its line; the Mirror Shield rais
   assert.ok(t.game.room.entities.find((e) => e.id === 'd4SpoutHall').on, 'still choked on the next visit');
 });
 
-test('no other shield stops fire: wood or metal raised, he is hurt (a full heart) and told; nor does a Mirror Shield facing away', () => {
+test('no other shield stops fire: wood or metal raised, he is hurt (a full heart) and told; nor does a Mirror Shield facing away or not raised', () => {
   for (const shield of ['woodShield', 'metalShield', null]) {
     const { t, held } = underTheHallSpout({ shield });
     const hp = t.game.hp;
@@ -212,6 +212,12 @@ test('no other shield stops fire: wood or metal raised, he is hurt (a full heart
   t.game.player.facing = 'down';
   t.until((g) => g.hp < hp, 3, ['offHand']);
   assert.ok(!t.d.switches.d4SpoutHall, 'a shield facing away bounces nothing');
+  const lowered = underTheHallSpout({ raise: false });
+  const before = lowered.t.game.hp;
+  assert.deepEqual(lowered.held, []);
+  lowered.t.until((g) => g.hp < before, 3, lowered.held);
+  assert.equal(before - lowered.t.game.hp, lowered.t.VL.TUNING.fireDamage, 'in a hand but not held up: a full heart');
+  assert.ok(!lowered.t.d.switches.d4SpoutHall, 'a lowered Mirror Shield bounces nothing');
 });
 
 test('fire flies over lava and stops at walls and blocks; a block in its line hides the hero from the head', () => {
@@ -229,7 +235,7 @@ test('fire flies over lava and stops at walls and blocks; a block in its line hi
   assert.ok(!VL.spoutSees(t.game, head), 'out of its line');
 });
 
-test('only its own fire chokes a stone head: not the sword, a shot, the rope, or S', () => {
+test('only its own fire chokes a stone head: a shot tinks off it, S only reads it, and another head\'s fire does not count', () => {
   const t = setup({ where: lr('0,-1', 11, 4) });
   const { VL } = t;
   const head = t.game.room.entities.find((e) => e.id === 'd4SpoutHall');
