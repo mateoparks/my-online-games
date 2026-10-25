@@ -461,6 +461,20 @@
   VL.bossBeaten = (state, dungeonId) => Boolean(VL.dungeonState(state, dungeonId).boss);
   VL.bossDone = (state, dungeonId) => VL.bossBeaten(state, dungeonId) && VL.spotFound(state, VL.DUNGEONS[dungeonId].boss.heart);
 
+  // A dungeon's own save points: any spot inside it, or the doorstep its warp out saves.
+  VL.savePointInDungeon = function savePointInDungeon(point, dungeonId) {
+    const { area, entrance } = VL.DUNGEONS[dungeonId];
+    return point.area === area || (point.area === entrance.area && point.screen === entrance.screen && point.tx === entrance.tx && point.ty === entrance.ty);
+  };
+
+  // Once a dungeon is finished, its statue and doorstep wake him at the hut's
+  // lantern instead, so Continue never starts out at a far dungeon he is done
+  // with (README "The boss room").
+  VL.moveSavePoint((state, point) => {
+    const finished = Object.values(VL.DUNGEONS).some((d) => d.boss && VL.savePointInDungeon(point, d.id) && VL.bossDone(state, d.id));
+    return finished ? VL.HOME_SAVE : null;
+  });
+
   // ---------- saved tile changes (for W14's boulders and anything else that outlasts a visit) ----------
 
   // `at` names another screen ({ area, screen }); the hero's own by default.

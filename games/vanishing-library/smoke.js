@@ -2023,10 +2023,21 @@ async function main() {
         await sleep(400);
       }
       if (!(await see("g.room.entities.some((e) => e.type === 'warp') && g.room.entities.some((e) => e.bossGate && !e.closed)"))) lhProblems.push('the Lens Crab\'s heart taken did not open the gate and bring the warp');
+      // W31: the Lighthouse finished, a faint with its statue as the save point wakes him at the hut's lantern.
+      await evaluate("(() => { const g = VL.app.game; g.savePoint = { area: 'lighthouse', screen: '0,0', tx: 3, ty: 2, facing: 'down' }; VL.faint(g, 'crab'); })()");
+      await waitFor("VL.app.sceneId === 'fainted'", 1000);
+      await sleep(750);
+      await tapKey('KeyS');
+      if (!(await waitFor("VL.app.sceneId === 'play' && g.player.area === 'hut'", 1500))) lhProblems.push(`a faint after the Lighthouse woke him at ${await see('[g.player.area, g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty]')}, not the hut`);
+      else {
+        await sleep(300);
+        await shot('w31-faint-home');
+      }
+      if ((await see('[VL.heroTile(g).tx, VL.heroTile(g).ty].join()')) !== '2,2') lhProblems.push('not on the hut\'s lantern after the faint');
 
       lhProblems.push(...errors);
       if (lhProblems.length) failures += 1;
-      console.log(`${lhProblems.length ? 'FAIL' : 'ok  '} lighthouse: the dark door, 9 rooms, a dark floor lit by its lamps, the slingshot (chest, target), the beam solved, the Lens Crab dazed and beaten, ${path.join(outDir, 'w18-*.png')}`);
+      console.log(`${lhProblems.length ? 'FAIL' : 'ok  '} lighthouse: the dark door, 9 rooms, a dark floor lit by its lamps, the slingshot (chest, target), the beam solved, the Lens Crab dazed and beaten, a faint after it wakes in the hut (W31), ${path.join(outDir, 'w18-*.png')}`);
       for (const problem of lhProblems) console.log(`     ${problem}`);
     }
 

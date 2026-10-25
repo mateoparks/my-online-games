@@ -639,7 +639,10 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   the start when there is none or a later map change removed its screen).
   A place done with can hand its save point on:
   `VL.moveSavePoint((state, point) => place or null)` is asked on every
-  Continue and faint (`VL.respawnPlace`); the shipwreck uses it.
+  Continue and faint (`VL.respawnPlace`); the shipwreck and every finished
+  dungeon use it (see "The boss room"). `VL.keepSavePoint((state, point) =>
+  true or false)` holds a save point where it is ahead of every move rule
+  (the Hollow Oak until the shockwave). Neither changes `savePoint` itself.
   `finished` marks a finished game: the slot shows FINISHED and loads the
   last save before the finale (the ending sets it).
 - **When (design: Option B, Zelda-style):** call `VL.earned(state)` after
@@ -2152,8 +2155,15 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   heart is taken** (W30). On later visits the boss is gone and the heart
   waits until taken, then the warp. **The warp out is a save
   point:** stepping on it records `entrance` (outside the dungeon) as the
-  save point (`savePoint: true` on the warp), so Continue after the win
-  starts on the doorstep, not back at the statue. **The boss gate (W30) is
+  save point (`savePoint: true` on the warp). **A finished dungeon wakes
+  him at home (W31):** once the boss is beaten and its heart taken
+  (`VL.bossDone`), every Continue, reload and faint whose save point is in
+  the dungeon (its statue, anywhere inside, or that doorstep:
+  `VL.savePointInDungeon`) wakes him at the hut's lantern, `VL.HOME_SAVE`,
+  instead. Every dungeon with a boss gets this with no code of its own;
+  before it is finished the statue works as always. The Hollow Oak keeps
+  its statue until the shockwave has happened (`VL.keepSavePoint` in
+  systems/shockwave.js). **The boss gate (W30) is
   the framework's:** `defineDungeon` puts bars (`shutter`, `bossGate: true`,
   id `<dungeon>BossGate`, `open: { bossDone: true }`) on the tile the boss
   door lands the hero on (the boss door's twin tile across the edge into
@@ -2212,8 +2222,8 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
    heart. Fill the overworld door spot with a `door` into the first room and put a
    `door` on the mat tile back out; a `saveStatue` by the entrance. Make
    `entrance` a safe, walkable tile outside the door: the boss warp lands
-   the hero there and records it as his save point, so every Continue after
-   the win starts there.
+   the hero there and records it as his save point; once the dungeon is
+   finished, Continue and faints from there wake him at `VL.HOME_SAVE`.
 3. Lay the puzzles with the entities above, every id prefixed with the
    dungeon (`d1…`); every key, boss key, map, plate and switch has one.
    Every `smallKey`, `bossKey` and `lockedDoor` names its lock
