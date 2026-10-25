@@ -1134,14 +1134,16 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   the Almanac at the highlands, the dragon book before the shield). A test
   keeps a hint for every milestone, so a new beat needs its hint.
 - **His wife, Mrs. Fenwick** (at the puppet stage in the square):
-  `VL.wifeStage(state)` counts how many of `TUNING.wifeStages` (3, 7, 12
-  books) are passed. Her greetings get shorter; from stage 2 her second talk
+  `VL.wifeStage(state)` counts how many of `TUNING.wifeStages` are passed in
+  turn: 3 books; 7 books and `d1Boss`; 12 books and `d2Boss`, so a first
+  play meets no cool side before Dungeon 1. Her greetings get shorter; from stage 2 her second talk
   in a visit (`room.wifeTalked`) is `VL.WIFE_MISDIRECTION[beat]` when there
   is one: plausible, wrong, and contradicted by her husband. S facing a stage
   tile plays `VL.PUPPET_SHOWS[stage]` in the `puppetShow` scene: beats of
   words and puppets (`cast`: where each stands, 0..1 across the stage;
   `move`: hop, shake, run, fly). The meddling young hero, Nosy Ned, appears
-  from stage 2. The trapdoor in front of the stage (`trapdoor` entity, tile
+  from stage 2, as his own puppet (`ned`: a green cap, fair hair, a red
+  shirt), never the hero's. The trapdoor in front of the stage (`trapdoor` entity, tile
   `Z`) only answers S with a message until W20 opens it.
 - **The lost chicken:** Pip in the harbour asks about Henrietta (W7's lost
   chicken on the cliffs). Talking to Pip while she is with the hero (carried

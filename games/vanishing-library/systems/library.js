@@ -12,8 +12,10 @@
     // or a dungeon boss.
     libraryTheftPerTrip: 1,
     libraryTheftPerBoss: 2,
-    // Books returned ever at which the librarian's wife turns a little cooler.
-    wifeStages: [3, 7, 12],
+    // When the librarian's wife turns a little cooler: books returned ever,
+    // and a boss beaten too, so a first play doesn't meet her cool side
+    // before Dungeon 1 (design: Anti-goals).
+    wifeStages: [{ books: 3 }, { books: 7, boss: 'd1Boss' }, { books: 12, boss: 'd2Boss' }],
     shellCap: 99,
     shellCapPurse: 999,
     swiftfootSpeed: 1.35,
@@ -215,7 +217,10 @@
 
   // ---------- the librarian's wife ----------
 
-  VL.wifeStage = (state) => VL.TUNING.wifeStages.filter((least) => VL.booksReturned(state) >= least).length;
+  VL.wifeStage = function wifeStage(state) {
+    const stage = VL.TUNING.wifeStages.findIndex(({ books, boss }) => VL.booksReturned(state) < books || (boss && !reached(state, boss)));
+    return stage === -1 ? VL.TUNING.wifeStages.length : stage;
+  };
 
   // ---------- what to do next ----------
 
