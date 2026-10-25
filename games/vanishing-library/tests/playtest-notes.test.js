@@ -370,3 +370,26 @@ test('a reward at the end of a talk or a reading is held up before its popup, no
   assert.ok(key && heart, `both popups shown: ${JSON.stringify(seen)}`);
   for (const shown of [key, heart]) assert.ok(shown.holding && shown.held >= VL.TUNING.holdUpSeconds, `${shown.popup} only after the hold-up: ${JSON.stringify(shown)}`);
 });
+
+// ---------- later notes ----------
+
+test('a tree in the Woods never sprouts a red mushroom that looks like a hidden book', () => {
+  const { VL } = loadGame();
+  const moss = VL.ART.TILE_STYLES.moss;
+  const colourRects = (info, seedValue) => {
+    const fills = [];
+    const ctx = { set fillStyle(value) { this.style = value; }, get fillStyle() { return this.style; }, fillRect() { fills.push(this.style); } };
+    moss.ground(ctx, { x: 0, y: 0, tx: 0, ty: 0, info, near: () => info, seed: () => seedValue });
+    return fills;
+  };
+  const red = VL.ART.color('heart');
+  assert.ok(colourRects(VL.tileInfo('overworld', 'f'), 0.9).includes(red), 'open forest floor keeps its mushrooms');
+  assert.ok(!colourRects(VL.tileInfo('overworld', 'F'), 0.9).includes(red), 'no mushroom under a tree');
+});
+
+test('"Rocks and How to Lift Them" turns up near the start, before the gloves, not after', () => {
+  const { VL } = loadGame();
+  const id = Object.keys(VL.BOOKS).find((book) => VL.BOOKS[book].title === 'Rocks and How to Lift Them');
+  assert.ok(!VL.LOCKS[id].needs.flat().some((key) => ['liftingGloves', 'eastRoad'].includes(key)), `${id} needs ${VL.LOCKS[id].needs}`);
+  assert.ok(VL.LOCKS[id].needs.includes('town'), 'lying about town');
+});

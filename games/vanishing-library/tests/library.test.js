@@ -209,7 +209,7 @@ test('handing books in, he says a line about each untitled one and the count', (
   const ids = VL.returnBooks(game);
   const speech = VL.returnSpeech(game, ids);
   assert.equal(speech.length, 2, 'one untitled book, then the tally');
-  assert.ok(speech[0].includes('Turnip'));
+  assert.ok(speech[0].includes('Rocks and How to Lift Them'));
   assert.ok(speech[1].includes('2 books') && speech[1].includes('3 more'));
 });
 

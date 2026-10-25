@@ -8,11 +8,11 @@
   // ---------- the books ----------
 
   const generic = (id, title, color, blurb) => VL.defineBook(id, { kind: 'generic', title, color, blurb });
-  generic('bookRiverside', 'Ninety-Nine Ways to Cook a Turnip', 'leaf', 'Ninety-nine! I only knew three, and two of them were "boiled".');
+  generic('bookRiverside', 'Rocks and How to Lift Them', 'rock', 'Step one: be very strong. Step two... no, that\'s all of it.');
   generic('bookBeachBuried', 'Sandcastles of Long Ago', 'sand', 'Someone buried a book about sandcastles in the sand. Very clever.');
   generic('bookCliffRoad', 'The Gull Who Wanted to Be a Goose', 'rockLight', 'It ends happily. The goose wanted to be a gull, so they swapped.');
   generic('bookLighthouse', 'The Lighthouse Keeper\'s Diary', 'water', 'Every night: "Lamp lit. Sea calm. Crab large." Crab large? How large, I wonder.');
-  generic('bookEastRoad', 'Rocks and How to Lift Them', 'rock', 'Step one: be very strong. Step two... no, that\'s all of it.');
+  generic('bookEastRoad', 'Ninety-Nine Ways to Cook a Turnip', 'leaf', 'Ninety-nine! I only knew three, and two of them were "boiled".');
   generic('bookWoods', 'Whispers of the Woods', 'leafLight', 'They say the paths in the Woods wander about at night, like sleepy cats.');
   generic('bookScriptoriumRock', 'Neat Letters for Messy Scribes', 'tunic', 'Page one is very neat. By page ninety, the scribe had clearly given up.');
   generic('bookLakeShore', 'Fish I Have Known', 'waterLight', 'Every fish gets its own chapter. Chapter twelve just says "splash".');
