@@ -505,6 +505,46 @@ test('the dungeon HUD shows the keys over the play area inside a dungeon only', 
   VL.ART.text = original;
 });
 
+test('the boss key is an ornate sprite, bigger than a small key, and fits beside it in the HUD, on the map and on its tile', () => {
+  const t = setup({ where: at('0,0', 8, 7) });
+  const { VL } = t;
+  const size = (id) => {
+    const { width, height, grid } = VL.ART.spritePixels(VL.ART.SPRITES[id].def);
+    return { width, height, colors: new Set(grid.flat().filter(Boolean)) };
+  };
+  const small = size('item-small-key');
+  const boss = size('item-boss-key');
+  assert.ok(boss.width >= small.width + 2 && boss.height >= small.height + 3, 'clearly bigger');
+  for (const name of ['heart', 'heartLight', 'dgnKeyDark']) assert.ok(boss.colors.has(name) && !small.colors.has(name), `${name}: a gem and a darker gold of its own`);
+  // Where each sprite lands, as boxes in canvas pixels (outline included).
+  const boxes = [];
+  const original = VL.ART.drawSprite;
+  VL.ART.drawSprite = (ctx, id, x, y, ...rest) => {
+    if (id.endsWith('-key')) boxes.push({ id, x: x - 1, y: y - 1, w: size(id).width, h: size(id).height });
+    return original(ctx, id, x, y, ...rest);
+  };
+  const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const ctx = fakeDocument().createElement('canvas').getContext('2d');
+  t.d.bossKey = true;
+  t.d.keysGiven = 9;
+  VL.render(ctx, t.app, 0);
+  const hud = Object.fromEntries(boxes.map((b) => [b.id, b]));
+  const count = { x: VL.TUNING.width - 15, y: 14, w: 12, h: 7 };
+  assert.ok(!overlaps(hud['item-boss-key'], hud['item-small-key']) && !overlaps(hud['item-boss-key'], count), 'HUD: beside the small key and its count');
+  assert.ok(hud['item-boss-key'].x + hud['item-boss-key'].w <= VL.TUNING.width);
+  boxes.length = 0;
+  t.app.setScene('dungeonMap');
+  VL.render(ctx, t.app, 0);
+  const onMap = boxes.find((b) => b.id === 'item-boss-key');
+  assert.ok(onMap && onMap.y + onMap.h <= 44 + 60, 'map: the Boss row ends above the MAP label');
+  t.app.setScene('play');
+  boxes.length = 0;
+  VL.ENTITIES.bossKey.draw(ctx, { type: 'bossKey' }, 0, 0, 0);
+  const tile = boxes[0];
+  assert.ok(tile.x >= 0 && tile.x + tile.w <= 16 && tile.y >= -2 && tile.y + tile.h <= 18, 'the pickup stays on its tile');
+  VL.ART.drawSprite = original;
+});
+
 // ---------- the boss room ----------
 
 function beatBoss(t) {

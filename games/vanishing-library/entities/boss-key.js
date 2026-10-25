@@ -14,8 +14,8 @@
       if (key.hidden) return;
       const bob = Math.round(Math.sin(t * 3) * 1.5);
       VL.ART.drawShadow(ctx, x + 8, y + 13, 8);
-      VL.ART.drawSprite(ctx, 'item-boss-key', x + 6, y + 1 + bob);
-      VL.ART.drawSparkle(ctx, x + 12, y + 2 + bob, t);
+      VL.ART.drawSprite(ctx, 'item-boss-key', x + 5, y + bob);
+      VL.ART.drawSparkle(ctx, x + 13, y + 2 + bob, t);
     },
   });
 })();
