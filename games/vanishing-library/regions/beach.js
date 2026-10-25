@@ -89,6 +89,7 @@
         spot('bookBeachBuried', 7, 5, 'buried', 'W10'),
         starfish(2, 6, 4, 6),
         starfish(11, 6, 2, 3),
+        { type: 'shell', x: 14, y: 6 },
       ],
     },
     // The far end of the beach, under the eastern bluffs.
@@ -110,6 +111,7 @@
         { type: 'crab', x: 6, y: 6 },
         { type: 'crab', x: 11, y: 7 },
         starfish(4, 6, 6, 8),
+        { type: 'shell', x: 14, y: 5 },
       ],
     },
     // The shipwreck, offshore.

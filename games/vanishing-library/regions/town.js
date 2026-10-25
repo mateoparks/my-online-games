@@ -387,6 +387,7 @@
         spot('chickenCoop', 4, 3, 'chicken', 'W7', 'chickens'),
         { type: 'npc', id: 'nell', x: 11, y: 6 },
         { type: 'npc', id: 'chickenKid', x: 13, y: 3 },
+        { type: 'shell', x: 3, y: 7 },
       ],
     },
     // The river meets the sea.
@@ -404,7 +405,7 @@
         'WWWWWWWWWWWWWWWW',
         'WWWWWWWWWWWWWWWW',
       ],
-      entities: [],
+      entities: [{ type: 'shell', x: 3, y: 6 }],
     },
   });
 

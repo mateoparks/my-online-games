@@ -510,6 +510,8 @@ test('the hero walks with real input from the hut to every region open today', (
   const { drive } = createPlaythrough(VL);
   // A page on the way opens its popup (W11); this walk is about the paths.
   for (const id of ['pageFieldA', 'pageFieldB']) VL.markFound(drive.state, id);
+  // So does the first broken shell picked up on the way (one on every seashore screen, W29).
+  drive.state.popups.seen.brokenShell = true;
   const stops = [
     { screen: '2,0', tx: 3, ty: 4 }, // the trapdoor's edge, town square
     { screen: '2,-3', tx: 8, ty: 7 }, // the lake shore

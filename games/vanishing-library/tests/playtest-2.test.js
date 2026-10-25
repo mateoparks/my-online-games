@@ -195,3 +195,54 @@ test('a save that copied the map before the trees existed finds the path open as
   VL.place(state, ow('5,-1', 6, 8));
   assert.equal(VL.savedTile(state, 'overworld', '7,-1', 7, 2), 'P');
 });
+
+// ---------- shells on the seashore, and digging ----------
+
+const SEASHORE = ['0,1', '1,1', '2,1', '3,1', '4,1', '5,1'];
+
+test('every seashore screen has at least one broken shell lying on the sand', () => {
+  const VL = shared;
+  for (const key of SEASHORE) {
+    const screen = VL.getScreen('overworld', key);
+    const broken = screen.entities.filter((e) => e.type === 'shell' && !e.whole);
+    assert.ok(broken.length >= 1, `${key} has a broken shell`);
+    for (const e of broken) assert.ok(VL.tileInfo('overworld', screen.tiles[e.y][e.x]).sand, `${key} (${e.x},${e.y}) on sand`);
+  }
+});
+
+test('digging the beach: a whole shell 20% of the time (30% with the Tide Tables), a broken shell 50%', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.TUNING.digChance, 0.2);
+  assert.equal(VL.TUNING.digChanceTideTables, 0.3);
+  assert.equal(VL.TUNING.digBrokenChance, 0.5);
+  const rates = (read) => {
+    const game = VL.createGame({ seed: 29 });
+    const count = { shell: 0, brokenShell: 0, null: 0 };
+    for (let i = 0; i < 4000; i += 1) count[VL.digFind(game, 'sand', read)] += 1;
+    return { shell: count.shell / 4000, broken: count.brokenShell / 4000 };
+  };
+  const plainRates = rates(false);
+  const tide = rates(true);
+  assert.ok(Math.abs(plainRates.shell - 0.2) < 0.025, `whole ${plainRates.shell}`);
+  assert.ok(Math.abs(plainRates.broken - 0.5) < 0.025, `broken ${plainRates.broken}`);
+  assert.ok(Math.abs(tide.shell - 0.3) < 0.025, `whole with the book ${tide.shell}`);
+  assert.ok(Math.abs(tide.broken - 0.5) < 0.025, `broken with the book ${tide.broken}`);
+  // Grass (the metal shovel) keeps its own odds and turns up no broken shells.
+  const game = VL.createGame({ seed: 29 });
+  for (let i = 0; i < 500; i += 1) assert.notEqual(VL.digFind(game, 'dirt', false), 'brokenShell');
+});
+
+test('a broken shell dug up pops out and is picked up like one on the beach', () => {
+  const { VL } = loadGame();
+  const state = playState(VL, ow('1,1', 5, 7, 'down'));
+  VL.giveItem(state, 'woodShovel');
+  state.popups.queue.length = 0;
+  VL.random = () => 0.5;
+  assert.equal(VL.dig(state, 'woodShovel'), 'brokenShell');
+  const drop = state.room.entities.find((e) => e.type === 'drop');
+  assert.deepEqual([drop.kind, drop.x, drop.y], ['brokenShell', 5, 8]);
+  VL.random = () => 0.99;
+  hold(VL, state, ['down'], 0.6);
+  assert.equal(state.inventory.brokenShells, 1);
+  assert.ok(VL.LOCKS.beachBrokenShells.reached(state));
+});

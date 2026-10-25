@@ -1,5 +1,5 @@
-// Things picked up by walking over them: bush drops ({ type: 'drop', kind:
-// wood | shell | heart }, made by systems/foliage.js and fading after a
+// Things picked up by walking over them: drops ({ type: 'drop', kind:
+// wood | shell | brokenShell | heart }, from bushes, enemies and digging, fading after a
 // while) and shells on the beach ({ type: 'shell', whole?, id? }: broken ones
 // wash up again on every visit; a whole one with an id is found once).
 (() => {
@@ -18,7 +18,8 @@
   VL.definePopup('shell', { title: 'A seashell!', text: 'Whole shells are money in town. The number at the top counts them.' });
   VL.definePopup('brokenShell', { title: 'A broken shell', text: 'It is no good as money. Maybe it will come in handy one day.' });
 
-  const SPRITES = { wood: 'pickup-wood', shell: 'pickup-shell', heart: 'pickup-heart' };
+  const SPRITES = { wood: 'pickup-wood', shell: 'pickup-shell', brokenShell: 'pickup-shell-broken', heart: 'pickup-heart' };
+  const RESOURCE = { shell: 'shells', brokenShell: 'brokenShells' };
   const HOP = 0.3;
   const BLINK = 2;
 
@@ -32,8 +33,8 @@
       take(state, drop);
       if (drop.kind === 'heart') state.hp = Math.min(state.maxHp, state.hp + VL.TUNING.heartDropHeal);
       else {
-        const kind = drop.kind === 'shell' ? 'shells' : drop.kind;
-        VL.addResource(state, kind, 1);
+        VL.addResource(state, RESOURCE[drop.kind] || drop.kind, 1);
+        if (drop.kind === 'brokenShell') state.flags.foundBrokenShell = true;
         VL.showPopup(state, drop.kind);
       }
       state.events.push({ type: 'pickup', kind: drop.kind });

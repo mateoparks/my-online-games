@@ -82,8 +82,8 @@ test('one price table in VL.TUNING holds every price, starting from the design d
     metalGearLedger: { ore: 1, shells: 6 },
     binding: { shells: 15 },
   });
-  assert.equal(VL.TUNING.digChance, 0.4);
-  assert.equal(VL.TUNING.digChanceTideTables, 0.6);
+  assert.equal(VL.TUNING.digChance, 0.2);
+  assert.equal(VL.TUNING.digChanceTideTables, 0.3);
   // Every offer's cost is the table's entry, so retuning one line retunes the counter.
   const costOf = {
     store: { paper: p.paper, buyBerry: p.buyBerry, sellBerry: p.sellBerry, woodShovel: p.shopShovel },
@@ -530,10 +530,10 @@ test('the equipment grid marks a two-handed shovel with both keys, a one-handed 
   assert.equal(VL.handMarks(t.game, 'woodShovel'), '');
 });
 
-test('digging sand: a whole shell 40% of the time (seeded), a hole either way', () => {
+test('digging sand: a whole shell 20% of the time (seeded), a hole either way (W29 odds)', () => {
   const t = digSetup();
   const { VL } = t;
-  const rolls = [0.39, 0.41];
+  const rolls = [0.19, 0.71];
   VL.random = () => rolls.shift();
   assert.equal(VL.dig(t.game, 'woodShovel'), 'shell');
   assert.equal(drops(t.game).length, 1);
@@ -545,26 +545,26 @@ test('digging sand: a whole shell 40% of the time (seeded), a hole either way', 
   assert.equal(drops(t.game).length, 1);
 });
 
-test('digging odds come from the seeded random numbers: about 40%, or 60% with the Tide Tables read', () => {
+test('digging odds come from the seeded random numbers: about 20%, or 30% with the Tide Tables read (W29 odds)', () => {
   const { VL } = loadGame();
   const rate = (read) => {
     const game = VL.createGame({ seed: 2024 });
     let shells = 0;
-    for (let i = 0; i < 2000; i += 1) if (VL.digRoll(game, 'sand', read)) shells += 1;
+    for (let i = 0; i < 2000; i += 1) if (VL.digFind(game, 'sand', read) === 'shell') shells += 1;
     return shells / 2000;
   };
   const plainRate = rate(false);
   const tideRate = rate(true);
-  assert.ok(plainRate > 0.37 && plainRate < 0.43, `plain ${plainRate}`);
-  assert.ok(tideRate > 0.57 && tideRate < 0.63, `tide tables ${tideRate}`);
+  assert.ok(plainRate > 0.17 && plainRate < 0.23, `plain ${plainRate}`);
+  assert.ok(tideRate > 0.27 && tideRate < 0.33, `tide tables ${tideRate}`);
   assert.equal(rate(false), plainRate, 'the same seed digs the same shells');
   // The book switches it on once the librarian has read it (W11).
   const game = VL.newGame();
   VL.markFound(game, 'bookTideTables');
   VL.returnBooks(game);
-  assert.equal(VL.digChance(game, 'sand'), 0.4);
+  assert.equal(VL.digChance(game, 'sand'), 0.2);
   VL.finishReading(game, 'bookTideTables');
-  assert.equal(VL.digChance(game, 'sand'), 0.6);
+  assert.equal(VL.digChance(game, 'sand'), 0.3);
 });
 
 test('a wood shovel digs sand only; the metal one digs grass too; never rock, water or a hole', () => {

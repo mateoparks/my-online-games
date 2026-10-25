@@ -1,13 +1,16 @@
 // Shovels and digging (design: Resources and economy, Digging; Tools: two
 // tiers). A shovel takes both hands; Space or D digs the tile ahead. Sand
-// gives a whole shell 40% of the time (60% once the Tide Tables are read);
-// the metal shovel also digs grass, where a few secrets lie buried. A dug
+// gives a whole shell 20% of the time (30% once the Tide Tables are read)
+// and a broken one 50%; the metal shovel also digs grass, where a few
+// secrets lie buried. A dug
 // hole lasts for the visit (VL.setRoomTile), like a cut bush.
 (() => {
   VL.tune({
     digSeconds: 0.3,
-    digChance: 0.4,
-    digChanceTideTables: 0.6,
+    digChance: 0.2,
+    digChanceTideTables: 0.3,
+    // Sand only: a broken shell, in the band after the whole one.
+    digBrokenChance: 0.5,
     // Hard ground hides less; its real prizes are the buried secrets.
     digDirtChance: 0.15,
   });
@@ -113,7 +116,14 @@
     if (ground !== 'sand') return VL.TUNING.digDirtChance;
     return tideTables ? VL.TUNING.digChanceTideTables : VL.TUNING.digChance;
   };
-  VL.digRoll = (state, ground, tideTables) => VL.random(state) < VL.digChance(state, ground, tideTables);
+  // One roll per dig: 'shell', 'brokenShell' or null.
+  VL.digFind = function digFind(state, ground, tideTables) {
+    const roll = VL.random(state);
+    const whole = VL.digChance(state, ground, tideTables);
+    if (roll < whole) return 'shell';
+    if (ground === 'sand' && roll < whole + VL.TUNING.digBrokenChance) return 'brokenShell';
+    return null;
+  };
 
   // 'sand' or 'dirt' when the shovel can dig the tile, else null.
   function groundAt(state, tx, ty, shovel) {
@@ -129,7 +139,7 @@
   }
 
   // Digs the tile ahead: 'blocked', 'find' (something buried), 'secret',
-  // 'shell' or 'empty'; false while the last dig is still under way.
+  // 'shell', 'brokenShell' or 'empty'; false while the last dig is still under way.
   VL.dig = function dig(state, shovel) {
     const player = state.player;
     if (player.dig) return false;
@@ -160,10 +170,11 @@
       state.events.push({ type: 'pickup', kind: 'shell' });
       return 'secret';
     }
-    if (!VL.digRoll(state, ground)) return 'empty';
-    state.room.entities.push({ type: 'drop', kind: 'shell', x: tx, y: ty, born: state.time });
-    VL.firstTimeFlag(state, 'dugShell');
-    return 'shell';
+    const find = VL.digFind(state, ground);
+    if (!find) return 'empty';
+    state.room.entities.push({ type: 'drop', kind: find, x: tx, y: ty, born: state.time });
+    if (find === 'shell') VL.firstTimeFlag(state, 'dugShell');
+    return find;
   };
 
   VL.defineSystem('digging', {

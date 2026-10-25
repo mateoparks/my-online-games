@@ -1087,15 +1087,17 @@ shops. Fixture: `tests/fixtures/save-v1-W10.json`.
   `pagesBound` (`VL.pagesBound`) and queues the `pagesBound` popup; W19 turns
   that into the Climber's Almanac (claim `climbersAlmanac` with it).
 - **Digging:** `VL.dig(state, shovel)` digs the tile ahead and returns
-  `'blocked'`, `'find'`, `'secret'`, `'shell'` or `'empty'` (false while a dig is
+  `'blocked'`, `'find'`, `'secret'`, `'shell'`, `'brokenShell'` or `'empty'` (false while a dig is
   under way). Sand takes any shovel, grass only the metal one (`digsDirt`).
   A hole is the visit's tile (`VL.DIG_HOLES`, `@` sand, `*` grass, through
   `VL.setRoomTile`), so it is gone on the next visit; **W14**, which owns saved
-  per-visit tile overrides, decides whether holes should persist. A whole shell
-  pops out as a `drop` with `VL.digChance` (`digChance` 40%,
-  `digChanceTideTables` 60% once `VL.tideTablesRead`, i.e. W11's
-  `bookTideTables` claim; `digDirtChance` on grass), rolled with the seeded
-  `VL.random`. A `{ type: 'buried', id, popup }` entity (the beach book, spot
+  per-visit tile overrides, decides whether holes should persist. One roll
+  per dig (`VL.digFind`, the seeded `VL.random`): a whole shell pops out as
+  a `drop` with `VL.digChance` (`digChance` 20%, `digChanceTideTables` 30%
+  once `VL.tideTablesRead`, i.e. W11's `bookTideTables` claim;
+  `digDirtChance` on grass), and on sand a broken shell (`drop` kind
+  `brokenShell`) `digBrokenChance` (50%) of the time (W29). Every seashore
+  screen also has a broken shell lying on the sand. A `{ type: 'buried', id, popup }` entity (the beach book, spot
   `bookBeachBuried`) is dug up once: `VL.markFound`, so W11 counts it as found.
   `VL.BURIED_SECRETS` are shell caches under the home fields' flowers for the
   metal shovel (the smith hints at them).
@@ -1148,7 +1150,7 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   picks up at the next talk ("Now, where were we?").
 - **Readings and effects:** a reading ends (by its last page or Esc) with
   `VL.finishReading(state, id)`: read for good, then the book's effect. The
-  Tide Tables raise `VL.digChance` to 60% (W10 reads the lock); the Smith's
+  Tide Tables raise `VL.digChance` to 30% (W10 reads the lock); the Smith's
   Ledger swaps in the smith's cheaper metal offers and marks the Woods ore;
   the Herbalist's Notes mark the three berry bushes: both through
   `VL.mapMarks(state)` (`{ kind: 'berries' | 'ore', area, screen, tx, ty }`)
