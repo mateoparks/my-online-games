@@ -49,6 +49,8 @@ VL.FILES = {
     'systems/woods-map.js',
     'systems/grappling-rope.js',
     'systems/shockwave.js',
+    'systems/darkness.js',
+    'systems/slingshot.js',
   ],
 
   entities: [
@@ -86,6 +88,11 @@ VL.FILES = {
     'entities/copyable.js',
     'entities/grapple-post.js',
     'entities/thornback.js',
+    'entities/shell-heap.js',
+    'entities/glow-lamp.js',
+    'entities/shell-target.js',
+    'entities/beam.js',
+    'entities/lens-crab.js',
   ],
 
   regions: [
@@ -106,6 +113,7 @@ VL.FILES = {
   dungeons: [
     'dungeons/scriptorium.js',
     'dungeons/hollow-oak.js',
+    'dungeons/lighthouse.js',
   ],
 
   scenes: [
