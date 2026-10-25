@@ -29,17 +29,19 @@
 
   VL.definePopup('helperWood', {
     title: 'Two pieces of wood!',
-    text: 'A gift from Gran Ottie. The smith makes a wood sword from 3 wood. Pull a bush or two for one more!',
+    text: 'A gift from Gran Ottie. Brannock the smith makes a sword from 3 wood. Pull a bush or two for one more!',
   });
 
   const SWORDS = ['woodSword', 'metalSword'];
 
   // Takes exactly what VL.LOCKS.shockwave `loses`, so the game and the solver
   // can't drift apart: whole shells crack into broken ones. A key it can't
-  // take throws, which the afterThornback guard turns into "nothing happened".
+  // take throws; this runs from the scene's update, outside any guard, so
+  // the test that feeds it an unknown key is what keeps every `loses` key
+  // handled. A heart container left in the Hollow Oak is not given here but
+  // on waking (VL.wakeFromShockwave), held up beside the Glowstone.
   VL.applyShockwave = function applyShockwave(state) {
     if (state.flags.shockwave) return false;
-    if (!VL.spotFound(state, 'heartD2')) VL.giveHeartContainer(state, 'heartD2');
     for (const key of VL.LOCKS.shockwave.loses) {
       if (key === 'worldMap') VL.loseWorldMap(state);
       else if (key === 'shells') {
@@ -61,13 +63,20 @@
   VL.wakeFromShockwave = function wakeFromShockwave(state) {
     if (!state.flags.shockwave || state.flags.shockwaveWoke) return false;
     state.flags.shockwaveWoke = true;
+    // Hearts are kept: one left behind in the Hollow Oak is his now, held up
+    // with its fanfare, the Glowstone beside it.
+    if (!VL.spotFound(state, 'heartD2')) VL.giveHeartContainer(state, 'heartD2');
     VL.holdUp(state, 'item-glowstone');
     VL.showPopup(state, 'glowstone');
     VL.earned(state);
     return true;
   };
 
+  // Gran's gift. She has introduced herself while giving it, so her town
+  // greeting ("You must be {name}...") doesn't again. Set here, not in her
+  // entry's `set`, whose flags all guard the gift in its notFlag.
   VL.defineGift('helperWood', (state, n) => {
+    state.flags['met:gran'] = true;
     VL.addResource(state, 'wood', n);
     VL.holdUp(state, 'icon-wood');
     VL.showPopup(state, 'helperWood');

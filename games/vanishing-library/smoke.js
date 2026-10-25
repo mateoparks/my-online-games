@@ -1658,7 +1658,8 @@ async function main() {
       await shot('w16-glowstone');
       if ((await see("g.holdUp && g.holdUp.sprites.join()")) !== 'item-glowstone') shockProblems.push('he is not holding up the Glowstone');
       if (!(await waitFor("VL.app.sceneId === 'popup'", 2000))) shockProblems.push('no Glowstone popup');
-      await sleep(200);
+      // The popup takes S only once it has been up 0.3 s (scenes/popup.js).
+      await waitFor('VL.app.popupView && VL.app.popupView.t >= 0.35', 2000);
       await shot('w16-glowstone-popup');
       await tapS();
       if (!(await waitFor("VL.app.sceneId === 'dialogue'", 2000))) shockProblems.push(`Gran did not start talking: scene ${await see('VL.app.sceneId')}`);

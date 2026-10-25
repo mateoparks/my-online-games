@@ -1541,7 +1541,8 @@ Fixture: `tests/fixtures/save-v1-W16.json` (after the shockwave and the gift).
   in the Hollow Oak and the heart container is still on the floor (the reward
   comes first), then `TUNING.shockwaveDelay` more, then opens the
   `shockwave` scene. Leaving the Oak without the heart starts it outside, and
-  the heart is given anyway (hearts are kept).
+  the heart is given anyway on waking (hearts are kept), held up with its
+  fanfare beside the Glowstone.
 - **The scene:** `rumble` (the world shakes, rings of light, a white-out),
   `flash` (here `VL.applyShockwave` runs and the hero is placed at
   `VL.SHOCKWAVE_WAKE`, in his hut), `dark` (`VL.SHOCKWAVE_LINES`, a page per

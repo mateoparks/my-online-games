@@ -124,8 +124,13 @@ test('leaving the Hollow Oak without the heart: the shockwave comes outside and 
   t.game.room.entities = t.game.room.entities.filter((e) => !VL.isEnemy(e));
   t.until((app) => app.sceneId === 'shockwave', 3);
   t.until((app) => app.game.flags.shockwave, VL.SHOCKWAVE_TIMES.rumble + 0.2);
+  assert.ok(!t.game.holdUp, 'nothing is held up under the rumble and the flash');
+  throughScene(t);
   assert.equal(t.game.maxHp, maxHp + VL.TUNING.heartContainerHp, 'hearts are kept, the one left behind too');
   assert.ok(VL.spotFound(t.game, 'heartD2'));
+  assert.deepEqual(plain(t.game.holdUp.sprites), ['pickup-heart-container', 'item-glowstone'], 'on waking, the heart and the Glowstone held up together');
+  t.closePopups();
+  assert.equal(t.scene, 'dialogue', 'then Gran talks, as on the usual path');
 });
 
 // ---------- what it takes and keeps ----------
@@ -269,6 +274,7 @@ test('waking: he holds the Glowstone up, it is named, and then Gran Ottie talks 
   assert.equal(t.game.inventory.wood, VL.TUNING.helperWood);
   assert.equal(t.saved().inventory.wood, 2, 'the gift and its flag are saved together');
   assert.equal(t.saved().flags['gave:helperWood'], true);
+  assert.equal(t.saved().flags['met:gran'], true, 'she has introduced herself, so her town greeting does not again');
   assert.deepEqual(plain(t.game.holdUp.sprites), ['icon-wood']);
   t.until((app) => app.sceneId === 'popup', VL.TUNING.holdUpSeconds + 0.1);
   assert.equal(VL.currentPopup(t.game).id, 'helperWood');
