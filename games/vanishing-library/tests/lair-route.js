@@ -1,0 +1,225 @@
+// The Dragon's Lair played for real (W19): one function per lock on the
+// way, each starting from wherever the hero stands (the statue after a
+// faint, the last save point outside after a reload, or where the last one
+// left him). tests/steps/w19.steps.js strings them into the story
+// milestones; tests/lair.test.js runs them one lock at a time, fainting in
+// between.
+const assert = require('node:assert/strict');
+const { route: climb, walk, flyFrom, ow } = require('./highlands-route');
+const { equip, face } = require('./metal-gear-route');
+
+const AREA = 'lair';
+const at = (screen, tx, ty) => ({ area: AREA, screen, tx, ty });
+const d4 = (drive) => drive.VL.dungeonState(drive.state, AREA);
+const settled = (state) => !state.transition;
+const handHolding = (drive, id) => drive.VL.HANDS.find((hand) => drive.VL.heldItem(drive.state, hand) === id);
+
+// Up from wherever he is to the lair's mouth: the hidden path, both chasms.
+function toTheLair(drive) {
+  const { state } = drive;
+  if (state.player.area === AREA) return;
+  const screen = state.player.screen;
+  if (state.player.area !== 'overworld' || !['-1,-3', '-2,-3', '-2,-4', '-1,-4', '-1,-5'].includes(screen)) climb.highlands(drive);
+  if (['-1,-3', '-2,-3', '-2,-4'].includes(drive.state.player.screen)) {
+    walk(drive, ow('-2,-4', 12, 4));
+    flyFrom(drive, ow('-2,-4', 12, 4), 'chickenGap', 'right');
+    assert.equal(drive.state.player.screen, '-1,-4', 'over the second chasm');
+  }
+  // His hands are wanted for the sword and the shield from here on.
+  if (drive.state.player.carrying) {
+    face(drive, 'down');
+    drive.press('interact');
+    drive.hold([], 0.6);
+  }
+}
+
+// Stands on `from` facing `dir` with the Mirror Shield raised until `done`.
+function sendFireHome(drive, from, dir, done) {
+  const { VL } = drive;
+  equipShield(drive);
+  walk(drive, from);
+  face(drive, dir);
+  const hand = handHolding(drive, 'mirrorShield');
+  for (let i = 0; i < 12 && !done(drive.state); i += 1) {
+    if (drive.app.sceneId === 'fainted') {
+      drive.hold([], 0.8);
+      drive.press('interact');
+      return sendFireHome(drive, from, dir, done);
+    }
+    const tile = VL.heroTile(drive.state);
+    if (tile.tx !== from.tx || tile.ty !== from.ty || drive.state.player.screen !== from.screen) {
+      walk(drive, from);
+      face(drive, dir);
+    }
+    drive.hold([hand], 0.5);
+  }
+  assert.ok(done(drive.state), `the fire went home from ${from.screen} (${from.tx},${from.ty})`);
+}
+
+function equipShield(drive) {
+  const { VL } = drive;
+  if (handHolding(drive, 'mirrorShield')) return;
+  equip(drive, 'mirrorShield', 'offHand');
+}
+
+function equipSword(drive) {
+  const { VL } = drive;
+  if (handHolding(drive, 'woodSword') || handHolding(drive, 'metalSword')) return;
+  equip(drive, VL.hasItem(drive.state, 'metalSword') ? 'metalSword' : 'woodSword', 'mainHand');
+}
+
+// Walks onto a pickup from the tile before it (a pickup's popup stops walkTo).
+function pickUp(drive, before, dir, done) {
+  walk(drive, before);
+  drive.until(done, 2, [dir]);
+  drive.closePopups();
+}
+
+const route = {
+  dragonsLairEntered(drive) {
+    drive.closePopups();
+    toTheLair(drive);
+    walk(drive, ow('-1,-5', 7, 5));
+    drive.until((state) => state.player.area === AREA && settled(state), 2, ['up']);
+    drive.closePopups();
+    walk(drive, at('0,0', 3, 3));
+    drive.until((state) => state.savePoint?.area === AREA, 1, ['up']);
+  },
+  // The cellar's block shoved onto its plate lifts the bars on key A.
+  d4KeyA(drive) {
+    const { VL } = drive;
+    if (!d4(drive).plates.d4PlateCellar) {
+      walk(drive, at('-1,0', 9, 6));
+      drive.until(() => d4(drive).plates.d4PlateCellar, 1.5, ['down']);
+    }
+    pickUp(drive, at('-1,0', 1, 3), 'up', (state) => VL.spotFound(state, 'd4KeyA'));
+  },
+  d4DoorA(drive) {
+    walk(drive, at('0,-1', 1, 5));
+    drive.until(() => d4(drive).doors.d4DoorA, 1, ['left']);
+  },
+  mirrorShield(drive) {
+    const { VL } = drive;
+    walk(drive, at('-1,-1', 7, 3));
+    face(drive, 'up');
+    drive.press('interact');
+    drive.reload();
+    assert.ok(VL.hasItem(drive.state, 'mirrorShield'), 'the Mirror Shield survives a reload before its popup closes');
+    drive.closePopups();
+    equipShield(drive);
+    equipSword(drive);
+  },
+  // The hall's stone head, then the ledge's: each choked with its own fire.
+  d4KeyB(drive) {
+    const { VL } = drive;
+    if (!d4(drive).switches.d4SpoutHall) sendFireHome(drive, at('0,-1', 11, 4), 'up', () => d4(drive).switches.d4SpoutHall);
+    if (!d4(drive).switches.d4SpoutLedge) sendFireHome(drive, at('-1,-2', 9, 5), 'up', () => d4(drive).switches.d4SpoutLedge);
+    if (!d4(drive).map) pickUp(drive, at('-1,-2', 4, 9), 'left', () => d4(drive).map);
+    pickUp(drive, at('-1,-2', 1, 3), 'up', (state) => VL.spotFound(state, 'd4KeyB'));
+  },
+  d4DoorB(drive) {
+    walk(drive, at('0,-2', 14, 5));
+    drive.until(() => d4(drive).doors.d4DoorB, 1, ['right']);
+  },
+  // The forge: the block out of the stone head's line, then its fire home.
+  d4BossKey(drive) {
+    const { VL } = drive;
+    if (!d4(drive).switches.d4SpoutForge) {
+      const block = () => drive.state.room.entities.find((e) => e.type === 'pushBlock');
+      walk(drive, at('1,-2', 4, 5));
+      if (block() && block().y === 6 && block().x === 8) {
+        walk(drive, at('1,-2', 8, 5));
+        drive.until(() => block().y === 7 && !block().sliding, 1.5, ['down']);
+      }
+      sendFireHome(drive, at('1,-2', 9, 6), 'right', () => d4(drive).switches.d4SpoutForge);
+    }
+    pickUp(drive, at('1,-2', 10, 7), 'down', (state) => VL.spotFound(state, 'd4BossKey'));
+  },
+  d4BossDoor(drive) {
+    equipSword(drive);
+    walk(drive, at('0,-2', 7, 1));
+    drive.until(() => d4(drive).doors.d4BossDoor, 1, ['up']);
+  },
+  d4Boss(drive) {
+    const { VL } = drive;
+    equipShield(drive);
+    equipSword(drive);
+    fightDragon(drive);
+    drive.reload();
+    assert.ok(VL.bossBeaten(drive.state, AREA), 'the win survives a reload');
+    drive.closePopups();
+    // The heart waits where the Dragon began, (7,2); the warp out opens at
+    // (7,8) once it is taken, so come up the side and across.
+    walk(drive, at('0,-3', 6, 9));
+    walk(drive, at('0,-3', 6, 3));
+    const maxHp = drive.state.maxHp;
+    walk(drive, at('0,-3', 7, 3));
+    drive.until((state) => state.maxHp > maxHp, 1, ['up']);
+    drive.closePopups();
+    walk(drive, at('0,-3', 7, 7));
+    drive.until((state) => state.player.area === 'overworld' && settled(state), 2, ['down']);
+    drive.hold([], 0.2);
+    assert.deepEqual(drive.state.savePoint && [drive.state.savePoint.area, drive.state.savePoint.screen], ['overworld', '-1,-5'], 'the warp saved him on the doorstep');
+  },
+};
+
+// The Dragon, fought with real keys: below it, in line, the Mirror Shield
+// up towards it until its fire comes home; then up under it and the sword
+// while it is dazed; back down when it wakes. Three rounds.
+function fightDragon(drive) {
+  const { VL } = drive;
+  walk(drive, at('0,-2', 7, 1));
+  drive.fight = true;
+  drive.until((state) => state.player.screen === '0,-3' && settled(state) && VL.heroTile(state).ty <= 8, 3, ['up']);
+  const dragon = () => drive.state.room.entities.find((e) => e.type === 'dragon');
+  const sword = () => handHolding(drive, 'woodSword') || handHolding(drive, 'metalSword');
+  const shield = () => handHolding(drive, 'mirrorShield');
+  const dazes = new Set();
+  for (let i = 0; i < 800 && !VL.bossBeaten(drive.state, AREA); i += 1) {
+    if (drive.app.sceneId === 'fainted') throw new Error('the Dragon made him faint');
+    assert.equal(drive.app.sceneId, 'play', `still fighting (scene ${drive.app.sceneId})`);
+    const d = dragon();
+    if (!d || ['dying', 'recover'].includes(d.mode)) {
+      drive.hold([], 0.1);
+      continue;
+    }
+    const hero = drive.state.player;
+    if (d.mode === 'dazed') {
+      dazes.add(d.rounds);
+      const target = VL.tileOf(d.cx, d.cy + 30);
+      const here = VL.heroTile(drive.state);
+      if (here.tx !== target.tx || here.ty !== target.ty) {
+        try {
+          drive.walkTo(at('0,-3', target.tx, target.ty));
+        } catch (error) {
+          if (!/not reached|no path/.test(error.message)) throw error;
+        }
+        continue;
+      }
+      face(drive, 'up');
+      drive.press(sword());
+      drive.hold([], 0.3);
+      continue;
+    }
+    // Row 6 (clear of the warp's tile, row 8), in line with it, shield up.
+    const row = VL.heroTile(drive.state).ty;
+    if (row !== 6) {
+      drive.hold([row < 6 ? 'down' : 'up'], 1 / 30);
+      continue;
+    }
+    const dx = d.cx - hero.x;
+    if (Math.abs(dx) > 10 && d.mode === 'prowl') {
+      drive.hold([dx < 0 ? 'left' : 'right'], 1 / 30);
+      continue;
+    }
+    if (hero.facing !== 'up') face(drive, 'up');
+    drive.hold([shield()], 1 / 15);
+  }
+  if (!VL.bossBeaten(drive.state, AREA)) drive.until((state) => VL.bossBeaten(state, AREA), 3);
+  assert.deepEqual([...dazes].sort(), [1, 2, 3], 'beaten in three bounce-and-strike rounds');
+  drive.fight = false;
+}
+
+const ROUTE = Object.keys(route);
+
+module.exports = { route, ROUTE, at, toTheLair, sendFireHome, fightDragon, equipShield, equipSword };

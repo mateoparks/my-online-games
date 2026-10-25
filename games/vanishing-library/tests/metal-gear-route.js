@@ -119,4 +119,4 @@ function metalGear(drive) {
   equip(drive, 'metalSword', 'mainHand');
 }
 
-module.exports = { metalGear, equip, buy, face };
+module.exports = { metalGear, equip, buy, face, earnShells };
