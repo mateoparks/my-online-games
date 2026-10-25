@@ -4,8 +4,8 @@
 // hero leaves the screen and comes back (the room is rebuilt on entry).
 (() => {
   VL.tune({
-    // One roll per bush, each band exclusive: 2% heart, 5% shell, 20% wood.
-    bushDrops: { heart: 0.02, shell: 0.05, wood: 0.2 },
+    // One roll per bush, each band exclusive: 2% heart, 5% shell, 50% wood.
+    bushDrops: { heart: 0.02, shell: 0.05, wood: 0.5 },
     dropSeconds: 8,
     // Half hearts a heart drop heals (enemy drops reuse it).
     heartDropHeal: 2,

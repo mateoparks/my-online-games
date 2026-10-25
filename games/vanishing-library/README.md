@@ -403,7 +403,7 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
 - **Bushes (`systems/foliage.js`):** a `cuttable` tile is cut for the visit
   by `VL.cutBush(state, tx, ty, 'sword' | 'hands')`; it becomes the legend's
   `cutTo` character (default grass `.`, so a bush on sand says `cutTo: 's'`).
-  One roll per bush, `TUNING.bushDrops` (heart 2%, whole shell 5%, wood 20%,
+  One roll per bush, `TUNING.bushDrops` (heart 2%, whole shell 5%, wood 50% since W29,
   exclusive bands), puts a `drop` entity on the tile that fades after
   `TUNING.dropSeconds` (a heart drop heals `TUNING.heartDropHeal` half hearts;
   enemy drops reuse the `drop` entity). A bare-hand pull costs `TUNING.pullCost` half hearts,

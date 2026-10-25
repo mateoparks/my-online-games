@@ -409,3 +409,13 @@ test('everything sold in town costs no more than the first purse holds (so nothi
   assert.deepEqual(problems, []);
 });
 
+
+// ---------- bushes ----------
+
+test('a bush gives wood about half the time (hearts 2% and shells 5% unchanged)', () => {
+  const VL = shared;
+  assert.deepEqual(plain(VL.TUNING.bushDrops), { heart: 0.02, shell: 0.05, wood: 0.5 });
+  let wood = 0;
+  for (let i = 0; i < 1000; i += 1) if (VL.bushDrop((i + 0.5) / 1000) === 'wood') wood += 1;
+  assert.equal(wood, 500);
+});
