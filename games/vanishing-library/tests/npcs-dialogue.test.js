@@ -70,7 +70,7 @@ function withPurse(VL, state, amounts) {
   state.inventory = { ...state.inventory, ...amounts };
 }
 
-// ---------- accented glyphs (W2 review M7: {name} appears in dialogue) ----------
+// ---------- accented glyphs ({name} appears in dialogue) ----------
 
 test('fonts draw accented Latin letters and ¡ ¿ in every size', () => {
   const { VL } = loadGame();

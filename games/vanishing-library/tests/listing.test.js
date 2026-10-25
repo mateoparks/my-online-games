@@ -71,14 +71,25 @@ test('README tells players the controls, keeping the chicken flight a secret', (
   assert.ok(section.includes('teaches the arrows, S, E and Esc'), 'the README says what the first popup teaches');
 });
 
-test('game code comments carry no review or QA history (protocol rule 10)', () => {
+// Scope: every script in the folder (game, smoke, tests, steps) but this one,
+// whose examples are the patterns themselves; // and block comments. A bare
+// item name is fine in a comment, so only a finding's id or source matches.
+const HISTORY = /(\/\/|\/\*|^\s*\*).*(\bQA\b|\breview(er|s)?\b|\bW\d+ [CIM]\d+\b|\b[CIM]\d+ (finding|fix)\b)/i;
+
+test('comments carry no review or QA history (protocol rule 10)', () => {
   const files = read('manifest.js').match(/'[^']+\.js'/g).map((name) => name.slice(1, -1));
   assert.ok(files.length > 20, 'read the manifest');
-  for (const file of files) {
+  const scripts = (dir) => fs.readdirSync(path.join(directory, dir)).filter((name) => name.endsWith('.js')).map((name) => path.join(dir, name));
+  for (const file of [...files, 'smoke.js', 'game.test.js', ...scripts('tests').filter((file) => !file.endsWith('listing.test.js')), ...scripts('tests/steps')]) {
     read(file).split('\n').forEach((line, i) => {
-      assert.doesNotMatch(line, /\/\/.*\b(QA\b|review [CIM]\d)/, `${file}:${i + 1}`);
+      assert.doesNotMatch(line, HISTORY, `${file}:${i + 1}`);
     });
   }
+});
+
+test('the rule-10 lint catches the forms history takes, and leaves ordinary comments alone', () => {
+  for (const line of ['// Review M1: moved', '// reviewer I2 asked for this', '// W24 M1: the tally', '/* QA found it */', ' * after the review', '// an I2 fix']) assert.match(line, HISTORY, line);
+  for (const line of ['// W14 owns the boulders', '// a preview of the next room', "const url = 'file://x'; // the page", '// the queue drains in order', '// wave the sword']) assert.doesNotMatch(line, HISTORY, line);
 });
 
 test('pause lists M for the map once there is one to open, and never before', () => {
