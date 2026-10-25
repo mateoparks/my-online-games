@@ -1065,7 +1065,7 @@ async function main() {
       await picture('w11-reward-popup');
       if (!(await look("VL.rewardGiven(g, 'heartLibrary') && g.maxHp === VL.TUNING.startMaxHp + VL.TUNING.heartContainerHp"))) libProblems.push('five books did not give the heart container');
 
-      // The stage-3 show also needs Dungeons 1 and 2 beaten; their locks stand in until the dungeon items claim them.
+      // The stage-3 show also needs Dungeons 1 and 2 beaten; this new game has beaten neither, so their locks stand in for the show.
       await evaluate("VL.smokeBossLocks = ['d1Boss', 'd2Boss'].map((id) => [id, VL.LOCKS[id].reached]); VL.LOCKS.d1Boss.reached = VL.LOCKS.d2Boss.reached = () => true;");
       await libGame({ area: 'overworld', screen: '2,0', tx: 4, ty: 3, facing: 'up' }, `g.library.returned = ${JSON.stringify(shelfIds.slice(0, 12))};`);
       await sleep(300);
@@ -1206,7 +1206,7 @@ async function main() {
     // W13, the dungeon framework on the sample dungeon (tests/sample-dungeon.js,
     // loaded into the page here, never by the game) with real keys: a room
     // with its statue and enemy, the locked door's note, the block pushed
-    // onto its plate and the shutter lifting, the map screen on M, and the
+    // onto its plate and the shutter lifting, the keys HUD, the map screen on M, and the
     // boss room, saved as w13-*.png. A block of its own, so its names never clash.
     {
       errors.length = 0;
@@ -1267,6 +1267,8 @@ async function main() {
       if (pushed.join() !== '12,true,false') dungeonProblems.push(`the block onto the plate: block x, plate latched, shutter closed = ${pushed}`);
 
       await dungeonGame({ area: 'sample', screen: '0,-1', tx: 8, ty: 8, facing: 'up' }, "g.dungeons.sample.map = true; g.dungeons.sample.keysGiven = 2; g.dungeons.sample.bossKey = true; g.visited['sample:0,0'] = true; g.visited['sample:1,0'] = true;");
+      await sleep(250);
+      await snap('w13-hud-keys');
       await tap('KeyM');
       await sleep(250);
       await snap('w13-map');

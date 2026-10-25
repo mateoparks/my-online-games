@@ -1,4 +1,4 @@
-// W24 polish from QA: the theme toggle and the game's Enter/Space, corner
+// W24 polish: the theme toggle and the game's Enter/Space, corner
 // assist, menu sounds, full storage at boot, title and mute races, gift
 // guards, berries ahead of a diagonal NPC, the Hollow Oak crossfire, the
 // load-names scan and a flight's dip under the HUD.
