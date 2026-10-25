@@ -4,9 +4,18 @@
   const DIRECTIONS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
   VL.tune({ cornerAssist: 6 });
 
+  // Solid tile kinds the hero may still walk onto: `(state, info) => bool`
+  // (the raft on deep water, W17). The playthrough's pathfinder asks too.
+  VL.HERO_FOOTINGS = [];
+  VL.defineHeroFooting = function defineHeroFooting(id, lets) {
+    if (VL.HERO_FOOTINGS.some((footing) => footing.id === id)) throw new Error(`hero footing ${id} is already defined`);
+    VL.HERO_FOOTINGS.push({ id, lets });
+  };
+  VL.heroMayEnter = (state, info) => VL.HERO_FOOTINGS.some((footing) => footing.lets(state, info));
+
   function blocked(state, x, y) {
     const { w, h } = VL.TUNING.heroBox;
-    return VL.isBlocked(state.player.area, state.player.screen, x, y, w, h, state.room);
+    return VL.isBlocked(state.player.area, state.player.screen, x, y, w, h, state.room, (info) => VL.heroMayEnter(state, info));
   }
 
   // Sub-pixel steps so the hero stops flush against a wall instead of short

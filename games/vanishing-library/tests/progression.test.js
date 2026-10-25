@@ -48,15 +48,15 @@ test('defineLock registers a lock with defaults and rejects an implemented dupli
 
 test('a later item claims a planned lock by defining it with a reached predicate', () => {
   const { VL } = loadGame();
-  assert.equal(VL.LOCKS.raft.reached, undefined, 'raft is planned until W17');
-  assert.equal(VL.LOCKS.raft.by, 'W17');
-  const claimed = VL.defineLock('raft', {
-    type: 'item', needs: ['shockwave', 'grapplingRope', 'wood'],
-    doc: '§ The path through the game, 5', reached: (state) => Boolean(state.flags.raft),
+  assert.equal(VL.LOCKS.workshop.reached, undefined, 'workshop is planned until W20');
+  assert.equal(VL.LOCKS.workshop.by, 'W20');
+  const claimed = VL.defineLock('workshop', {
+    type: 'place', needs: ['trapdoorOpen'],
+    doc: '§ Ending: Confrontation', reached: (state) => Boolean(state.flags.workshop),
   });
-  assert.equal(VL.LOCKS.raft, claimed);
-  assert.equal(claimed.reached({ flags: { raft: true } }), true);
-  assert.throws(() => VL.defineLock('raft', { doc: '§ Controls', reached: () => true }), /already implemented/);
+  assert.equal(VL.LOCKS.workshop, claimed);
+  assert.equal(claimed.reached({ flags: { workshop: true } }), true);
+  assert.throws(() => VL.defineLock('workshop', { doc: '§ Controls', reached: () => true }), /already implemented/);
 });
 
 test('a claim that changes the planned rule must say why (replan), so a loosened gate shows in the diff', () => {
@@ -94,7 +94,8 @@ test('an item splits a planned placeholder into its own locks without editing mi
   assert.equal(VL.LOCKS.fixtureBooks, undefined);
   assert.equal(VL.LOCKS.bookInTrunk.supplies.books, 6);
   assert.throws(() => VL.defineLock('fixtureBooks', { ...part(1), reached: () => true }), /lock fixtureBooks was split into its parts/, 'a split id cannot come back with a looser rule');
-  assert.throws(() => VL.splitLock('oreLakeIsland', { hiddenBooks: { type: 'item', needs: ['lakeIsland'], supplies: { ore: 1 }, doc: '§ Tools: two tiers', by: 'W17' } }), /lock hiddenBooks was split into its parts/);
+  VL.defineLock('fixtureOre', { type: 'item', needs: ['start'], supplies: { ore: 1 }, optional: true, doc: '§ Tools: two tiers', by: 'W99' });
+  assert.throws(() => VL.splitLock('fixtureOre', { hiddenBooks: { type: 'item', needs: ['start'], supplies: { ore: 1 }, doc: '§ Tools: two tiers', by: 'W99' } }), /lock hiddenBooks was split into its parts/);
   const report = VL.solveProgression();
   assert.deepEqual([...report.problems], []);
   assert.ok(report.stages[0].reached.includes('swiftfootBoots'), 'the 15-book reward still adds up');
@@ -136,7 +137,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 110);
+  assert.equal(Object.keys(VL.LOCKS).length, 112);
 });
 
 test('implemented place locks name screens that exist', () => {
@@ -218,7 +219,7 @@ test('broken: without bare hands, the helper\'s couple of wood is not enough to 
   assert.ok(!problems.includes('after shockwave, berries cannot be regained'), 'berry bushes still give berries');
   assert.ok(problems.includes('raft is unreachable: needs wood after shockwave'), 'the raft needs wood after the shockwave');
   assert.ok(problems.includes('ending is unreachable: needs marionettes after shockwave'));
-  assert.ok(problems.includes('oar is required but unreachable after shockwave'));
+  assert.ok(problems.includes('oar is unreachable: needs shells|wood after shockwave'), 'the oar, on sale only after the shockwave, needs wood or shells then');
   assert.ok(!problems.includes('helperWood is unreachable'), 'the gift itself still happens; it just proves nothing');
   // Treating wood as a plain key is what hid this: then the gift "pays" for everything forever.
   assert.deepEqual([...VL.solveProgression(table, VL.MILESTONES, { resources: new Set() }).problems], []);
@@ -654,8 +655,8 @@ test('playthrough: a step that does not reach its milestone fails, and steps are
     steps: { start() {}, hutInside: (drive) => drive.walkTo({ area: 'hut', screen: '0,0', tx: 2, ty: 2 }) },
   });
   assert.equal(good.playTo('hutInside').state.player.area, 'hut');
-  const planned = createPlaythrough(VL, { milestones: ['start', 'raft'], steps: { start() {}, raft() {} } });
-  assert.throws(() => planned.playTo('raft'), /raft is planned/);
+  const planned = createPlaythrough(VL, { milestones: ['start', 'workshop'], steps: { start() {}, workshop() {} } });
+  assert.throws(() => planned.playTo('workshop'), /workshop is planned/);
   const { step } = require('./playthrough');
   assert.throws(() => step('start', () => {}), /steps for milestone start are already registered/);
 });

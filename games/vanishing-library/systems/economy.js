@@ -18,6 +18,9 @@
       metalGear: { ore: 1, shells: 10 },
       metalGearLedger: { ore: 1, shells: 6 },
       binding: { shells: 15 },
+      raft: { wood: 4 },
+      oarShells: { shells: 8 },
+      oarWood: { wood: 3 },
     },
   });
 

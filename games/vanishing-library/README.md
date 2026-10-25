@@ -631,6 +631,9 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   `VL.extendGame('enemies', () => ({ knockback: null }), { transient: true })`)
   and `hp`. Loading gives full hearts at the last save point (`savePoint`, or
   the start when there is none or a later map change removed its screen).
+  A place done with can hand its save point on:
+  `VL.moveSavePoint((state, point) => place or null)` is asked on every
+  Continue and faint (`VL.respawnPlace`); the shipwreck uses it.
   `finished` marks a finished game: the slot shows FINISHED and loads the
   last save before the finale (the ending sets it).
 - **When (design: Option B, Zelda-style):** call `VL.earned(state)` after
@@ -780,7 +783,16 @@ Then W29's playtest notes with real keys: the driftwood at the hut beach
 (`w29-driftwood.png`), the first shovel's dig-key popup and X digging with
 the sword and shield in hand (`w29-dig-key-popup.png`, `w29-dig-x.png`), a
 wood sword clinking off a thorny spitter (`w29-tough-spitter.png`) and the
-path the copied map opens before the Oak (`w29-woods-path.png`). It runs
+path the copied map opens before the Oak (`w29-woods-path.png`). Then W17's
+raft and water with real keys: Nell's talk, her raft yard, the question and
+the raft's popup (`w17-nell.png`, `w17-raft-shop.png`, `w17-raft-ask.png`,
+`w17-raft-popup.png`), pushing off from the lake shore, sailing over the
+screen edge and landing on the island for its ore (`w17-launch.png`,
+`w17-sailing.png`, `w17-island.png`, `w17-island-ore.png`), off the far
+beach to the wreck and aboard by its stove-in side (`w17-wreck.png`,
+`w17-wreck-aboard.png`), every room below deck (`w17-room-<x>_<y>.png`), the
+rope over the bilge (`w17-bilge-rope.png`) and the cabin's page
+(`w17-page.png`). It runs
 for 240 s at most (about twice its run time). A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
@@ -826,6 +838,10 @@ that runs no tests, and an `async` test function, both fail the node run.
   owns the key makes them passable (W14 lifts boulders for good with
   `VL.saveTile`, see Lifting; W19 opens the hidden path). Rocks (`rock: true`) are liftable with the gloves and bushes are
   always passable (bare hands), so neither is used as a wall between areas.
+- **Water and the raft (W17):** deep water `W` is sailed with the raft and
+  the oar (see [Raft and water](#raft-and-water-w17)); `y` is solid water
+  nothing sails (under the wreck's hull, and under the mill's wheel on 3,-1,
+  so the river is cut there).
 - **Shore barriers (W29):** where a beach or its shallows meet a screen edge
   that leads nowhere, the sand shows driftwood (`j`, solid, never lifted)
   and the shallows end in deep water (`W`). Nothing liftable stands on sand
@@ -1081,7 +1097,8 @@ shops. Fixture: `tests/fixtures/save-v1-W10.json`.
 
 - **One price table:** `VL.TUNING.prices` (paper, berries bought and sold, the
   mill's 5 wood → 1 shell, wood gear, the shop's shovel, metal gear with and
-  without the Smith's Ledger, binding). Offers point at its entries, so
+  without the Smith's Ledger, binding, and W17's raft and the oar for shells
+  or wood). Offers point at its entries, so
   retuning a line retunes the counter. Every price and trade is in **whole**
   shells; broken shells buy nothing (the shopkeeper says so).
 - **Buildings:** `VL.BUILDINGS` maps each area (`shop`, `paperMill`,
@@ -1607,6 +1624,81 @@ Fixture: `tests/fixtures/save-v1-W16.json` (after the shockwave and the gift).
 - **Locks claimed:** `shockwave` and `helperWood`, with the planned rules.
 - **Sounds:** `shockRumble`, `shockFlash`, `shockWake` (played by the scene).
 
+## Raft and water (W17)
+
+Design: The path through the game, 5 ("Rope + wood → raft, and wood or shells
+→ oar"; the lake island and the shipwreck). Rules and art in
+`systems/raft.js`; Nell's words in `regions/townsfolk.js`; her `raftyard`
+shop and the two oar offers in `regions/buildings.js`; the island's ore, the
+wreck and the place locks in `dungeons/shipwreck.js`. Tests:
+`tests/raft.test.js`; playthrough steps `tests/steps/w17.steps.js` (`raft`,
+`lakeIsland`, `shipwreck`).
+
+- **The raft** (`raft`, worn like the gloves) is built by Nell on the harbour
+  (2,1) for `prices.raft` (4 wood) with the hero's grappling rope, and only
+  after the shockwave: before it the currents are "far too wild" (her line
+  when he has the rope, and the offer's `refuse`). The librarian's `raft`
+  hint sends a stuck kid to her.
+- **The oar** (`oar`, worn): Mabel sells it for `prices.oarShells` (8 whole
+  shells, inside the first purse) and Brannock makes it for `prices.oarWood`
+  (3 wood). Either one; sold out once owned. Both offers stay `hidden` until
+  the shockwave, like Nell's raft (the `oar` lock `needs` adds `shockwave`,
+  with `replan`), so the first purse goes on gear he can use. A raft with no oar: pushing
+  against deep water says why, once a visit (`VL.OARLESS_TEXT`).
+- **Sailing:** with both (`VL.canRaft`), deep water is open ground for the
+  hero: walk into it to push off, bump into land to step ashore. It is a
+  **hero footing**: `VL.defineHeroFooting(id, (state, info) => bool)`
+  (`systems/movement.js`) lets the hero onto a solid tile kind, and
+  `VL.isBlocked`/`VL.isSolidAt` take that as an optional last argument
+  (`lets(info)`); the playthrough's `findPath` asks `VL.heroMayEnter` too, so
+  `walkTo` sails. Only open water (`water` and not `pit`): the wreck's
+  flooded bilge is never sailed. Screen edges on water cross like any edge;
+  the world's edge, `y`, cliffs and anything else solid stop the raft. The
+  raft is carried, so he can push off again from wherever he landed: nobody
+  is stranded (a test walks home from the island, the deck and every room
+  below). `player.afloat` (play state) is set while his feet are over water;
+  it draws the raft under him and the oar beside him (`raft` hero layer).
+- **Saved:** the two items, and the wreck's `state.dungeons.wreck` (W13).
+  Fixture: `tests/fixtures/save-v1-W17.json` (after the steps: raft and oar,
+  the island and the wreck done, saved by the hold's lantern, which now wakes
+  him on the harbour).
+- **Locks claimed:** `raft` (`needs` adds `town`, with `replan`), `oar` (`needs` adds `shockwave`, with `replan`),
+  `rafting` (`renewable` with `replan`: sailing is access, see Progression),
+  `lakeIsland` (a visit to 3,-3), `oreLakeIsland`, `shipwreck` (a visit to
+  5,2), `oreShipwreck`, `pageShipwreck` (see the wreck below).
+- **Sounds:** events `raftLaunch` (`raftSplash`), `raftLand` (`step`),
+  `raftPaddle` (`raftPaddle`, every `TUNING.raftPaddleSeconds` while moving).
+
+## The shipwreck (W17)
+
+The mini-dungeon below the wreck's deck (design: The world, Shipwreck), in
+`dungeons/shipwreck.js` on W13's framework (dungeon `wreck`, area `wreck`, no
+boss). The raft lands only at the stove-in side (3,6 → 4,6 on 5,2); the
+Tide Tables' trunk is on deck and the hatch (W8's `shipwreckHatch`) leads
+down.
+
+```
+  hold (0,0): ladder up, lantern ── locked door ── captain's cabin (1,0): the page, 5 shells
+       │
+  bilge (0,1): flooded; posts across to the key's chest and the ore
+```
+
+- **The hold:** the ladder back up, a lantern on the way down (a faint or a
+  reload wakes him there, and he can always climb up and sail home), two
+  crabs. Once the page is found the wreck is done with, and the lantern
+  hands its save point to the harbour by the pier (`VL.WRECK_HOME`, through
+  `VL.moveSavePoint`), so no Continue or faint starts below deck at sea.
+- **The bilge:** three rows of seawater (`~`: solid, a pit, splashes) across
+  the room; a grapple post on each side, so the way back is never cut off; a
+  sign says how. The chest with the wreck's key (`wreckKeyChest`, a
+  `smallKey` content) and the ore (`oreShipwreck`) are on the far side.
+- **The cabin:** behind the locked door (`wreckDoor`), the page
+  (`pageShipwreck`) and a chest of 5 whole shells (`wreckShellChest`, loot,
+  no lock).
+- **Locks:** `oreShipwreck` (`needs` adds `grapplingRope`) and
+  `pageShipwreck` (`needs` adds `wreckDoor`) with `replan`; adds
+  `wreckKeyChest` and `wreckDoor`.
+
 ## Dungeons (W13)
 
 `systems/dungeon.js` is the framework the four dungeons (W14, W15, W18, W19)
@@ -1891,6 +1983,11 @@ Rules of the table:
   `needs`, `gives`, `supplies`, `count`, `consumes`, `loses`, `retires`,
   `renewable` or `optional` differ from the plan, unless the claim carries
   `replan: '<why>'`. Every deviation then shows in the claiming item's diff.
+- **Access is `renewable`, a change is not.** A flag whose needs must hold
+  every time it is used (sailing with the raft and the oar, `rafting`) is
+  `renewable`, so the solver works it out again after every event; a
+  one-time flag is a permanent change to the world (a hedge cut for good)
+  and is carried through events as a possession.
 - **Anything that cannot be undone is an `event`** with `retires` (a room that
   seals after its boss, a one-way drop, a thief emptying a shelf). A flag
   cannot express "the things in here are gone now", so the solver would never
