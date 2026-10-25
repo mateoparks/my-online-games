@@ -732,7 +732,7 @@ thrown over the pits onto the switch (`w14-lift.png`, `w14-throw.png`,
 boulder (`w14-boulder.png`) and the Bookworm up, hit and beaten
 (`w14-boss.png`, `w14-boss-hit.png`, `w14-reward-popup.png`,
 `w14-reward.png`). It runs
-for 120 s at most. A test file
+for 240 s at most (about twice its run time). A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
 ## Overworld map

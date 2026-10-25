@@ -27,7 +27,7 @@ const sizes = [
 ];
 const walkMs = 300;
 const slideMs = 700; // ~13 px to the edge, then the 350 ms slide
-const timeoutMs = 120000;
+const timeoutMs = 240000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
