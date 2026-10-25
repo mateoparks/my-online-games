@@ -43,7 +43,8 @@
     ground(ctx, cell) {
       const { x, y } = cell;
       rect(ctx, 'lairRockDark', x, y, 16, 16);
-      if (!cell.near(0, 1)?.floor) return;
+      const below = cell.near(0, 1);
+      if (!below?.floor && !below?.lava) return;
       rect(ctx, 'lairRock', x, y + 2, 16, 13);
       rect(ctx, 'lairRockLight', x + Math.floor(cell.seed(1) * 10), y + 3, 5, 1);
       rect(ctx, 'lairRockDark', x + Math.floor(cell.seed(2) * 12), y + 8 + Math.floor(cell.seed(3) * 4), 4, 1);
@@ -60,7 +61,11 @@
         rect(ctx, 'lairFloorLight', x + Math.floor(cell.seed(i + 7) * 14), y + Math.floor(cell.seed(i + 10) * 14), 2, 1);
       }
       if (cell.near(0, -1)?.wall) rect(ctx, 'shadow', x, y, 16, 3);
-      if (cell.near(0, -1)?.lava || cell.near(0, 1)?.lava) rect(ctx, 'caveGlow', x, y, 16, 16);
+      // The lava's warmth on the floor beside it.
+      if (cell.near(0, -1)?.lava) rect(ctx, 'caveGlow', x, y, 16, 4);
+      if (cell.near(0, 1)?.lava) rect(ctx, 'caveGlow', x, y + 12, 16, 4);
+      if (cell.near(-1, 0)?.lava) rect(ctx, 'caveGlow', x, y, 4, 16);
+      if (cell.near(1, 0)?.lava) rect(ctx, 'caveGlow', x + 12, y, 4, 16);
     },
   });
 
@@ -293,7 +298,20 @@
       rect(ctx, 'shell', sx, sy, 3, 2);
       rect(ctx, 'shellDark', sx, sy + 2, 3, 1);
     }
-    if (!spilled) VL.ART.drawSparkle(ctx, x + 60, y + 24, t * 0.5);
+    if (spilled) return;
+    // The mountain itself, behind where the Dragon sleeps: books laid flat
+    // in rows, each row a little narrower than the one under it.
+    for (let row = 0; row < 6; row += 1) {
+      const width = 104 - row * 16;
+      const by = y + 46 - row * 4;
+      for (let bx = x + 128 - width / 2, i = 0; bx < x + 128 + width / 2 - 6; bx += 8, i += 1) {
+        const shift = (row % 2) * 4;
+        rect(ctx, 'outline', bx + shift - 1, by - 1, 9, 5);
+        rect(ctx, BOOK_COLORS[(i * 3 + row) % BOOK_COLORS.length], bx + shift, by, 7, 3);
+        rect(ctx, 'paperWhite', bx + shift, by + 2, 7, 1);
+      }
+    }
+    VL.ART.drawSparkle(ctx, x + 60, y + 24, t * 0.5);
   });
 
   const hoardDecor = (state) => state.room.entities.find((e) => e.type === 'decor' && e.art === 'lairHoard');

@@ -2167,6 +2167,193 @@ async function main() {
       for (const problem of raftProblems) console.log(`     ${problem}`);
     }
 
+    // W19, the highlands and the Dragon's Lair with real keys: Miss Quill
+    // binding the five pages into the Climber's Almanac (S across her
+    // counter), the hidden path opening on the cliff base and the climb to
+    // its ledge, S lifting the ledge's chicken and F flying the chasm to the
+    // first shelf, every lair room, the Mirror Shield from the big chest, a
+    // stone head's fire bounced home with D held (its bars lift), and the
+    // Dragon: breathing, its fire bounced back (dazed), struck and beaten,
+    // the hoard spilled, the boss gate shut until the heart is taken. Saved
+    // as w19-*.png.
+    {
+      errors.length = 0;
+      const w19Problems = [];
+      const codes = { KeyS: [83, 's'], KeyD: [68, 'd'], KeyF: [70, 'f'], Space: [32, ' '], Escape: [27, 'Escape'] };
+      const keyEvent = (code) => {
+        const [vk, keyName] = codes[code];
+        return { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+      };
+      const tapKey = async (code) => {
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent(code) });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent(code) });
+        if (!(await settle())) w19Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      // Holds a letter key down until `expression` holds (or `ms` passes).
+      const holdKeyUntil = async (code, expression, ms = 4000) => {
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent(code) });
+        const ok = await waitFor(expression, ms);
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent(code) });
+        return ok;
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const pressThrough = async (scene) => {
+        for (let i = 0; i < 12 && (await see('VL.app.sceneId')) === scene; i += 1) {
+          await sleep(450);
+          await tapKey('KeyS');
+        }
+      };
+      // After the Lighthouse: the sword, the Glowstone, the Chicken Keeper's
+      // Almanac read; no enemies about. `setup` adds the rest.
+      const ARMED = "g.items.woodSword = true; g.items.mirrorShield = true; g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' };";
+      const stage = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
+        Object.assign(g.flags, { shockwave: true, shockwaveWoke: true, chickenAlmanacRead: true });
+        g.items.glowstone = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e) || e.type === 'dragon');
+        document.getElementById('game').focus();
+      })()`);
+      const lair = (screen, tx, ty, facing = 'up') => ({ area: 'lair', screen, tx, ty, facing });
+
+      // The bindery: five pages found, fifteen shells, S across the counter.
+      await stage({ area: 'bindery', screen: '0,0', tx: 7, ty: 4, facing: 'up' }, `
+        for (const id of ['pageFieldA', 'pageFieldB', 'lostChicken', 'pageLostChicken', 'pageShipwreck', 'pageLighthouse']) VL.markFound(g, id);
+        g.dungeons.lighthouse.boss = true;
+        g.flags['met:quill'] = true;
+        g.inventory.shells = 15;`);
+      if ((await see('VL.loosePages(g)')) < 5) w19Problems.push(`only ${await see('VL.loosePages(g)')} pages staged`);
+      await tapKey('KeyS');
+      await waitFor("VL.app.sceneId === 'dialogue' || VL.app.sceneId === 'shop'");
+      await pressThrough('dialogue');
+      if (!(await waitFor("VL.app.sceneId === 'shop'"))) w19Problems.push(`Miss Quill's counter did not open: ${await see('VL.app.sceneId')}`);
+      await tapKey('KeyS');
+      await waitFor("VL.app.shopView.mode === 'ask'");
+      await shot('w19-bindery-ask');
+      await tapKey('KeyS');
+      if (!(await waitFor("g.flags.pagesBound"))) w19Problems.push('the pages were not bound');
+      await tapKey('Escape');
+      for (let i = 0; i < 8 && !(await see("VL.app.sceneId === 'popup' && VL.currentPopup(g)?.id === 'climbersAlmanac'")); i += 1) {
+        if ((await see('VL.app.sceneId')) === 'popup') await tapKey('KeyS');
+        await sleep(400);
+      }
+      await waitFor('VL.app.popupView && VL.app.popupView.t >= 0.35');
+      await shot('w19-almanac-popup');
+      if (!(await see("VL.hasItem(g, 'climbersAlmanac') && g.inventory.shells === 0"))) w19Problems.push('no Climber\'s Almanac for fifteen shells');
+
+      // The hidden path: up from the cliff road, its popup, the climb.
+      await stage({ area: 'overworld', screen: '-1,-1', tx: 6, ty: 2, facing: 'up' }, 'g.items.climbersAlmanac = true;');
+      await holdArrowUntil('Up', "g.player.screen === '-1,-2' && !g.transition", 3000);
+      if (!(await waitFor("VL.app.sceneId === 'popup'"))) w19Problems.push('no popup at the hidden path');
+      await sleep(400);
+      await shot('w19-hidden-path');
+      await tapKey('KeyS');
+      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(10, 7), { facing: 'up' }); })()");
+      await holdArrowUntil('Up', 'VL.heroTile(g).ty <= 3', 4000);
+      await shot('w19-ledge');
+      if ((await see('[g.player.screen, VL.heroTile(g).ty]')).join() !== '-1,-2,3') w19Problems.push(`the climb ended at ${await see('[g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty]')}`);
+
+      // The ledge's chicken, lifted (S) and flown (F) over the chasm.
+      await stage({ area: 'overworld', screen: '-1,-2', tx: 6, ty: 3, facing: 'right' }, 'g.items.climbersAlmanac = true; g.popups.seen.hiddenPathFound = true;');
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        const hen = g.room.entities.find((e) => e.spot === 'chickenLedge');
+        const feet = VL.tileCenter(7, 3);
+        Object.assign(hen, { x: 7, y: 3, px: feet.x, py: feet.y, mode: 'idle', idle: 99 });
+      })()`);
+      await tapKey('KeyS');
+      if (!(await waitFor("g.player.carrying && g.player.carrying.spot === 'chickenLedge'"))) w19Problems.push('S did not lift the ledge\'s chicken');
+      await holdArrowUntil('Up', "g.player.facing === 'up'", 300);
+      await tapKey('KeyF');
+      await sleep(350);
+      await shot('w19-flight');
+      await waitFor("g.player.screen === '-1,-3' && !g.player.flight && !VL.app.game.transition", 6000);
+      await sleep(200);
+      await shot('w19-highlands');
+      const landed = await see('[g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty, g.player.carrying && g.player.carrying.spot]');
+      if (landed.join() !== '-1,-3,6,9,chickenLedge') w19Problems.push(`the flight landed at ${landed}`);
+
+      // Every lair room.
+      for (const screen of ['0,0', '-1,0', '0,-1', '-1,-1', '0,-2', '-1,-2', '1,-2', '0,-3']) {
+        await stage(lair(screen, 7, screen === '0,-3' ? 8 : 5), `${ARMED} g.dungeons.lair.doors.d4BossDoor = true;`);
+        await sleep(250);
+        await shot(`w19-room-${screen.replace(',', '_')}`);
+      }
+
+      // The Mirror Shield from the big chest.
+      await stage(lair('-1,-1', 7, 3), "g.items.woodSword = true; g.hands = { mainHand: 'woodSword', offHand: null };");
+      await tapKey('KeyS');
+      await sleep(1250);
+      await shot('w19-shield-popup');
+      const got = await see("[VL.hasItem(g, 'mirrorShield'), VL.heldItem(g, 'offHand'), VL.app.sceneId]");
+      if (got.join() !== 'true,mirrorShield,popup') w19Problems.push(`the big chest: shield, off hand, scene = ${got}`);
+
+      // The hall's stone head: D held up towards it until its fire comes home.
+      await stage(lair('0,-1', 11, 4), ARMED);
+      await waitFor("g.room.entities.some((e) => e.type === 'dragonFire')", 4000);
+      await shot('w19-spout-fire');
+      if (!(await holdKeyUntil('KeyD', 'g.dungeons.lair.switches.d4SpoutHall', 5000))) w19Problems.push('the Mirror Shield did not send the head\'s fire home');
+      await sleep(300);
+      await shot('w19-spout-choked');
+      if (await see("g.room.entities.find((e) => e.id === 'd4BarsHall').closed")) w19Problems.push('the hall\'s bars did not lift');
+
+      // The Dragon: drawing breath, its fire bounced home, struck and beaten.
+      await stage(lair('0,-3', 7, 6), `${ARMED} g.dungeons.lair.doors.d4BossDoor = true;`);
+      await sleep(900);
+      await shot('w19-boss');
+      await waitFor("g.room.entities.some((e) => e.type === 'dragon' && e.mode === 'inhale')", 4000);
+      await sleep(500);
+      await shot('w19-boss-breath');
+      if (!(await holdKeyUntil('KeyD', "g.room.entities.some((e) => e.type === 'dragon' && e.mode === 'dazed')", 6000))) w19Problems.push('its fire bounced home did not daze the Dragon');
+      await sleep(200);
+      await shot('w19-boss-dazed');
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        const d = g.room.entities.find((e) => e.type === 'dragon');
+        Object.assign(d, { rounds: 1, life: 1, timer: 0 });
+        Object.assign(g.player, VL.tileCenter(VL.tileOf(d.cx, d.cy + 30).tx, VL.tileOf(d.cx, d.cy + 30).ty), { facing: 'up', invuln: 5 });
+      })()`);
+      await tapKey('Space');
+      if (!(await waitFor("VL.bossBeaten(g, 'lair')", 4000))) w19Problems.push('the Dragon was not beaten by the sword while dazed');
+      await sleep(400);
+      await shot('w19-boss-beaten');
+      const reward = await see("[g.room.entities.some((e) => e.type === 'heartContainer' && e.id === 'heartD4'), g.room.entities.some((e) => e.bossGate && e.closed), g.room.entities.some((e) => e.type === 'warp'), VL.booksCarried(g).length, Boolean(g.room.entities.find((e) => e.art === 'lairHoard').spilled)]");
+      if (reward.join() !== 'true,true,false,3,true') w19Problems.push(`the Dragon's heart, gate shut, warp, hoard books, spilled = ${reward}`);
+      for (let i = 0; i < 6 && (await see('VL.app.sceneId')) !== 'play'; i += 1) {
+        await tapKey('KeyS');
+        await sleep(400);
+      }
+      await shot('w19-hoard');
+      await evaluate(`(() => { const g = VL.app.game; VL.ENTITIES.heartContainer.onStand(g, g.room.entities.find((e) => e.type === 'heartContainer')); })()`);
+      for (let i = 0; i < 6 && !(await see("g.room.entities.some((e) => e.type === 'warp') && g.room.entities.some((e) => e.bossGate && !e.closed)")); i += 1) {
+        if ((await see('VL.app.sceneId')) === 'popup') await tapKey('KeyS');
+        await sleep(400);
+      }
+      if (!(await see("g.room.entities.some((e) => e.type === 'warp') && g.room.entities.some((e) => e.bossGate && !e.closed)"))) w19Problems.push('the Dragon\'s heart taken did not open the gate and bring the warp');
+
+      w19Problems.push(...errors);
+      if (w19Problems.length) failures += 1;
+      console.log(`${w19Problems.length ? 'FAIL' : 'ok  '} highlands and lair: the Almanac bound, the hidden path climbed, a chicken over the chasm, 8 rooms, the Mirror Shield, a stone head choked, the Dragon dazed and beaten, the hoard, ${path.join(outDir, 'w19-*.png')}`);
+      for (const problem of w19Problems) console.log(`     ${problem}`);
+    }
+
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
     // app of their own and drawn to an offscreen canvas every 1/60 s. In 16x16
     // cells, a flip is a change in mean relative luminance against the last
@@ -2174,8 +2361,8 @@ async function main() {
     // second: a broad one (a change of 0.05, half WCAG's, so dark rooms' dim
     // floors count too; fails when over a quarter of the canvas flips more
     // than 3 times) and WCAG's own numbers (a change of 0.1, more than 3 flash
-    // pairs, so over 6 flips; fails past 4% of the canvas, about 25% of a 10
-    // degree field at this game's scale). A control run with the steady layers
+    // pairs, so over 6 flips; fails past 2.8% of the canvas, about 25% of a
+    // 10 degree field at the smallest scale the game is drawn at). A control run with the steady layers
     // switched off must fail both, so each is known to see a strobe.
     {
       errors.length = 0;
@@ -2185,7 +2372,7 @@ async function main() {
         const cell = 16;
         const checks = [
           { id: 'broad', flipBy: 0.05, over: 3, bound: 0.25 },
-          { id: 'wcag', flipBy: 0.1, over: 6, bound: 0.04 },
+          { id: 'wcag', flipBy: 0.1, over: 6, bound: 0.028 },
         ];
         const cols = width / cell;
         const rows = height / cell;
@@ -2326,6 +2513,39 @@ async function main() {
           }
           return null;
         }, (app, g) => g.room.entities.some((e) => e.type === 'lensCrab' && e.rounds < 3)));
+        const lairArm = (g, shield) => {
+          g.items.woodSword = true;
+          g.items[shield] = true;
+          g.hands = { mainHand: 'woodSword', offHand: shield };
+          g.dungeons.lair.doors.d4BossDoor = true;
+          VL.place(g, { area: 'lair', screen: '0,-3', tx: 7, ty: 6, facing: 'up' });
+          g.popups.queue.length = 0;
+        };
+        // The Mirror Shield held up: fire bounced home, the Dragon dazed and
+        // struck, round after round, to its puff of smoke.
+        results.push(run('the Dragon: fire bounced home, dazed and struck, round after round', 20, (app, g) => lairArm(g, 'mirrorShield'), (app, g, s) => {
+          g.player.invuln = 99;
+          g.player.facing = 'up';
+          const d = g.room.entities.find((e) => e.type === 'dragon');
+          if (d && d.mode === 'dazed') {
+            Object.assign(g.player, VL.tileCenter(VL.tileOf(d.cx, d.cy + 30).tx, VL.tileOf(d.cx, d.cy + 30).ty));
+            return VL.actions({ pressed: Math.round(s * 60) % 20 === 0 ? ['mainHand'] : [] });
+          }
+          if (d) Object.assign(g.player, { x: VL.clamp(d.cx, 24, 232), y: VL.tileCenter(7, 6).y });
+          return VL.actions({ held: ['offHand'] });
+        }, (app, g) => VL.bossBeaten(g, 'lair')));
+        // A metal shield: the Dragon's fire hurts him every time it can.
+        results.push(run('dragon fire through a metal shield, hurt over and over', 8, (app, g) => lairArm(g, 'metalShield'), (app, g) => {
+          g.hp = Math.max(g.hp, 4);
+          g.player.facing = 'up';
+          return VL.actions({ held: ['offHand'] });
+        }, (app, g) => g.player.flash > 0 && g.room.entities.some((e) => e.type === 'dragon')));
+        results.push(run('a stone head breathing fire, bounced home', 4, (app, g) => {
+          g.items.mirrorShield = true;
+          g.hands = { mainHand: null, offHand: 'mirrorShield' };
+          VL.place(g, { area: 'lair', screen: '0,-1', tx: 11, ty: 4, facing: 'up' });
+          g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        }, () => VL.actions({ held: ['offHand'] }), (app, g) => g.dungeons.lair.switches.d4SpoutHall));
         results.push(run('the shockwave: rumble, white flash, story, waking', 12, (app) => {
           app.setScene('shockwave', { from: 'rumble' });
         }, (app, g, s) => VL.actions({ pressed: s > 4 && Math.round(s * 60) % 30 === 0 ? ['interact'] : [] }), (app) => app.sceneId === 'play'));
@@ -2383,7 +2603,7 @@ async function main() {
       }
       flashProblems.push(...errors);
       if (flashProblems.length) failures += 1;
-      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 4% more than 3 flash pairs (WCAG 2.3.1), in the dark, hurt, beam, boss, shockwave, swarm, popup and faint scenes`);
+      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 2.8% more than 3 flash pairs (WCAG 2.3.1), in the dark, hurt, beam, boss, Dragon, fire, shockwave, swarm, popup and faint scenes`);
       for (const problem of flashProblems) console.log(`     ${problem}`);
     }
 
