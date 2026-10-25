@@ -1063,7 +1063,7 @@ async function main() {
       if (!(await sTo('popup'))) libProblems.push('the reward talk did not end in its popup');
       await sleep(300);
       await picture('w11-reward-popup');
-      if (!(await look("VL.hasItem(g, 'shellPurse')"))) libProblems.push('five books did not give the Big Shell Purse');
+      if (!(await look("VL.rewardGiven(g, 'heartLibrary') && g.maxHp === VL.TUNING.startMaxHp + VL.TUNING.heartContainerHp"))) libProblems.push('five books did not give the heart container');
 
       // The stage-3 show also needs Dungeons 1 and 2 beaten; their locks stand in until the dungeon items claim them.
       await evaluate("VL.smokeBossLocks = ['d1Boss', 'd2Boss'].map((id) => [id, VL.LOCKS[id].reached]); VL.LOCKS.d1Boss.reached = VL.LOCKS.d2Boss.reached = () => true;");

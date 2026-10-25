@@ -1111,8 +1111,11 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   Shield. The Chicken Keeper's Almanac sets `flags.chickenAlmanacRead` (W7's
   long flight) and its popup tells about F. The sealed book gives the
   Scriptorium key (`VL.hasItem(state, 'scriptoriumKey')`, for W14's door).
-- **Rewards:** `TUNING.libraryRewards` (5 the Big Shell Purse, 10 a heart
-  container, 15 the Swiftfoot Boots), books returned ever. The purse raises
+- **Rewards:** `TUNING.libraryRewards` (5 a heart container, 10 the Big
+  Shell Purse, 15 the Swiftfoot Boots), books returned ever, each given once
+  by id (`reward:<id>`), so a save from before the swap that got the purse at
+  5 gets the heart on its next visit and nothing at 10
+  (`tests/fixtures/save-v1-W26.json`). The purse raises
   `TUNING.shellCap` (99 whole shells) to `shellCapPurse` (999); the
   `shellPurse` system trims anything over (a drop, a dig) and says who might
   help; a shop trade at the cap is refused instead ("Your purse is full!",
