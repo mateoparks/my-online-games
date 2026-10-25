@@ -254,7 +254,7 @@ test('at least 30 books can be returned over the game: 12 new untitled books lie
 // check here that no new trunk cuts its screen in two or stands boxed in: the
 // open ground of its screen (tiles and the screen's other solid things) falls
 // into as many connected pieces with the trunk as without it.
-test('no new book trunk blocks a passage on its screen, and each can be walked up to', () => {
+test('no new book trunk blocks a passage on its screen; each stands on open ground with at least one open side', () => {
   const { VL } = loadGame();
   const { cols, rows } = VL.TUNING;
   const pieces = (blocked) => {

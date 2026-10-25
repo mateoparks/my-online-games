@@ -308,6 +308,7 @@ test('beating it: the heart container where it began, the warp out, the Mortar &
   const waiting = t.find('heartContainer');
   assert.ok(waiting, 'the heart waits until taken');
   assert.equal(t.find('warp'), undefined, 'and so does the warp');
+  assert.equal(t.find('shutter').closed, true, 'and so do the bars');
   // Take it for real; its popup and hold-up pause the world, so step it directly.
   VL.ENTITIES.heartContainer.onStand(t.game, waiting);
   t.game.holdUp = null;
