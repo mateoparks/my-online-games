@@ -47,7 +47,7 @@
       if (!cell.near(0, 1)?.floor) return;
       rect(ctx, 'lhStone', x, y + 2, 16, 13);
       rect(ctx, 'lhStoneLight', x, y + 2, 16, 1);
-      const offset = cell.wx % 2 ? 4 : 12;
+      const offset = Math.abs(cell.wx) % 2 ? 4 : 12;
       rect(ctx, 'lhMortar', x, y + 8, 16, 1);
       rect(ctx, 'lhMortar', x + offset, y + 3, 1, 5);
       rect(ctx, 'lhMortar', x + ((offset + 8) % 16), y + 9, 1, 5);
@@ -61,7 +61,8 @@
       const { x, y } = cell;
       rect(ctx, 'lhPlank', x, y, 16, 16);
       for (const row of [0, 5, 10, 15]) rect(ctx, 'lhPlankDark', x, y + row, 16, 1);
-      rect(ctx, 'lhPlankDark', x + ((cell.wx * 5 + cell.wy * 3) % 14) + 1, y + 1, 1, 4);
+      // Rooms west and north of the entrance have negative world coordinates.
+      rect(ctx, 'lhPlankDark', x + ((((cell.wx * 5 + cell.wy * 3) % 14) + 14) % 14) + 1, y + 1, 1, 4);
       rect(ctx, 'lhPlankLight', x + Math.floor(cell.seed(1) * 12) + 1, y + 6 + Math.floor(cell.seed(2) * 3), 3, 1);
       if (cell.near(0, -1)?.wall) rect(ctx, 'shadow', x, y, 16, 3);
     },

@@ -428,6 +428,8 @@ test('the bindery binds five loose pages for 15 shells, once', () => {
   const findPage = (lock) => {
     VL.markFound(game, lock.id);
     game.flags[`test:${lock.id}`] = true;
+    // W18's Lens Crab gives its page with the win.
+    if (lock.id === 'd3Boss') VL.dungeonState(game, 'lighthouse').boss = true;
   };
   pageLocks.slice(0, 4).forEach(findPage);
   assert.equal(VL.loosePages(game), 4);

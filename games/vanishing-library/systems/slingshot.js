@@ -129,6 +129,12 @@
         gone(state, pellet, 'slingHit');
         return true;
       }
+      // W13's levers too, as README "Switches" promised.
+      if (e.type === 'switch') {
+        if (VL.dungeonOf(state)) VL.throwSwitch(state, e);
+        gone(state, pellet, 'slingHit');
+        return true;
+      }
       if (e.solid || def?.solid) {
         gone(state, pellet, 'slingTink');
         return true;
