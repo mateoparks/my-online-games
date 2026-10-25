@@ -297,14 +297,14 @@
     }
     if (n === 2) {
       return [
-        'Since you were last here, two more books vanished! Where do they go?',
+        'Since you were last here, two books vanished! Where do they go?',
         'Two books gone since your last visit, {name}. I looked under every table!',
       ];
     }
     if (n < NUMBER_WORDS.length) {
       const word = NUMBER_WORDS[n];
       return [
-        `Oh, {name}, ${word.toLowerCase()} more books have vanished since you were last here! The shelves look so bare.`,
+        `Oh, {name}, ${word.toLowerCase()} books have vanished since you were last here! The shelves look so bare.`,
         `${word} books gone since your last visit! Whatever is taking them must be very hungry.`,
       ];
     }

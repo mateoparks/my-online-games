@@ -1150,8 +1150,9 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
 - **Where the titled books lie (W28):** none is in town at the start, so they
   come along the path rather than all at once. The Primer is in a trunk on
   the east road (past the boulders, so with the gloves, as Dungeon 1's
-  mortar makes ink for a map); the Herbalist's Notes in the Woods' west
-  pocket by the ore and the Chicken Keeper's Almanac at the Hollow Oak's
+  mortar makes ink for a map); the Herbalist's Notes beside the Woods'
+  path on 5,-2 (well away from the secret ore on 6,-1, which the Smith's
+  Ledger reveals) and the Chicken Keeper's Almanac at the Hollow Oak's
   clearing (after Dungeon 1); the Smith's Ledger on the lake island and the
   Tide Tables on the shipwreck's deck (by raft, after the shockwave, when
   gear and shells are needed again); A Child's Book of Dragons in the

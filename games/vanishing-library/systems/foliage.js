@@ -74,7 +74,7 @@
 
   VL.definePopup('berries', {
     title: 'Berries!',
-    text: 'Eat one to heal a heart: choose the berries on the E screen and press S. They grow back on the bush.',
+    text: 'Eat one to heal a heart: open your equipment with E, choose the berries and press S. They grow back on the bush.',
   });
 
   // Leaves settle and uncollected drops fade. `age` is for drawing: draw

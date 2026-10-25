@@ -636,7 +636,7 @@ test('from her third stage, her second talk in a visit points the wrong way; his
   assert.ok(first.includes('Another book'), first);
   const second = talk();
   assert.equal(second, VL.WIFE_MISDIRECTION.scriptoriumKey, 'books in the lake: the wrong way');
-  assert.ok(VL.pickDialogue(t.game, 'librarian').say.includes('trunks'), 'the librarian sends you to the trunks');
+  assert.match([].concat(VL.pickDialogue(t.game, 'librarian').say).join(' '), /trunk by the puppet stage/, 'the librarian sends you to the trunk');
   // A fresh visit starts with a greeting again.
   t.at({ area: 'overworld', screen: '2,0', tx: 6, ty: 4, facing: 'up' });
   assert.ok(talk().includes('Another book'));

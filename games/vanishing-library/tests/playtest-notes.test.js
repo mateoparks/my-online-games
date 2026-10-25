@@ -20,7 +20,7 @@ function playerStrings() {
       if (/^\s*\/\//.test(line) || /Error\(|problems\.push|report\(|found\.push|doc: '§|replan: /.test(line)) return;
       for (const match of line.matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)) {
         const text = (match[1] ?? match[2] ?? match[3]).replace(/\\(.)/g, '$1').replace(/\$\{[^}]*\}/g, '#');
-        if (/[a-z]{2,} [a-zA-Z]/.test(text)) strings.push({ where: `${file}:${i + 1}`, text });
+        if (/[a-z]{2,} [a-zA-Z]/.test(text) && !text.startsWith('§')) strings.push({ where: `${file}:${i + 1}`, text });
       }
     });
   }
@@ -39,7 +39,9 @@ const MEANT = [
   /wood for shells, shells for paper/i, /fetched/i, /^into /i, /^crab large/i,
 ];
 
-const sentencesOf = (text) => text.split(/(?<=[.!?]["”]?)\s+|\.\.\.|:\s/).map((s) => s.trim()).filter(Boolean);
+// A sentence ends where the next one starts with a capital; "..." and ":"
+// carry on the same sentence ("Now... that works now" is one).
+const sentencesOf = (text) => text.split(/(?<=[.!?]["”]?)\s+(?=[A-Z"“])/).map((s) => s.trim()).filter(Boolean);
 
 function repeatedWords(sentence) {
   if (MEANT.some((pattern) => pattern.test(sentence))) return [];
@@ -69,6 +71,8 @@ test('no sentence a player reads repeats a word by accident ("Now that works, no
 test('the doubled-word check catches the kind of line Matthew saw, and lets a chant through', () => {
   assert.deepEqual(repeatedWords('Now that works better, now.'), ['now']);
   assert.deepEqual(repeatedWords('Wood gear, I make from wood.'), ['wood']);
+  assert.deepEqual(sentencesOf('Now... that works now: see?').flatMap(repeatedWords), ['now'], 'an ellipsis or colon does not hide a repeat');
+  assert.deepEqual(sentencesOf('I bind books... or I used to. Books vanish.').flatMap(repeatedWords), [], 'separate sentences are checked apart');
   assert.deepEqual(repeatedWords('Oh, thank you, thank you, Robin!'), []);
   assert.deepEqual(repeatedWords('The tide brings in shells every morning.'), []);
 });
@@ -153,6 +157,16 @@ test('the six titled books wait behind later progress, each where it is useful',
   }
 });
 
+test('the Herbalist\'s trunk keeps away from the Woods\' secret ore, so the Smith\'s Ledger still has it to reveal', () => {
+  const { VL } = loadGame();
+  const herbalist = VL.SPOTS.bookHerbalist;
+  const ore = VL.SPOTS.oreWoods;
+  assert.equal(herbalist.area, 'overworld');
+  assert.ok(VL.REGIONS.woods.screens.includes(herbalist.screen), `still in the Woods (${herbalist.screen})`);
+  assert.notEqual(herbalist.screen, ore.screen, 'not on the ore\'s screen');
+  assert.match(VL.BOOKS.bookSmithsLedger.reading.join(' '), /ore hiding in the Woods/);
+});
+
 test('the solver stays green and every library reward is still reachable before the shockwave', () => {
   const { VL } = loadGame();
   const result = VL.solveProgression();
@@ -207,6 +221,12 @@ function heldApp() {
   };
   return { VL, app, sounds, step, hold, drawn };
 }
+
+test('every item can be held up: each one has its sprite', () => {
+  const { VL } = loadGame();
+  const missing = Object.keys(VL.ITEMS).filter((id) => !VL.ART.SPRITES[VL.itemSprite(id)]);
+  assert.deepEqual(missing, [], 'VL.holdUp throws on a missing sprite');
+});
 
 test('opening the hut chest: the hero holds the sword and shield up with a jingle, then the popup names them', () => {
   const { VL, app, sounds, step, hold, drawn } = heldApp();
@@ -359,6 +379,7 @@ test('his remarks vary, read cleanly and fit the font', () => {
     const text = VL.popupText(line, { name: 'Ñandú Élodïe' });
     assert.deepEqual([...VL.ART.missingGlyphs(text)], [], line);
     for (const sentence of sentencesOf(text)) assert.deepEqual(repeatedWords(sentence), [], line);
+    assert.doesNotMatch(line, /\bmore\b/, `the first remark ever may count several books, so none says "more": ${line}`);
   }
 });
 

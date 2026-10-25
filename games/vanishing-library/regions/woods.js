@@ -158,7 +158,6 @@
       ],
       entities: [
         spot('oreWoods', 6, 9, 'pickup', 'W5'),
-        spot('bookHerbalist', 5, 8, 'trunk', 'W11'),
       ],
     },
     '7,-1': {
@@ -194,7 +193,9 @@
         'FFFffFFFFFFFFFFF',
         'FFFffFFFFFFFFFFF',
       ],
-      entities: [],
+      entities: [
+        spot('bookHerbalist', 11, 5, 'trunk', 'W11'),
+      ],
     },
     '6,-2': {
       tiles: [

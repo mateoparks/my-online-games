@@ -99,7 +99,7 @@
   const not = (fn) => (state) => !fn(state);
   VL.LIBRARY_HINTS = {
     chestGear: [{ say: 'Have you looked around your own hut, {name}? I\'m sure there\'s an old chest in there.' }],
-    scriptoriumKey: [{ say: 'Folk have been hiding books to keep them safe. Try the old trunks around town. There\'s one by the puppet stage in the square.' }],
+    scriptoriumKey: [{ say: 'Folk have been hiding books to keep them safe. Try the old trunk by the puppet stage in the square.' }],
     scriptoriumEntered: [{ say: 'That key opens the Old Scriptorium, just north of the library. Go and see what the scribes left behind!' }],
     liftingGloves: [{ say: 'The Scriptorium is full of heavy pots and stones. Perhaps the scribes kept something in there to help with the lifting.' }],
     d1Boss: [{ say: 'Something has been chewing through the Scriptorium\'s shelves. A pot or two thrown its way might teach it some manners!' }],
