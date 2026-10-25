@@ -12,36 +12,37 @@ VL.extendTileset('base', {
 });
 
 VL.ART.addColors({
-  driftwood: '#b09a78',
-  driftwoodLight: '#ddd0b2',
-  driftwoodDark: '#5e4a36',
-  driftwoodEnd: '#8a7254',
+  driftwood: '#9c6b40',
+  driftwoodLight: '#c99863',
+  driftwoodDark: '#4a3020',
+  driftwoodGrain: '#6e4527',
+  driftwoodEnd: '#ecd3a0',
+  driftwoodRing: '#c09060',
 });
 
-// A bleached log washed up with a branch still reaching out of it.
+// A long brown log lying on its side, its pale cut end showing rings and a
+// branch still reaching out of it: low, warm and long, so it never reads as
+// one of the round grey rocks a hero can lift.
 VL.ART.defineSprite('tile-driftwood', {
   outline: false,
-  colors: { d: 'driftwoodDark', l: 'driftwood', L: 'driftwoodLight', e: 'driftwoodEnd', k: 'bark' },
+  colors: { d: 'driftwoodDark', l: 'driftwood', L: 'driftwoodLight', k: 'driftwoodGrain', E: 'driftwoodEnd', r: 'driftwoodRing', c: 'driftwoodDark' },
   rows: [
-    '..d.........dd..',
-    '..dd.......dLd..',
-    '...dd.....dLd...',
-    '....dd...dLd....',
-    '.....dddddd.....',
-    '...ddLLLLLLddd..',
-    '..dLLLLLLLLLLLd.',
-    '.dLLllllllllllLd',
-    'deeLlllllkllllld',
-    'deelllllllllklld',
-    'deeelllkllllllld',
-    '.deelllllllllldd',
-    '..ddddddddddddd.',
+    '............dd..',
+    '...........dLd..',
+    '..........dLd...',
+    '.dddddddddLdddd.',
+    'dEEdLLLLLLLLLLdd',
+    'ErrElllkkklllLLd',
+    'ErcEllllllllkkld',
+    'ErrEkkllllllllld',
+    'dEEdllllllkkllld',
+    '.dddddddddddddd.',
   ],
 });
 VL.ART.defineTileStyle('driftwood', {
   under: 'sand',
-  shadow: (ctx, cell) => VL.ART.rect(ctx, 'shadow', cell.x + 2, cell.y + 13, 15, 3),
-  raised: (ctx, cell) => VL.ART.drawSprite(ctx, 'tile-driftwood', cell.x, cell.y + 2),
+  shadow: (ctx, cell) => VL.ART.rect(ctx, 'shadow', cell.x + 1, cell.y + 13, 15, 3),
+  raised: (ctx, cell) => VL.ART.drawSprite(ctx, 'tile-driftwood', cell.x, cell.y + 5),
 });
 
 VL.addScreens('overworld', {
