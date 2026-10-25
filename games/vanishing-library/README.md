@@ -1193,7 +1193,8 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
   hand key and S on the equipment screen only say so, and the `mapReady`
   popup waits until he is outside) calls
   `VL.openWorldMap`. With no map, `VL.mapNeeds(state)` says why not (the
-  Primer read and still on the shelf, then `TUNING.mapCost`); when nothing is
+  Primer read and still on the shelf, then `TUNING.mapCost`, and where ink
+  comes from while the hero has no `mortarPestle`); when nothing is
   missing, the `worldMap` scene asks first, `VL.makeWorldMap` spends the paper
   and ink and gives the `worldMap` item, and every visited overworld screen is
   inked in, one after another, over `TUNING.mapRevealSeconds` (a press skips).

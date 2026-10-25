@@ -312,7 +312,11 @@
     if (!VL.bookRead(state, 'bookPrimer')) return 'You have no map yet. A book about map drawing would help.';
     if (!VL.primerOnShelf(state)) return 'You have no map, and without the Cartographer\'s Primer you can\'t remember how to draw one.';
     const missing = costText(VL.TUNING.mapCost, state);
-    return missing ? `You have no map yet. You need ${missing} to draw one.` : null;
+    if (!missing) return null;
+    const whereInk = /ink/.test(missing) && !VL.hasItem(state, 'mortarPestle')
+      ? ' Ink is made by grinding berries with a Mortar & Pestle. There\'s one somewhere in the Old Scriptorium.'
+      : '';
+    return `You have no map yet. You need ${missing} to draw one.${whereInk}`;
   };
 
   VL.makeWorldMap = function makeWorldMap(state) {

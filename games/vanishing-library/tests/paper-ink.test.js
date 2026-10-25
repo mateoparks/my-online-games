@@ -307,6 +307,31 @@ test('M with no map says what drawing one needs: the Primer, then paper and ink'
   assert.equal(VL.hasItem(t.game, 'worldMap'), false);
 });
 
+test('a hero with no ink and no Mortar & Pestle is told where ink comes from, in the Primer and at M', () => {
+  const t = setup();
+  const { VL } = t;
+  const saysWhere = (text) => /berries/.test(text) && /Mortar & Pestle/.test(text) && /Scriptorium/.test(text);
+  const book = VL.BOOKS.bookPrimer;
+  assert.ok(saysWhere(book.reading.join(' ')), 'the reading');
+  for (const page of book.reading) assert.equal(VL.ART.popupLayout({ text: VL.popupText(page, { name: 'Ñandú Élodïe' }) }).overflow, false, page);
+  readPrimer(VL, t.game);
+  const primerPopup = VL.POPUPS.primerRead;
+  assert.ok(saysWhere(primerPopup.text), 'the popup after the reading');
+  assert.equal(VL.ART.popupLayout(primerPopup).overflow, false);
+  t.game.popups.seen.mapReady = true;
+  t.at(FIELD);
+  give(VL, t.game, { paper: 1 });
+  t.press('map');
+  const noInk = VL.currentPopup(t.game);
+  assert.ok(saysWhere(noInk.text), noInk.text);
+  assert.equal(VL.ART.popupLayout(noInk).overflow, false);
+  assert.deepEqual(plain(VL.ART.missingGlyphs(noInk.text)), []);
+  t.closePopups();
+  VL.giveItem(t.game, 'mortarPestle');
+  t.press('map');
+  assert.doesNotMatch(VL.currentPopup(t.game).text, /Scriptorium/, 'with the mortar in hand, just what is missing');
+});
+
 test('M asks before drawing; No keeps the paper and ink', () => {
   const t = setup();
   const { VL } = t;
