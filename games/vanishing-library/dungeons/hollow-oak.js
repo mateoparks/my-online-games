@@ -6,12 +6,16 @@
 //
 //                       boss (0,-3): the Thornback
 //                            │ boss door
-//   tangle N (-1,-2) ── great hollow (0,-2) ─door A─ rope vault (1,-2): the rope
-//   key A   │                │                        │ pits, posts
+//   tangle N (-1,-2)    great hollow (0,-2) ─door A─ rope vault (1,-2): the rope
+//   key A (cleared) │        │ door C                 │ pits, posts
 //   tangle S (-1,-1) ── root hall (0,-1) ── pit garden (1,-1): key B on an island
 //   map                      │                        │ door B
-//                       entrance (0,0) ─bars─ sap well (1,0): switch, boss key
-//                       statue, door out
+//   moss room (-1,0) ── entrance (0,0) ─bars─ sap well (1,0): switch, boss key
+//   key under the grass  statue, door out
+//
+// W30: key A appears once the tangle's thorny spitters (metal sword only)
+// are beaten, and the moss room's key is dug up with the metal shovel; both
+// are needed for doors C and A.
 (() => {
   const { rect } = VL.ART;
   const DUNGEON = 'hollowOak';
@@ -33,6 +37,9 @@
     '#': { ...VL.DUNGEON_TILES['#'], art: 'oakWall' },
     _: { ...VL.DUNGEON_TILES._, art: 'oakFloor' },
     R: { solid: true, roots: true, art: 'oakRoots' },
+    // W30: the moss room's odd patch of grass, and a hole dug in it.
+    ',': { grass: true, floor: true, art: 'grass' },
+    [VL.DIG_HOLES.dirt]: { grass: true, hole: true, floor: true, art: 'holeDirt' },
   });
 
   VL.ART.defineTileStyle('oakWall', {
@@ -127,7 +134,7 @@
         '#______________#',
         '#______________#',
         '#______________#',
-        '#_______________',
+        '________________',
         '#______________#',
         '#__R________R__#',
         '#______________#',
@@ -145,7 +152,7 @@
     '0,-1': {
       tiles: [
         '#######_########',
-        '#RR____R____RR_#',
+        '#RR_________RR_#',
         '#______________#',
         '#__RR______RR__#',
         '#______________#',
@@ -157,6 +164,7 @@
         '#######_########',
       ],
       entities: [
+        { type: 'lockedDoor', id: 'd2DoorC', kind: 'small', x: 7, y: 0, lock: 'd2DoorC' },
         { type: 'slime', x: 4, y: 5 },
         { type: 'slime', x: 11, y: 8 },
       ],
@@ -191,14 +199,15 @@
         '#_R_RR_R_R_R_R_#',
         '#_R____R___R___#',
         '#_RRRRRRRRRR_RR#',
-        '#___R___________',
+        '#___R__________#',
         '#_R_R_RRRRRRRR_#',
         '#_R___R######R_#',
         '###_############',
       ],
       entities: [
-        { type: 'smallKey', id: 'd2KeyA', x: 4, y: 3, lock: 'd2KeyA' },
-        { type: 'bat', x: 11, y: 3 },
+        { type: 'smallKey', id: 'd2KeyA', x: 4, y: 3, lock: 'd2KeyA', reveal: 'cleared' },
+        { type: 'spitter', x: 11, y: 3, tough: true },
+        { type: 'spitter', x: 5, y: 7, tough: true },
       ],
     },
     // The great hollow: door A east, the boss door north, a warning carved
@@ -212,12 +221,13 @@
         '#______________#',
         '#_______________',
         '#______________#',
-        '_______________#',
+        '#______________#',
         '#__R________R__#',
         '#______________#',
         '#######_########',
       ],
       entities: [
+        { type: 'lockedDoor', id: 'd2DoorC', kind: 'small', x: 7, y: 10, lock: 'd2DoorC' },
         { type: 'lockedDoor', id: 'd2BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd2BossDoor', oneWay: true },
         { type: 'lockedDoor', id: 'd2DoorA', kind: 'small', x: 15, y: 5, lock: 'd2DoorA' },
         { type: 'sign', x: 9, y: 1, title: 'Carved in the bark', text: 'Beware the Thornback! Its back is all armour. Pull its plates off, and it\'s just a big beetle.' },
@@ -300,6 +310,26 @@
         { type: 'slime', x: 2, y: 9 },
       ],
     },
+    // The moss room (W30): an odd patch of grass, and a key buried in it
+    // that only the metal shovel digs up. Nothing says so: the grass is the hint.
+    '-1,0': {
+      tiles: [
+        '################',
+        '#RR#________#RR#',
+        '#______________#',
+        '#______________#',
+        '#____,,,,,,____#',
+        '#____,,,,,,_____',
+        '#____,,,,,,____#',
+        '#______________#',
+        '#R____________R#',
+        '#______________#',
+        '################',
+      ],
+      entities: [
+        { type: 'smallKey', id: 'd2KeyMoss', x: 9, y: 5, lock: 'd2KeyMoss', reveal: 'dug' },
+      ],
+    },
     // The Thornback's den.
     '0,-3': {
       tiles: [
@@ -372,6 +402,17 @@
     },
   });
 
+  // A save from before W30 that already opened door A had no door C to
+  // open and no moss key to dig: door C counts as opened with a key given,
+  // so its keys in hand are what they were.
+  VL.onRoomBuilt((state) => {
+    const d = state.dungeons?.[DUNGEON];
+    if (!d || !d.doors.d2DoorA || d.doors.d2DoorC) return;
+    d.doors.d2DoorC = true;
+    d.keysGiven = (d.keysGiven || 0) + 1;
+    VL.earned(state);
+  });
+
   VL.defineDungeon(DUNGEON, {
     area: DUNGEON,
     name: 'Hollow Oak',
@@ -396,8 +437,13 @@
   const keys = `smallKey:${DUNGEON}`;
 
   VL.defineLock('hollowOakEntered', { ...VL.LOCKS.hollowOakEntered, place: { area: DUNGEON, screen: '0,0' }, reached: (state) => Boolean(state.visited[`${DUNGEON}:0,0`]) });
-  VL.defineLock('d2KeyA', { type: 'item', needs: ['hollowOakEntered'], supplies: { [keys]: 1 }, doc, reached: found('d2KeyA') });
-  VL.defineLock('d2DoorA', { needs: ['hollowOakEntered'], consumes: { [keys]: 1 }, doc, reached: door('d2DoorA') });
+  // W30: key A waits for the tangle's thorny spitters (metal sword only) to
+  // fall; the moss key is dug with the metal shovel; door C guards the way
+  // up to the great hollow, so both keys are needed.
+  VL.defineLock('d2KeyA', { type: 'item', needs: ['hollowOakEntered', 'metalSword'], supplies: { [keys]: 1 }, doc, reached: found('d2KeyA') });
+  VL.defineLock('d2KeyMoss', { type: 'item', needs: ['hollowOakEntered', 'metalShovel'], supplies: { [keys]: 1 }, doc, reached: found('d2KeyMoss') });
+  VL.defineLock('d2DoorC', { needs: ['hollowOakEntered'], consumes: { [keys]: 1 }, doc, reached: door('d2DoorC') });
+  VL.defineLock('d2DoorA', { needs: ['d2DoorC'], consumes: { [keys]: 1 }, doc, reached: door('d2DoorA') });
   VL.defineLock('grapplingRope', {
     ...VL.LOCKS.grapplingRope,
     needs: ['hollowOakEntered', 'd2DoorA'],
@@ -407,10 +453,10 @@
   VL.defineLock('d2KeyB', { type: 'item', needs: ['grapplingRope'], supplies: { [keys]: 1 }, doc, reached: found('d2KeyB') });
   VL.defineLock('d2DoorB', { needs: ['grapplingRope'], consumes: { [keys]: 1 }, doc, reached: door('d2DoorB') });
   VL.defineLock('d2BossKey', { type: 'item', needs: ['d2DoorB'], gives: [`bossKey:${DUNGEON}`], doc, reached: found('d2BossKey') });
-  VL.defineLock('d2BossDoor', { needs: ['hollowOakEntered', `bossKey:${DUNGEON}`], doc, reached: door('d2BossDoor') });
+  VL.defineLock('d2BossDoor', { needs: ['d2DoorC', `bossKey:${DUNGEON}`], doc, reached: door('d2BossDoor') });
   VL.defineLock('d2Boss', {
     ...VL.LOCKS.d2Boss,
-    needs: ['hollowOakEntered', 'grapplingRope', ['woodSword', 'metalSword'], 'd2BossDoor'],
+    needs: ['hollowOakEntered', 'grapplingRope', 'metalSword', 'metalShovel', 'd2BossDoor'],
     replan: 'the boss room lies behind the boss door',
     reached: (state) => VL.bossBeaten(state, DUNGEON),
   });

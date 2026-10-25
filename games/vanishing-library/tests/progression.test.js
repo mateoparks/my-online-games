@@ -136,7 +136,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 122, 'W30 added twelve late books');
+  assert.equal(Object.keys(VL.LOCKS).length, 124, 'W30 added twelve late books, the moss key and door C');
 });
 
 test('implemented place locks name screens that exist', () => {
@@ -457,7 +457,8 @@ test('broken: access opened by gear an event takes does not stay open', () => {
   table.blacksmith.needs = ['woods'];
   const real = problemsOf(VL, table);
   for (const key of ['woodSword', 'metalSword', 'woodShield']) assert.ok(real.includes(`after shockwave, ${key} cannot be regained`), real.join('\n'));
-  assert.ok(real.includes('blacksmith is required but unreachable after shockwave'));
+  // W30: the Hollow Oak needs metal gear, so the smithy is forced before the shockwave (like the road).
+  assert.ok(!real.includes('blacksmith is required but unreachable after shockwave'), real.join('\n'));
   assert.ok(real.includes('d3Boss is unreachable: needs metalSword|woodSword after shockwave'));
   assert.ok(!real.includes('eastRoad is required but unreachable after shockwave'), 'the road was forced before the shockwave');
 });

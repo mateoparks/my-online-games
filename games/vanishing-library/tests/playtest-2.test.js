@@ -173,7 +173,7 @@ test('the rope only stuns a tough spitter, never hurts it', () => {
   assert.equal(plant.hp, hp);
 });
 
-test('only the clearing\'s spitters are that tough; every other enemy still falls to a wood sword', () => {
+test('only the clearing\'s spitters and (W30) the Hollow Oak tangle\'s are that tough; every other enemy still falls to a wood sword', () => {
   const VL = shared;
   const tough = [];
   for (const [areaId, area] of Object.entries(VL.AREAS)) {
@@ -181,14 +181,14 @@ test('only the clearing\'s spitters are that tough; every other enemy still fall
       for (const e of screen.entities) if (e.tough) tough.push(`${areaId} ${key} ${e.type} (${e.x},${e.y})`);
     }
   }
-  assert.deepEqual(tough, ['overworld 7,-2 spitter (4,7)', 'overworld 7,-2 spitter (12,6)']);
+  assert.deepEqual(tough.sort(), ['hollowOak -1,-2 spitter (11,3)', 'hollowOak -1,-2 spitter (5,7)', 'overworld 7,-2 spitter (12,6)', 'overworld 7,-2 spitter (4,7)']);
   assert.deepEqual(plain(VL.TUNING.toughSwords), ['metalSword']);
 });
 
-test('they never block the way (enemies are never solid), so the metal sword stays a choice before Dungeon 2, and it is affordable: one ore and no more shells than the first purse holds', () => {
+test('they never block the way (enemies are never solid); since W30 Dungeon 2 needs the metal sword, which is affordable: one ore and no more shells than the first purse holds', () => {
   const VL = shared;
   assert.ok(!VL.ENTITIES.spitter.solid);
-  assert.deepEqual(plain(VL.LOCKS.d2Boss.needs), ['hollowOakEntered', 'grapplingRope', ['woodSword', 'metalSword'], 'd2BossDoor']);
+  assert.deepEqual(plain(VL.LOCKS.d2Boss.needs), ['hollowOakEntered', 'grapplingRope', 'metalSword', 'metalShovel', 'd2BossDoor']);
   const { ore, shells } = VL.TUNING.prices.metalGear;
   assert.equal(ore, 1);
   assert.ok(shells <= VL.TUNING.shellCap, `${shells} shells fit in a ${VL.TUNING.shellCap}-shell purse`);

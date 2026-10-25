@@ -128,9 +128,13 @@ test('the map tells the truth: key A and door A without the rope; key B, door B,
   const t = setup();
   const { VL } = t;
   const d = t.d;
+  const from = at('0,0', 7, 8);
+  // W30: door C stands between the root hall and the great hollow.
+  assert.ok(!findPath(VL, from, at('0,-2', 7, 5), t.game), 'the great hollow lies past door C');
+  assert.ok(findPath(VL, from, at('-1,0', 8, 5), t.game), 'the moss room is open from the entrance');
+  d.doors.d2DoorC = true;
   d.doors.d2DoorA = true;
   d.doors.d2DoorB = true;
-  const from = at('0,0', 7, 8);
   const next = (e) => [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({ area: AREA, screen: e.screen, tx: e.x + dx, ty: e.y + dy }));
   const reachable = (screen, id) => {
     const e = VL.getScreen(AREA, screen).entities.find((x) => x.id === id);
@@ -545,7 +549,8 @@ test('the W15 fixture loads with the Hollow Oak played through, no field reset',
   const result = VL.readSlot(VL.createStorage(backing), 0);
   assert.deepEqual(plain(result.resets || []), []);
   const game = VL.loadSlot(VL.createStorage(backing), 0);
-  assert.deepEqual(plain(game.dungeons.hollowOak), d);
+  // W30: a save past door A gets door C opened with a key given (net keys unchanged).
+  assert.deepEqual(plain(game.dungeons.hollowOak), { ...d, keysGiven: d.keysGiven + 1, doors: { ...d.doors, d2DoorC: true } });
   assert.ok(VL.hasItem(game, 'grapplingRope') && VL.hasItem(game, 'woodsMapCopy'));
   assert.equal(VL.heldItem(game, 'offHand'), 'grapplingRope');
   assert.ok(VL.LOCKS.d2Boss.reached(game));
@@ -581,7 +586,7 @@ test('playthrough: the Woods and the Hollow Oak lock by lock, reloading after ea
   assert.ok(VL.hasItem(drive.state, 'grapplingRope'));
   assert.deepEqual(plain(drive.state.dungeons.hollowOak), {
     keysGiven: 0, bossKey: true, map: true, boss: true,
-    doors: { d2DoorA: true, d2DoorB: true, d2BossDoor: true },
+    doors: { d2DoorA: true, d2DoorB: true, d2BossDoor: true, d2DoorC: true },
     plates: {},
     switches: { d2SwitchSap: true },
   });

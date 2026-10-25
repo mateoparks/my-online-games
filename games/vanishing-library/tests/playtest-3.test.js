@@ -277,3 +277,117 @@ test('old saves: rewards given under 5/10/15 are never given twice, and none is 
   assert.equal(VL.pendingReward(c), null);
   assert.equal(VL.nextRewardAt(c), null);
 });
+
+// ---------- note 2: the Hollow Oak's grass room and its metal-only enemies ----------
+
+const oak = (screen, tx, ty, facing = 'up') => ({ area: 'hollowOak', screen, tx, ty, facing });
+
+function oakWith(items, place) {
+  const { VL } = loadGame();
+  const state = playState(VL, place);
+  for (const id of items) VL.giveItem(state, id);
+  state.popups.queue.length = 0;
+  state.popups.seen.digKey = true;
+  return { VL, state };
+}
+const key = (state, id) => state.room.entities.find((e) => e.type === 'smallKey' && e.id === id);
+const dig = (VL, state) => {
+  VL.updateWorld(state, VL.actions({ pressed: ['dig'] }), 1 / 60);
+  hold(VL, state, [], 0.4);
+};
+
+test('the moss room: an odd patch of grass west of the entrance, no sign, and a small key under it', () => {
+  const { VL } = loadGame();
+  const room = VL.getScreen('hollowOak', '-1,0');
+  const grass = room.tiles.flatMap((row, ty) => [...row].map((ch, tx) => ({ ch, tx, ty }))).filter(({ ch }) => VL.tileInfo('hollowOak', ch).grass);
+  assert.ok(grass.length >= 12, `${grass.length} grass tiles`);
+  assert.ok(!room.entities.some((e) => e.type === 'sign'), 'nothing hints at it but the grass');
+  const k = room.entities.find((e) => e.id === 'd2KeyMoss');
+  assert.equal(k.reveal, 'dug');
+  assert.ok(VL.tileInfo('hollowOak', room.tiles[k.y][k.x]).grass, 'under the grass');
+  assert.equal(VL.getScreen('hollowOak', '0,0').tiles[5][0], '_', 'the entrance opens west into it');
+});
+
+test('a wood shovel cannot dig the grass; the metal shovel digs up the key, which is then picked up and counted', () => {
+  {
+    const { VL, state } = oakWith(['woodShovel'], oak('-1,0', 8, 5, 'right'));
+    assert.equal(VL.dig(state, 'woodShovel'), 'blocked');
+    assert.ok(key(state, 'd2KeyMoss').hidden);
+  }
+  const { VL, state } = oakWith(['metalShovel'], oak('-1,0', 8, 5, 'right'));
+  assert.ok(key(state, 'd2KeyMoss').hidden, 'not shown before the dig');
+  dig(VL, state);
+  assert.ok(!key(state, 'd2KeyMoss').hidden, 'the key comes up into the hole');
+  assert.equal(VL.smallKeys(state, 'hollowOak'), 0, 'not counted until picked up');
+  hold(VL, state, ['right'], 0.6);
+  assert.ok(VL.spotFound(state, 'd2KeyMoss'));
+  assert.equal(VL.smallKeys(state, 'hollowOak'), 1);
+});
+
+test('the tangle\'s key A appears only once both thorny spitters are beaten, which only a metal sword does', () => {
+  const { VL } = loadGame();
+  const tough = VL.getScreen('hollowOak', '-1,-2').entities.filter((e) => VL.ENEMIES[e.type]);
+  assert.ok(tough.length >= 2 && tough.every((e) => e.tough), 'every enemy in the tangle is thorny');
+  for (const [sword, beaten] of [['woodSword', false], ['metalSword', true]]) {
+    const { VL: V, state } = oakWith([sword], oak('-1,-2', 3, 9));
+    hold(V, state, [], 1);
+    assert.ok(key(state, 'd2KeyA').hidden);
+    for (const e of state.room.entities.filter((x) => V.isEnemy(x))) for (let i = 0; i < 4; i += 1) { e.hurt = 0; V.hitEnemy(state, e, V.TUNING.swordDamage[sword], { x: 0, y: 0 }, sword); }
+    state.message = null;
+    hold(V, state, [], 0.1);
+    assert.equal(!key(state, 'd2KeyA').hidden, beaten, `${sword}: key ${beaten ? 'shown' : 'still hidden'}`);
+  }
+});
+
+test('door C guards the way up from the root hall, so both keys are spent before the rope; the solver says Dungeon 2 needs the metal sword and the metal shovel', () => {
+  const { VL } = loadGame();
+  assert.ok(VL.getScreen('hollowOak', '0,-1').entities.some((e) => e.type === 'lockedDoor' && e.id === 'd2DoorC'));
+  assert.equal(VL.getScreen('hollowOak', '0,-2').tiles[7][0], '#', 'no way round through the tangle');
+  assert.deepEqual([...VL.LOCKS.d2KeyA.needs.flat()].sort(), ['hollowOakEntered', 'metalSword']);
+  assert.deepEqual([...VL.LOCKS.d2KeyMoss.needs.flat()].sort(), ['hollowOakEntered', 'metalShovel']);
+  for (const id of ['metalSword', 'metalShovel']) assert.ok(VL.LOCKS.d2Boss.needs.includes(id), id);
+  const report = VL.solveProgression();
+  assert.deepEqual([...report.problems], []);
+  assert.deepEqual([...VL.dungeonProblems()], []);
+  // Without either, the Thornback is out of reach.
+  for (const id of ['metalSword', 'metalShovel']) {
+    const without = Object.fromEntries(Object.entries(VL.LOCKS).filter(([lock]) => lock !== id));
+    const r = VL.solveProgression(without);
+    assert.ok(r.problems.some((p) => /d2Boss|d2Key|unknown/.test(p)), `${id}: ${r.problems[0]}`);
+  }
+});
+
+test('both metal tools are affordable and reachable before Dungeon 2: three ore lumps, and each costs no more than the first purse holds', () => {
+  const { VL } = loadGame();
+  const ore = ['oreShallows', 'oreScriptorium', 'oreWoods'].filter((id) => VL.LOCKS[id].supplies.ore === 1);
+  assert.equal(ore.length, 3);
+  const price = VL.TUNING.prices.metalGear;
+  assert.equal(price.ore, 1);
+  assert.ok(price.shells <= VL.TUNING.shellCap);
+  const report = VL.solveProgression();
+  for (const id of ['metalSword', 'metalShovel', 'd2Boss']) assert.ok(report.stages[0].reached.includes(id), id);
+});
+
+test('a townsperson mentions the metal shovel and grass only between Dungeon 1 and Dungeon 2', () => {
+  const { VL } = loadGame();
+  const state = VL.newGame({ name: 'Robin' });
+  const says = () => [].concat(VL.pickDialogue(state, 'juniper').say).join(' ');
+  assert.doesNotMatch(says(), /shovel/);
+  VL.LOCKS.d1Boss.reached = () => true;
+  assert.match(says(), /metal shovel/);
+  assert.match(says(), /grass/);
+  VL.LOCKS.d2Boss.reached = () => true;
+  assert.doesNotMatch(says(), /shovel/);
+});
+
+test('an old save that had opened door A finds door C open with its keys unchanged', () => {
+  const { VL } = loadGame();
+  const state = VL.createGame();
+  const d = VL.dungeonState(state, 'hollowOak');
+  d.doors.d2DoorA = true;
+  VL.markFound(state, 'd2KeyA');
+  const before = VL.smallKeys(state, 'hollowOak');
+  VL.place(state, oak('0,-1', 7, 2));
+  assert.equal(d.doors.d2DoorC, true);
+  assert.equal(VL.smallKeys(state, 'hollowOak'), before);
+});

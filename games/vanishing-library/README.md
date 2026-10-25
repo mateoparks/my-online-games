@@ -532,12 +532,15 @@ holds the heart containers.
   Woods; gulls (wheel, squawk, dive where the hero stood; `big`, so only metal
   blocks them) on the cliffs and highlands. Every one does half a heart and
   takes one to three wood-sword hits, except one placed with `tough: true`
-  (W29: the two thorny spitters in the Hollow Oak's clearing), which only a
-  sword in `TUNING.toughSwords` (the metal one) hurts. The rule lives in
+  (W29: the two thorny spitters in the Hollow Oak's clearing; W30: two more
+  in its tangle), which only a sword in `TUNING.toughSwords` (the metal one)
+  hurts; a wood sword that clinks off one says so once a visit ("Hmm, this
+  wood sword seems to do nothing to them..."). The rule lives in
   `VL.hitEnemy(state, enemy, damage, from, weapon)`: a wood blade, a thrown
   rock or pot, or any hit without a listed `weapon` just clinks off
-  (`tink`); the rope still only stuns. Enemies are never solid, so they never make the
-  metal sword required. The start screen, the home meadow (0,0)
+  (`tink`); the rope still only stuns. Enemies are never solid, so the clearing's never
+  block the way; the tangle's guard a key (`reveal: 'cleared'`), which is
+  what makes the metal sword required for Dungeon 2. The start screen, the home meadow (0,0)
   and the town have none.
 - **Heart containers:** `VL.giveHeartContainer(state, id?)` adds
   `TUNING.heartContainerHp` (one heart) to `maxHp`, fills every heart, marks
@@ -1521,18 +1524,28 @@ again, with `afterThornbackDone`.
 ```
                        boss (0,-3): the Thornback
                             | boss door (oneWay)
-  tangle N (-1,-2) -- great hollow (0,-2) --door A-- rope vault (1,-2): the rope
-  key A   |                |                          | pits, posts both ways
+  tangle N (-1,-2)    great hollow (0,-2) --door A-- rope vault (1,-2): the rope
+  key A (cleared)          | door C                   | pits, posts both ways
   tangle S (-1,-1) -- root hall (0,-1) --ledge-- pit garden (1,-1): key B on an island
   map                      |                          | door B
-                       entrance (0,0) --bars-- sap well (1,0): switch + boss key on an island
-                       statue, door out to 7,-2
+  moss room (-1,0) -- entrance (0,0) --bars-- sap well (1,0): switch + boss key on an island
+  key under the grass  statue, door out to 7,-2
 ```
 
 - **The way in:** W8's `hollowOakDoor` spot in the clearing (7,-2) is a
   plain door; the Woods are the gate.
-- **The order:** key A lies deep in the tangle (two looping rooms of roots;
-  the map in a nook of the south one), door A opens the vault, the big chest
+- **Metal gear (W30):** the tangle's two thorny spitters (`tough: true`)
+  fall only to the metal sword, and key A (`reveal: 'cleared'`) appears once
+  both are beaten. West of the entrance, the moss room's odd patch of grass
+  (`,` grass, `*` its dug hole) hides a small key (`d2KeyMoss`,
+  `reveal: 'dug'`) that only the metal shovel digs up; no sign says so.
+  Door C (`d2DoorC`) stands between the root hall and the great hollow, so
+  both keys are spent on doors C and A. Juniper in town mentions the metal
+  shovel and grass between Dungeon 1 and Dungeon 2. A save from before W30
+  that had opened door A finds door C open, with a key given for it, so its
+  keys in hand are unchanged.
+- **The order:** key A lies deep in the tangle (two rooms of roots;
+  the map in a nook of the south one), door C opens the way up, door A opens the vault, the big chest
   holds the rope (mid-dungeon), and only then can the pits be crossed: posts
   over the vault's pits down into the pit garden, the hook drags key B off its
   island, door B leads down to the sap well, posts over its pit, and the hook
@@ -1570,8 +1583,13 @@ again, with `afterThornbackDone`.
   next load: the game keeps playing and the save stays as it was.
 - **Locks:** claims `hollowOakEntered` (a visit to the entrance hall) with the
   planned rule, and `grapplingRope` (`needs` adds `d2DoorA`) and `d2Boss`
-  (adds `d2BossDoor`) with `replan`; adds `d2KeyA`, `d2DoorA`, `d2KeyB`,
-  `d2DoorB`, `d2BossKey`, `d2BossDoor`. Ids are `d2…` (and `heartD2`).
+  (adds `d2BossDoor`; W30 plans it with `metalSword` and `metalShovel`) with
+  `replan`; adds `d2KeyA` (needs `metalSword`), `d2KeyMoss` (needs
+  `metalShovel`), `d2DoorC`, `d2DoorA`, `d2KeyB`, `d2DoorB`, `d2BossKey`,
+  `d2BossDoor`. Ids are `d2…` (and `heartD2`). The playthrough earns both
+  metal tools for real first (`tests/metal-gear-route.js`: berries sold for
+  shells, the shallows ore, the shovel, the meadow's buried shells, the
+  sword with the Scriptorium's ore).
 - **Sounds:** events `thornStomp`, `thornBonk`, `thornFlip`, `thornTink`
   (`wormTink`).
 
@@ -1660,7 +1678,9 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   door or key renamed after a save re-locks or reappears *and gives the key
   back*; a door opened is the key spent, one saved fact. `{ type: 'smallKey',
   id, x, y, lock, reveal?: 'cleared' }` is found once; `reveal: 'cleared'`
-  keeps it hidden until every enemy in the room is beaten. `{ type: 'bossKey',
+  keeps it hidden until every enemy in the room is beaten; `reveal: 'dug'`
+  until a shovel that digs its ground digs its tile (W30, the Hollow Oak's
+  moss room). `{ type: 'bossKey',
   id, x, y, lock }` likewise. From code (a chest, a drop, a script):
   `VL.giveSmallKey(state, dungeonId, n)` (counted in `keysGiven`),
   `VL.giveBossKey`, `VL.giveDungeonMap`; a chest holds one as

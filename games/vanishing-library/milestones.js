@@ -99,7 +99,8 @@
   lock('oreWoods', { type: 'item', needs: ['woods'], supplies: { ore: 1 }, doc: '§ Tools: two tiers, Ore is scarce (3)', by: 'W8' });
   lock('hollowOakEntered', { type: 'place', needs: ['woods'], doc: '§ The path through the game, 3', by: 'W15' });
   lock('grapplingRope', { type: 'item', needs: ['hollowOakEntered'], doc: '§ The path through the game, 3', by: 'W15' });
-  lock('d2Boss', { needs: ['hollowOakEntered', 'grapplingRope', anySword], gives: ['heartD2'], doc: '§ The path through the game, 3', by: 'W15' });
+  // W30: the Hollow Oak's thorny spitters and the key under its grass.
+  lock('d2Boss', { needs: ['hollowOakEntered', 'grapplingRope', 'metalSword', 'metalShovel'], gives: ['heartD2'], doc: '§ The path through the game, 3', by: 'W15' });
 
   // ---------- the shockwave and rebuilding ----------
 

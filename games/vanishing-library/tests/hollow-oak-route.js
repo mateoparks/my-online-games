@@ -5,6 +5,7 @@
 // at a time, fainting in between.
 const assert = require('node:assert/strict');
 const { findPath } = require('./playthrough');
+const { equip, metalGear } = require('./metal-gear-route');
 
 const AREA = 'hollowOak';
 const at = (screen, tx, ty) => ({ area: AREA, screen, tx, ty });
@@ -109,7 +110,9 @@ function clearCanyon(drive) {
 }
 
 const route = {
+  // W30: the metal shovel and sword first; the Oak needs both.
   hollowOakEntered(drive) {
+    metalGear(drive);
     drive.closePopups();
     clearCanyon(drive);
     drive.walkTo({ area: 'overworld', screen: '5,0', tx: 6, ty: 1 });
@@ -121,10 +124,45 @@ const route = {
     drive.walkTo(at('0,0', 3, 3));
     drive.until((state) => state.savePoint?.area === AREA, 1, ['up']);
   },
-  // The map first, from its nook on the way through the tangle.
+  // The map first, from its nook on the way through the tangle; then the
+  // thorny spitters, beaten with the metal sword, and key A appears (W30).
   d2KeyA(drive) {
+    const { VL } = drive;
     if (!d2(drive).map) pickUp(drive, at('-1,-1', 1, 4), 'up', () => d2(drive).map);
-    pickUp(drive, at('-1,-2', 3, 3), 'right', (state) => drive.VL.spotFound(state, 'd2KeyA'));
+    equip(drive, 'metalSword', 'mainHand');
+    go(drive, at('-1,-2', 3, 9));
+    drive.fight = true;
+    for (const [tx, ty, dir] of [[10, 3, 'right'], [6, 7, 'left']]) {
+      const spitter = () => drive.state.room.entities.find((e) => e.type === 'spitter' && e.x === tx + (dir === 'right' ? 1 : -1) && e.y === ty);
+      if (!spitter()) continue;
+      drive.walkTo(at('-1,-2', tx, ty));
+      face(drive, dir);
+      for (let i = 0; i < 8 && spitter(); i += 1) {
+        drive.press('mainHand');
+        drive.hold([], 0.4);
+      }
+      assert.equal(spitter(), undefined, `the thorny spitter beside (${tx},${ty}) fell to the metal sword`);
+      drive.closePopups();
+    }
+    drive.hold([], 0.2);
+    drive.fight = false;
+    assert.ok(drive.state.room.entities.some((e) => e.type === 'smallKey' && e.id === 'd2KeyA' && !e.hidden), 'key A appears');
+    pickUp(drive, at('-1,-2', 3, 3), 'right', (state) => VL.spotFound(state, 'd2KeyA'));
+  },
+  // The moss room's key, dug up from under the grass with the metal shovel (X).
+  d2KeyMoss(drive) {
+    const { VL } = drive;
+    go(drive, at('-1,0', 8, 5));
+    face(drive, 'right');
+    drive.press('dig');
+    drive.hold([], 0.4);
+    assert.ok(drive.state.room.entities.some((e) => e.type === 'smallKey' && e.id === 'd2KeyMoss' && !e.hidden), 'the key comes up');
+    drive.until((state) => VL.spotFound(state, 'd2KeyMoss'), 2, ['right']);
+    drive.closePopups();
+  },
+  d2DoorC(drive) {
+    go(drive, at('0,-1', 7, 1));
+    drive.until(() => d2(drive).doors.d2DoorC, 1, ['up']);
   },
   d2DoorA(drive) {
     go(drive, at('0,-2', 14, 5));
