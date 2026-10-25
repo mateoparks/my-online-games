@@ -784,15 +784,7 @@ shockwave with real keys: the ground shaking, the flash, the story on black,
 waking at home holding up the Glowstone, and Gran Ottie's talk and wood
 (`w16-rumble.png`, `w16-flash.png`, `w16-story.png`, `w16-waking.png`,
 `w16-glowstone.png`, `w16-glowstone-popup.png`, `w16-helper.png`,
-`w16-helper-wood.png`, `w16-helper-wood-popup.png`). Then W18's
-Lighthouse with real keys: the door shut without the Glowstone
-(`w18-door-dark.png`), every room (`w18-room-<x>_<y>.png`), a dark floor
-unlit and lit by its lamps (`w18-dark-unlit.png`, `w18-dark-lit.png`), the
-Slingshot from the big chest (`w18-slingshot-popup.png`), a shot across the
-pits at a target (`w18-slingshot.png`, `w18-target-hit.png`), the cistern's
-beam as found and solved (`w18-beam.png`, `w18-beam-solved.png`) and the Lens
-Crab up, dazed and beaten (`w18-boss.png`, `w18-boss-dazed.png`,
-`w18-boss-beaten.png`).
+`w16-helper-wood.png`, `w16-helper-wood-popup.png`).
 Then W29's playtest notes with real keys: the driftwood at the hut beach
 (`w29-driftwood.png`), the first shovel's dig-key popup and X digging with
 the sword and shield in hand (`w29-dig-key-popup.png`, `w29-dig-x.png`), a
@@ -804,7 +796,17 @@ digs out of its grass with the metal shovel (`w30-grass-room.png`,
 `w30-grass-key.png`), and the boss gate shut behind the hero, still shut
 with the heart on the floor, and open with the warp once it is taken
 (`w30-boss-gate-closed.png`, `w30-boss-gate-heart.png`,
-`w30-boss-gate-open.png`). Then W17's
+`w30-boss-gate-open.png`). Then W18's
+Lighthouse with real keys: the door shut without the Glowstone
+(`w18-door-dark.png`), every room (`w18-room-<x>_<y>.png`), a dark floor
+unlit and lit by its lamps (`w18-dark-unlit.png`, `w18-dark-lit.png`), the
+Slingshot from the big chest (`w18-slingshot-popup.png`), a shot across the
+pits at a target (`w18-slingshot.png`, `w18-target-hit.png`), the cistern's
+beam as found and solved (`w18-beam.png`, `w18-beam-solved.png`) and the Lens
+Crab up, dazed and beaten (`w18-boss.png`, `w18-boss-dazed.png`,
+`w18-boss-beaten.png`), with W30's boss gate checked there: shut and no
+warp while the heart is on the floor, open with the warp once it is
+taken. Then W17's
 raft and water with real keys: Nell's talk, her raft yard, the question and
 the raft's popup (`w17-nell.png`, `w17-raft-shop.png`, `w17-raft-ask.png`,
 `w17-raft-popup.png`), pushing off from the lake shore, sailing over the
@@ -813,12 +815,26 @@ screen edge and landing on the island for its ore (`w17-launch.png`,
 beach to the wreck and aboard by its stove-in side (`w17-wreck.png`,
 `w17-wreck-aboard.png`), every room below deck (`w17-room-<x>_<y>.png`), the
 rope over the bilge (`w17-bilge-rope.png`) and the cabin's page
-(`w17-page.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
-the beam, the Lens Crab's rounds, the shockwave, the chicken swarm, popups and
-a faint are each stepped by hand and drawn offscreen at 60 fps, in 16 px
+(`w17-page.png`). Then W19's highlands and lair with real keys: S across
+Miss Quill's counter binding the five pages (`w19-bindery-ask.png`) into
+the Climber's Almanac (`w19-almanac-popup.png`), the hidden path open on
+the cliff base and climbed to its ledge (`w19-hidden-path.png`,
+`w19-ledge.png`), S lifting the ledge's chicken and F flying the chasm and
+its screen edge to the first shelf, landing with it (`w19-flight.png`,
+`w19-highlands.png`), every lair room (`w19-room-<x>_<y>.png`), the Mirror
+Shield from the big chest (`w19-shield-popup.png`), a stone head's fire and
+D held until it goes home and the head is choked (`w19-spout-fire.png`,
+`w19-spout-choked.png`), and the Dragon up, drawing breath, its fire
+bounced back (dazed), struck and beaten, the hoard spilled, with the boss
+gate shut until the heart is taken (`w19-boss.png`, `w19-boss-breath.png`,
+`w19-boss-dazed.png`, `w19-boss-beaten.png`, `w19-hoard.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
+the beam, the Lens Crab's rounds, the Dragon's rounds, its fire through a
+metal shield, a stone head's fire bounced home, the shockwave, the chicken
+swarm, popups and a faint are each stepped by hand and drawn offscreen at 60 fps, in 16 px
 cells. It fails when, within any one second, over a quarter of the canvas
-flips brightness (0.05 relative luminance) more than 3 times, or over 4% of
-it (about a quarter of a 10 degree field at this scale) flips by WCAG's 0.1
+flips brightness (0.05 relative luminance) more than 3 times, or over 2.8% of
+it (about a quarter of a 10 degree field at the smallest scale the game
+is drawn at; 4% matched scale 3 only) flips by WCAG's 0.1
 more than 6 times (over 3 flash pairs). A control run with the steady layers
 off must fail both. It runs for 240 s at most (about twice its run time). A
 test file that runs no tests, and an `async` test function, both fail the
@@ -849,7 +865,7 @@ node run.
 | `canyon`, `eastRoad` (`east-road.js`) | the boulder canyon, the road | `eastRoad` | boulders `O`, `gate: 'liftingGloves'` |
 | `woods` (`woods.js`) | 6-screen route (`WOOD`, Hollow Oak at 7,-2) and 5 wrong-turn screens (`wood`) | `woods` | `softGate: 'woodsMapCopy'`: without the copy every step deeper turns back (W15, see [The Whispering Woods](#the-whispering-woods-w15)) |
 | `cliffs` (`cliffs.js`) | cliff road, lighthouse, cliff base | `cliffs` | town |
-| `highlands` (`highlands.js`) | 5 shelves up to the lair | `highlands` (W19) | hidden path `h`, `gate: 'climbersAlmanac'`, then 4-tile chasms |
+| `highlands` (`highlands.js`) | 5 shelves up to the lair | `highlands` (W19) | hidden path `h`, `gate: 'climbersAlmanac'` (opened for good, see [The highlands](#the-highlands-w19)), then 4-tile chasms |
 | `shipwreck` (`beach.js`) | the wreck offshore | `shipwreck` (W17) | `rafting` |
 
 - **Regions:** `VL.defineRegion(id, { screens, place, softGate })` tags
@@ -1893,6 +1909,100 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
   `pageLighthouse`).
 - **Sounds:** events `crabEye`, `crabDazed`, `lensGlint`, `lensBolt`
   (`slingFire`), `crabTink` (`slingTink`).
+
+## The highlands (W19)
+
+The way up (design: The path through the game, 7), in
+`systems/climbers-almanac.js`. Tests: `tests/highlands.test.js`; the
+played route is `tests/highlands-route.js`.
+
+- **The Climber's Almanac** (`climbersAlmanac`, a worn item): Miss Quill's
+  binding (W10's `bookbinder` shop sets `pagesBound`) is turned into the
+  book on the next step of play, held up with its popup. A save bound before
+  the book existed gets it the same way. The lock `climbersAlmanac` is
+  reached by owning it (planned rule kept: the bindery, shells, 5 pages).
+- **The hidden path:** `VL.HIDDEN_PATH` names the two `h` tiles on the cliff
+  base (-1,-2, (10,4) and (10,5)). Once the Almanac is owned they become `i`
+  (a cleft with footholds, passable, `hiddenPathOpen` art) for good with
+  W13's `VL.saveTile` on that screen, checked as rooms are built and every
+  step, so `VL.isSolidAt` with the room, the pathfinder and the drawn map all
+  see the path. The first time he stands on the cliff base with it open, the
+  `hiddenPathFound` popup says so.
+- **The chasms:** W7's chickens do the rest. A chicken waits at each spot
+  on every visit (`chickenLedge`, `chickenHighlands`, `chickenGap`,
+  `chickenLair`); F next to one with the Chicken Keeper's Almanac read flies
+  the four-tile gap (`chickenFlightLong` from `VL.TUNING`), crossing the
+  screen edge mid-air, and he lands still carrying it. Without the Almanac
+  read the flight falls short and flaps him back, unhurt. The tests fly every
+  highland chasm both ways from the real spots.
+- **`highlands`** is reached on visiting any highland screen (place
+  -1,-3); its planned rule is kept (cliffs, the Almanac, the long flight).
+- **Playthrough:** the `climbersAlmanac` step gathers the last two pages
+  (the field by the library, Henrietta carried home to Pip), opens the
+  Chicken Keeper's Almanac's trunk in the Woods, hands every book in and sits
+  through the readings, sells berries for the binding's 15 shells and binds;
+  `highlands` climbs the path and flies the ledge's chicken over.
+
+## The Dragon's Lair (W19)
+
+Dungeon 4 (design: The path through the game, 8), on W13's framework.
+Files: `dungeons/lair.js` (8 rooms, tileset with lava `~`, a pit nothing
+flies, the door spot `lairDoor`, the hoard, the locks), `systems/fire.js`
+(fire and the Mirror Shield), `entities/fire-spout.js`, `entities/dragon.js`.
+Tests: `tests/lair.test.js`, `tests/lair-route.js`, `tests/steps/w19.steps.js`,
+and the lair in `tests/playtest-3.test.js`'s boss-gate loop. Fixture:
+`tests/fixtures/save-v1-W19.json`, the real playthrough's save after the
+Dragon (the heart taken, out through the warp, so Continue starts on the
+lair's doorstep, -1,-5).
+
+```
+                       hoard (0,-3): the Dragon
+                            | boss door (oneWay, wants a sword)
+  ledge (-1,-2) ------ great cave (0,-2) --door B-- forge (1,-2)
+  spout -> key B, map       | bars (the hall's spout)   block, spout -> boss key
+  shield room (-1,-1) --door A-- hall (0,-1)
+  the Mirror Shield              |
+  cellar (-1,0) ------- entrance (0,0): statue, door out
+  block on plate -> key A
+```
+
+Order: key A (a block shoved onto a latching plate), door A, the Mirror
+Shield; the hall's stone head choked (the great cave), the ledge's (key B),
+door B, the forge's (a block shoved out of its line first; the boss key),
+the boss door, the Dragon.
+
+- **Fire** (`VL.spawnFire(state, { cx, cy, vx, vy, owner })`, entity
+  `dragonFire`): flies straight over floors, pits and lava; walls and solid
+  things stop it (`VL.fireStops`). It hurts `TUNING.fireDamage` (a full
+  heart) with size `fire`, which no wood or metal shield blocks (a raised one
+  says `VL.SHIELD_FIRE_NOTE`). The **Mirror Shield** (`mirrorShield`, off
+  hand, `shieldBlocks: ['small', 'big', 'fire']`) raised towards a ball
+  bounces it home: it flies back at its `owner` (homing) a little faster, and
+  the owner's definition answers `onFire(state, owner, ball)`.
+- **Stone heads** (`{ type: 'fireSpout', id, x, y, dir }`, solid,
+  `isSwitch`): breathe a ball `dir`-wards when the hero is in their line with
+  nothing that stops fire between (`VL.spoutSees`), the mouth glowing
+  steadily first. Their own fire bounced home throws them for good (saved
+  in the dungeon's `switches`, so the bars they name stay up); the sword, a
+  shot, the rope and S do not. Each sits in a wall or across lava.
+- **The Dragon** (`dragon`, `rooted`, `size: 'big'`): paces the back of the
+  hoard after the hero, draws breath (`inhale`, its chest glowing) and
+  breathes a ball at him. The sword clinks off (`VL.DRAGON_SWORD_NOTE`);
+  its own ball bounced home dazes it (`onFire`), and then
+  `TUNING.dragonRoundLife` of sword damage ends the round. Three rounds, each
+  quicker (`dragonSpeedUp`); the third ends in a puff of smoke (`defeated`,
+  then gone). Nothing about it blinks (its hp is refilled and `hurt` cleared
+  on every hit; a hit shakes it), and the flash guard samples the fight.
+- **The hoard spills** (`onDefeat`): the `lairHoard` decor turns from a
+  mound behind the Dragon into books strewn over the floor (and stays so),
+  and he carries three of them home (`VL.HOARD_BOOKS`, found with
+  `VL.markFound`, held up, `VL.HOARD_WORDS`). `d4Boss` therefore supplies
+  `books: 3` (replan), like the Bookworm's bundle. The heart waits where the
+  Dragon began; W30's boss gate and the warp work as in every dungeon.
+- **Locks:** `dragonsLairEntered` (place lair 0,0), `mirrorShield` (replan:
+  behind door A), `d4Boss` (replan: behind the boss door; the hoard's books),
+  and one per key and door: `d4KeyA`, `d4DoorA`, `d4KeyB`, `d4DoorB`,
+  `d4BossKey`, `d4BossDoor` (any sword, as the door's `wants` says).
 
 ## Dungeons (W13)
 

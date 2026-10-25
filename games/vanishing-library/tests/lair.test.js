@@ -449,7 +449,8 @@ test('every word the lair says fits its box and its font', () => {
     assert.deepEqual(plain(VL.ART.missingGlyphs(note, 'small')), [], note);
     assert.ok(VL.ART.measureText(note, 'small') <= VL.TUNING.width - 8, note);
   }
-  assert.deepEqual(plain(VL.ART.missingGlyphs(VL.faintLine('dragon'))), []);
+  for (const cause of ['dragon', 'fireSpout']) assert.deepEqual(plain(VL.ART.missingGlyphs(VL.faintLine(cause))), [], cause);
+  assert.notEqual(VL.faintLine('fireSpout'), VL.faintLine('default'));
 });
 
 test('render smoke: every lair room draws, fire in flight, the heads charged and choked, the Dragon in each of its moods, and the hoard spilled', () => {

@@ -10,6 +10,7 @@
   const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
   VL.SPOUT_WORDS = 'A stone dragon\'s head, warm to the touch. Its mouth is black with soot.';
+  VL.addFaintLine('fireSpout', 'The stone dragon\'s fire was too hot to handle.');
 
   const colors = { o: 'outline', s: 'dgnStone', d: 'dgnStoneDark', l: 'dgnStoneLight', e: 'fireMid', k: 'ink', g: 'gold' };
   const head = [
