@@ -505,6 +505,46 @@ test('the dungeon HUD shows the keys over the play area inside a dungeon only', 
   VL.ART.text = original;
 });
 
+test('the boss key is an ornate sprite, bigger than a small key, and fits beside it in the HUD, on the map and on its tile', () => {
+  const t = setup({ where: at('0,0', 8, 7) });
+  const { VL } = t;
+  const size = (id) => {
+    const { width, height, grid } = VL.ART.spritePixels(VL.ART.SPRITES[id].def);
+    return { width, height, colors: new Set(grid.flat().filter(Boolean)) };
+  };
+  const small = size('item-small-key');
+  const boss = size('item-boss-key');
+  assert.ok(boss.width >= small.width + 2 && boss.height >= small.height + 3, 'clearly bigger');
+  for (const name of ['heart', 'heartLight', 'dgnKeyDark']) assert.ok(boss.colors.has(name) && !small.colors.has(name), `${name}: a gem and a darker gold of its own`);
+  // Where each sprite lands, as boxes in canvas pixels (outline included).
+  const boxes = [];
+  const original = VL.ART.drawSprite;
+  VL.ART.drawSprite = (ctx, id, x, y, ...rest) => {
+    if (id.endsWith('-key')) boxes.push({ id, x: x - 1, y: y - 1, w: size(id).width, h: size(id).height });
+    return original(ctx, id, x, y, ...rest);
+  };
+  const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const ctx = fakeDocument().createElement('canvas').getContext('2d');
+  t.d.bossKey = true;
+  t.d.keysGiven = 9;
+  VL.render(ctx, t.app, 0);
+  const hud = Object.fromEntries(boxes.map((b) => [b.id, b]));
+  const count = { x: VL.TUNING.width - 15, y: 14, w: 12, h: 7 };
+  assert.ok(!overlaps(hud['item-boss-key'], hud['item-small-key']) && !overlaps(hud['item-boss-key'], count), 'HUD: beside the small key and its count');
+  assert.ok(hud['item-boss-key'].x + hud['item-boss-key'].w <= VL.TUNING.width);
+  boxes.length = 0;
+  t.app.setScene('dungeonMap');
+  VL.render(ctx, t.app, 0);
+  const onMap = boxes.find((b) => b.id === 'item-boss-key');
+  assert.ok(onMap && onMap.y + onMap.h <= 44 + 60, 'map: the Boss row ends above the MAP label');
+  t.app.setScene('play');
+  boxes.length = 0;
+  VL.ENTITIES.bossKey.draw(ctx, { type: 'bossKey' }, 0, 0, 0);
+  const tile = boxes[0];
+  assert.ok(tile.x >= 0 && tile.x + tile.w <= 16 && tile.y >= -2 && tile.y + tile.h <= 18, 'the pickup stays on its tile');
+  VL.ART.drawSprite = original;
+});
+
 // ---------- the boss room ----------
 
 function beatBoss(t) {
@@ -765,8 +805,8 @@ test('playthrough: the sample dungeon from the yard to the boss and out, reloadi
   const { VL } = loadDungeon();
   const play = createPlaythrough(VL, { milestones: SAMPLE_MILESTONES, steps: sampleSteps });
   const drive = play.playTo('sampleBoss');
-  // playTo's last reload put the hero back at the statue.
-  assert.deepEqual([drive.state.player.area, VL_tile(drive).tx, VL_tile(drive).ty], ['sample', 2, 1]);
+  // playTo's last reload: out through the boss warp, so outside at the entrance.
+  assert.deepEqual([drive.state.player.area, VL_tile(drive).tx, VL_tile(drive).ty], ['sampleYard', 8, 4]);
   assert.equal(drive.state.maxHp, VL.TUNING.startMaxHp + VL.TUNING.heartContainerHp);
   assert.deepEqual(plain(drive.state.dungeons.sample), {
     keysGiven: 0, bossKey: true, map: true, boss: true,
@@ -1017,6 +1057,27 @@ test('the boss warp waits for the keys to be let go, so a direction held through
   t.hold([], 0.1);
   t.hold(['up'], 0.5);
   assert.equal(t.game.player.area, 'sample', 'let go and pressed again: in through the door');
+});
+
+test("the boss warp makes the dungeon's entrance the save point, so Continue after the win starts outside, not at the statue", () => {
+  const t = setup({ where: at('0,0', 2, 2, 'up'), storage: true });
+  t.until((g) => g.savePoint?.area === 'sample', 1, ['up']);
+  t.d.boss = true;
+  t.d.doors.sampleBossDoor = true;
+  t.place(at('0,-2', 7, 9, 'up'));
+  t.hold(['up'], 0.5);
+  assert.equal(t.game.player.area, 'sampleYard', 'out through the warp');
+  assert.deepEqual(plain(t.game.savePoint), plain(t.VL.DUNGEONS.sample.entrance));
+  t.step();
+  assert.ok(t.app.savedAt !== null && !t.game.dirty, 'saved at once');
+  t.place(at('0,0', 2, 6));
+  t.reload();
+  assert.deepEqual([t.game.player.area, t.game.player.screen, ...t.tile()], ['sampleYard', '0,0', 8, 4], 'Continue starts at the entrance');
+  // Back inside, the statue is the save point again.
+  t.place(at('0,0', 2, 2, 'up'));
+  t.until((g) => g.savePoint?.area === 'sample', 1, ['up']);
+  const readme = read('README.md');
+  assert.ok(readme.includes('**The warp out is a save') && readme.includes('records it as his save point'), 'README: the boss room and How to build a dungeon');
 });
 
 test('keys in hand are derived (keys found + keys given - doors opened), so a renamed door or key id heals itself after a save', () => {

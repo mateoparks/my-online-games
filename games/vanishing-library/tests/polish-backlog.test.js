@@ -1,4 +1,4 @@
-// W25, the polish backlog from reviews and QA: the hand-in tally, a second
+// W25, the polish backlog: the hand-in tally, a second
 // loose page, a faint while carrying a chicken, corner assist around people,
 // a grace after a popup, and Delete with saving off.
 const assert = require('node:assert/strict');

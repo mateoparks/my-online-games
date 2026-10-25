@@ -379,7 +379,8 @@
       room.entities.push({ type: 'heartContainer', id: boss.heart, x: stood.x, y: stood.y });
     }
     if (room.entities.some((e) => e.type === 'warp')) return;
-    const warp = { type: 'warp', x: boss.warp.tx, y: boss.warp.ty, to: dungeon.entrance };
+    // savePoint: Continue after the win starts outside, not back at the statue.
+    const warp = { type: 'warp', x: boss.warp.tx, y: boss.warp.ty, to: dungeon.entrance, savePoint: true };
     room.entities.push(warp);
     // A warp that opens under the hero waits for him to step off and back on.
     const hero = VL.heroTile(state);
@@ -783,15 +784,31 @@
     dgnWarpLight: '#d8f6ff',
     dgnBars: '#3b3f4a',
     dgnBarsLight: '#6b7180',
+    dgnKeyDark: '#a8621a',
   });
 
   VL.ART.defineSprite('item-small-key', {
     colors: { g: 'gold', l: 'goldLight', d: 'woodDark' },
     rows: ['.ll..', 'l..l.', 'l..l.', '.ll..', '.g...', '.gg..', '.g...', '.gg..'],
   });
+  // Crowned, jewelled and a size up, so it never reads as one more small key.
   VL.ART.defineSprite('item-boss-key', {
-    colors: { g: 'gold', l: 'goldLight', r: 'heart', k: 'heartLight' },
-    rows: ['.lll.', 'l.r.l', 'l.k.l', 'l...l', '.lll.', '..g..', '..gg.', '..g..', '..gg.'],
+    colors: { g: 'gold', l: 'goldLight', d: 'dgnKeyDark', r: 'heart', k: 'heartLight' },
+    rows: [
+      'l..l..l',
+      'l.lll.l',
+      'lllllll',
+      'lgdddgl',
+      'lgdkdgl',
+      'lgdrdgl',
+      '.lgggl.',
+      '..lgd..',
+      '...g...',
+      '...gdd.',
+      '...g...',
+      '...gdd.',
+      '...gd..',
+    ],
   });
   VL.ART.defineSprite('pickup-dungeon-map', {
     colors: { p: 'sandLight', d: 'sandDark', r: 'heart', k: 'ink', b: 'water' },
@@ -848,7 +865,7 @@
     const { width } = VL.TUNING;
     VL.ART.drawSprite(ctx, 'item-small-key', width - 23, 14);
     VL.ART.text(ctx, `x${VL.smallKeys(state, dungeon.id)}`, width - 15, 15, { size: 'small', color: 'text', shadow: 'outline' });
-    if (d.bossKey) VL.ART.drawSprite(ctx, 'item-boss-key', width - 36, 13);
+    if (d.bossKey) VL.ART.drawSprite(ctx, 'item-boss-key', width - 34, 12);
     if (state.dungeonNote) VL.ART.text(ctx, state.dungeonNote.text, width / 2, 4, { size: 'small', align: 'center', color: 'goldLight', shadow: 'outline' });
   });
 

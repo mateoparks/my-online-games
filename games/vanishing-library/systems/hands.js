@@ -145,9 +145,6 @@
     return true;
   };
 
-  // S tries the tile ahead first, then the ones the hero half faces, so a
-  // hero standing a little off the chest still opens it. One thing per press,
-  // tile by tile: an entity or berries there, else (bare-handed) one bush.
   // Whether S on this entity is its own: it has onInteract, and its type's
   // takesS (if any) says it wants the press now.
   VL.takesS = (state, e) => {
@@ -155,6 +152,9 @@
     return Boolean(type?.onInteract) && (!type.takesS || type.takesS(state, e));
   };
 
+  // S tries the tile ahead first, then the ones the hero half faces, so a
+  // hero standing a little off the chest still opens it. One thing per press,
+  // tile by tile: an entity or berries there, else (bare-handed) one bush.
   VL.interact = function interact(state) {
     const tiles = VL.facingTiles(state);
     for (const { tx, ty } of tiles) {
