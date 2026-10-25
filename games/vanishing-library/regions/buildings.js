@@ -335,8 +335,13 @@
   const flagOnce = (flag) => (state) => VL.firstTimeFlag(state, flag);
   const forge = (id) => (state) => VL.giveItem(state, id);
   const wear = (id) => (state) => VL.giveWornItem(state, id);
-  // The oar (W17): bought for shells or made from wood, like the shovel.
-  const oar = (cost, about) => ({ id: 'oar', name: 'Oar', icon: 'item-oar', cost, give: wear('oar'), soldOut: owns('oar'), about });
+  // The oar (W17): bought for shells or made from wood, like the shovel. On
+  // sale with Nell's raft, once the shockwave has calmed the currents, so the
+  // first purse goes on gear a kid can use.
+  const oar = (cost, about) => ({
+    id: 'oar', name: 'Oar', icon: 'item-oar', cost, give: wear('oar'), soldOut: owns('oar'),
+    hidden: (state) => !VL.LOCKS.shockwave.reached?.(state), about,
+  });
 
   VL.defineShop('store', {
     title: 'General Store',

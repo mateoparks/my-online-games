@@ -175,7 +175,12 @@
     replan: 'Nell lashes it on the harbour, in town',
     reached: (state) => VL.hasItem(state, 'raft'),
   });
-  VL.defineLock('oar', { ...VL.LOCKS.oar, reached: (state) => VL.hasItem(state, 'oar') });
+  VL.defineLock('oar', {
+    ...VL.LOCKS.oar,
+    needs: [...VL.LOCKS.oar.needs, 'shockwave'],
+    replan: 'on sale with the raft, once the shockwave has calmed the currents',
+    reached: (state) => VL.hasItem(state, 'oar'),
+  });
   // Sailing is access, not a possession: the solver works it out again from
   // the raft and the oar after every event, so an event that took either
   // would shut the water again.

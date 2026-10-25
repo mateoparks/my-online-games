@@ -631,6 +631,9 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   `VL.extendGame('enemies', () => ({ knockback: null }), { transient: true })`)
   and `hp`. Loading gives full hearts at the last save point (`savePoint`, or
   the start when there is none or a later map change removed its screen).
+  A place done with can hand its save point on:
+  `VL.moveSavePoint((state, point) => place or null)` is asked on every
+  Continue and faint (`VL.respawnPlace`); the shipwreck uses it.
   `finished` marks a finished game: the slot shows FINISHED and loads the
   last save before the finale (the ending sets it).
 - **When (design: Option B, Zelda-style):** call `VL.earned(state)` after
@@ -1638,7 +1641,9 @@ wreck and the place locks in `dungeons/shipwreck.js`. Tests:
   hint sends a stuck kid to her.
 - **The oar** (`oar`, worn): Mabel sells it for `prices.oarShells` (8 whole
   shells, inside the first purse) and Brannock makes it for `prices.oarWood`
-  (3 wood). Either one; sold out once owned. A raft with no oar: pushing
+  (3 wood). Either one; sold out once owned. Both offers stay `hidden` until
+  the shockwave, like Nell's raft (the `oar` lock `needs` adds `shockwave`,
+  with `replan`), so the first purse goes on gear he can use. A raft with no oar: pushing
   against deep water says why, once a visit (`VL.OARLESS_TEXT`).
 - **Sailing:** with both (`VL.canRaft`), deep water is open ground for the
   hero: walk into it to push off, bump into land to step ashore. It is a
@@ -1655,8 +1660,9 @@ wreck and the place locks in `dungeons/shipwreck.js`. Tests:
   it draws the raft under him and the oar beside him (`raft` hero layer).
 - **Saved:** the two items, and the wreck's `state.dungeons.wreck` (W13).
   Fixture: `tests/fixtures/save-v1-W17.json` (after the steps: raft and oar,
-  the island and the wreck done, saved by the hold's lantern).
-- **Locks claimed:** `raft` (`needs` adds `town`, with `replan`), `oar`,
+  the island and the wreck done, saved by the hold's lantern, which now wakes
+  him on the harbour).
+- **Locks claimed:** `raft` (`needs` adds `town`, with `replan`), `oar` (`needs` adds `shockwave`, with `replan`),
   `rafting` (`renewable` with `replan`: sailing is access, see Progression),
   `lakeIsland` (a visit to 3,-3), `oreLakeIsland`, `shipwreck` (a visit to
   5,2), `oreShipwreck`, `pageShipwreck` (see the wreck below).
@@ -1679,7 +1685,9 @@ down.
 
 - **The hold:** the ladder back up, a lantern on the way down (a faint or a
   reload wakes him there, and he can always climb up and sail home), two
-  crabs.
+  crabs. Once the page is found the wreck is done with, and the lantern
+  hands its save point to the harbour by the pier (`VL.WRECK_HOME`, through
+  `VL.moveSavePoint`), so no Continue or faint starts below deck at sea.
 - **The bilge:** three rows of seawater (`~`: solid, a pit, splashes) across
   the room; a grapple post on each side, so the way back is never cut off; a
   sign says how. The chest with the wreck's key (`wreckKeyChest`, a

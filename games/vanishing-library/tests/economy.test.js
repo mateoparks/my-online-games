@@ -340,10 +340,10 @@ test('the smith forges metal gear from 1 ore and 10 shells each; no ore, no forg
 test('metal is its own tier: forging needs no wood gear, and the wood offer steps aside once you hold metal', () => {
   const { VL } = loadGame();
   const game = VL.newGame();
-  assert.deepEqual(showing(VL, game, 'smithy'), ['woodSword', 'woodShield', 'woodShovel', 'metalSword', 'metalShield', 'metalShovel', 'oar']);
+  assert.deepEqual(showing(VL, game, 'smithy'), ['woodSword', 'woodShield', 'woodShovel', 'metalSword', 'metalShield', 'metalShovel']);
   give(VL, game, { ore: 1, shells: 10 });
   assert.equal(VL.buyOffer(game, offer(VL, 'smithy', 'metalShield')).ok, true, 'no wood shield needed');
-  assert.deepEqual(showing(VL, game, 'smithy'), ['woodSword', 'woodShovel', 'metalSword', 'metalShield', 'metalShovel', 'oar']);
+  assert.deepEqual(showing(VL, game, 'smithy'), ['woodSword', 'woodShovel', 'metalSword', 'metalShield', 'metalShovel']);
 });
 
 test('the Smith\'s Ledger, once read, makes forging cost fewer shells', () => {
@@ -354,7 +354,7 @@ test('the Smith\'s Ledger, once read, makes forging cost fewer shells', () => {
   assert.equal(VL.smithsLedgerRead(game), false, 'returned but not read yet');
   VL.finishReading(game, 'bookSmithsLedger');
   assert.equal(VL.smithsLedgerRead(game), true);
-  assert.deepEqual(showing(VL, game, 'smithy'), ['woodSword', 'woodShield', 'woodShovel', 'metalSwordLedger', 'metalShieldLedger', 'metalShovelLedger', 'oar']);
+  assert.deepEqual(showing(VL, game, 'smithy'), ['woodSword', 'woodShield', 'woodShovel', 'metalSwordLedger', 'metalShieldLedger', 'metalShovelLedger']);
   give(VL, game, { ore: 1, shells: 6 });
   assert.equal(VL.buyOffer(game, offer(VL, 'smithy', 'metalSwordLedger')).ok, true);
   assert.deepEqual([game.inventory.ore, game.inventory.shells], [0, 0]);
@@ -365,6 +365,7 @@ test('the Smith\'s Ledger, once read, makes forging cost fewer shells', () => {
 // The shockwave (W16) as the progression table states it: everything it
 // `loses` is taken, and whole shells become broken ones.
 function shockwave(VL, game) {
+  game.flags.shockwave = true;
   for (const key of VL.LOCKS.shockwave.loses) {
     if (VL.ITEMS[key]) delete game.items[key];
     else if (key !== 'shells' && VL.RESOURCE_KINDS.includes(key)) game.inventory[key] = 0;

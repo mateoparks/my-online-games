@@ -219,7 +219,7 @@ test('broken: without bare hands, the helper\'s couple of wood is not enough to 
   assert.ok(!problems.includes('after shockwave, berries cannot be regained'), 'berry bushes still give berries');
   assert.ok(problems.includes('raft is unreachable: needs wood after shockwave'), 'the raft needs wood after the shockwave');
   assert.ok(problems.includes('ending is unreachable: needs marionettes after shockwave'));
-  assert.ok(problems.includes('oar is required but unreachable after shockwave'));
+  assert.ok(problems.includes('oar is unreachable: needs shells|wood after shockwave'), 'the oar, on sale only after the shockwave, needs wood or shells then');
   assert.ok(!problems.includes('helperWood is unreachable'), 'the gift itself still happens; it just proves nothing');
   // Treating wood as a plain key is what hid this: then the gift "pays" for everything forever.
   assert.deepEqual([...VL.solveProgression(table, VL.MILESTONES, { resources: new Set() }).problems], []);
