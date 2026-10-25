@@ -82,12 +82,13 @@ function returnAndRead(VL, game, ids) {
 test('every book on the map has words: twenty-two untitled, six titled and the sealed one', () => {
   const { VL } = loadGame();
   const books = Object.values(VL.BOOKS);
-  assert.deepEqual(plain(books.filter((b) => b.kind === 'generic').map((b) => b.id).sort()), [...GENERIC, ...LATE, ...VL.BOOKWORM_BUNDLE].sort());
+  assert.deepEqual(plain(books.filter((b) => b.kind === 'generic').map((b) => b.id).sort()), [...GENERIC, ...LATE, ...VL.BOOKWORM_BUNDLE, ...VL.HOARD_BOOKS].sort());
   assert.deepEqual(plain(books.filter((b) => b.kind === 'titled').map((b) => b.id).sort()), [...TITLED].sort());
   assert.deepEqual(plain(books.filter((b) => b.kind === 'sealed').map((b) => b.id)), ['hiddenBookSealed']);
   for (const book of books) {
-    // The Bookworm's bundle is counted by W14's d1Boss lock, not found on the map.
-    if (!VL.BOOKWORM_BUNDLE.includes(book.id)) {
+    // The Bookworm's bundle and the Dragon's hoard are counted by the d1Boss
+    // and d4Boss locks, not found on the map.
+    if (![...VL.BOOKWORM_BUNDLE, ...VL.HOARD_BOOKS].includes(book.id)) {
       assert.ok(VL.SPOTS[book.id], `${book.id} has a spot on the map`);
       assert.ok(VL.LOCKS[book.id]?.reached, `${book.id}'s lock is claimed`);
     }
@@ -98,10 +99,10 @@ test('every book on the map has words: twenty-two untitled, six titled and the s
   }
 });
 
-test('the 29 books on the map plus the Bookworm\'s bundle reach every reward', () => {
+test('the 29 books on the map plus the Bookworm\'s bundle and the Dragon\'s hoard reach every reward', () => {
   const { VL } = loadGame();
   const supplied = Object.values(VL.LOCKS).reduce((sum, lock) => sum + (lock.supplies.books || 0), 0);
-  assert.equal(Object.keys(VL.BOOKS).length, 29 + VL.BOOKWORM_BUNDLE.length);
+  assert.equal(Object.keys(VL.BOOKS).length, 29 + VL.BOOKWORM_BUNDLE.length + VL.HOARD_BOOKS.length);
   assert.ok(supplied >= Math.max(...Object.values(VL.TUNING.libraryRewards)), `${supplied} books in the table`);
 });
 

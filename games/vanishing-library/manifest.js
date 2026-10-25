@@ -52,6 +52,8 @@ VL.FILES = {
     'systems/darkness.js',
     'systems/slingshot.js',
     'systems/raft.js',
+    'systems/climbers-almanac.js',
+    'systems/fire.js',
   ],
 
   entities: [
@@ -94,6 +96,8 @@ VL.FILES = {
     'entities/shell-target.js',
     'entities/beam.js',
     'entities/lens-crab.js',
+    'entities/fire-spout.js',
+    'entities/dragon.js',
   ],
 
   regions: [
@@ -116,6 +120,7 @@ VL.FILES = {
     'dungeons/hollow-oak.js',
     'dungeons/lighthouse.js',
     'dungeons/shipwreck.js',
+    'dungeons/lair.js',
   ],
 
   scenes: [

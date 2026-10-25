@@ -79,11 +79,11 @@ function everyWake({ VL, storage, drive }) {
 
 const all = (place) => ({ continue: at(place), reload: at(place), saveAndQuit: at(place), faint: at(place) });
 
-test('the hut\'s lantern is VL.HOME_SAVE, and every dungeon with a boss is covered here (the Lair too, once it is defined)', () => {
+test('the hut\'s lantern is VL.HOME_SAVE, and every dungeon with a boss is covered here, the Lair too', () => {
   const VL = shared;
   const lantern = VL.getScreen('hut', '0,0').entities.find((e) => e.type === 'savePoint');
   assert.deepEqual(plain(VL.HOME_SAVE), { area: 'hut', screen: '0,0', tx: lantern.x, ty: lantern.y, facing: 'down' });
-  for (const id of ['scriptorium', 'hollowOak', 'lighthouse']) assert.ok(BOSS_DUNGEONS.includes(id), id);
+  for (const id of ['scriptorium', 'hollowOak', 'lighthouse', 'lair']) assert.ok(BOSS_DUNGEONS.includes(id), id);
   assert.ok(!BOSS_DUNGEONS.includes('wreck'), 'the wreck has no boss; it keeps W17\'s harbour rule');
 });
 

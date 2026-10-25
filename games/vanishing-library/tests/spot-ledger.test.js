@@ -22,9 +22,7 @@ function squatters(VL) {
   return found;
 }
 
-const LEDGER = {
-  W19: ['lairDoor'],
-};
+const LEDGER = {};
 
 test('the spot ledger: the spots no item has filled yet, by owner', () => {
   const { VL } = loadGame();
@@ -49,7 +47,13 @@ test('nothing but its filler sits on an unfilled spot', () => {
 
 test('the squatter check catches an entity placed on a spot instead of filling it', () => {
   const { VL } = loadGame();
+  // Every spot is filled now (W19 filled the last), so one is emptied again.
   const spot = VL.SPOTS.lairDoor;
-  VL.getScreen(spot.area, spot.screen).entities.push({ type: 'door', id: 'lairDoor', x: spot.x, y: spot.y });
+  const screen = VL.getScreen(spot.area, spot.screen);
+  const index = screen.entities.findIndex((e) => e.spot === 'lairDoor');
+  screen.entities[index] = { type: 'spot', id: 'lairDoor', x: spot.x, y: spot.y };
+  spot.filled = false;
+  assert.deepEqual([...VL.unfilledSpots()], ['lairDoor']);
+  screen.entities.push({ type: 'door', id: 'lairDoor', x: spot.x, y: spot.y });
   assert.deepEqual(squatters(VL), ['door lairDoor on spot lairDoor']);
 });

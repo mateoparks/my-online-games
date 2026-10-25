@@ -61,18 +61,16 @@ test('a later item claims a planned lock by defining it with a reached predicate
 
 test('a claim that changes the planned rule must say why (replan), so a loosened gate shows in the diff', () => {
   const { VL } = loadGame();
-  // A lock no item has claimed yet (W18 claimed the Lighthouse this test used to try).
-  const planned = { type: 'place', needs: ['cliffs', 'climbersAlmanac', 'chickenFlightLong'], doc: '§ The path through the game, 7' };
-  assert.throws(() => VL.defineLock('highlands', { ...planned, needs: ['cliffs', 'climbersAlmanac'], reached: () => true }), /highlands is claimed with a different rule than planned \(needs\); say why with replan/);
-  assert.throws(() => VL.defineLock('highlands', { ...planned, optional: true, gives: ['view'], reached: () => true }), /than planned \(gives, optional\)/);
-  assert.equal(VL.LOCKS.highlands.reached, undefined, 'a refused claim leaves the plan in place');
+  // A lock no item has claimed yet (W19 claimed the highlands this test used to try).
+  const planned = { needs: ['workshop', ['woodSword', 'metalSword']], doc: '§ Ending: Confrontation' };
+  assert.throws(() => VL.defineLock('marionettes', { ...planned, needs: ['workshop'], reached: () => true }), /marionettes is claimed with a different rule than planned \(needs\); say why with replan/);
+  assert.throws(() => VL.defineLock('marionettes', { ...planned, optional: true, gives: ['view'], reached: () => true }), /than planned \(gives, optional\)/);
+  assert.equal(VL.LOCKS.marionettes.reached, undefined, 'a refused claim leaves the plan in place');
   // Order inside needs (and inside an any-of) does not count as a change.
-  const same = VL.defineLock('highlands', { ...planned, needs: ['chickenFlightLong', 'cliffs', 'climbersAlmanac'], reached: () => true });
-  assert.equal(VL.LOCKS.highlands, same);
-  const d4 = VL.LOCKS.d4Boss;
-  VL.defineLock('d4Boss', { ...d4, needs: ['dragonsLairEntered', 'mirrorShield', ['metalSword', 'woodSword']], by: undefined, reached: () => true });
-  const loosened = VL.defineLock('dragonsLairEntered', { type: 'place', needs: ['town'], doc: '§ The path through the game, 8', replan: 'the lair opens off the square; the highlands are scenery', reached: () => true });
-  assert.equal(loosened.replan, 'the lair opens off the square; the highlands are scenery');
+  const same = VL.defineLock('marionettes', { ...planned, needs: [['metalSword', 'woodSword'], 'workshop'], reached: () => true });
+  assert.equal(VL.LOCKS.marionettes, same);
+  const loosened = VL.defineLock('workshop', { type: 'place', needs: ['town'], doc: '§ Ending: Confrontation', replan: 'the workshop opens off the square; the trapdoor is scenery', reached: () => true });
+  assert.equal(loosened.replan, 'the workshop opens off the square; the trapdoor is scenery');
 });
 
 test('an item splits a planned placeholder into its own locks without editing milestones.js', () => {
@@ -88,7 +86,7 @@ test('an item splits a planned placeholder into its own locks without editing mi
   assert.throws(() => VL.splitLock('nothing', { a: part(1) }), /lock nothing does not exist/);
   // A split can only share out the placeholder's counters: it cannot hand out the placeholder's own
   // keys (that would loosen a gate without a replan) or counters the plan never promised.
-  assert.throws(() => VL.splitLock('dragonsLairEntered', { lairRoom: { type: 'place', needs: ['start'], gives: ['dragonsLairEntered'], doc: '§ The path through the game, 8', by: 'W19' } }), /dragonsLairEntered is not a placeholder \(it supplies no counter\); claim it with defineLock/);
+  assert.throws(() => VL.splitLock('trapdoorOpen', { stageRoom: { type: 'place', needs: ['start'], gives: ['trapdoorOpen'], doc: '§ The path through the game, 9', by: 'W20' } }), /trapdoorOpen is not a placeholder \(it supplies no counter\); claim it with defineLock/);
   assert.throws(() => VL.splitLock('fixtureBooks', { bookA: part(5), bookB: { ...part(5), gives: ['fixtureBooks'] } }), /part bookB gives fixtureBooks, which the placeholder stood for; claim it with defineLock and replan/);
   assert.throws(() => VL.splitLock('fixtureBooks', { bookA: part(5), bookB: { ...part(5), supplies: { books: 5, ore: 1 } } }), /part bookB supplies ore, which fixtureBooks does not/);
   VL.splitLock('fixtureBooks', { bookUnderRock: part(4), bookInTrunk: part(6) });
@@ -138,7 +136,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 133, 'W17 2, W18 7, and W30 twelve late books, the moss key and door C');
+  assert.equal(Object.keys(VL.LOCKS).length, 139, 'W17 2, W18 7, W30 twelve late books, the moss key and door C, and W19 6 keys and doors');
 });
 
 test('implemented place locks name screens that exist', () => {

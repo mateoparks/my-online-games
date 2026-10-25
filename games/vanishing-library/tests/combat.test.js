@@ -112,7 +112,7 @@ function touch(t, enemy, side) {
 test('sword and shield tiers are data: wood and metal damage and what each shield blocks', () => {
   const { VL } = loadGame();
   assert.deepEqual(plain(VL.TUNING.swordDamage), { woodSword: 1, metalSword: 2 });
-  assert.deepEqual(plain(VL.TUNING.shieldBlocks), { woodShield: ['small'], metalShield: ['small', 'big'] });
+  assert.deepEqual(plain(VL.TUNING.shieldBlocks), { woodShield: ['small'], metalShield: ['small', 'big'], mirrorShield: ['small', 'big', 'fire'] });
   for (const id of ['woodSword', 'metalSword']) assert.ok(VL.ITEMS[id].sword, `${id} is a sword`);
   for (const id of ['woodShield', 'metalShield']) assert.ok(VL.ITEMS[id], `${id} is an item`);
   assert.equal(VL.ITEMS.metalShield.prefers, 'offHand');
