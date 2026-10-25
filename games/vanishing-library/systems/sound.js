@@ -116,6 +116,7 @@
 
   VL.SOUND.available = () => Boolean(audio.context);
   VL.SOUND.contextState = () => audio.context?.state || null;
+  VL.SOUND.clock = () => (audio.context ? audio.context.currentTime : null);
 
   // Browsers only let a page start audio from a user gesture, so the context
   // is created on the first one and resumed on later ones if it was suspended.

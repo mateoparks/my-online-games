@@ -228,6 +228,14 @@ test('the same effect does not stack within its gap; a different one still plays
   assert.equal(VL.sfx('menuMove'), true, 'after the gap');
 });
 
+test('VL.SOUND.clock reads the audio clock the repeat gaps are measured on, null before a context', () => {
+  const quiet = soundGame({ gesture: false });
+  assert.equal(quiet.VL.SOUND.clock(), null);
+  const { VL, log } = soundGame();
+  log.context.currentTime = 7.25;
+  assert.equal(VL.SOUND.clock(), 7.25);
+});
+
 // ---------- gesture gating (browser autoplay rules) ----------
 
 test('no AudioContext exists until a user gesture, and nothing plays before it', () => {

@@ -146,15 +146,31 @@ async function main() {
   fs.mkdirSync(outDir, { recursive: true });
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'vl-chrome-'));
   const browser = spawn(chrome, [
-    '--headless=new', '--mute-audio', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
+    // --disable-audio-output gives WebAudio a fake output device whose clock always
+    // runs: a real device that has stopped rendering (seen after the Mac slept)
+    // freezes currentTime while the context still says 'running'.
+    '--headless=new', '--mute-audio', '--disable-audio-output', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
     `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--hide-scrollbars', 'about:blank',
   ], { stdio: 'ignore' });
-  // A stalled Chrome must fail the build, not hang it.
-  const watchdog = setTimeout(() => {
-    console.log(`FAIL smoke timed out after ${timeoutMs / 1000} s`);
-    browser.kill();
+  process.on('exit', () => browser.kill());
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, () => process.exit(130));
+  // A stalled Chrome must fail the build, not hang it. Only awake time counts:
+  // a tick that arrives far too late means the machine slept, not that Chrome stalled.
+  let activeMs = 0;
+  let lastTick = Date.now();
+  const watchdog = setInterval(() => {
+    const now = Date.now();
+    const gap = now - lastTick;
+    lastTick = now;
+    if (gap > 5000) {
+      console.log(`     (the clock jumped ${Math.round(gap / 1000)} s, the machine probably slept; not counted against the ${timeoutMs / 1000} s limit)`);
+      return;
+    }
+    activeMs += gap;
+    if (activeMs < timeoutMs) return;
+    console.log(`FAIL smoke timed out after ${timeoutMs / 1000} s of awake time`);
     process.exit(1);
-  }, timeoutMs);
+  }, 1000);
   let failures = 0;
   const results = [];
   try {
@@ -194,6 +210,15 @@ async function main() {
     const holdArrow = async (dir, ms) => {
       await key('keyDown', `Arrow${dir}`);
       await sleep(ms);
+      await key('keyUp', `Arrow${dir}`);
+    };
+    // Holds an arrow until `done` (an expression over g) is true. A loaded machine
+    // draws fewer frames, so a fixed hold walks short; the bound keeps a broken
+    // walk a failed check, not a hang.
+    const holdArrowUntil = async (dir, done, maxMs = 3000) => {
+      const check = `(() => { const g = VL.app.game; return Boolean(${done}); })()`;
+      await key('keyDown', `Arrow${dir}`);
+      for (let held = 0; held < maxMs && !(await evaluate(check)); held += 50) await sleep(50);
       await key('keyUp', `Arrow${dir}`);
     };
 
@@ -373,8 +398,17 @@ async function main() {
     {
       errors.length = 0;
       const soundProblems = [];
-      // The menus just played menuSelect; let every effect's repeat gap pass.
-      await sleep(1100);
+      // The menus just played menuSelect; wait until the audio clock is past every effect's repeat gap.
+      const gapsPassed = `(() => { const now = VL.SOUND.clock();
+        return now !== null && Object.values(VL.SOUND.EFFECTS).every((e) => now - e.last >= e.gap); })()`;
+      const clockFrom = await evaluate('VL.SOUND.clock()');
+      let waited = 0;
+      while (!(await evaluate(gapsPassed)) && waited < 3000) {
+        await sleep(50);
+        waited += 50;
+      }
+      const clockTo = await evaluate('VL.SOUND.clock()');
+      if (waited >= 3000) soundProblems.push(`the audio clock went from ${clockFrom} s to ${clockTo} s in 3 s; WebAudio is not rendering`);
       const sound = JSON.parse(await evaluate(`JSON.stringify({
         state: VL.SOUND.contextState(), muted: VL.SOUND.muted,
         silent: Object.keys(VL.SOUND.EFFECTS).filter((name) => !VL.sfx(name)),
@@ -830,7 +864,7 @@ async function main() {
       for (const building of ['shop', 'paperMill', 'blacksmith', 'bindery']) {
         const outside = await read(`VL.BUILDINGS.${building}.outside`);
         await stage({ area: 'overworld', screen: outside.screen, tx: outside.tx, ty: outside.ty + 1, facing: 'up' });
-        await holdArrow('Up', 600);
+        await holdArrowUntil('Up', `g.player.area === '${building}'`);
         await sleep(300);
         const area = await read('g.player.area');
         if (area !== building) econProblems.push(`walking up into the ${building} door reached ${area}`);
@@ -981,12 +1015,20 @@ async function main() {
 
       await henGame({ area: 'overworld', screen: '2,1', tx: 4, ty: 4, facing: 'up' }, "VL.giveItem(g, 'woodSword');");
       const hp = await peek('g.hp');
+      // Each swing must land before the next: wait for the hit to count (or the swarm to start), the swing to
+      // end and the struck hen to land (henInFront moves it but a hen still in its hop can't be hit).
       for (let i = 0; i < 5; i += 1) {
         await henInFront();
+        const before = await peek('g.room.chickens ? g.room.chickens.hits : 0');
         await tap('Space');
-        await sleep(420);
+        for (let w = 0; w < 2000; w += 50) {
+          if (await peek(`!g.player.swing && g.room.entities.every((e) => e.type !== 'chicken' || e.mode !== 'hop')
+            && Boolean(g.room.chickens && (g.room.chickens.swarm || g.room.chickens.hits > ${before}))`)) break;
+          await sleep(50);
+        }
       }
-      await sleep(900);
+      for (let w = 0; w < 2000 && !(await peek("g.room.entities.some((e) => e.type === 'chickenSwarm')")); w += 50) await sleep(50);
+      await sleep(600);
       await snap('w7-swarm');
       const swarm = await peek("[g.room.entities.filter((e) => e.type === 'chickenSwarm').length, g.hp]");
       if (!(swarm[0] > 0) || swarm[1] !== hp) henProblems.push(`after five hits: ${swarm[0]} swarming, hearts ${swarm[1]} of ${hp}`);
@@ -1245,13 +1287,6 @@ async function main() {
         await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
         await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
       };
-      const holdKey = async (code, ms) => {
-        const [vkCode, keyName] = codes[code];
-        const event = { key: keyName, code, windowsVirtualKeyCode: vkCode, nativeVirtualKeyCode: vkCode };
-        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
-        await sleep(ms);
-        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
-      };
       const snap = async (name) => {
         const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
         const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
@@ -1280,14 +1315,14 @@ async function main() {
       if (room.join() !== 'true,true,true') dungeonProblems.push(`the entrance hall: slime, barred shutter, statue = ${room}`);
 
       await dungeonGame({ area: 'sample', screen: '0,0', tx: 7, ty: 2, facing: 'up' }, "g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));");
-      await holdKey('ArrowUp', 450);
+      await holdArrowUntil('Up', 'g.dungeonNote');
       await sleep(100);
       await snap('w13-locked-door');
       const locked = await peek("[g.room.entities.find((e) => e.type === 'lockedDoor').open, g.dungeonNote && g.dungeonNote.text, VL.heroTile(g).ty]");
       if (locked.join() !== 'false,Locked. A small key would open it.,1') dungeonProblems.push(`walking into the locked door without a key: ${locked}`);
 
       await dungeonGame({ area: 'sample', screen: '1,0', tx: 10, ty: 8, facing: 'right' });
-      await holdKey('ArrowRight', 700);
+      await holdArrowUntil('Right', 'g.dungeons.sample.plates.samplePlate === true');
       await sleep(250);
       await snap('w13-block-puzzle');
       const pushed = await peek("[g.room.entities.find((e) => e.type === 'pushBlock').x, g.dungeons.sample.plates.samplePlate === true, g.room.entities.find((e) => e.type === 'shutter').closed]");
@@ -1332,13 +1367,6 @@ async function main() {
         await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
         if (!(await settle())) scrProblems.push(`animation frames stopped after ${code}`);
       };
-      const holdKey = async (code, ms) => {
-        const [vk, keyName] = codes[code];
-        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
-        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
-        await sleep(ms);
-        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
-      };
       const shot = async (name) => {
         const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
         const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
@@ -1372,7 +1400,7 @@ async function main() {
       }
 
       await scrGame({ area: 'overworld', screen: '2,-2', tx: 8, ty: 4, facing: 'up' }, '');
-      await holdKey('ArrowUp', 300);
+      await holdArrowUntil('Up', "VL.app.sceneId === 'popup'");
       await sleep(150);
       await shot('w14-door-locked');
       const locked = await see("[g.player.area, VL.app.sceneId, Boolean(g.message && /locked/.test(g.message.text))]");
@@ -1469,13 +1497,6 @@ async function main() {
         await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
         if (!(await settle())) oakProblems.push(`animation frames stopped after ${code}`);
       };
-      const holdKey = async (code, ms) => {
-        const [vk, keyName] = codes[code];
-        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
-        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
-        await sleep(ms);
-        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
-      };
       const shot = async (name) => {
         const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
         const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
@@ -1506,16 +1527,14 @@ async function main() {
       const ow = (screen, tx, ty, facing = 'up') => ({ area: 'overworld', screen, tx, ty, facing });
 
       await oakGame(ow('5,-1', 3, 1), '');
-      await holdKey('ArrowUp', 500);
-      await waitFor("VL.app.sceneId === 'popup'", 1500);
+      await holdArrowUntil('Up', "VL.app.sceneId === 'popup'");
       await sleep(200);
       await shot('w15-woods-lost');
       const lost = await see("[g.player.screen, VL.heroTile(g).ty, VL.currentPopup(g) && VL.currentPopup(g).id]");
       if (lost.join() !== '5,-1,9,woodsLost') oakProblems.push(`a step deeper without the map: screen, row, popup = ${lost}`);
 
       await oakGame(ow('5,-1', 3, 1), "g.items.woodsMapCopy = true; g.popups.seen.woodsWithMap = false;");
-      await holdKey('ArrowUp', 400);
-      await waitFor("VL.app.sceneId === 'popup'", 1500);
+      await holdArrowUntil('Up', "VL.app.sceneId === 'popup'");
       await sleep(200);
       await shot('w15-woods-map');
       const through = await see("[g.player.screen, VL.currentPopup(g) && VL.currentPopup(g).id]");
@@ -1594,6 +1613,98 @@ async function main() {
       for (const problem of oakProblems) console.log(`     ${problem}`);
     }
 
+    // W16, the shockwave with real keys: the Thornback beaten and its heart
+    // taken, the ground shaking, the white flash, the story on black, waking
+    // at home holding up the Glowstone and its popup, then Gran Ottie's talk
+    // and her wood held up. Saved as w16-*.png.
+    {
+      errors.length = 0;
+      const shockProblems = [];
+      const tapS = async () => {
+        const event = { key: 's', code: 'KeyS', windowsVirtualKeyCode: 83, nativeVirtualKeyCode: 83 };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) shockProblems.push('animation frames stopped after S');
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+
+      await evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
+        for (const id of ['woodSword', 'woodShield', 'grapplingRope', 'liftingGloves', 'mortarPestle', 'woodsMapCopy']) g.items[id] = true;
+        g.hands = { mainHand: 'woodSword', offHand: 'woodShield' };
+        Object.assign(g.inventory, { wood: 3, shells: 6, paper: 1, berries: 2 });
+        g.dungeons.hollowOak.boss = true;
+        g.dungeons.hollowOak.doors.d2BossDoor = true;
+        g.flags['found:heartD2'] = true;
+        g.maxHp = 10;
+        g.hp = 10;
+        VL.app.setScene('play');
+        VL.place(g, { area: 'hollowOak', screen: '0,-3', tx: 7, ty: 5, facing: 'down' });
+        document.getElementById('game').focus();
+      })()`);
+      if (!(await waitFor("VL.app.sceneId === 'shockwave'", 4000))) shockProblems.push(`the shockwave did not start after the Thornback: scene ${await see('VL.app.sceneId')}`);
+      await sleep(1200);
+      await shot('w16-rumble');
+      if (!(await waitFor("VL.app.shockwave.phase === 'flash'", 2000))) shockProblems.push('no flash');
+      await sleep(150);
+      await shot('w16-flash');
+      const lost = await see("[g.flags.shockwave, VL.hasItem(g, 'woodSword'), g.inventory.shells, g.inventory.brokenShells, VL.hasItem(g, 'glowstone')]");
+      if (lost.join() !== 'true,false,0,6,true') shockProblems.push(`at the flash: shockwave, sword, shells, broken, glowstone = ${lost}`);
+      if (!(await waitFor("VL.app.shockwave.phase === 'dark'", 2000))) shockProblems.push('no story on black');
+      await sleep(2500);
+      await shot('w16-story');
+      for (let i = 0; i < 6 && (await see("VL.app.sceneId === 'shockwave' && VL.app.shockwave.phase === 'dark'")); i += 1) {
+        await tapS();
+        await sleep(300);
+      }
+      await sleep(500);
+      await shot('w16-waking');
+      if (!(await waitFor("VL.app.sceneId === 'play' && g.holdUp", 3000))) shockProblems.push(`he did not wake holding something up: scene ${await see('VL.app.sceneId')}`);
+      await sleep(300);
+      await shot('w16-glowstone');
+      if ((await see("g.holdUp && g.holdUp.sprites.join()")) !== 'item-glowstone') shockProblems.push('he is not holding up the Glowstone');
+      if (!(await waitFor("VL.app.sceneId === 'popup'", 2000))) shockProblems.push('no Glowstone popup');
+      // The popup takes S only once it has been up 0.3 s (scenes/popup.js).
+      await waitFor('VL.app.popupView && VL.app.popupView.t >= 0.35', 2000);
+      await shot('w16-glowstone-popup');
+      await tapS();
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'", 2000))) shockProblems.push(`Gran did not start talking: scene ${await see('VL.app.sceneId')}`);
+      await sleep(1500);
+      await shot('w16-helper');
+      const where = await see("[g.player.area, g.room.entities.some((e) => e.type === 'npc' && e.id === 'gran'), VL.app.dialogue && VL.app.dialogue.speaker]");
+      if (where.join() !== 'hut,true,Gran Ottie') shockProblems.push(`waking: area, Gran there, speaker = ${where}`);
+      for (let i = 0; i < 30 && (await see("VL.app.sceneId === 'dialogue'")); i += 1) {
+        await tapS();
+        await sleep(120);
+      }
+      if (!(await waitFor('g.holdUp', 1000))) shockProblems.push('the wood was not held up');
+      await sleep(300);
+      await shot('w16-helper-wood');
+      if (!(await waitFor("VL.app.sceneId === 'popup'", 2000))) shockProblems.push('no popup for the wood');
+      await sleep(200);
+      await shot('w16-helper-wood-popup');
+      const gift = await see("[g.inventory.wood, g.flags['gave:helperWood']]");
+      if (gift.join() !== '2,true') shockProblems.push(`Gran's gift: wood, flag = ${gift}`);
+
+      shockProblems.push(...errors);
+      if (shockProblems.length) failures += 1;
+      console.log(`${shockProblems.length ? 'FAIL' : 'ok  '} shockwave: the ground shakes, the flash and the losses, the story, waking with the Glowstone, Gran's wood, ${path.join(outDir, 'w16-*.png')}`);
+      for (const problem of shockProblems) console.log(`     ${problem}`);
+    }
     // W29, Matthew's second playtest notes, with real keys: the driftwood at
     // the hut beach's east end, the first shovel's dig-key popup and X digging
     // with the sword and shield in hand, a wood sword clinking off a thorny
@@ -1615,6 +1726,13 @@ async function main() {
         fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
       };
       const read = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await read(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
       const stage = (where, setup = '') => evaluate(`(() => {
         VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
         const g = VL.app.game;
@@ -1629,22 +1747,23 @@ async function main() {
       })()`);
 
       await stage({ area: 'overworld', screen: '1,1', tx: 13, ty: 7, facing: 'right' });
-      await sleep(200);
+      await settle();
       await shoot('w29-driftwood');
       if ((await read("VL.tileAt('overworld', '1,1', 15, 8, g.room)")) !== 'j') notesProblems.push('no driftwood at the hut beach\'s east end');
 
       await stage({ area: 'overworld', screen: '1,1', tx: 5, ty: 7, facing: 'down' }, "VL.giveItem(g, 'woodShovel');");
-      await sleep(300);
-      if ((await read('VL.app.sceneId')) !== 'popup') notesProblems.push('the first shovel did not explain the dig key');
-      // The shovel's popup, then the dig key's: S through both.
+      if (!(await waitFor("VL.app.sceneId === 'popup'"))) notesProblems.push('the first shovel did not explain the dig key');
+      // The shovel's popup, then the dig key's: S through both, each once it is ready for a press.
       for (let i = 0; i < 6 && (await read('VL.app.sceneId')) === 'popup'; i += 1) {
-        if ((await read('VL.currentPopup(g)?.id')) === 'digKey') await shoot('w29-dig-key-popup');
-        await sleep(400);
+        const id = await read('VL.currentPopup(g)?.id');
+        await waitFor("VL.app.sceneId !== 'popup' || VL.app.popupView.t >= 0.3");
+        if (id === 'digKey') await shoot('w29-dig-key-popup');
         await hit('KeyS');
-        await sleep(300);
+        await waitFor(`VL.app.sceneId !== 'popup' || VL.currentPopup(g)?.id !== '${id}'`);
       }
+      await waitFor("VL.app.sceneId === 'play'");
       await hit('KeyX');
-      await sleep(120);
+      await waitFor("VL.tileAt('overworld', '1,1', 5, 8, g.room) === '@'");
       await shoot('w29-dig-x');
       const dug = await read("[VL.tileAt('overworld', '1,1', 5, 8, g.room), g.hands.mainHand, g.hands.offHand]");
       if (dug.join() !== '@,woodSword,woodShield') notesProblems.push(`X digging = ${dug}`);
@@ -1655,10 +1774,11 @@ async function main() {
       await hit('Space');
       await sleep(60);
       await shoot('w29-tough-spitter');
+      await waitFor('!g.player.swing');
       if ((await read("g.room.entities.find((e) => e.type === 'spitter' && e.x === 4)?.hp")) !== hp) notesProblems.push('a wood sword hurt a tough spitter');
 
       await stage({ area: 'overworld', screen: '7,-1', tx: 7, ty: 4, facing: 'up' }, 'g.items.woodsMapCopy = true; g.popups.seen.woodsWithMap = true;');
-      await sleep(200);
+      await settle();
       await shoot('w29-woods-path');
       if ((await read("VL.tileAt('overworld', '7,-1', 7, 2, g.room)")) !== 'P') notesProblems.push('the copied map did not open the path before the Oak');
 
@@ -1668,10 +1788,11 @@ async function main() {
       for (const problem of notesProblems) console.log(`     ${problem}`);
     }
 
+
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();
   } finally {
-    clearTimeout(watchdog);
+    clearInterval(watchdog);
     // Wait for Chrome to exit before deleting its profile, or it writes into the gap.
     const exited = new Promise((resolve) => browser.once('exit', resolve));
     browser.kill();

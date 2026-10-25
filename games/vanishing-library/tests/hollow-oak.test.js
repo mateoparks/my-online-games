@@ -229,8 +229,15 @@ test('every crossing the room data allows, not only the listed ones: from wherev
 
 // ---------- the Thornback ----------
 
+// W15's own hook tests use their own probes; W16's shockwave has
+// tests/shockwave.test.js.
+function withoutShockwave(VL) {
+  VL.THORNBACK_DEFEAT_HOOKS.length = 0;
+}
+
 function bossRoom(options) {
   const t = setup(options);
+  withoutShockwave(t.VL);
   t.d.doors.d2BossDoor = true;
   t.place(oak('0,-3', 7, 8));
   for (const id of ['woodSword', 'grapplingRope']) t.VL.giveItem(t.game, id);
@@ -545,6 +552,7 @@ test('the afterThornbackDone fixture loads with no field reset, and a hook added
   assert.deepEqual(JSON.parse(text).afterThornbackDone, []);
   const backing = memoryStorage({ [VL.slotKey(0)]: text });
   assert.deepEqual(plain(VL.readSlot(VL.createStorage(backing), 0).resets), []);
+  withoutShockwave(VL);
   const calls = [];
   VL.afterThornback('later', () => calls.push(1));
   const storage = VL.createStorage(backing);
