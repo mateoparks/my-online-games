@@ -54,7 +54,8 @@
   titled('bookPrimer', 'The Cartographer\'s Primer', 'gold', 'reading-map', [
     'How to draw a map of every place you have ever been. How wonderful!',
     'With paper and ink, you could draw the whole island. I\'ll keep this one safe on the shelf for you, {name}.',
-  ], popupOnRead('primerRead', { title: 'The Cartographer\'s Primer', text: 'With paper and ink, you can draw a map of everywhere you have been, as long as the Primer is on the shelf.' }));
+    'Ink? The old scribes made theirs by grinding berries with a Mortar & Pestle. There must be one in the Old Scriptorium somewhere!',
+  ], popupOnRead('primerRead', { title: 'The Cartographer\'s Primer', text: 'With paper and ink you can draw a map of everywhere you have been, while the Primer is on the shelf. For ink, grind berries with the Old Scriptorium\'s Mortar & Pestle.' }));
   titled('bookDragons', 'A Child\'s Book of Dragons', 'berry', 'reading-dragon', [
     'I read this to my wife when we were young. She never did like the ending.',
     'Dragons breathe fire, but here\'s a funny thing: they can\'t stand their own fire! Bounce it back, and whoosh!',

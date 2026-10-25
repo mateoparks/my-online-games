@@ -61,10 +61,24 @@ test('README tells players the controls, keeping the chicken flight a secret', (
   const start = readme.indexOf('## Controls');
   assert.ok(start > 0, 'a Controls section');
   const section = readme.slice(start, readme.indexOf('\n## ', start + 1));
-  for (const key of ['Arrow keys', '| S |', '| Space |', '| D |', '| E |', '| M |', '| N |', '| Esc |']) {
+  for (const key of ['Arrow keys', '| S |', '| Space |', '| D |', '| E |', '| M |', '| N |', '| Esc |', '| Enter |', '| Backspace |']) {
     assert.ok(section.includes(key), `lists ${key}`);
   }
   assert.ok(!section.includes('| F |'), 'F stays a secret');
+  const { VL } = loadGame();
+  const popup = VL.POPUPS.controls.text;
+  for (const [key, name] of [['S ', 'S'], ['E ', 'E'], ['Esc ', 'Esc']]) assert.ok(popup.includes(key), `the popup teaches ${name}`);
+  assert.ok(section.includes('teaches the arrows, S, E and Esc'), 'the README says what the first popup teaches');
+});
+
+test('game code comments carry no review or QA history (protocol rule 10)', () => {
+  const files = read('manifest.js').match(/'[^']+\.js'/g).map((name) => name.slice(1, -1));
+  assert.ok(files.length > 20, 'read the manifest');
+  for (const file of files) {
+    read(file).split('\n').forEach((line, i) => {
+      assert.doesNotMatch(line, /\/\/.*\b(QA\b|review [CIM]\d)/, `${file}:${i + 1}`);
+    });
+  }
 });
 
 test('pause lists M for the map once there is one to open, and never before', () => {

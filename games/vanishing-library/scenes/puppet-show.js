@@ -11,6 +11,12 @@
     colors: { h: 'hair', s: 'skin', e: 'ink', t: 'tunic', T: 'tunicDark', w: stick },
     rows: ['.hhhh.', 'hhhhhh', 'hseses', '.ssss.', 'tttttt', 'tTttTt', '.tttt.', '..ww..', '..ww..'],
   });
+  // The meddling young hero of her later shows: a hero type, but not the
+  // player's own look, so the joke stays a joke on a first play.
+  VL.ART.defineSprite('puppet-ned', {
+    colors: { c: 'leaf', C: 'leafLight', f: 'berry', h: 'goldLight', s: 'skin', e: 'ink', t: 'roof', T: 'roofDark', w: stick },
+    rows: ['....f.', '...cf.', '..cCc.', '.cccc.', 'cccccc', 'hseses', '.ssss.', 'tttttt', 'tTttTt', '.tttt.', '..ww..', '..ww..'],
+  });
   VL.ART.defineSprite('puppet-dragon', {
     colors: { g: 'leaf', l: 'leafLight', e: 'ink', w: stick, y: 'gold' },
     rows: ['.......gg.', '......glge', '.gg...gggg', 'gllgggggy.', 'gggggggg..', '.gggggg...', '..g..g....', '...ww.....', '...ww.....'],
@@ -28,7 +34,7 @@
     colors: { y: 'gold', l: 'goldLight', d: 'woodDark' },
     rows: ['...yy...', '..ylyy..', '.yyylyy.', 'yylyyyly', 'yyyyyyyy', 'dddddddd'],
   });
-  const PUPPETS = { hero: 'puppet-hero', dragon: 'puppet-dragon', goose: 'puppet-goose', cat: 'puppet-cat', haystack: 'puppet-haystack' };
+  const PUPPETS = { hero: 'puppet-hero', ned: 'puppet-ned', dragon: 'puppet-dragon', goose: 'puppet-goose', cat: 'puppet-cat', haystack: 'puppet-haystack' };
 
   // ---------- the shows ----------
 
@@ -62,10 +68,10 @@
       title: 'Nosy Ned',
       sky: 'showSkyDusk',
       beats: [
-        { say: 'This is Nosy Ned. Ned pokes his nose into everything.', cast: { hero: 0.4 }, move: { hero: 'hop' } },
-        { say: 'Into cupboards. Into trunks. Into other people\'s business!', cast: { hero: 0.55 }, move: { hero: 'run' } },
-        { say: 'One day, Ned poked his nose into a goose\'s nest.', cast: { hero: 0.45, goose: 0.75 } },
-        { say: 'HONK! The goose chased Ned all the way to the next town!', cast: { hero: 1.2, goose: 1.05 }, move: { hero: 'run', goose: 'run' } },
+        { say: 'This is Nosy Ned. Ned pokes his nose into everything.', cast: { ned: 0.4 }, move: { ned: 'hop' } },
+        { say: 'Into cupboards. Into trunks. Into other people\'s business!', cast: { ned: 0.55 }, move: { ned: 'run' } },
+        { say: 'One day, Ned poked his nose into a goose\'s nest.', cast: { ned: 0.45, goose: 0.75 } },
+        { say: 'HONK! The goose chased Ned all the way to the next town!', cast: { ned: 1.2, goose: 1.05 }, move: { ned: 'run', goose: 'run' } },
         { say: 'And Ned was never nosy again. The end! Ha ha ha!', cast: { goose: 0.5 }, move: { goose: 'hop' } },
         { speaker: 'Mrs. Fenwick', say: 'Wasn\'t that funny? Ha! That goose!', cast: { goose: 0.5 } },
       ],
@@ -75,10 +81,10 @@
       sky: 'showSkyDusk',
       mountain: true,
       beats: [
-        { say: 'Nosy Ned is back! He just won\'t stop poking about.', cast: { hero: 0.3 }, move: { hero: 'hop' } },
-        { say: 'He climbed all the way up the mountain to bother a sleeping dragon.', cast: { hero: 0.45, dragon: 0.7 } },
-        { say: 'Poke. Poke. Poke... AH-CHOO!', cast: { hero: 0.55, dragon: 0.7 }, move: { dragon: 'shake' } },
-        { say: 'The dragon sneezed Ned right over the hills and far away!', cast: { hero: 0.55, dragon: 0.7 }, move: { hero: 'fly' } },
+        { say: 'Nosy Ned is back! He just won\'t stop poking about.', cast: { ned: 0.3 }, move: { ned: 'hop' } },
+        { say: 'He climbed all the way up the mountain to bother a sleeping dragon.', cast: { ned: 0.45, dragon: 0.7 } },
+        { say: 'Poke. Poke. Poke... AH-CHOO!', cast: { ned: 0.55, dragon: 0.7 }, move: { dragon: 'shake' } },
+        { say: 'The dragon sneezed Ned right over the hills and far away!', cast: { ned: 0.55, dragon: 0.7 }, move: { ned: 'fly' } },
         { say: 'He landed in a haystack and became a turnip farmer, far, far from here. The end!', cast: { haystack: 0.5 } },
         { speaker: 'Mrs. Fenwick', say: 'Some heroes just don\'t know when to go home. Don\'t you think so, {name}?', cast: { dragon: 0.5 } },
       ],
