@@ -127,6 +127,52 @@ test('a metal sword beats them', () => {
   assert.ok(!state.room.entities.includes(plant), 'beaten');
 });
 
+test('a thrown rock clinks off them too: only the metal sword hurts them, whatever else hits', () => {
+  const { VL } = loadGame();
+  const state = playState(VL, ow('7,-2', 4, 5, 'down'));
+  state.popups.queue.length = 0;
+  hold(VL, state, [], 1);
+  const plant = state.room.entities.find((e) => e.type === 'spitter' && e.x === 4 && e.y === 7);
+  const hp = plant.hp;
+  state.player.lifted = { kind: 'rock', since: 0, t: 1 };
+  const events = [];
+  VL.updateWorld(state, VL.actions({ pressed: ['interact'] }), 1 / 60);
+  for (let s = 0; s < 1.5; s += 1 / 60) {
+    VL.updateWorld(state, VL.noActions(), 1 / 60);
+    events.push(...state.events.map((e) => e.type));
+  }
+  assert.equal(state.player.lifted, null, 'thrown');
+  assert.equal(plant.hp, hp, 'not a scratch');
+  assert.ok(state.room.entities.includes(plant), 'still there');
+  assert.ok(events.includes('tink'), 'the rock clinks off');
+  assert.ok(!events.includes('enemyHit'));
+
+  for (const weapon of [undefined, 'woodSword', 'throw']) {
+    assert.equal(VL.hitEnemy(state, plant, 5, { x: 0, y: 0 }, weapon), false, `${weapon} does nothing`);
+    assert.equal(plant.hp, hp);
+  }
+  assert.equal(VL.hitEnemy(state, plant, 2, { x: 0, y: 0 }, 'metalSword'), true, 'the metal sword does');
+});
+
+test('the rope only stuns a tough spitter, never hurts it', () => {
+  const { VL } = loadGame();
+  const state = playState(VL, ow('7,-2', 4, 4, 'down'));
+  VL.giveItem(state, 'grapplingRope');
+  if (VL.heldItem(state, 'mainHand') !== 'grapplingRope') VL.setHand(state, 'mainHand', 'grapplingRope');
+  state.popups.queue.length = 0;
+  hold(VL, state, [], 1);
+  const plant = state.room.entities.find((e) => e.type === 'spitter' && e.x === 4 && e.y === 7);
+  const hp = plant.hp;
+  const events = [];
+  VL.updateWorld(state, VL.actions({ pressed: ['mainHand'] }), 1 / 60);
+  for (let s = 0; s < 1.5; s += 1 / 60) {
+    VL.updateWorld(state, VL.noActions(), 1 / 60);
+    events.push(...state.events.map((e) => e.type));
+  }
+  assert.ok(events.includes('ropeStun'), 'the hook reached it');
+  assert.equal(plant.hp, hp);
+});
+
 test('only the clearing\'s spitters are that tough; every other enemy still falls to a wood sword', () => {
   const VL = shared;
   const tough = [];

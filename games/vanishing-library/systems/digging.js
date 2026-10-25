@@ -2,8 +2,8 @@
 // tiers). A shovel takes both hands; Space or D digs the tile ahead. Sand
 // gives a whole shell 20% of the time (30% once the Tide Tables are read)
 // and a broken one 50%; the metal shovel also digs grass, where a few
-// secrets lie buried. A dug
-// hole lasts for the visit (VL.setRoomTile), like a cut bush.
+// secrets lie buried. A dug hole lasts for the visit (VL.setRoomTile), like
+// a cut bush.
 (() => {
   VL.tune({
     digSeconds: 0.3,

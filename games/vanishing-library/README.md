@@ -533,8 +533,10 @@ holds the heart containers.
   blocks them) on the cliffs and highlands. Every one does half a heart and
   takes one to three wood-sword hits, except one placed with `tough: true`
   (W29: the two thorny spitters in the Hollow Oak's clearing), which only a
-  sword in `TUNING.toughSwords` (the metal one) hurts; a wood blade just
-  clinks off (`tink`). Enemies are never solid, so they never make the
+  sword in `TUNING.toughSwords` (the metal one) hurts. The rule lives in
+  `VL.hitEnemy(state, enemy, damage, from, weapon)`: a wood blade, a thrown
+  rock or pot, or any hit without a listed `weapon` just clinks off
+  (`tink`); the rope still only stuns. Enemies are never solid, so they never make the
   metal sword required. The start screen, the home meadow (0,0)
   and the town have none.
 - **Heart containers:** `VL.giveHeartContainer(state, id?)` adds
