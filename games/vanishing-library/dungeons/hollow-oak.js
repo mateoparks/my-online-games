@@ -341,14 +341,34 @@
   };
   VL.extendGame('afterThornback', () => ({ afterThornbackDone: [] }));
 
+  // A hook that throws is logged and put back as it was, and not tried again
+  // until the next load: a bug costs its effect, never the loop or the save.
+  // Keyed by the game object, so each load starts afresh.
+  const failedHooks = new WeakMap();
+  function restoreSaved(state, before) {
+    const now = VL.serializeSave(state);
+    for (const key of Object.keys(now)) if (!(key in before)) delete state[key];
+    for (const [key, value] of Object.entries(before)) if (key !== 'v') state[key] = value;
+  }
+
   VL.defineSystem('afterThornback', {
     order: 95,
     update(state) {
       if (state.dirty || !VL.bossBeaten(state, DUNGEON)) return;
-      const next = VL.THORNBACK_DEFEAT_HOOKS.find(({ id }) => !state.afterThornbackDone.includes(id));
+      const failed = failedHooks.get(state) || new Set();
+      const next = VL.THORNBACK_DEFEAT_HOOKS.find(({ id }) => !state.afterThornbackDone.includes(id) && !failed.has(id));
       if (!next) return;
+      const before = VL.serializeSave(state);
+      try {
+        next.hook(state);
+      } catch (error) {
+        console.error(`afterThornback ${next.id} failed`, error);
+        restoreSaved(state, before);
+        failed.add(next.id);
+        failedHooks.set(state, failed);
+        return;
+      }
       state.afterThornbackDone.push(next.id);
-      next.hook(state);
       VL.earned(state);
     },
   });

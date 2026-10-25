@@ -186,7 +186,8 @@ const route = {
 
 // The Thornback, fought with real keys: wait in the middle of the den for
 // it to come into line, hook it (a plate flies off and it flips), then walk
-// up beside it and swing until it rights itself; again until it is beaten.
+// up beside it and swing until it rights itself; again until it is beaten,
+// which takes a round per plate.
 function fightThornback(drive) {
   const { VL } = drive;
   go(drive, at('0,-2', 7, 1));
@@ -205,6 +206,7 @@ function fightThornback(drive) {
       return false;
     }
   };
+  const roundsFlipped = new Set();
   for (let round = 0; round < 200 && !VL.bossBeaten(drive.state, AREA); round += 1) {
     assert.ok(drive.state.hp > 0, 'the hero outlasts the Thornback');
     const b = beetle();
@@ -213,6 +215,7 @@ function fightThornback(drive) {
       continue;
     }
     if (b.mode === 'flipped') {
+      roundsFlipped.add(b.rounds);
       const bt = VL.tileOf(b.cx, b.cy);
       const spots = [[0, 1, 'up'], [0, -1, 'down'], [-1, 0, 'right'], [1, 0, 'left']]
         .map(([dx, dy, dir]) => ({ tx: bt.tx + dx, ty: bt.ty + dy, dir }))
@@ -247,6 +250,7 @@ function fightThornback(drive) {
     drive.hold([], 1 / 30);
   }
   if (!VL.bossBeaten(drive.state, AREA)) drive.until((state) => VL.bossBeaten(state, AREA), 3);
+  assert.deepEqual([...roundsFlipped].sort(), [1, 2, 3], 'beaten in three flip-and-strike rounds');
   drive.fight = false;
 }
 

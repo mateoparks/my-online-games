@@ -1550,7 +1550,7 @@ async function main() {
       await evaluate(`(() => {
         const g = VL.app.game;
         const b = g.room.entities.find((e) => e.type === 'thornback');
-        b.life = 1;
+        Object.assign(b, { rounds: 1, life: 1 });
         const t = VL.tileOf(b.cx, b.cy);
         Object.assign(g.player, VL.tileCenter(t.tx, t.ty + 1), { facing: 'up', invuln: 5 });
       })()`);

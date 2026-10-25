@@ -246,7 +246,7 @@ test('the Thornback: a sword clinks off its plates and says to use the rope', ()
   const b = beetleOf(t);
   b.arriving = 0;
   VL.hitEnemy(t.game, b, 1, { x: 0, y: 0 });
-  assert.equal(b.life, VL.TUNING.thornbackLife);
+  assert.deepEqual([b.life, b.rounds, b.plates], [VL.TUNING.thornbackRoundLife, 3, 3]);
   assert.equal(t.game.dungeonNote.text, VL.THORNBACK_SWORD_NOTE);
   assert.ok(t.game.room.entities.includes(b));
 });
@@ -266,8 +266,64 @@ test('the Thornback: the hook yanks a plate off and flips it; then the sword cou
   assert.ok(t.game.room.entities.some((e) => e.type === 'thornPlate'), 'the plate flies off');
   assert.equal(VL.enemyHarmful(beetle), false, 'harmless on its back');
   VL.hitEnemy(t.game, beetle, 1, { x: 0, y: 0 });
-  assert.equal(beetle.life, VL.TUNING.thornbackLife - 1);
+  assert.deepEqual([beetle.life, beetle.rounds], [VL.TUNING.thornbackRoundLife - 1, VL.TUNING.thornbackPlates]);
   t.until(() => beetle.mode === 'walk', VL.TUNING.thornbackFlippedSeconds + VL.TUNING.thornbackRightSeconds + 0.5);
+});
+
+test('the Thornback takes three flip-and-strike rounds: each round a plate comes off and the sword finishes it on its back', () => {
+  const t = bossRoom();
+  const { VL } = t;
+  const b = beetleOf(t);
+  b.arriving = 0;
+  const T = VL.TUNING;
+  assert.equal(T.thornbackPlates, 3);
+  for (let round = 1; round <= 3; round += 1) {
+    VL.ENEMIES.thornback.onHook(t.game, b);
+    assert.deepEqual([b.mode, b.plates], ['flipped', 3 - round], `round ${round}: the hook yanks a plate and flips it`);
+    for (let hit = 1; hit <= T.thornbackRoundLife; hit += 1) {
+      b.hurt = 0;
+      VL.hitEnemy(t.game, b, 1, { x: 0, y: 0 });
+    }
+    if (round < 3) {
+      assert.equal(b.mode, 'righting', `round ${round} done: it scrambles back onto its feet, not beaten`);
+      t.until(() => b.mode === 'walk', T.thornbackRightSeconds + 0.1);
+    }
+  }
+  assert.equal(b.mode, 'dying', 'the third round beats it');
+});
+
+test('the Thornback: a flip that runs out keeps the round going; the next hook flips it without losing another plate', () => {
+  const t = bossRoom();
+  const { VL } = t;
+  const b = beetleOf(t);
+  b.arriving = 0;
+  VL.ENEMIES.thornback.onHook(t.game, b);
+  b.hurt = 0;
+  VL.hitEnemy(t.game, b, 1, { x: 0, y: 0 });
+  t.game.player.invuln = 99;
+  t.until(() => b.mode === 'walk', VL.TUNING.thornbackFlippedSeconds + VL.TUNING.thornbackRightSeconds + 0.5);
+  VL.ENEMIES.thornback.onHook(t.game, b);
+  assert.deepEqual([b.mode, b.plates, b.rounds, b.life], ['flipped', 2, 3, VL.TUNING.thornbackRoundLife - 1], 'the hit already landed still counts');
+});
+
+test('the Thornback is fair: a wood sword swung with real keys finishes a round with a second to spare while it is on its back', () => {
+  const t = bossRoom();
+  const { VL } = t;
+  t.hold([], VL.TUNING.enemyArrivalSeconds + 0.05);
+  const b = beetleOf(t);
+  b.arriving = 0;
+  VL.ENEMIES.thornback.onHook(t.game, b);
+  const bt = VL.tileOf(b.cx, b.cy);
+  Object.assign(t.game.player, VL.tileCenter(bt.tx, bt.ty + 1), { facing: 'up' });
+  let seconds = 0;
+  while (b.mode === 'flipped' && seconds < 10) {
+    t.press('mainHand');
+    t.hold([], 0.32);
+    seconds += STEP + 0.32;
+  }
+  assert.equal(b.mode, 'righting', 'the round was finished, not timed out');
+  assert.equal(b.rounds, VL.TUNING.thornbackPlates - 1);
+  assert.ok(seconds <= VL.TUNING.thornbackFlippedSeconds - 1, `took ${seconds.toFixed(2)} s of ${VL.TUNING.thornbackFlippedSeconds} s`);
 });
 
 test('the Thornback charges when the hero is in line, and bonks into the wall', () => {
@@ -384,6 +440,79 @@ test('a hook waits while the win could not be written, and runs once a write lan
   t.step();
   assert.deepEqual(calls, [1]);
   assert.deepEqual(JSON.parse(t.slotText()).afterThornbackDone, ['probe']);
+});
+
+// A hook that throws (a W16 bug) must cost the shockwave, never the save
+// or the game loop.
+function withConsoleErrors(run) {
+  const errors = [];
+  const original = console.error;
+  console.error = (...args) => errors.push(args);
+  try {
+    run(errors);
+  } finally {
+    console.error = original;
+  }
+}
+
+test('a hook that throws: the game keeps playing, its changes are undone, it is not marked done, and a clean hook still runs exactly once', () => {
+  withConsoleErrors((errors) => {
+    const t = bossRoom({ storage: true });
+    const { VL } = t;
+    let boom = 0;
+    const clean = [];
+    VL.afterThornback('boom', (state) => {
+      boom += 1;
+      state.inventory.wood = 0;
+      state.afterThornbackDone.push('sneaky');
+      throw new Error('hook bug');
+    });
+    VL.afterThornback('clean', (state) => {
+      clean.push(1);
+      state.inventory.paper = 9;
+    });
+    t.game.inventory.wood = 5;
+    t.app.save();
+    beatThornback(t);
+    const time = t.game.time;
+    assert.doesNotThrow(() => t.hold([], 2));
+    assert.ok(t.game.time > time + 1.9, 'the loop kept going');
+    assert.equal(boom, 1, 'tried once in this load, not every step');
+    assert.equal(errors.length, 1, 'and logged');
+    assert.deepEqual(clean, [1], 'the clean hook runs exactly once');
+    assert.equal(t.game.inventory.wood, 5, 'the throwing hook\'s half-done changes are undone');
+    const saved = JSON.parse(t.slotText());
+    assert.deepEqual([saved.afterThornbackDone, saved.inventory.wood, saved.inventory.paper], [['clean'], 5, 9]);
+  });
+});
+
+test('a hook that throws: Continue tries it once more and keeps playing (no freeze on every load)', () => {
+  withConsoleErrors((errors) => {
+    const t = bossRoom({ storage: true });
+    const { VL } = t;
+    let boom = 0;
+    VL.afterThornback('boom', () => {
+      boom += 1;
+      throw new Error('hook bug');
+    });
+    t.app.save();
+    beatThornback(t);
+    t.hold([], 0.5);
+    const text = t.slotText();
+    assert.deepEqual(JSON.parse(text).afterThornbackDone, []);
+    for (const load of [1, 2]) {
+      const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: text }));
+      const app = VL.createApp({ storage });
+      app.startGame(VL.loadSlot(storage, 0), 0);
+      app.setScene('play');
+      assert.doesNotThrow(() => {
+        for (let s = 0; s < 1; s += STEP) app.update(VL.actions({ held: ['right'] }), STEP);
+      });
+      assert.ok(app.game.time >= 0.95, `load ${load}: still playing`);
+      assert.equal(boom, 1 + load, `load ${load}: tried once`);
+    }
+    assert.equal(errors.length, 3);
+  });
 });
 
 test('shut in with the Thornback, the hero can always faint his way out (it hurts while it walks and charges)', () => {

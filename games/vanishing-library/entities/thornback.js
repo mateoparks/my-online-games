@@ -3,13 +3,16 @@
 // trundles after the hero, stamps when he is in line, then charges and bonks
 // into the wall. A sword only clinks off its plates; the rope's hook yanks a
 // plate off and flips it onto its back, legs waving, and then the sword
-// counts. It is beaten when its `life` runs out: marked `defeated` before
-// it leaves the room (README "Dungeons", the boss room).
+// counts. Three rounds, one per plate: each round's `life` taken while it is
+// on its back sets it on its feet again, and the third beats it: marked
+// `defeated` before it leaves the room (README "Dungeons", the boss room).
 (() => {
   VL.tune({
-    // hp is never run down (refilled on every hit); `thornbackLife` is.
+    // hp is never run down (refilled on every hit); a round's life is.
     enemyThornback: { hp: 50, damage: 2 },
-    thornbackLife: 6,
+    // Per round (one per plate): 3 wood hits or 2 metal, about a second of
+    // swinging, well inside the flip.
+    thornbackRoundLife: 3,
     thornbackPlates: 3,
     thornbackWalkSpeed: 26,
     thornbackChargeSpeed: 125,
@@ -142,7 +145,8 @@
     faint: 'The Thornback rolled right over you.',
     harmful: (beetle) => ['walk', 'aim', 'charge'].includes(beetle.mode),
     setup(state, beetle) {
-      beetle.life = T.thornbackLife;
+      beetle.life = T.thornbackRoundLife;
+      beetle.rounds = T.thornbackPlates;
       beetle.plates = T.thornbackPlates;
       beetle.facing = 'down';
       setMode(beetle, 'walk');
@@ -184,10 +188,11 @@
         state.events.push({ type: 'enemyDefeated', enemy: 'thornback', drop: null });
       }
     },
-    // The rope's hook: a plate flies off and it lands on its back.
+    // The rope's hook: a plate flies off and it lands on its back. A round
+    // whose flip ran out has lost its plate already.
     onHook(state, beetle) {
       if (['flipped', 'dying'].includes(beetle.mode)) return true;
-      if (beetle.plates > 0) {
+      if (beetle.plates > 0 && beetle.plates >= beetle.rounds) {
         beetle.plates -= 1;
         const hero = VL.heroCentre(state);
         state.room.entities.push({ type: 'thornPlate', x: 0, y: 0, gx: beetle.cx, gy: beetle.cy, tx: hero.x, ty: hero.y, t: 0 });
@@ -208,7 +213,15 @@
         return;
       }
       beetle.life -= damage;
-      if (beetle.life <= 0) setMode(beetle, 'dying');
+      if (beetle.life > 0) return;
+      beetle.rounds -= 1;
+      if (beetle.rounds <= 0) {
+        setMode(beetle, 'dying');
+        return;
+      }
+      beetle.life = T.thornbackRoundLife;
+      setMode(beetle, 'righting');
+      state.events.push({ type: 'thornStomp' });
     },
     draw(ctx, beetle, cx, cy, t) {
       if (beetle.mode === 'dying' && Math.floor(t * 16) % 2) return;

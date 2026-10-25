@@ -1457,11 +1457,15 @@ again, with `afterThornbackDone`.
   into the wall (`charge`, `bonk`). A sword clinks off its plates with a note
   (`VL.THORNBACK_SWORD_NOTE`). The rope's hook (`onHook`) yanks a plate off
   (`plates`, 3, drawn) and flips it (`flipped`, harmless, legs waving, for
-  `thornbackFlippedSeconds`), and then the sword takes `life`
-  (`TUNING.thornbackLife`, 6; its `hp` is refilled on every hit like the
-  Bookworm's). With no life left it is `dying`, then marked `defeated`
-  before it leaves (a cartoon puff); hurting while it walks or charges, so
-  a hero shut in can always faint his way out.
+  `thornbackFlippedSeconds`), and then the sword takes the round's `life`
+  (`TUNING.thornbackRoundLife`, 3: three wood hits or two metal, about a
+  second of swinging; its `hp` is refilled on every hit like the
+  Bookworm's). The fight is three such rounds, one per plate (`rounds`):
+  a finished round sets it back on its feet (`righting`, a stomp); a flip
+  that runs out keeps the round's damage, and the next hook flips it
+  without taking another plate. After the third round it is `dying`, then
+  marked `defeated` before it leaves (a cartoon puff); hurting while it
+  walks or charges, so a hero shut in can always faint his way out.
 - **Rewards:** the framework's heart container `heartD2` where it began and
   the warp out. **`VL.afterThornback(id, (state) => …)`** is the hook for
   what follows (W16's shockwave). The order is fixed and tested: the step
@@ -1474,6 +1478,9 @@ again, with `afterThornbackDone`.
   hook existed runs it on the next load. The hook runs wherever the hero
   is (the heart may still be on the floor); a knock-out that waits for a
   scene must save its own pending flag. W15 itself takes nothing away.
+  A hook that throws is logged (`console.error`), its saved changes are
+  put back, its id is not recorded, and it isn't tried again until the
+  next load: the game keeps playing and the save stays as it was.
 - **Locks:** claims `hollowOakEntered` (a visit to the entrance hall) with the
   planned rule, and `grapplingRope` (`needs` adds `d2DoorA`) and `d2Boss`
   (adds `d2BossDoor`) with `replan`; adds `d2KeyA`, `d2DoorA`, `d2KeyB`,
