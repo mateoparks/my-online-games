@@ -12,8 +12,16 @@
     berriesPerPick: 2,
   });
 
-  // A picked berry bush, only ever put down for a visit by VL.setRoomTile.
-  VL.extendTileset('base', { u: { solid: true, bush: true, berry: true, picked: true, art: 'berryPicked' } });
+  // A picked berry bush, only ever put down for a visit by VL.setRoomTile
+  // (the legend's `pickedTo`, else `u`). The Woods and highland bushes stand
+  // on their own ground (W29: one bush per stage of the story).
+  VL.extendTileset('base', {
+    u: { solid: true, bush: true, berry: true, picked: true, art: 'berryPicked' },
+    Q: { solid: true, bush: true, berry: true, art: 'berry', ground: 'moss', pickedTo: 'U' },
+    U: { solid: true, bush: true, berry: true, picked: true, art: 'berryPicked', ground: 'moss' },
+    K: { solid: true, bush: true, berry: true, art: 'berry', ground: 'scree', pickedTo: 'L' },
+    L: { solid: true, bush: true, berry: true, picked: true, art: 'berryPicked', ground: 'scree' },
+  });
   VL.ART.defineTileStyle('berryPicked', {
     under: 'grass',
     shadow: (ctx, cell) => VL.ART.rect(ctx, 'shadow', cell.x + 2, cell.y + 12, 13, 3),
@@ -63,8 +71,9 @@
 
   VL.pickBerries = function pickBerries(state, tx, ty) {
     if (!VL.isBerryBush(state, tx, ty)) return false;
-    if (roomTile(state, tx, ty).picked) return false;
-    VL.setRoomTile(state, tx, ty, 'u');
+    const info = roomTile(state, tx, ty);
+    if (info.picked) return false;
+    VL.setRoomTile(state, tx, ty, info.pickedTo || 'u');
     VL.addResource(state, 'berries', VL.TUNING.berriesPerPick);
     firstTime(state, 'pickedBerries');
     VL.showPopup(state, 'berries');

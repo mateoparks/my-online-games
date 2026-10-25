@@ -94,7 +94,7 @@
         'CCCCCCCCCCCCCCCC',
         'CCCCCCCCCCCCCCCC',
         'CC:::::::::CCCCC',
-        ':::k::::::::CCCC',
+        ':::k:::::::KCCCC',
         ':::::::::::::CCC',
         '::::::::::::::CC',
         'CC:::::k:::::::C',

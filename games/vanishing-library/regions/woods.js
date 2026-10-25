@@ -224,7 +224,7 @@
         'FFFFFGGGGGFFFFFF',
         'FFFFFGGGGGFFFFFF',
         'FFFffGGfGGffFFFF',
-        'FFfffffffffffFFF',
+        'FFfQfffffffffFFF',
         'FFffffffffffffFF',
         'FFFfffffffffffFF',
         'FFFFfffffffffFFF',

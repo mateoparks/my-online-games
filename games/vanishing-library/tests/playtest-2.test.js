@@ -322,3 +322,56 @@ test('Esc lists X once there is a shovel; README Controls lists it', () => {
   const { read } = require('./harness');
   assert.match(read('README.md'), /\| X \| Dig/);
 });
+
+// ---------- berry bushes along the story ----------
+
+function berryBushes(VL) {
+  const bushes = [];
+  overworldTiles(VL, (key, tx, ty, info) => { if (info.berry) bushes.push({ key, tx, ty, region: VL.regionOf('overworld', key) }); });
+  return bushes;
+}
+
+test('three berry bushes: by the hut from the start, in the Woods after Dungeon 1, in the highlands after Dungeon 3', () => {
+  const VL = shared;
+  assert.deepEqual(plain(berryBushes(VL).map((b) => b.region)).sort(), ['highlands', 'homeFields', 'woods']);
+  const { LOCKS } = VL;
+  // The first: nothing needed, so ink can be made before Dungeon 1 is done.
+  assert.deepEqual(plain(LOCKS.berryBush.needs), ['start']);
+  // The second: the Woods need the copied map, which needs ink, which needs
+  // the mortar, which only the Bookworm (Dungeon 1's boss) gives.
+  assert.ok(LOCKS.woods.needs.includes('woodsMapCopy'));
+  assert.ok(LOCKS.woodsMapCopy.needs.includes('ink'));
+  assert.ok(LOCKS.ink.needs.includes('mortarPestle'));
+  const mortar = Object.values(LOCKS).filter((lock) => (lock.gives || []).includes('mortarPestle')).map((lock) => lock.id);
+  assert.deepEqual(plain(mortar), ['d1Boss']);
+  // The third: the highlands need the Climber's Almanac, five pages bound,
+  // and only four pages exist before Dungeon 3's boss.
+  assert.ok(LOCKS.highlands.needs.includes('climbersAlmanac'));
+  const pages = Object.values(LOCKS).filter((lock) => lock.supplies?.pages && lock.id !== 'd3Boss').reduce((n, lock) => n + lock.supplies.pages, 0);
+  assert.ok(pages < LOCKS.climbersAlmanac.count.pages, `${pages} pages before Dungeon 3`);
+  assert.ok(LOCKS.d3Boss.supplies.pages >= 1);
+});
+
+test('the Woods and highland bushes stand on their own ground and are picked bare like any other', () => {
+  const { VL } = loadGame();
+  for (const bush of berryBushes(VL).filter((b) => b.region !== 'homeFields')) {
+    const info = VL.tileInfo('overworld', VL.getScreen('overworld', bush.key).tiles[bush.ty][bush.tx]);
+    assert.equal(groundName(VL, info), bush.region === 'woods' ? 'moss' : 'scree', bush.key);
+    const state = playState(VL, ow(bush.key, bush.tx, bush.ty + 1, 'up'));
+    state.room.entities = state.room.entities.filter((e) => !VL.isEnemy(e));
+    const before = state.inventory.berries;
+    VL.updateWorld(state, VL.actions({ pressed: ['interact'] }), 1 / 60);
+    assert.equal(state.inventory.berries, before + VL.TUNING.berriesPerPick, `${bush.key} picked`);
+    const picked = VL.tileInfo('overworld', VL.tileAt('overworld', bush.key, bush.tx, bush.ty, state.room));
+    assert.ok(picked.picked && picked.berry, 'bare until he comes back');
+    assert.equal(groundName(VL, picked), groundName(VL, info), 'on the same ground');
+  }
+});
+
+test('the Herbalist\'s Notes point at the new places', () => {
+  const VL = shared;
+  const popup = VL.POPUPS.herbalistRead;
+  assert.match(popup.text, /Woods/);
+  assert.match(popup.text, /highlands/);
+  assert.doesNotMatch(popup.text, /cliffs|lake/);
+});

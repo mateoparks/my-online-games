@@ -408,8 +408,12 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   `TUNING.dropSeconds` (a heart drop heals `TUNING.heartDropHeal` half hearts;
   enemy drops reuse the `drop` entity). A bare-hand pull costs `TUNING.pullCost` half hearts,
   and a pull on the last half heart faints the hero (`shrub`). Berry bushes
-  (`berry: true`) are picked with S (`TUNING.berriesPerPick`), show bare (`u`)
-  until the hero comes back, and a sword only bounces off them. Eating a berry
+  (`berry: true`) are picked with S (`TUNING.berriesPerPick`), show bare (`u`,
+  or the legend's `pickedTo`: `Q`→`U` on the Woods moss, `K`→`L` on scree)
+  until the hero comes back. There are three (W29): by the hut from the
+  start, in the Hollow Oak's clearing (the Woods, so after Dungeon 1's
+  mortar makes the ink for the map) and on the first highland shelf (after
+  Dungeon 3's page completes the Climber's Almanac), and a sword only bounces off them. Eating a berry
   (`VL.eatBerry`, a berry in a hand or S on the equipment screen) heals
   `TUNING.berryHeal` half hearts and never past full.
 - **Pickups:** walking over a `drop`, a `shell` (`{ type: 'shell', x, y }` is a
