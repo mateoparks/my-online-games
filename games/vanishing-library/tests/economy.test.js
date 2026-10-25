@@ -81,19 +81,24 @@ test('one price table in VL.TUNING holds every price, starting from the design d
     metalGear: { ore: 1, shells: 10 },
     metalGearLedger: { ore: 1, shells: 6 },
     binding: { shells: 15 },
+    raft: { wood: 4 },
+    oarShells: { shells: 8 },
+    oarWood: { wood: 3 },
   });
   assert.equal(VL.TUNING.digChance, 0.2);
   assert.equal(VL.TUNING.digChanceTideTables, 0.3);
   // Every offer's cost is the table's entry, so retuning one line retunes the counter.
   const costOf = {
-    store: { paper: p.paper, buyBerry: p.buyBerry, sellBerry: p.sellBerry, woodShovel: p.shopShovel },
+    store: { paper: p.paper, buyBerry: p.buyBerry, sellBerry: p.sellBerry, woodShovel: p.shopShovel, oar: p.oarShells },
     mill: { millTrade: p.millTrade, paper: p.paper },
     smithy: {
       woodSword: p.woodSword, woodShield: p.woodShield, woodShovel: p.woodShovel,
       metalSword: p.metalGear, metalShield: p.metalGear, metalShovel: p.metalGear,
       metalSwordLedger: p.metalGearLedger, metalShieldLedger: p.metalGearLedger, metalShovelLedger: p.metalGearLedger,
+      oar: p.oarWood,
     },
     bookbinder: { bindPages: p.binding },
+    raftyard: { raft: p.raft },
   };
   for (const [shop, offers] of Object.entries(costOf)) {
     assert.deepEqual(plain(VL.SHOPS[shop].offers.map((o) => o.id)).sort(), Object.keys(offers).sort(), `${shop}'s offers`);
@@ -360,6 +365,7 @@ test('the Smith\'s Ledger, once read, makes forging cost fewer shells', () => {
 // The shockwave (W16) as the progression table states it: everything it
 // `loses` is taken, and whole shells become broken ones.
 function shockwave(VL, game) {
+  game.flags.shockwave = true;
   for (const key of VL.LOCKS.shockwave.loses) {
     if (VL.ITEMS[key]) delete game.items[key];
     else if (key !== 'shells' && VL.RESOURCE_KINDS.includes(key)) game.inventory[key] = 0;
@@ -380,7 +386,7 @@ test('after the shockwave: lost gear can be bought and forged again, with the or
   assert.deepEqual([VL.hasItem(game, 'metalSword'), VL.hasItem(game, 'woodShovel'), game.inventory.shells, game.inventory.brokenShells, game.inventory.ore],
     [false, false, 0, 7, 1], 'gear and whole shells gone, unused ore kept');
   assert.deepEqual(plain(game.hands), { mainHand: null, offHand: null });
-  assert.deepEqual(showing(VL, game, 'smithy'), ['woodSword', 'woodShield', 'woodShovel', 'metalSword', 'metalShield', 'metalShovel'], 'everything is for sale again');
+  assert.deepEqual(showing(VL, game, 'smithy'), ['woodSword', 'woodShield', 'woodShovel', 'metalSword', 'metalShield', 'metalShovel', 'oar'], 'everything is for sale again');
   // Broken shells buy nothing; the climb back starts with wood.
   assert.equal(VL.buyOffer(game, offer(VL, 'smithy', 'metalSword')).kind, 'shells');
   give(VL, game, { wood: 3 });
@@ -428,6 +434,8 @@ test('the bindery binds five loose pages for 15 shells, once', () => {
   const findPage = (lock) => {
     VL.markFound(game, lock.id);
     game.flags[`test:${lock.id}`] = true;
+    // W18's Lens Crab gives its page with the win.
+    if (lock.id === 'd3Boss') VL.dungeonState(game, 'lighthouse').boss = true;
   };
   pageLocks.slice(0, 4).forEach(findPage);
   assert.equal(VL.loosePages(game), 4);

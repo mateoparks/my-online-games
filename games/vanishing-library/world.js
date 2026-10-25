@@ -72,14 +72,16 @@ VL.setRoomTile = function setRoomTile(state, tx, ty, ch) {
 };
 
 // With `room`, the visit's solid entities (a chest, a sign) block too.
-VL.isSolidAt = function isSolidAt(areaId, key, tx, ty, room) {
-  if (VL.tileInfo(areaId, VL.tileAt(areaId, key, tx, ty, room)).solid) return true;
+// `lets(info)` opens a solid tile kind for one mover (the raft on water).
+VL.isSolidAt = function isSolidAt(areaId, key, tx, ty, room, lets) {
+  const info = VL.tileInfo(areaId, VL.tileAt(areaId, key, tx, ty, room));
+  if (info.solid && !lets?.(info)) return true;
   if (!room || room.area !== areaId || room.screen !== key) return false;
   return room.entities.some((e) => e.x === tx && e.y === ty && (e.solid || VL.ENTITIES[e.type]?.solid));
 };
 
 // Does a box centred at (x, y) in play-area pixels overlap a solid tile?
-VL.isBlocked = function isBlocked(areaId, key, x, y, w, h, room) {
+VL.isBlocked = function isBlocked(areaId, key, x, y, w, h, room, lets) {
   const { tile } = VL.TUNING;
   const left = Math.floor((x - w / 2) / tile);
   const right = Math.floor((x + w / 2 - 1e-6) / tile);
@@ -87,7 +89,7 @@ VL.isBlocked = function isBlocked(areaId, key, x, y, w, h, room) {
   const bottom = Math.floor((y + h / 2 - 1e-6) / tile);
   for (let ty = top; ty <= bottom; ty += 1) {
     for (let tx = left; tx <= right; tx += 1) {
-      if (VL.isSolidAt(areaId, key, tx, ty, room)) return true;
+      if (VL.isSolidAt(areaId, key, tx, ty, room, lets)) return true;
     }
   }
   return false;

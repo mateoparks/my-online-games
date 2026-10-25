@@ -484,7 +484,7 @@ test('the Cartographer\'s Primer stays until Dungeon 3 is beaten, then goes firs
   assert.deepEqual(plain(VL.applyThefts(game)), ['bookRiverside'], 'the Primer is safe before Dungeon 3');
   assert.ok(VL.primerOnShelf(game));
   assert.equal(VL.LOCKS.primerTaken.reached(game), false);
-  VL.defineLock('d3Boss', { ...VL.LOCKS.d3Boss, reached: () => true });
+  VL.dungeonState(game, 'lighthouse').boss = true;
   assert.deepEqual(plain(VL.applyThefts(game)).slice(0, 1), ['bookPrimer']);
   assert.equal(VL.primerOnShelf(game), false);
   assert.ok(VL.LOCKS.primerTaken.reached(game));
@@ -494,7 +494,7 @@ test('the Cartographer\'s Primer stays until Dungeon 3 is beaten, then goes firs
 test('after Dungeon 3, a Primer handed in but not yet read stays until he has read it', () => {
   const { VL } = loadGame();
   const game = VL.newGame();
-  VL.defineLock('d3Boss', { ...VL.LOCKS.d3Boss, reached: () => true });
+  VL.dungeonState(game, 'lighthouse').boss = true;
   find(VL, game, ['bookPrimer']);
   VL.returnBooks(game);
   // A Save & Quit before the reading, then back into the library.

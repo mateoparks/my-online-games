@@ -167,7 +167,9 @@
 
   // Opens a locked door for good: the door's flag is the spent key (one
   // saved fact, so a reload can never keep one without the other); the boss
-  // key is shown, not spent. Returns 'opened', 'open' or 'locked'.
+  // key is shown, not spent. A door with `wants: { items, note }` also stays
+  // shut until the hero holds one of `items` (a boss behind it he couldn't
+  // beat would shut him in). Returns 'opened', 'open' or 'locked'.
   VL.openLockedDoor = function openLockedDoor(state, door) {
     const dungeon = here(state);
     const d = VL.dungeonState(state, dungeon.id);
@@ -177,6 +179,7 @@
       return 'open';
     }
     if (door.kind === 'boss' ? !d.bossKey : VL.smallKeys(state, dungeon.id) <= 0) return 'locked';
+    if (lacksWanted(state, door)) return 'locked';
     d.doors[door.id] = true;
     door.open = true;
     door.solid = false;
@@ -184,6 +187,8 @@
     state.events.push({ type: 'doorUnlocked', door: door.id, kind: door.kind });
     return 'opened';
   };
+
+  const lacksWanted = (state, door) => Boolean(door.wants && !door.wants.items.some((id) => VL.hasItem(state, id)));
 
   // ---------- plates, switches, shutters ----------
 
@@ -350,7 +355,7 @@
         // One try per lean, and again when the keys in hand change.
         if (push?.entity === e) {
           const dungeon = here(state);
-          const keys = `${VL.smallKeys(state, dungeon.id)}/${VL.dungeonState(state, dungeon.id).bossKey}`;
+          const keys = `${VL.smallKeys(state, dungeon.id)}/${VL.dungeonState(state, dungeon.id).bossKey}/${lacksWanted(state, e)}`;
           if (e.tried !== keys) {
             e.tried = keys;
             if (VL.openLockedDoor(state, e) === 'locked') VL.lockedDoorNote(state, e);
@@ -360,12 +365,16 @@
     }
   }
 
-  // Bumps, and says why once per visit of that door.
+  // Bumps, and says why once per visit of that door and reason.
   VL.lockedDoorNote = function lockedDoorNote(state, door) {
     state.events.push({ type: 'doorLocked', door: door.id, kind: door.kind });
-    if (door.told) return;
-    door.told = true;
-    state.dungeonNote = { text: door.kind === 'boss' ? 'The big lock needs the boss key.' : 'Locked. A small key would open it.', t: 0 };
+    const d = VL.dungeonHere(state);
+    const keyed = door.kind === 'boss' ? d.bossKey : VL.smallKeys(state, here(state).id) > 0;
+    let text = door.kind === 'boss' ? 'The big lock needs the boss key.' : 'Locked. A small key would open it.';
+    if (keyed && lacksWanted(state, door)) text = door.wants.note;
+    if (door.told === text) return;
+    door.told = text;
+    state.dungeonNote = { text, t: 0 };
   };
 
   // ---------- rooms ----------
@@ -529,7 +538,7 @@
       for (const [key, screen] of Object.entries(VL.AREAS[dungeon.area].screens)) {
         for (const e of screen.entities) {
           const where = `${dungeon.id} ${key} ${e.type} ${e.id || ''}`.trim();
-          if (NEEDS_ID.includes(e.type) && !e.id) {
+          if ((NEEDS_ID.includes(e.type) || VL.ENTITIES[e.type]?.isSwitch) && !e.id) {
             problems.push(`${where} needs an id`);
             continue;
           }
@@ -545,6 +554,28 @@
           if (expect.consumes && !lock.consumes[expect.consumes]) problems.push(`${where}: lock ${e.lock} must consume { '${expect.consumes}': 1 }`);
           if (expect.gives && !lock.gives.includes(expect.gives) && lock.id !== expect.gives) problems.push(`${where}: lock ${e.lock} must give '${expect.gives}'`);
           if (expect.needs && !lock.needs.flat().includes(expect.needs)) problems.push(`${where}: lock ${e.lock} must need '${expect.needs}'`);
+          if (e.wants && !lock.needs.some((need) => [need].flat().every((id) => e.wants.items.includes(id)))) problems.push(`${where} wants ${e.wants.items.join(' or ')}: lock ${e.lock} must need them`);
+        }
+      }
+    }
+    // A shutter opens on a switch (a lever, or any entity type marked
+    // isSwitch: a target, a crystal, a lamp) or plates of its own dungeon.
+    for (const dungeon of Object.values(VL.DUNGEONS)) {
+      const ids = { switch: new Set(), plate: new Set() };
+      const screens = Object.entries(VL.AREAS[dungeon.area].screens);
+      for (const [, screen] of screens) {
+        for (const e of screen.entities) {
+          if (e.type === 'switch' || VL.ENTITIES[e.type]?.isSwitch) ids.switch.add(e.id);
+          if (e.type === 'pressurePlate') ids.plate.add(e.id);
+        }
+      }
+      for (const [key, screen] of screens) {
+        for (const e of screen.entities) {
+          if (e.type !== 'shutter' || !e.open) continue;
+          const named = [['switch', e.open.switch], ...[e.open.plate, ...(e.open.plates || [])].map((id) => ['plate', id])].filter(([, id]) => id);
+          for (const [kind, id] of named) {
+            if (!ids[kind].has(id)) problems.push(`${dungeon.id} ${key} shutter ${e.id || ''} opens on ${kind} ${id}, but dungeon ${dungeon.id} has no ${kind} with that id`);
+          }
         }
       }
     }

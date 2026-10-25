@@ -13,7 +13,21 @@
   ]);
 
   VL.defineNpc('nell', { name: 'Nell', look: 'fisher', wander: 2 });
+  // The raft (W17): she lashes one with the hero's rope once the shockwave
+  // has calmed the currents (the `raftyard` shop in regions/buildings.js).
+  const raftWood = VL.TUNING.prices.raft.wood;
   VL.defineDialogue('nell', [
+    {
+      when: { progress: 'shockwave', notItem: 'raft' },
+      say: [
+        'Did you feel that great rumble, {name}? Ever since, the currents past the pier have gone still as a pond!',
+        `That rope of yours could lash a fine raft. Bring me ${raftWood} wood and I'll make you one.`,
+      ],
+      shop: 'raftyard',
+    },
+    { when: { item: 'raft', notItem: 'oar' }, say: 'A raft won\'t go far without an oar, {name}. Mabel sells them, and Brannock can make one from wood.' },
+    { when: { item: ['raft', 'oar'] }, say: ['Walk into deep water to paddle off, and bump into land to step ashore.', 'There\'s an island out in the lake, and an old wreck past the tide pools. Mind how you go!'] },
+    { when: { item: 'grapplingRope' }, say: 'That\'s a good strong rope, {name}. It could lash a raft! But the currents out there are far too wild just now.' },
     { when: { progress: 'cliffs' }, say: 'You went up the cliff road? Wave to the old lighthouse for me next time, {name}.' },
     { say: ['Nothing is biting today, {name}.', 'The tide brings in shells every morning. The gulls always leave the broken ones.'] },
   ]);
