@@ -45,6 +45,8 @@ VL.FILES = {
     'systems/library.js',
     'systems/lifting.js',
     'systems/paper-ink.js',
+    'systems/woods-map.js',
+    'systems/grappling-rope.js',
   ],
 
   entities: [
@@ -80,6 +82,8 @@ VL.FILES = {
     'entities/rock-book.js',
     'entities/bookworm.js',
     'entities/copyable.js',
+    'entities/grapple-post.js',
+    'entities/thornback.js',
   ],
 
   regions: [
@@ -99,6 +103,7 @@ VL.FILES = {
 
   dungeons: [
     'dungeons/scriptorium.js',
+    'dungeons/hollow-oak.js',
   ],
 
   scenes: [

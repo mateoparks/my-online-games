@@ -1420,6 +1420,148 @@ async function main() {
       for (const problem of scrProblems) console.log(`     ${problem}`);
     }
 
+    // W15, the Whispering Woods and the Hollow Oak with real keys: a step
+    // deeper into the Woods without the copied map turning back, the same
+    // step with it (its popup, a blazed tree), the copy's "you are here",
+    // every room, the rope from the big chest, the hook out and the pull
+    // over the vault's pits, key B dragged off its island, and the
+    // Thornback: up, flipped by the hook, hit and beaten. Saved as w15-*.png.
+    {
+      errors.length = 0;
+      const oakProblems = [];
+      const codes = { KeyS: [83, 's'], KeyD: [68, 'd'], Space: [32, ' '], ArrowUp: [38, 'ArrowUp'] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) oakProblems.push(`animation frames stopped after ${code}`);
+      };
+      const holdKey = async (code, ms) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await sleep(ms);
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      // A new game in play at `where`, with the rope in the off hand and
+      // the sword in the main one, unless `setup` says otherwise.
+      const ROPE = "g.items.woodSword = true; g.items.grapplingRope = true; g.hands = { mainHand: 'woodSword', offHand: 'grapplingRope' };";
+      const oakGame = (where, setup = ROPE) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap', 'woodsWithMap']) g.popups.seen[id] = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+      const oak = (screen, tx, ty, facing = 'up') => ({ area: 'hollowOak', screen, tx, ty, facing });
+      const ow = (screen, tx, ty, facing = 'up') => ({ area: 'overworld', screen, tx, ty, facing });
+
+      await oakGame(ow('5,-1', 3, 1), '');
+      await holdKey('ArrowUp', 500);
+      await waitFor("VL.app.sceneId === 'popup'", 1500);
+      await sleep(200);
+      await shot('w15-woods-lost');
+      const lost = await see("[g.player.screen, VL.heroTile(g).ty, VL.currentPopup(g) && VL.currentPopup(g).id]");
+      if (lost.join() !== '5,-1,9,woodsLost') oakProblems.push(`a step deeper without the map: screen, row, popup = ${lost}`);
+
+      await oakGame(ow('5,-1', 3, 1), "g.items.woodsMapCopy = true; g.popups.seen.woodsWithMap = false;");
+      await holdKey('ArrowUp', 400);
+      await waitFor("VL.app.sceneId === 'popup'", 1500);
+      await sleep(200);
+      await shot('w15-woods-map');
+      const through = await see("[g.player.screen, VL.currentPopup(g) && VL.currentPopup(g).id]");
+      if (through.join() !== '5,-2,woodsWithMap') oakProblems.push(`a step deeper with the map: screen, popup = ${through}`);
+      await sleep(400);
+      await tapKey('KeyS');
+      await evaluate(`VL.place(VL.app.game, ${JSON.stringify(ow('5,-1', 3, 2))})`);
+      await sleep(250);
+      await shot('w15-woods-blaze');
+      if (!(await see("g.room.entities.some((e) => e.type === 'woodsBlaze')"))) oakProblems.push('no blazed tree on the Woods edge with the map');
+      await evaluate(`(() => { VL.place(VL.app.game, ${JSON.stringify(ow('6,-2', 7, 5))}); VL.app.setScene('copyView', { id: 'woodsMapCopy' }); })()`);
+      await sleep(400);
+      await shot('w15-woods-copy');
+      if ((await see('VL.woodsMapHere(g)')) !== '6,-2') oakProblems.push('the copy does not know where the hero stands');
+
+      for (const screen of ['0,0', '0,-1', '-1,-1', '-1,-2', '0,-2', '1,-2', '1,-1', '1,0', '0,-3']) {
+        await oakGame(oak(screen, 7, screen === '0,-3' ? 8 : 5), `${ROPE} g.dungeons.hollowOak.doors.d2BossDoor = true;`);
+        await sleep(250);
+        await shot(`w15-room-${screen.replace(',', '_')}`);
+      }
+
+      await oakGame(oak('1,-2', 7, 4), '');
+      await tapKey('KeyS');
+      await sleep(250);
+      await shot('w15-rope-popup');
+      const got = await see("[VL.hasItem(g, 'grapplingRope'), VL.app.sceneId, VL.currentPopup(g) && VL.currentPopup(g).title]");
+      if (got.join() !== 'true,popup,You got the Grappling Rope!') oakProblems.push(`the big chest: rope, scene, popup = ${got}`);
+
+      await oakGame(oak('1,-2', 7, 5, 'down'));
+      await tapKey('KeyD');
+      await sleep(40);
+      await shot('w15-rope-throw');
+      if (!(await waitFor("g.player.rope && g.player.rope.phase === 'pull'", 1000))) oakProblems.push('the hook did not catch the post across the vault\'s pits');
+      await sleep(80);
+      await shot('w15-rope-pull');
+      if (!(await waitFor("!g.player.rope && VL.heroTile(g).ty === 8", 1500))) oakProblems.push(`the rope did not pull the hero over the pits: ${JSON.stringify(await see('VL.heroTile(g)'))}`);
+
+      await oakGame(oak('1,-1', 9, 2, 'down'));
+      await tapKey('KeyD');
+      if (!(await waitFor("VL.spotFound(g, 'd2KeyB')", 1500))) oakProblems.push('the hook did not drag key B off its island');
+      await sleep(100);
+      await shot('w15-rope-fetch');
+
+      // The Thornback: line up below it and hook it, then finish it with the sword.
+      await oakGame(oak('0,-3', 7, 8), `${ROPE} g.dungeons.hollowOak.doors.d2BossDoor = true;`);
+      await sleep(700);
+      await shot('w15-boss');
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        const b = g.room.entities.find((e) => e.type === 'thornback');
+        b.arriving = 0;
+        b.calm = 0;
+        Object.assign(g.player, VL.tileCenter(VL.tileOf(b.cx, b.cy).tx, 8), { facing: 'up', invuln: 5 });
+      })()`);
+      await tapKey('KeyD');
+      if (!(await waitFor("g.room.entities.some((e) => e.type === 'thornback' && e.mode === 'flipped')", 1500))) oakProblems.push('the hook did not flip the Thornback');
+      await sleep(150);
+      await shot('w15-boss-flipped');
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        const b = g.room.entities.find((e) => e.type === 'thornback');
+        b.life = 1;
+        const t = VL.tileOf(b.cx, b.cy);
+        Object.assign(g.player, VL.tileCenter(t.tx, t.ty + 1), { facing: 'up', invuln: 5 });
+      })()`);
+      await tapKey('Space');
+      if (!(await waitFor("VL.bossBeaten(g, 'hollowOak')", 4000))) oakProblems.push('the Thornback was not beaten by the sword on its back');
+      await sleep(300);
+      await shot('w15-boss-beaten');
+      const reward = await see("[g.room.entities.some((e) => e.type === 'heartContainer' && e.id === 'heartD2'), g.room.entities.some((e) => e.type === 'warp')]");
+      if (reward.join() !== 'true,true') oakProblems.push(`the Thornback's heart and warp = ${reward}`);
+
+      oakProblems.push(...errors);
+      if (oakProblems.length) failures += 1;
+      console.log(`${oakProblems.length ? 'FAIL' : 'ok  '} hollow oak: the Woods with and without the map, 9 rooms, the rope (chest, pull, fetch), the Thornback flipped and beaten, ${path.join(outDir, 'w15-*.png')}`);
+      for (const problem of oakProblems) console.log(`     ${problem}`);
+    }
+
     await cdp.send('Browser.close').catch(() => {});
     cdp.close();
   } finally {

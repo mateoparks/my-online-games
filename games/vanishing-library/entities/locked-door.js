@@ -68,8 +68,8 @@
       copy.solid = !copy.open;
     },
     // For the playthrough's pathing: open once its flag is saved.
-    passable(state, entity) {
-      const dungeon = VL.dungeonOfArea(state.player.area);
+    passable(state, entity, area) {
+      const dungeon = VL.dungeonOfArea(area);
       return Boolean(dungeon && VL.dungeonState(state, dungeon.id).doors[entity.id]);
     },
     onInteract(state, copy) {

@@ -731,7 +731,15 @@ thrown over the pits onto the switch (`w14-lift.png`, `w14-throw.png`,
 `w14-switch.png`), a book under a rock (`w14-rock-book.png`), a canyon
 boulder (`w14-boulder.png`) and the Bookworm up, hit and beaten
 (`w14-boss.png`, `w14-boss-hit.png`, `w14-reward-popup.png`,
-`w14-reward.png`). It runs
+`w14-reward.png`). Then W15's Woods and Hollow Oak with real keys: a step
+deeper into the Woods without the map turning back (`w15-woods-lost.png`),
+the same step with it (`w15-woods-map.png`, its popup and a blazed tree),
+the copy's "you are here" (`w15-woods-copy.png`), every room
+(`w15-room-<x>_<y>.png`), the rope from the big chest
+(`w15-rope-popup.png`), the hook out and the pull across the vault's pits
+(`w15-rope-throw.png`, `w15-rope-pull.png`), key B dragged off its island
+(`w15-rope-fetch.png`) and the Thornback up, flipped by the hook, hit and
+beaten (`w15-boss.png`, `w15-boss-flipped.png`, `w15-boss-beaten.png`). It runs
 for 240 s at most (about twice its run time). A test file
 that runs no tests, and an `async` test function, both fail the node run.
 
@@ -758,7 +766,7 @@ that runs no tests, and an `async` test function, both fail the node run.
 | `town` (`town.js`) | library, mill, square, smithy, harbour, Scriptorium grounds, riverside | `town` | nothing |
 | `lake` (`lake.js`) | shore, open water + island | `lake` | town; the island needs `rafting` |
 | `canyon`, `eastRoad` (`east-road.js`) | the boulder canyon, the road | `eastRoad` | boulders `O`, `gate: 'liftingGloves'` |
-| `woods` (`woods.js`) | 6-screen route (`WOOD`, Hollow Oak at 7,-2) and 5 wrong-turn screens (`wood`) | `woods` | `softGate: 'woodsMapCopy'`; `VL.WOODS_ROUTE` is the way through (W15) |
+| `woods` (`woods.js`) | 6-screen route (`WOOD`, Hollow Oak at 7,-2) and 5 wrong-turn screens (`wood`) | `woods` | `softGate: 'woodsMapCopy'`: without the copy every step deeper turns back (W15, see [The Whispering Woods](#the-whispering-woods-w15)) |
 | `cliffs` (`cliffs.js`) | cliff road, lighthouse, cliff base | `cliffs` | town |
 | `highlands` (`highlands.js`) | 5 shelves up to the lair | `highlands` (W19) | hidden path `h`, `gate: 'climbersAlmanac'`, then 4-tile chasms |
 | `shipwreck` (`beach.js`) | the wreck offshore | `shipwreck` (W17) | `rafting` |
@@ -770,9 +778,9 @@ that runs no tests, and an `async` test function, both fail the node run.
 - **The Woods maze:** `VL.WOODS_ROUTE` lists the route screens in order.
   `VL.WOODS_WRONG_EXITS` lists the three wrong exits (`{ from, side, back }`):
   each leads into one or two look-alike screens that wind back to `back`, a
-  route screen no further in than `from`. Today they are plain loops; W15
-  decides what the copied map changes about them (the map enforces the
-  `softGate`).
+  route screen no further in than `from`. They are plain loops; without the
+  copied map no step between two Woods screens is taken at all (W15's edge
+  rule enforces the `softGate`).
 - **Gate tiles** carry `gate: '<key>'` and stay solid until the item that
   owns the key makes them passable (W14 lifts boulders for good with
   `VL.saveTile`, see Lifting; W19 opens the hidden path). Rocks (`rock: true`) are liftable with the gloves and bushes are
@@ -1188,8 +1196,9 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
   an item from `VL.defineCopy(id, { name, icon, about, seen, popup,
   picture(ctx, box, t) })`; its key or S on the equipment screen opens the
   `copyView` scene, which calls `picture`. `woodsMapCopy` is defined here (its
-  picture is the Woods route from `VL.WOODS_ROUTE`); W14 places its mural in
-  the Scriptorium, W15 decides what holding it changes in the maze. The design
+  picture is the Woods route from `VL.WOODS_ROUTE`, with a blinking "you are
+  here" while the hero stands in the Woods: `picture(ctx, box, t, state)`); W14
+  places its mural in the Scriptorium, and holding it opens the maze (W15). The design
   wants one or two copy puzzles at most.
 - **The world map:** M (outside dungeons; `VL.inDungeon(state)` is the one
   branch point with W13, whose dungeon map owns M inside; there the map's
@@ -1338,6 +1347,115 @@ through to the Bookworm, two canyon boulders lifted).
 - **Pathfinder note:** `tests/playthrough.js` also reads this visit's tile
   changes on the hero's screen (a lifted rock), so `walkTo` goes through a
   corridor once its rock is lifted.
+
+## The Whispering Woods (W15)
+
+The gate on W8's maze (design: The world, "You need the copied map to get
+through"), in `systems/woods-map.js`. Tests: `tests/woods-gate.test.js`.
+
+- **Without the copied map** (`woodsMapCopy`, the region's `softGate`) the
+  edge of the Woods (5,-1) is open to all, but **every step from one Woods
+  screen into another turns the hero back** to `VL.WOODS_ENTRY` (5,-1, by the
+  road, facing out), with the slide he walked into. The first time a popup
+  (`woodsLost`) says why and points at the Scriptorium's mural; after that a
+  short message (`VL.WOODS_TURNED_TEXT`) and a whisper. Nothing is ever lost,
+  so it is a nudge, never a grind.
+- **With the map** the paths are true: the route leads to the Hollow Oak and
+  the wrong turns still wind back (`VL.WOODS_WRONG_EXITS`). The first Woods
+  screen says so (`woodsWithMap`), each route screen but the last shows the
+  scribes' blue mark (`woodsBlaze`, added as the room is built) on the tree
+  beside its way on (`VL.woodsBlaze(key)`), and the copy (E, or its hand
+  key) blinks where the hero stands (`VL.woodsMapHere`).
+- **Edge rules** (`engine.js`): `VL.defineEdgeRule(id, (state, area, from,
+  to) => Place | null)` sends a crossing somewhere other than the neighbour.
+  `systems/movement.js` follows it and pushes `{ type: 'edgeTurned', rule,
+  from, to }`; a chicken flight stops short of such an edge
+  (`systems/chickens.js`), and the playthrough's `findPath` never crosses
+  one. `VL.edgeTurn(state, area, from, to)` asks. W8's overworld test models
+  the soft gate the same way (its edge open, no step within it).
+- **Pathfinder fix:** `findPath` asks `passable(state, entity, area)` with the
+  entity's own area, so a route planned from the overworld into a dungeon
+  reads that dungeon's shutters and doors (`VL.dungeonCondition(state, cond,
+  { dungeon })`).
+- **Sounds:** `woodsWhisper` (event `woodsWhisper`).
+
+## The Grappling Rope (W15)
+
+`systems/grappling-rope.js` (design: The path through the game, 3: "pull
+across gaps, yank things"); posts are `entities/grapple-post.js`. Tests:
+`tests/grappling-rope.test.js`.
+
+- **The item** `grapplingRope` goes in a hand (E). Its key throws the hook
+  straight ahead (`VL.throwRope`) up to `TUNING.ropeTiles` (6) tiles at
+  `ropeSpeed`, over pits, water, chasms and low things, and it comes back.
+  While it is out (`player.rope`, play state) the hero stands still and the
+  hands wait (`systems/movement.js`, `systems/hands.js`).
+- **What the hook meets**, tile by tile: an entity whose type says
+  `hookable: true` (a `{ type: 'grapplePost', x, y }`, solid) pulls the hero
+  over everything to the tile in front of it at `ropePullSpeed`, unhurt on
+  the way, if that tile is open; a pickup (`drop`, `shell`, `ore`, `smallKey`,
+  `bossKey`, `dungeonMap`, `heartContainer`) rides back and is taken as if
+  walked onto; a `switch` is thrown (`VL.throwSwitch`, in a dungeon); an
+  enemy is stunned (`calm` for `ropeStunSeconds`, no damage) unless its
+  definition has `onHook(state, enemy)` returning true (the Thornback);
+  anything else solid, or a wall, sends it back.
+- **Posts come in pairs:** put one on each side of a gap so the way back is
+  never cut off (the Hollow Oak's test checks every crossing has a way back).
+  On the overworld the rope works wherever a post is placed (none yet).
+- **Saved:** the item only. A faint, a door or a new screen ends a throw.
+- **Sounds:** events `ropeThrow`, `ropeClink`, `ropeHooked` (`ropeHook`),
+  `ropeStun`, `ropeLand` (`step`).
+
+## The Hollow Oak (W15)
+
+Dungeon 2 (design: The path through the game, 3), in `dungeons/hollow-oak.js`
+on W13's framework, with its boss in `entities/thornback.js`. Tests:
+`tests/hollow-oak.test.js`; its play, lock by lock, is
+`tests/hollow-oak-route.js` (with `go`, which crosses pits with the rope where
+the pathfinder can't), strung into milestones by `tests/steps/w15.steps.js`.
+Fixture: `tests/fixtures/save-v1-W15.json` (played through to the Thornback).
+
+```
+                       boss (0,-3): the Thornback
+                            | boss door (oneWay)
+  tangle N (-1,-2) -- great hollow (0,-2) --door A-- rope vault (1,-2): the rope
+  key A   |                |                          | pits, posts both ways
+  tangle S (-1,-1) -- root hall (0,-1) --ledge-- pit garden (1,-1): key B on an island
+  map                      |                          | door B
+                       entrance (0,0) --bars-- sap well (1,0): switch + boss key on an island
+                       statue, door out to 7,-2
+```
+
+- **The way in:** W8's `hollowOakDoor` spot in the clearing (7,-2) is a
+  plain door; the Woods are the gate.
+- **The order:** key A lies deep in the tangle (two looping rooms of roots;
+  the map in a nook of the south one), door A opens the vault, the big chest
+  holds the rope (mid-dungeon), and only then can the pits be crossed: posts
+  over the vault's pits down into the pit garden, the hook drags key B off its
+  island, door B leads down to the sap well, posts over its pit, and the hook
+  throws the switch (the bars between the sap well and the entrance lift: a
+  way back) and drags the boss key off the island. Key A can't be wasted:
+  door B lies past the pits.
+- **The Thornback** (`thornback`, `rooted`, `size: 'big'`): it trundles after
+  the hero (`walk`), stamps when he is in line (`aim`), charges and bonks
+  into the wall (`charge`, `bonk`). A sword clinks off its plates with a note
+  (`VL.THORNBACK_SWORD_NOTE`). The rope's hook (`onHook`) yanks a plate off
+  (`plates`, 3, drawn) and flips it (`flipped`, harmless, legs waving, for
+  `thornbackFlippedSeconds`), and then the sword takes `life`
+  (`TUNING.thornbackLife`, 6; its `hp` is refilled on every hit like the
+  Bookworm's). With no life left it is `dying`, then marked `defeated`
+  before it leaves (a cartoon puff); hurting while it walks or charges, so
+  a hero shut in can always faint his way out.
+- **Rewards:** the framework's heart container `heartD2` where it began and
+  the warp out. **`VL.afterThornback((state) => …)`** is the hook for what
+  follows (W16's shockwave): each hook runs once, from `boss.onDefeat`,
+  after the win is saved. W15 itself takes nothing away.
+- **Locks:** claims `hollowOakEntered` (a visit to the entrance hall) with the
+  planned rule, and `grapplingRope` (`needs` adds `d2DoorA`) and `d2Boss`
+  (adds `d2BossDoor`) with `replan`; adds `d2KeyA`, `d2DoorA`, `d2KeyB`,
+  `d2DoorB`, `d2BossKey`, `d2BossDoor`. Ids are `d2…` (and `heartD2`).
+- **Sounds:** events `thornStomp`, `thornBonk`, `thornFlip`, `thornTink`
+  (`wormTink`).
 
 ## Dungeons (W13)
 
