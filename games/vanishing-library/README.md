@@ -526,7 +526,11 @@ holds the heart containers.
   spitters (rooted; puff up, then spit a seed along a straight line) in the
   Woods; gulls (wheel, squawk, dive where the hero stood; `big`, so only metal
   blocks them) on the cliffs and highlands. Every one does half a heart and
-  takes one to three wood-sword hits. The start screen, the home meadow (0,0)
+  takes one to three wood-sword hits, except one placed with `tough: true`
+  (W29: the two thorny spitters in the Hollow Oak's clearing), which only a
+  sword in `TUNING.toughSwords` (the metal one) hurts; a wood blade just
+  clinks off (`tink`). Enemies are never solid, so they never make the
+  metal sword required. The start screen, the home meadow (0,0)
   and the town have none.
 - **Heart containers:** `VL.giveHeartContainer(state, id?)` adds
   `TUNING.heartContainerHp` (one heart) to `maxHp`, fills every heart, marks

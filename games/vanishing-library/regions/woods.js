@@ -231,8 +231,9 @@
         'FFFFFFFffFFFFFFF',
       ],
       entities: [
-        { type: 'spitter', x: 4, y: 7 },
-        { type: 'spitter', x: 12, y: 6 },
+        // Thorny ones, which only a metal sword beats.
+        { type: 'spitter', x: 4, y: 7, tough: true },
+        { type: 'spitter', x: 12, y: 6, tough: true },
         { type: 'decor', art: 'hollowOak', x: 5, y: 1 },
         spot('hollowOakDoor', 7, 3, 'door', 'W15', 'hollowOakEntered'),
         spot('bookChickenAlmanac', 10, 8, 'trunk', 'W11'),

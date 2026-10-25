@@ -88,3 +88,65 @@ test('the shallows at a blocked edge end in deep water, as on the harbour beach 
     assert.equal(VL.getScreen('overworld', key).tiles[ty][tx], 'j', `${key} (${tx},${ty})`);
   }
 });
+
+// ---------- the Woods spitters by the Hollow Oak ----------
+
+function clearingWithSword(sword) {
+  const { VL } = loadGame();
+  const state = playState(VL, ow('7,-2', 4, 6, 'down'));
+  VL.giveItem(state, sword);
+  assert.equal(VL.heldItem(state, 'mainHand'), sword);
+  state.popups.queue.length = 0;
+  hold(VL, state, [], 1);
+  const plant = state.room.entities.find((e) => e.type === 'spitter' && e.x === 4 && e.y === 7);
+  return { VL, state, plant };
+}
+
+test('the spitters by the Hollow Oak shrug off a wood sword: no damage, just a clink', () => {
+  const { VL, state, plant } = clearingWithSword('woodSword');
+  assert.ok(plant, 'a spitter guards the clearing at (4,7)');
+  const hp = plant.hp;
+  const events = [];
+  for (let i = 0; i < 6; i += 1) {
+    VL.updateWorld(state, VL.actions({ pressed: ['mainHand'] }), 1 / 60);
+    events.push(...state.events.map((e) => e.type));
+    hold(VL, state, [], 0.5);
+  }
+  assert.equal(plant.hp, hp, 'not a scratch');
+  assert.ok(state.room.entities.includes(plant), 'still there');
+  assert.ok(events.includes('tink'), 'the blade clinks off');
+  assert.ok(!events.includes('enemyHit'));
+});
+
+test('a metal sword beats them', () => {
+  const { VL, state, plant } = clearingWithSword('metalSword');
+  for (let i = 0; i < 6 && state.room.entities.includes(plant); i += 1) {
+    VL.updateWorld(state, VL.actions({ pressed: ['mainHand'] }), 1 / 60);
+    hold(VL, state, [], 0.5);
+  }
+  assert.ok(!state.room.entities.includes(plant), 'beaten');
+});
+
+test('only the clearing\'s spitters are that tough; every other enemy still falls to a wood sword', () => {
+  const VL = shared;
+  const tough = [];
+  for (const [areaId, area] of Object.entries(VL.AREAS)) {
+    for (const [key, screen] of Object.entries(area.screens)) {
+      for (const e of screen.entities) if (e.tough) tough.push(`${areaId} ${key} ${e.type} (${e.x},${e.y})`);
+    }
+  }
+  assert.deepEqual(tough, ['overworld 7,-2 spitter (4,7)', 'overworld 7,-2 spitter (12,6)']);
+  assert.deepEqual(plain(VL.TUNING.toughSwords), ['metalSword']);
+});
+
+test('they never block the way (enemies are never solid), so the metal sword stays a choice before Dungeon 2, and it is affordable: one ore and no more shells than the first purse holds', () => {
+  const VL = shared;
+  assert.ok(!VL.ENTITIES.spitter.solid);
+  assert.deepEqual(plain(VL.LOCKS.d2Boss.needs), ['hollowOakEntered', 'grapplingRope', ['woodSword', 'metalSword'], 'd2BossDoor']);
+  const { ore, shells } = VL.TUNING.prices.metalGear;
+  assert.equal(ore, 1);
+  assert.ok(shells <= VL.TUNING.shellCap, `${shells} shells fit in a ${VL.TUNING.shellCap}-shell purse`);
+  // Ore before Dungeon 2: the home shallows from the start, the Scriptorium.
+  assert.deepEqual(plain(VL.LOCKS.oreShallows.needs), ['beach']);
+  assert.deepEqual(plain(VL.LOCKS.oreScriptorium.needs), ['scriptoriumEntered', 'liftingGloves']);
+});

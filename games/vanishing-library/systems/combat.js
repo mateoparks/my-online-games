@@ -5,6 +5,8 @@
 (() => {
   VL.tune({
     swordDamage: { woodSword: 1, metalSword: 2 },
+    // An enemy placed with `tough: true` takes only these; others clink off.
+    toughSwords: ['metalSword'],
     shieldBlocks: { woodShield: ['small'], metalShield: ['small', 'big'] },
     invulnSeconds: 1.2,
     // After an enemy hurts the hero (or is blocked) it backs off and is
@@ -380,6 +382,10 @@
     for (const enemy of enemies) {
       if (enemy.hitBy === swing || !overlap(box, swordTarget(enemy))) continue;
       enemy.hitBy = swing;
+      if (enemy.tough && !VL.TUNING.toughSwords.includes(swing.item)) {
+        state.events.push({ type: 'tink' });
+        continue;
+      }
       VL.hitEnemy(state, enemy, damage, VL.heroCentre(state));
     }
   }
