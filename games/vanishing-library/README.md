@@ -1579,7 +1579,10 @@ Fixture: `tests/fixtures/save-v1-W16.json` (after the shockwave and the gift).
   `flags.shockwaveDue`. The `shockwave` system then waits while the hero is
   in the Hollow Oak and the heart container is still on the floor (the reward
   comes first), then `TUNING.shockwaveDelay` more, then opens the
-  `shockwave` scene. Leaving the Oak without the heart starts it outside, and
+  `shockwave` scene. Since W30's boss gate keeps the hero in the den until he
+  takes the heart, in play the knock-out always follows the heart; only a
+  Save & Quit before taking it (Continue starts at the statue) can still
+  leave the Oak without it. Leaving the Oak without the heart starts it outside, and
   the heart is given anyway on waking (hearts are kept), held up with its
   fanfare beside the Glowstone.
 - **The scene:** `rumble` (the world shakes, rings of light, a white-out),
@@ -1742,16 +1745,26 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   alive**. Then `VL.bossDefeated` saves it, puts the heart container (`heart`
   is its found id) where the boss stood on the map and the warp out (to
   `entrance`) at `warp`, and calls `onDefeat(state)` for the dungeon's own
-  rewards (the Mortar & Pestle, books). On later visits the boss is gone, the
-  warp is there and the heart waits until taken. **The warp out is a save
+  rewards (the Mortar & Pestle, books). **The warp appears only once the
+  heart is taken** (W30). On later visits the boss is gone and the heart
+  waits until taken, then the warp. **The warp out is a save
   point:** stepping on it records `entrance` (outside the dungeon) as the
   save point (`savePoint: true` on the warp), so Continue after the win
-  starts on the doorstep, not back at the statue. A shutter
-  `{ bossBeaten: true }` on the entry tile bars the way back once the hero
-  has stepped in; since he is then shut in until the boss falls or he
-  faints, a boss behind such bars must be able to make him faint, or the
-  boss door's lock should need the weapon (the sample's boss *lock* needs a
-  sword, its door does not). `VL.bossBeaten(state, id)`.
+  starts on the doorstep, not back at the statue. **The boss gate (W30) is
+  the framework's:** `defineDungeon` puts bars (`shutter`, `bossGate: true`,
+  id `<dungeon>BossGate`, `open: { bossDone: true }`) on the tile the boss
+  door lands the hero on (the boss door's twin tile across the edge into
+  `boss.screen`; pass `boss.gate: { tx, ty }` when the room is not entered
+  through a boss door across an edge). They shut once he has stepped in and
+  open only when the boss is beaten **and its heart taken**
+  (`VL.bossDone(state, id)`), together with the warp. Fainting in there
+  wakes him at the statue with everything kept, and the gate always lets
+  him back in (its `passable` is true for the pathfinder). A boss room with
+  its own `{ bossBeaten: true }` shutter is refused at load: delete it.
+  Since he is shut in until the boss falls or he faints, a boss must be
+  able to make him faint, or the boss door's lock should need the weapon
+  (the sample's boss *lock* needs a sword, its door does not).
+  `VL.bossBeaten(state, id)`.
 - **Entering and leaving:** ordinary `door` entities link the overworld and
   the dungeon both ways (fill W8's door spot from the dungeon's file). The
   hero is always placed with `VL.enterScreen`, so W6's arrival grace for
@@ -1791,7 +1804,9 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
      light: 'indoor',   // or 'dark' (W18)
    });
    ```
-2. Fill the overworld door spot with a `door` into the first room and put a
+2. Don't place bars in the boss room: the framework adds the boss gate on
+   the boss door's landing tile (or `boss.gate`), and the warp after the
+   heart. Fill the overworld door spot with a `door` into the first room and put a
    `door` on the mat tile back out; a `saveStatue` by the entrance. Make
    `entrance` a safe, walkable tile outside the door: the boss warp lands
    the hero there and records it as his save point, so every Continue after

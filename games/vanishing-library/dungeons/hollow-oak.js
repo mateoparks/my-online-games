@@ -316,7 +316,6 @@
         '#######_########',
       ],
       entities: [
-        { type: 'shutter', id: 'd2ShutterBoss', x: 7, y: 10, open: { bossBeaten: true } },
         { type: 'thornback', x: 7, y: 4 },
       ],
     },

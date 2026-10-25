@@ -374,6 +374,11 @@ test('beaten: it flips away for good, the heart and the warp appear, the win is 
   t.step();
   const heart = t.find('heartContainer');
   assert.deepEqual([heart.id, heart.x, heart.y], ['heartD2', 7, 4]);
+  // W30's boss gate: no warp and the bars stay down until the heart is taken.
+  assert.equal(t.find('warp'), undefined);
+  assert.equal(t.find('shutter').closed, true, 'the gate holds until the heart is taken');
+  VL.markFound(t.game, 'heartD2');
+  t.step();
   assert.deepEqual([t.find('warp').x, t.find('warp').y], [7, 8]);
   assert.equal(t.find('shutter').closed, false, 'the bars behind him lift');
   assert.ok(VL.LOCKS.d2Boss.reached(t.game));

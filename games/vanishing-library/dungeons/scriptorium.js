@@ -300,7 +300,6 @@
         '#######_########',
       ],
       entities: [
-        { type: 'shutter', id: 'd1ShutterBoss', x: 7, y: 10, open: { bossBeaten: true } },
         { type: 'bookworm', x: 7, y: 5 },
         pot(2, 2),
         pot(13, 2),

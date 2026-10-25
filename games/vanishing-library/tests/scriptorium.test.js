@@ -298,8 +298,15 @@ test('beating it: the heart container where it began, the warp out, the Mortar &
   assert.match(t.game.message.text, /three books/);
   const heart = t.game.room.entities.find((e) => e.type === 'heartContainer');
   assert.deepEqual([heart.id, heart.x, heart.y], ['heartD1', 7, 5]);
+  // W30's boss gate: no warp and the bars stay down until the heart is taken.
+  assert.equal(t.find('warp'), undefined);
+  assert.equal(t.find('shutter').closed, true, 'the gate holds until the heart is taken');
+  VL.markFound(t.game, 'heartD1');
+  // The bundle's message is up, so the world waits: step it directly.
+  VL.updateWorld(t.game, VL.noActions(), 1 / 60);
   assert.deepEqual([t.find('warp').x, t.find('warp').y], [7, 8]);
   assert.equal(t.find('shutter').closed, false, 'the bars behind him lift');
+  delete t.game.flags['found:heartD1'];
   t.reload(scr('1,-2', 6, 6, 'up'));
   assert.ok(VL.LOCKS.d1Boss.reached(t.game));
   assert.ok(VL.hasItem(t.game, 'mortarPestle'));
