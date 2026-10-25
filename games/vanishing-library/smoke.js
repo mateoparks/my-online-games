@@ -665,7 +665,7 @@ async function main() {
       await key('keyDown', 'ArrowLeft');
       await sleep(80);
       await key('keyUp', 'ArrowLeft');
-      await sleep(400);
+      await sleep(1400);
       await shot('w6-heart-container');
       const container = await read('[VL.app.sceneId, g.maxHp, VL.spotFound(g, "heartFieldA")]');
       if (container[0] !== 'popup' || container[1] !== 8 || !container[2]) combatProblems.push(`the heart container: ${JSON.stringify(container)}`);
@@ -1051,6 +1051,16 @@ async function main() {
       await libGame(atDesk, `${returnAll(shelfIds)} g.library.gone.push(...g.library.returned.filter((id, i) => i % 3 !== 2));`);
       await sleep(300);
       await picture('w11-library-emptied');
+
+      // Two books gone since the last visit: he says so first (W28).
+      await libGame(atDesk, `${returnAll(shelfIds.slice(0, 4))} g.library.gone.push(g.library.returned[0], g.library.returned[1]);`);
+      await tapS();
+      await sleep(2200);
+      await picture('w28-librarian-remark');
+      const remarked = await look("[VL.app.sceneId, g.library.noticed]");
+      if (remarked[0] !== 'dialogue') libProblems.push(`S at the desk after two books vanished gave scene ${remarked[0]}`);
+      await sTo('play');
+      if ((await look('g.library.noticed')) !== 2) libProblems.push('the vanished books were not noticed');
 
       await libGame(atDesk, `${returnAll(['bookRiverside', 'bookCliffRoad', 'bookWoods', 'bookEastRoad'])} VL.markFound(g, 'bookChickenAlmanac');`);
       const heldUp = async (name) => {

@@ -352,3 +352,21 @@ test('his remarks vary, read cleanly and fit the font', () => {
     for (const sentence of sentencesOf(text)) assert.deepEqual(repeatedWords(sentence), [], line);
   }
 });
+
+test('a reward at the end of a talk or a reading is held up before its popup, not after', () => {
+  const { VL, app, step } = heldApp();
+  const g = app.game;
+  g.flags['met:fenwick'] = true;
+  for (const id of ['bookRiverside', 'bookCliffRoad', 'bookWoods', 'bookEastRoad', 'hiddenBookSealed']) VL.markFound(g, id);
+  VL.place(g, { area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT, facing: 'up' });
+  const seen = [];
+  for (let i = 0; i < 60 * 30 && !(VL.rewardGiven(g, 'heartLibrary') && !g.holdUp && app.sceneId === 'play'); i += 1) {
+    step(i % 10 === 0 && (app.sceneId !== 'play' || i === 0) ? VL.actions({ pressed: ['interact'] }) : VL.noActions());
+    const popup = VL.currentPopup(g)?.id || null;
+    if (app.sceneId === 'popup' && seen.at(-1)?.popup !== popup) seen.push({ popup, holding: Boolean(g.holdUp), held: g.holdUp ? g.holdUp.t : null });
+  }
+  const key = seen.find((s) => s.popup === 'scriptoriumKey');
+  const heart = seen.find((s) => s.popup === 'heartContainer');
+  assert.ok(key && heart, `both popups shown: ${JSON.stringify(seen)}`);
+  for (const shown of [key, heart]) assert.ok(shown.holding && shown.held >= VL.TUNING.holdUpSeconds, `${shown.popup} only after the hold-up: ${JSON.stringify(shown)}`);
+});
