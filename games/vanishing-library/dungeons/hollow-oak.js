@@ -328,11 +328,30 @@
 
   // ---------- the boss, and the hook for what follows it ----------
 
-  // W16's shockwave attaches here: each hook runs once, as the Thornback
-  // falls, after the win and its heart are saved (design: The path through
-  // the game, 4).
+  // W16's shockwave attaches here (design: The path through the game, 4).
+  // The win is written first, in the step the Thornback falls; a hook runs
+  // only once the game is clean again (that write landed), and its id is
+  // saved with whatever it changes in that same step. So a reload before it
+  // runs it once, a reload after it never again (README "The Hollow Oak").
   VL.THORNBACK_DEFEAT_HOOKS = [];
-  VL.afterThornback = (hook) => VL.THORNBACK_DEFEAT_HOOKS.push(hook);
+  VL.afterThornback = function afterThornback(id, hook) {
+    if (typeof id !== 'string' || typeof hook !== 'function') throw new Error('VL.afterThornback(id, hook)');
+    if (VL.THORNBACK_DEFEAT_HOOKS.some((other) => other.id === id)) throw new Error(`afterThornback ${id} is already defined`);
+    VL.THORNBACK_DEFEAT_HOOKS.push({ id, hook });
+  };
+  VL.extendGame('afterThornback', () => ({ afterThornbackDone: [] }));
+
+  VL.defineSystem('afterThornback', {
+    order: 95,
+    update(state) {
+      if (state.dirty || !VL.bossBeaten(state, DUNGEON)) return;
+      const next = VL.THORNBACK_DEFEAT_HOOKS.find(({ id }) => !state.afterThornbackDone.includes(id));
+      if (!next) return;
+      state.afterThornbackDone.push(next.id);
+      next.hook(state);
+      VL.earned(state);
+    },
+  });
 
   VL.defineDungeon(DUNGEON, {
     area: DUNGEON,
@@ -345,7 +364,6 @@
       warp: { tx: 7, ty: 8 },
       onDefeat(state) {
         state.dungeonNote = { text: 'The Thornback is beaten!', t: 0 };
-        for (const hook of VL.THORNBACK_DEFEAT_HOOKS) hook(state);
       },
     },
     light: 'indoor',

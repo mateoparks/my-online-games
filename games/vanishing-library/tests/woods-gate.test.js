@@ -206,6 +206,7 @@ test('every word the Woods say fits its box and its font', () => {
     assert.deepEqual(plain(VL.ART.missingGlyphs(`${popup.title} ${popup.text}`)), [], id);
     assert.ok(!VL.ART.popupLayout({ title: popup.title, text: popup.text }).overflow, id);
   }
+  assert.match(VL.WOODS_TURNED_TEXT, /map of these woods/, 'every turn-back says what is needed');
   assert.deepEqual(plain(VL.ART.missingGlyphs(VL.WOODS_TURNED_TEXT)), []);
   assert.ok(!VL.ART.popupLayout({ text: VL.WOODS_TURNED_TEXT }).overflow);
 });

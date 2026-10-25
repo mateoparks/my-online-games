@@ -207,3 +207,70 @@ test('the rope, its hook and the post draw', () => {
   assert.deepEqual(plain(VL.ART.missingGlyphs(`${item.name} ${item.about} ${item.popup.title} ${item.popup.text}`)), []);
   assert.ok(!VL.ART.popupLayout(item.popup).overflow, 'the popup fits');
 });
+
+// The hook flies over water and pits, so on the overworld it could fetch a
+// pickup before its gate (a lake island's ore, a heart across a chasm). With
+// the rope in hand and nothing else yet (the W15 save), every pickup the hero
+// can't walk to is tried with the real hook from every walkable tile in line
+// within reach: none may come back. A later item that places one in reach
+// trips this and decides (README "The Grappling Rope").
+test('on the overworld the hook never fetches a pickup the hero cannot walk to yet', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { memoryStorage } = require('./harness');
+  const { isWalkable } = require('./playthrough');
+  const { VL } = loadGame();
+  const text = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W15.json'), 'utf8');
+  const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: text }));
+  const app = VL.createApp({ storage });
+  app.startGame(VL.loadSlot(storage, 0), 0);
+  app.setScene('play');
+  const game = app.game;
+  assert.ok(VL.hasItem(game, 'grapplingRope'));
+  const AREA = 'overworld';
+  const { cols, rows } = VL.TUNING;
+  const key = (screen, tx, ty) => `${screen} ${tx},${ty}`;
+  const seen = new Set();
+  const queue = [VL.START, VL.WOODS_ENTRY].map((p) => [p.screen, p.tx, p.ty]);
+  for (const [s, x, y] of queue) seen.add(key(s, x, y));
+  while (queue.length) {
+    const [s, x, y] = queue.shift();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      let [ns, nx, ny] = [s, x + dx, y + dy];
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) {
+        ns = VL.neighborKey(s, dx, dy);
+        if (!VL.screenExists(AREA, ns) || VL.edgeTurn(game, AREA, s, ns)) continue;
+        nx -= dx * cols;
+        ny -= dy * rows;
+      }
+      if (seen.has(key(ns, nx, ny)) || !isWalkable(VL, AREA, ns, nx, ny, game)) continue;
+      seen.add(key(ns, nx, ny));
+      queue.push([ns, nx, ny]);
+    }
+  }
+  assert.ok(seen.size > 1000, `${seen.size} tiles on foot`);
+  const FETCHES = ['drop', 'shell', 'ore', 'smallKey', 'bossKey', 'dungeonMap', 'heartContainer'];
+  const DIRS = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] };
+  let tried = 0;
+  for (const screen of Object.keys(VL.AREAS[AREA].screens)) {
+    for (const thing of VL.getScreen(AREA, screen).entities) {
+      if (!FETCHES.includes(thing.type) || thing.hidden) continue;
+      if ([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has(key(screen, thing.x + dx, thing.y + dy)))) continue;
+      for (const [dir, [dx, dy]] of Object.entries(DIRS)) {
+        for (let d = 2; d <= VL.TUNING.ropeTiles + 1; d += 1) {
+          const [tx, ty] = [thing.x - dx * d, thing.y - dy * d];
+          if (!seen.has(key(screen, tx, ty))) continue;
+          tried += 1;
+          VL.place(game, { area: AREA, screen, tx, ty, facing: dir });
+          game.popups.queue.length = 0;
+          game.hands = { mainHand: 'grapplingRope', offHand: null };
+          app.update(VL.actions({ pressed: ['mainHand'] }), STEP);
+          for (let s = 0; s < 3 && game.player.rope; s += STEP) app.update(VL.noActions(), STEP);
+          const there = game.room.entities.find((e) => e.type === thing.type && (e.id ?? e.spot) === (thing.id ?? thing.spot));
+          assert.ok(there && there.x === thing.x && there.y === thing.y, `${thing.type} ${thing.id || thing.spot || ''} at ${key(screen, thing.x, thing.y)} stays put when hooked from (${tx},${ty}) facing ${dir}`);
+        }
+      }
+    }
+  }
+  assert.ok(tried > 0, 'heartFieldA, behind its boulders, is tried with the real hook');
+});

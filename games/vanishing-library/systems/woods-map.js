@@ -6,7 +6,7 @@
 // Whispering Woods (W15)".
 (() => {
   VL.WOODS_ENTRY = { area: 'overworld', screen: '5,-1', tx: 6, ty: 9, facing: 'down' };
-  VL.WOODS_TURNED_TEXT = 'The trees whisper... and you\'re back at the edge of the Woods.';
+  VL.WOODS_TURNED_TEXT = 'The trees whisper... and you\'re back at the edge of the Woods. You need a map of these woods!';
 
   VL.definePopup('woodsLost', {
     title: 'The Whispering Woods',

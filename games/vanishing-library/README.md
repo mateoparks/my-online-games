@@ -1410,6 +1410,12 @@ across gaps, yank things"); posts are `entities/grapple-post.js`. Tests:
 - **Posts come in pairs:** put one on each side of a gap so the way back is
   never cut off (the Hollow Oak's test checks every crossing has a way back).
   On the overworld the rope works wherever a post is placed (none yet).
+- **It fetches over water and pits, on the overworld too:** a pickup placed
+  within `ropeTiles` of a walkable tile, in a straight line across water or
+  a chasm, comes back before its gate (W17's lake island, a W19 heart).
+  `tests/grappling-rope.test.js` tries the real hook on every overworld
+  pickup the W15 save can't walk to, so placing one in reach fails there:
+  move it, or block the line (a boulder, a tree).
 - **Saved:** the item only. A faint, a door or a new screen ends a throw.
 - **Sounds:** events `ropeThrow`, `ropeClink`, `ropeHooked` (`ropeHook`),
   `ropeStun`, `ropeLand` (`step`).
@@ -1422,6 +1428,8 @@ on W13's framework, with its boss in `entities/thornback.js`. Tests:
 `tests/hollow-oak-route.js` (with `go`, which crosses pits with the rope where
 the pathfinder can't), strung into milestones by `tests/steps/w15.steps.js`.
 Fixture: `tests/fixtures/save-v1-W15.json` (played through to the Thornback).
+`tests/fixtures/save-v1-W15-after.json` is that save loaded and written
+again, with `afterThornbackDone`.
 
 ```
                        boss (0,-3): the Thornback
@@ -1455,9 +1463,17 @@ Fixture: `tests/fixtures/save-v1-W15.json` (played through to the Thornback).
   before it leaves (a cartoon puff); hurting while it walks or charges, so
   a hero shut in can always faint his way out.
 - **Rewards:** the framework's heart container `heartD2` where it began and
-  the warp out. **`VL.afterThornback((state) => …)`** is the hook for what
-  follows (W16's shockwave): each hook runs once, from `boss.onDefeat`,
-  after the win is saved. W15 itself takes nothing away.
+  the warp out. **`VL.afterThornback(id, (state) => …)`** is the hook for
+  what follows (W16's shockwave). The order is fixed and tested: the step
+  the Thornback falls writes the win (`dungeons.hollowOak.boss`); a hook
+  runs only in a later step once the game is clean (that write landed; a
+  failed write holds it back), and its `id` goes into the saved
+  `afterThornbackDone` list in the same step as whatever it changes, so
+  both are written together. A reload before that runs it once; a reload
+  after it never runs it again. A save that beat the Thornback before a
+  hook existed runs it on the next load. The hook runs wherever the hero
+  is (the heart may still be on the floor); a knock-out that waits for a
+  scene must save its own pending flag. W15 itself takes nothing away.
 - **Locks:** claims `hollowOakEntered` (a visit to the entrance hall) with the
   planned rule, and `grapplingRope` (`needs` adds `d2DoorA`) and `d2Boss`
   (adds `d2BossDoor`) with `replan`; adds `d2KeyA`, `d2DoorA`, `d2KeyB`,

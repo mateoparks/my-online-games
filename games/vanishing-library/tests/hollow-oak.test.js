@@ -14,10 +14,13 @@ const STEP = 1 / 60;
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const AREA = 'hollowOak';
 
-function setup({ where, enemies = false } = {}) {
+// `storage: true` gives the game slot 0 of an in-memory store (t.slotText()).
+function setup({ where, enemies = false, storage = false } = {}) {
   const { VL } = loadGame();
-  const app = VL.createApp();
-  app.game = VL.newGame({ name: 'Robin' });
+  const backing = memoryStorage();
+  const app = storage ? VL.createApp({ storage: VL.createStorage(backing) }) : VL.createApp();
+  if (storage) app.startGame(VL.newGame({ name: 'Robin' }), 0, { fresh: true });
+  else app.game = VL.newGame({ name: 'Robin' });
   app.setScene('play');
   app.game.popups.seen.controls = true;
   const t = {
@@ -47,6 +50,7 @@ function setup({ where, enemies = false } = {}) {
       assert.ok(done(app.game), `reached within ${maxSeconds} s holding [${held}]`);
     },
     find: (type) => app.game.room.entities.find((e) => e.type === type),
+    slotText: () => backing.getItem(VL.slotKey(0)),
   };
   if (where) t.place(where);
   return t;
@@ -139,10 +143,74 @@ test('W15 claims hollowOakEntered and d2Boss, and grapplingRope, with the doors 
   assert.deepEqual([...VL.solveProgression().problems], []);
 });
 
+test('every crossing the room data allows, not only the listed ones: from wherever a post can land the hero, he can walk out of the dungeon and reach every other landing', () => {
+  const t = setup();
+  const { VL } = t;
+  VL.giveItem(t.game, 'grapplingRope');
+  t.game.popups.queue.length = 0;
+  const d = t.d;
+  for (const id of ['d2DoorA', 'd2DoorB', 'd2BossDoor']) d.doors[id] = true;
+  d.switches.d2SwitchSap = true;
+  t.game.hands = { mainHand: 'grapplingRope', offHand: null };
+  const DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+  const tileKey = (p) => `${p.screen} ${p.tx},${p.ty}`;
+  const open = (screen, tx, ty) => tx >= 0 && ty >= 0 && tx < VL.TUNING.cols && ty < VL.TUNING.rows && !VL.isSolidAt(AREA, screen, tx, ty);
+  // Every tile a post can land the hero on (the hook always lands him in front of it).
+  const landings = [];
+  const crossings = [];
+  for (const [screen, data] of Object.entries(VL.AREAS[AREA].screens)) {
+    for (const post of data.entities.filter((e) => e.type === 'grapplePost')) {
+      for (const [dir, [dx, dy]] of Object.entries(DIRS)) {
+        const land = { area: AREA, screen, tx: post.x - dx, ty: post.y - dy };
+        if (!open(screen, land.tx, land.ty)) continue;
+        landings.push(land);
+        // The real hook from every open tile behind that landing, within reach.
+        for (let k = 1; k <= VL.TUNING.ropeTiles; k += 1) {
+          const from = { area: AREA, screen, tx: land.tx - dx * k, ty: land.ty - dy * k };
+          if (!open(screen, from.tx, from.ty)) continue;
+          t.place(oak(screen, from.tx, from.ty, dir));
+          t.press('mainHand');
+          t.until((g) => !g.player.rope, 3);
+          const to = { area: AREA, screen: t.game.player.screen, ...VL.heroTile(t.game) };
+          if (tileKey(to) !== tileKey(from)) crossings.push({ from, to });
+        }
+      }
+    }
+  }
+  assert.ok(landings.length >= 12 && crossings.length >= landings.length, `${landings.length} landings, ${crossings.length} crossings`);
+  for (const c of crossings) assert.ok(landings.some((l) => tileKey(l) === tileKey(c.to)), `the hook from ${tileKey(c.from)} lands in front of a post`);
+  // Walking components among the tiles that matter.
+  const statue = oak('0,0', 3, 2);
+  const tiles = [statue, ...landings, ...crossings.map((c) => c.from)];
+  const comp = new Map();
+  const reps = [];
+  for (const tile of tiles) {
+    if (comp.has(tileKey(tile))) continue;
+    const rep = reps.findIndex((r) => findPath(VL, r, tile, t.game));
+    if (rep === -1) reps.push(tile);
+    comp.set(tileKey(tile), rep === -1 ? reps.length - 1 : rep);
+  }
+  const of = (tile) => comp.get(tileKey(tile));
+  for (const land of landings) {
+    const reached = new Set([of(land)]);
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const c of crossings) {
+        if (reached.has(of(c.from)) && !reached.has(of(c.to))) {
+          reached.add(of(c.to));
+          grew = true;
+        }
+      }
+    }
+    assert.ok(reached.has(of(statue)), `from ${tileKey(land)} the hero can get back to the entrance`);
+    for (const other of landings) assert.ok(reached.has(of(other)), `from ${tileKey(land)} the hero can reach ${tileKey(other)}`);
+  }
+});
+
 // ---------- the Thornback ----------
 
-function bossRoom() {
-  const t = setup();
+function bossRoom(options) {
+  const t = setup(options);
   t.d.doors.d2BossDoor = true;
   t.place(oak('0,-3', 7, 8));
   for (const id of ['woodSword', 'grapplingRope']) t.VL.giveItem(t.game, id);
@@ -193,14 +261,8 @@ test('the Thornback charges when the hero is in line, and bonks into the wall', 
   t.until(() => b.mode === 'bonk', 3);
 });
 
-test('beaten: it flips away for good, the heart and the warp appear, the win is saved, and nothing is taken', () => {
-  const t = bossRoom();
+function beatThornback(t) {
   const { VL } = t;
-  const calls = [];
-  VL.afterThornback((state) => calls.push(VL.bossBeaten(state, AREA)));
-  t.game.inventory.wood = 3;
-  t.game.inventory.shells = 7;
-  const before = plain({ items: t.game.items, inventory: t.game.inventory, hands: t.game.hands });
   const b = beetleOf(t);
   b.arriving = 0;
   for (let i = 0; i < 20 && b.mode !== 'dying'; i += 1) {
@@ -210,7 +272,21 @@ test('beaten: it flips away for good, the heart and the warp appear, the win is 
   }
   assert.equal(b.mode, 'dying');
   t.until(() => VL.bossBeaten(t.game, AREA), VL.TUNING.thornbackDyingSeconds + 1);
-  assert.deepEqual(calls, [true], 'W16\'s hook runs once, after the win is saved');
+}
+
+test('beaten: it flips away for good, the heart and the warp appear, the win is saved, and nothing is taken', () => {
+  const t = bossRoom();
+  const { VL } = t;
+  const calls = [];
+  VL.afterThornback('probe', (state) => calls.push(VL.bossBeaten(state, AREA)));
+  assert.throws(() => VL.afterThornback('probe', () => {}), /already defined/);
+  t.game.inventory.wood = 3;
+  t.game.inventory.shells = 7;
+  const before = plain({ items: t.game.items, inventory: t.game.inventory, hands: t.game.hands });
+  beatThornback(t);
+  assert.deepEqual(calls, [], 'not in the step the win is written');
+  t.step();
+  assert.deepEqual(calls, [true], 'W16\'s hook runs in the next step, after the win is saved');
   assert.deepEqual(plain({ items: t.game.items, inventory: t.game.inventory, hands: t.game.hands }), before, 'the shockwave is W16\'s: nothing is lost here');
   t.step();
   const heart = t.find('heartContainer');
@@ -221,6 +297,73 @@ test('beaten: it flips away for good, the heart and the warp appear, the win is 
   t.place(oak('0,-3', 7, 7));
   assert.equal(t.find('thornback'), undefined, 'gone for good');
   assert.deepEqual(calls, [true], 'and never runs again');
+});
+
+test('the order W16 relies on: the win is written, then the hook runs, then its losses are written with its id; a reload anywhere neither loses the win nor applies the losses twice', () => {
+  const t = bossRoom({ storage: true });
+  const { VL } = t;
+  const calls = [];
+  VL.afterThornback('shockwave', (state) => {
+    calls.push(state.inventory.wood);
+    state.inventory.wood = 0;
+  });
+  t.game.inventory.wood = 3;
+  t.app.save();
+  const saved = () => JSON.parse(t.slotText());
+  // A fresh app over a copy of the slot as it stands: a page reload there.
+  const reloadFrom = (text) => {
+    const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: text }));
+    const app = VL.createApp({ storage });
+    app.startGame(VL.loadSlot(storage, 0), 0);
+    app.setScene('play');
+    for (let s = 0; s < 0.5; s += STEP) app.update(VL.noActions(), STEP);
+    return { app, saved: JSON.parse(storage.read(VL.slotKey(0))) };
+  };
+
+  beatThornback(t);
+  const afterWin = t.slotText();
+  assert.deepEqual([saved().dungeons.hollowOak.boss, saved().afterThornbackDone, saved().inventory.wood], [true, [], 3], 'the win is on disk before the hook runs');
+  assert.deepEqual(calls, []);
+
+  t.step();
+  assert.deepEqual(calls, [3], 'the hook runs once the win is written');
+  assert.deepEqual([saved().dungeons.hollowOak.boss, saved().afterThornbackDone, saved().inventory.wood], [true, ['shockwave'], 0], 'its losses and its id are written together');
+  const afterHook = t.slotText();
+  t.hold([], 1);
+  assert.deepEqual(calls, [3], 'never again in this session');
+
+  // Reloaded between the two writes: the win is kept and the hook runs once.
+  const between = reloadFrom(afterWin);
+  assert.deepEqual(calls, [3, 3], 'the hook runs once after that reload');
+  assert.deepEqual([between.saved.dungeons.hollowOak.boss, between.saved.afterThornbackDone, between.saved.inventory.wood], [true, ['shockwave'], 0]);
+  const again = reloadFrom(JSON.stringify(between.saved));
+  assert.deepEqual(calls, [3, 3], 'and not after the next one');
+  assert.equal(again.app.game.inventory.wood, 0);
+
+  // Reloaded after both writes: nothing runs twice.
+  const after = reloadFrom(afterHook);
+  assert.deepEqual(calls, [3, 3], 'a reload after the losses never applies them again');
+  assert.deepEqual([after.app.game.dungeons.hollowOak.boss, after.app.game.inventory.wood], [true, 0]);
+});
+
+test('a hook waits while the win could not be written, and runs once a write lands', () => {
+  const t = bossRoom({ storage: true });
+  const { VL } = t;
+  const calls = [];
+  VL.afterThornback('probe', () => calls.push(1));
+  t.app.save();
+  const write = t.app.storage.write;
+  t.app.storage.write = () => false;
+  beatThornback(t);
+  t.hold([], 0.5);
+  assert.ok(t.app.saveFailed && t.game.dirty);
+  assert.deepEqual(calls, [], 'nothing runs before the win is safe');
+  t.app.storage.write = write;
+  t.step();
+  assert.equal(JSON.parse(t.slotText()).dungeons.hollowOak.boss, true);
+  t.step();
+  assert.deepEqual(calls, [1]);
+  assert.deepEqual(JSON.parse(t.slotText()).afterThornbackDone, ['probe']);
 });
 
 test('shut in with the Thornback, the hero can always faint his way out (it hurts while it walks and charges)', () => {
@@ -245,6 +388,23 @@ test('the W15 fixture loads with the Hollow Oak played through, no field reset',
   assert.ok(VL.hasItem(game, 'grapplingRope') && VL.hasItem(game, 'woodsMapCopy'));
   assert.equal(VL.heldItem(game, 'offHand'), 'grapplingRope');
   assert.ok(VL.LOCKS.d2Boss.reached(game));
+});
+
+test('the afterThornbackDone fixture loads with no field reset, and a hook added since runs once on the next load', () => {
+  const { VL } = loadGame();
+  const text = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W15-after.json'), 'utf8');
+  assert.deepEqual(JSON.parse(text).afterThornbackDone, []);
+  const backing = memoryStorage({ [VL.slotKey(0)]: text });
+  assert.deepEqual(plain(VL.readSlot(VL.createStorage(backing), 0).resets), []);
+  const calls = [];
+  VL.afterThornback('later', () => calls.push(1));
+  const storage = VL.createStorage(backing);
+  const app = VL.createApp({ storage });
+  app.startGame(VL.loadSlot(storage, 0), 0);
+  app.setScene('play');
+  for (let s = 0; s < 0.5; s += STEP) app.update(VL.noActions(), STEP);
+  assert.deepEqual(calls, [1]);
+  assert.deepEqual(JSON.parse(backing.getItem(VL.slotKey(0))).afterThornbackDone, ['later']);
 });
 
 // ---------- the playthrough, one lock at a time ----------
