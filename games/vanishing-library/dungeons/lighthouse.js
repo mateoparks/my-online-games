@@ -151,7 +151,7 @@
         { type: 'shutter', id: 'd3ShutterStair', x: 7, y: 0, open: { switch: 'd3TargetStair' } },
         { type: 'lockedDoor', id: 'd3DoorA', kind: 'small', x: 15, y: 5, lock: 'd3DoorA' },
         { type: 'sign', x: 10, y: 1, title: 'The keeper\'s note', text: 'Hit the target and the bars go up. My old slingshot is in the store room.' },
-        { type: 'slime', x: 11, y: 7 },
+        { type: 'slime', x: 11, y: 7, tough: true },
       ],
     },
     // The store room: the Slingshot in the big chest, and a target to try it on.
@@ -223,7 +223,7 @@
         { type: 'sign', x: 5, y: 1, title: 'Carved in the stone', text: 'A crab as big as a cart took the great lens for its shell! Nobody has climbed to the lamp since.' },
         lamp('d3LampGalleryA', 2, 2),
         lamp('d3LampGalleryB', 13, 2),
-        { type: 'slime', x: 11, y: 8 },
+        { type: 'slime', x: 11, y: 8, tough: true },
         { type: 'bat', x: 4, y: 6 },
       ],
     },

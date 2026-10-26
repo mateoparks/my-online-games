@@ -1949,6 +1949,9 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
   taken. The lamp room's boss gate (`lighthouseBossGate`, on the boss door's
   landing (7,10)) is the framework's too (W30). W11's thief
   takes the Primer on the next library visit once `d3Boss` is reached.
+- **Thorny slimes (W35):** the stairwell's and the gallery's slimes are
+  placed `tough: true` (drawn with woody thorns, like the Woods' spitters):
+  only the metal sword beats them, and nothing needs them beaten.
 - **Locks:** claims `lighthouseEntered` (a visit to the entrance) with the
   planned rule, and `slingshot` (`needs` adds `d3DoorA`) and `d3Boss` (adds
   `d3BossDoor`) with `replan`; adds `d3KeyA`, `d3DoorA`, `d3KeyB`, `d3DoorB`,

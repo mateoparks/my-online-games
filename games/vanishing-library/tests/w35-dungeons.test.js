@@ -474,3 +474,40 @@ test('the W19 fixture (the Dragon beaten before the guards existed) finds the ca
   assert.deepEqual(plain(state.room.entities.filter((e) => e.guard)), []);
   assert.equal(state.flags.lairGuards, true);
 });
+
+// ---------- 6. metal-only enemies in the Lighthouse, never in the way ----------
+
+test('the Lighthouse holds thorny slimes only the metal sword beats, and nothing in it needs them beaten', () => {
+  const { VL } = loadGame();
+  const tough = Object.entries(VL.AREAS.lighthouse.screens).flatMap(([key, s]) => s.entities.filter((e) => e.tough).map((e) => `${key} ${e.type}`));
+  assert.deepEqual(tough, ['0,-1 slime', '0,-2 slime']);
+  const all = Object.values(VL.AREAS.lighthouse.screens).flatMap((s) => s.entities);
+  assert.ok(!all.some((e) => e.reveal === 'cleared'), 'no key waits for a cleared room');
+  for (const [id, lock] of Object.entries(VL.LOCKS).filter(([id]) => /^d3|^lighthouse|^slingshot$/.test(id))) {
+    assert.ok(!(lock.needs || []).includes('metalSword'), `${id} needs no metal sword (any sword will do)`);
+  }
+  const state = playState(VL, { area: 'lighthouse', screen: '0,-1', tx: 7, ty: 5 });
+  state.popups.queue.length = 0;
+  const slime = state.room.entities.find((e) => e.type === 'slime');
+  slime.arriving = 0;
+  VL.hitEnemy(state, slime, 1, VL.heroCentre(state), 'woodSword');
+  assert.equal(slime.hp, VL.ENEMIES.slime.hp, 'the wood sword clinks');
+  assert.equal(state.message?.title, 'Clink!');
+  VL.hitEnemy(state, slime, VL.TUNING.swordDamage.metalSword, VL.heroCentre(state), 'metalSword');
+  assert.ok(!state.room.entities.includes(slime), 'the metal sword beats it');
+});
+
+test('a tough slime wears woody thorns, in every pose; a plain one doesn\'t', () => {
+  const { VL } = loadGame();
+  const painted = (slime, t) => {
+    const colors = [];
+    const ctx = new Proxy({}, { get: (o, p) => (p === 'fillStyle' ? undefined : () => {}), set: (o, p, v) => { if (p === 'fillStyle') colors.push(v); return true; } });
+    VL.ENEMIES.slime.draw(ctx, slime, 100, 100, t);
+    return colors;
+  };
+  const bark = VL.ART.color('bark');
+  for (const pose of [{ mode: 'idle', t: 0 }, { mode: 'idle', t: 0.4 }, { mode: 'hop', timer: 0.2, t: 0 }]) {
+    assert.ok(painted({ tough: true, ...pose }, pose.t).includes(bark), JSON.stringify(pose));
+    assert.ok(!painted({ ...pose }, pose.t).includes(bark));
+  }
+});
