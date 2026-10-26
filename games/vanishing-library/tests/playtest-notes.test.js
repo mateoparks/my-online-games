@@ -157,14 +157,13 @@ test('the six titled books wait behind later progress, each where it is useful',
   }
 });
 
-test('the Herbalist\'s trunk keeps away from the Woods\' secret ore, so the Smith\'s Ledger still has it to reveal', () => {
+test('the Herbalist\'s trunk keeps away from the Woods\' secret ore (W34: no book reveals it now; the Ledger tells of the wreck\'s)', () => {
   const { VL } = loadGame();
   const herbalist = VL.SPOTS.bookHerbalist;
   const ore = VL.SPOTS.oreWoods;
   assert.equal(herbalist.area, 'overworld');
   assert.ok(VL.REGIONS.woods.screens.includes(herbalist.screen), `still in the Woods (${herbalist.screen})`);
   assert.notEqual(herbalist.screen, ore.screen, 'not on the ore\'s screen');
-  assert.match(VL.BOOKS.bookSmithsLedger.reading.join(' '), /ore hiding in the Woods/);
 });
 
 test('the solver stays green; the 10-book heart comes before the shockwave, the purse and the boots after it (W30; W34 moved the Chicken Almanac to the wreck)', () => {

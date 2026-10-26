@@ -240,7 +240,8 @@
   // ---------- marks for the drawn map (W12) ----------
 
   // { kind, area, screen, tx, ty }: the berry bushes once the Herbalist's
-  // Notes are read, and the Woods ore (until found) once the Smith's Ledger is.
+  // Notes are read, and (W34) the wreck's ore, over its hatch on the
+  // overworld, until found once the Smith's Ledger is.
   VL.mapMarks = function mapMarks(state) {
     const marks = [];
     if (VL.bookRead(state, 'bookHerbalist')) {
@@ -253,9 +254,9 @@
         }
       }
     }
-    if (VL.bookRead(state, 'bookSmithsLedger') && !VL.spotFound(state, 'oreWoods')) {
-      const spot = VL.SPOTS.oreWoods;
-      marks.push({ kind: 'ore', area: spot.area, screen: spot.screen, tx: spot.x, ty: spot.y });
+    if (VL.bookRead(state, 'bookSmithsLedger') && !VL.spotFound(state, 'oreShipwreck')) {
+      const hatch = VL.SPOTS.shipwreckHatch;
+      marks.push({ kind: 'ore', area: hatch.area, screen: hatch.screen, tx: hatch.x, ty: hatch.y });
     }
     return marks;
   };

@@ -366,3 +366,51 @@ test('the book margins: the 10-book heart before the shockwave, the purse after 
   const total = books.reduce((n, id) => n + VL.LOCKS[id].supplies.books, 0);
   assert.ok(total >= 30 + 5, `${total} books in all`);
 });
+
+// ---------- the Smith's Ledger: a rumour of ore on the wreck ----------
+
+test('the Smith\'s Ledger tells of a rumour of ore on the old shipwreck (not the Woods), and once read that ore gleams on a drawn map until it is found', () => {
+  const { VL } = loadGame();
+  const book = VL.BOOKS.bookSmithsLedger;
+  const words = [...book.reading, VL.POPUPS.smithsLedgerRead.text].join(' ');
+  assert.match(words, /rumou?r/i);
+  assert.match(words, /shipwreck|wreck/);
+  assert.doesNotMatch(words, /Woods/);
+  const { title, text } = VL.POPUPS.smithsLedgerRead;
+  assert.equal(VL.ART.popupLayout({ title, text }).overflow, false);
+  const game = VL.newGame();
+  VL.markFound(game, 'bookSmithsLedger');
+  assert.deepEqual(plain(VL.mapMarks(game)), [], 'nothing before it is read');
+  VL.returnBooks(game);
+  VL.finishReading(game, VL.nextReading(game));
+  const hatch = VL.getScreen('overworld', '5,2').entities.find((e) => e.type === 'door');
+  assert.deepEqual(plain(VL.mapMarks(game)), [{ kind: 'ore', area: 'overworld', screen: '5,2', tx: hatch.x, ty: hatch.y }]);
+  game.visited['overworld:5,2'] = true;
+  assert.deepEqual(plain(VL.mapView(game).marks), [{ kind: 'ore', screen: '5,2', tx: hatch.x, ty: hatch.y }], 'drawn on the overworld map, over the hatch');
+  VL.markFound(game, 'oreShipwreck');
+  assert.deepEqual(plain(VL.mapMarks(game)), [], 'gone once the ore is found');
+});
+
+test('the rumoured ore\'s mark gleams on the drawn map', () => {
+  const { VL } = loadGame();
+  const app = VL.createApp();
+  app.game = VL.newGame({ name: 'Robin' });
+  VL.giveItem(app.game, 'worldMap');
+  app.game.library.returned.push('bookSmithsLedger');
+  app.game.library.read.push('bookSmithsLedger');
+  app.game.flags['found:bookSmithsLedger'] = true;
+  assert.ok(VL.mapMarks(app.game).some((m) => m.kind === 'ore'));
+  app.setScene('worldMap', { mode: 'view' });
+  const original = VL.ART.drawSparkle;
+  let sparkles = 0;
+  VL.ART.drawSparkle = (...args) => {
+    sparkles += 1;
+    return original(...args);
+  };
+  try {
+    VL.render(fakeDocument().createElement('canvas').getContext('2d'), app, 0.1);
+  } finally {
+    VL.ART.drawSparkle = original;
+  }
+  assert.ok(sparkles >= 1);
+});

@@ -102,6 +102,8 @@
     for (const mark of map.marks) {
       const { x, y } = cell(mark.screen);
       centred(ctx, mark.kind === 'ore' ? 'icon-ore' : 'icon-berry', x + mark.tx, y + mark.ty);
+      // The Ledger's rumoured ore gleams (W34).
+      if (mark.kind === 'ore') VL.ART.drawSparkle(ctx, x + mark.tx + 3, y + mark.ty - 3, t);
     }
     if (map.hero && Math.floor(t * 3) % 3 !== 2) {
       const { x, y } = cell(map.hero.screen);

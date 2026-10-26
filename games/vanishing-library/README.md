@@ -1291,7 +1291,9 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
 - **Readings and effects:** a reading ends (by its last page or Esc) with
   `VL.finishReading(state, id)`: read for good, then the book's effect. The
   Tide Tables raise `VL.digChance` to 30% (W10 reads the lock); the Smith's
-  Ledger swaps in the smith's cheaper metal offers and marks the Woods ore;
+  Ledger swaps in the smith's cheaper metal offers and (W34) tells of a
+  rumour of ore on the old shipwreck, marking it over the wreck's hatch on a
+  drawn map, gleaming, until the hold's ore is found;
   the Herbalist's Notes mark the three berry bushes: both through
   `VL.mapMarks(state)` (`{ kind: 'berries' | 'ore', area, screen, tx, ty }`)
   for W12's drawn map. The Primer lets W12 draw the map while

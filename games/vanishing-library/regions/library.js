@@ -62,9 +62,9 @@
   ], popupOnRead('tideTablesRead', { title: 'Tide Tables', text: 'Digging on the beach turns up whole shells more often now.' }));
   titled('bookSmithsLedger', 'The Smith\'s Ledger', 'roof', 'reading-anvil', [
     'Brannock\'s great-grandfather kept this. Every lump of ore he ever used!',
-    'Here: "Best ore of my life, found deep in the Whispering Woods." So there\'s ore hiding in the Woods!',
+    'And a note at the back: "Rumour has it there\'s ore in the hold of the old shipwreck." If you draw a map, I\'ll mark it for you!',
     'And here\'s his trick for using fewer shells at the forge! I\'ll tell Brannock, and he\'ll charge you less.',
-  ], popupOnRead('smithsLedgerRead', { title: 'The Smith\'s Ledger', text: 'Ore lies hidden deep in the Whispering Woods. The smith forges metal gear for fewer shells now.' }));
+  ], popupOnRead('smithsLedgerRead', { title: 'The Smith\'s Ledger', text: 'Rumour has it there\'s ore on the old shipwreck: a map you draw will show it. The smith forges metal gear for fewer shells now.' }));
   titled('bookPrimer', 'The Cartographer\'s Primer', 'gold', 'reading-map', [
     'How to draw a map of every place you have ever been. How wonderful!',
     'With paper and ink, you could draw the whole island. I\'ll keep this one safe on the shelf for you, {name}.',
