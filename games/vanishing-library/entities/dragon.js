@@ -6,7 +6,8 @@
 // Mirror Shield, knocks it to the floor, dazed, and then the sword counts.
 // Three rounds, a little quicker each time; the third ends in a puff of
 // smoke (marked `defeated` before it leaves the room, README "Dungeons").
-// Nothing about it blinks: a hit shakes it instead (the flash guard, W18).
+// Nothing about it blinks: a hit shakes it instead (the flash guard, W18),
+// and a hit that counts tints it a pale hot pink for a moment.
 (() => {
   VL.tune({
     // hp is never run down (refilled on every hit); a round's life is.
@@ -21,6 +22,7 @@
     dragonDazedSeconds: 3.8,
     dragonRecoverSeconds: 0.8,
     dragonDyingSeconds: 1.6,
+    dragonHitTintSeconds: 0.4,
   });
   const T = VL.TUNING;
   VL.DRAGON_WORDS = { beaten: 'The Dragon is beaten!' };
@@ -36,6 +38,9 @@
     dragonBelly: '#f2c46b',
     dragonBellyDark: '#c99a45',
     dragonHorn: '#efe3c4',
+    dragonHit: '#ff9e7a',
+    dragonHitLight: '#ffd2b8',
+    dragonHitDark: '#d0604a',
   });
 
   const W = 40;
@@ -105,6 +110,7 @@
     VL.ART.defineSprite(`enemy-dragon-breath-${step}`, { colors, rows: dragonRows({ mouth: 'open', step }) });
   }
   VL.ART.defineSprite('enemy-dragon-dazed', { colors, rows: dragonRows({ dazed: true }) });
+  VL.ART.defineSprite('enemy-dragon-hit', { colors: { ...colors, R: 'dragonHit', L: 'dragonHitLight', D: 'dragonHitDark' }, rows: dragonRows({ dazed: true }) });
 
   // ---------- sound ----------
 
@@ -118,7 +124,12 @@
   ], { gap: 0.3 });
   VL.SOUND.onEvent('dragonInhale', 'dragonRoar');
   VL.SOUND.onEvent('dragonDazed', 'dragonThud');
+  VL.defineSfx('dragonOuch', [
+    { wave: 'sawtooth', freq: 320, to: 140, dur: 0.3, vol: 0.22, filter: { type: 'lowpass', freq: 1400 } },
+    { wave: 'triangle', freq: 660, to: 300, dur: 0.18, vol: 0.3 },
+  ], { gap: 0.2 });
   VL.SOUND.onEvent('dragonTink', 'clank');
+  VL.SOUND.onEvent('dragonHurt', 'dragonOuch');
 
   // ---------- behaviour ----------
 
@@ -147,6 +158,7 @@
       dragon.timer += dt;
       dragon.step = (dragon.step || 0) + dt;
       dragon.shake = Math.max(0, (dragon.shake || 0) - dt);
+      dragon.tint = Math.max(0, (dragon.tint || 0) - dt);
       const mode = dragon.mode;
       if (mode === 'prowl') {
         const dx = state.player.x - dragon.cx;
@@ -202,6 +214,8 @@
         return;
       }
       dragon.life -= damage;
+      dragon.tint = T.dragonHitTintSeconds;
+      state.events.push({ type: 'dragonHurt' });
       if (dragon.life > 0) return;
       dragon.rounds -= 1;
       if (dragon.rounds <= 0) {
@@ -217,7 +231,7 @@
         // It shrinks away into a cloud of smoke.
         const k = VL.clamp(dragon.timer / T.dragonDyingSeconds, 0, 1);
         VL.ART.drawShadow(ctx, cx, cy + 14, Math.round(30 * (1 - k)) + 2);
-        if (k < 0.6) VL.ART.drawSprite(ctx, 'enemy-dragon-dazed', Math.round(cx - W / 2), Math.round(cy - 16 + k * 10));
+        if (k < 0.6) VL.ART.drawSprite(ctx, dragon.tint > 0 ? 'enemy-dragon-hit' : 'enemy-dragon-dazed', Math.round(cx - W / 2), Math.round(cy - 16 + k * 10));
         for (let i = 0; i < 7; i += 1) {
           const a = (i / 7) * Math.PI * 2 + k * 2;
           const r = 6 + k * 16;
@@ -230,7 +244,7 @@
       const x = Math.round(cx - W / 2) + shake;
       const y = Math.round(cy - 16);
       if (dragon.mode === 'dazed' || dragon.mode === 'recover') {
-        VL.ART.drawSprite(ctx, 'enemy-dragon-dazed', x + (dragon.mode === 'recover' ? Math.round(Math.sin(t * 30)) : 0), y);
+        VL.ART.drawSprite(ctx, dragon.tint > 0 ? 'enemy-dragon-hit' : 'enemy-dragon-dazed', x + (dragon.mode === 'recover' ? Math.round(Math.sin(t * 30)) : 0), y);
         if (dragon.mode === 'dazed') {
           for (let i = 0; i < 3; i += 1) {
             const a = t * 4 + (i * Math.PI * 2) / 3;

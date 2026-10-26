@@ -528,3 +528,49 @@ test('the Dragon\'s hoard room twinkles nowhere: the old sparkle by the book pil
   }
   assert.deepEqual(sparkles, []);
 });
+
+// ---------- 9. a hit on the Dragon shows ----------
+
+test('a hit that counts tints the Dragon a pale pink for a moment and it cries out; a clink doesn\'t; nothing blinks', () => {
+  const { VL, state, dragon } = dazedDragon('metalSword');
+  const drawn = () => {
+    const ids = [];
+    const real = VL.ART.drawSprite;
+    VL.ART.drawSprite = (ctx, id) => ids.push(id);
+    try {
+      VL.ENEMIES.dragon.draw(new Proxy({}, { get: () => () => {}, set: () => true }), dragon, 120, 60, state.time);
+    } finally {
+      VL.ART.drawSprite = real;
+    }
+    return ids;
+  };
+  assert.deepEqual(drawn(), ['enemy-dragon-dazed']);
+  state.events.length = 0;
+  VL.hitEnemy(state, dragon, 1, VL.heroCentre(state), 'metalSword');
+  assert.ok(state.events.some((e) => e.type === 'dragonHurt'), 'it cries out');
+  assert.deepEqual(drawn(), ['enemy-dragon-hit'], 'tinted');
+  // Steady for its whole moment, then back: one change each way, never a strobe.
+  const frames = [];
+  for (let i = 0; i < 40; i += 1) {
+    VL.ENEMIES.dragon.think(state, dragon, 1 / 60);
+    frames.push(drawn()[0]);
+  }
+  const changes = frames.filter((id, i) => i && id !== frames[i - 1]).length;
+  assert.equal(changes, 1, frames.join());
+  assert.ok(frames.filter((id) => id === 'enemy-dragon-hit').length >= 0.3 * 60 - 1, 'held long enough to see');
+  // A wood sword clinks: no tint, no cry.
+  const wood = dazedDragon('woodSword');
+  wood.state.events.length = 0;
+  VL.hitEnemy(wood.state, wood.dragon, 1, VL.heroCentre(wood.state), 'woodSword');
+  assert.ok(!(wood.dragon.tint > 0));
+  assert.ok(!wood.state.events.some((e) => e.type === 'dragonHurt'));
+});
+
+test('the hit tint is a pale pink, not a saturated red (the flash guard\'s red check)', () => {
+  const { VL } = loadGame();
+  for (const name of ['dragonHit', 'dragonHitLight', 'dragonHitDark']) {
+    const hex = VL.ART.color(name);
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    assert.ok(r / (r + g + b) < 0.8, `${name} ${hex}`);
+  }
+});
