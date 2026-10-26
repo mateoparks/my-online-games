@@ -1,7 +1,6 @@
-// W33, finale fixes from the end-to-end QA (wave 10 notes 1-4 and 6): the
-// hero stays in sight among the giant marionettes, the books he carries come
-// home in the ending, Esc skips the whole ending, no HUD over the ending, and
-// the slingshot's ammo count sits inside its slot.
+// W33, finale fixes: the hero stays in sight among the giant marionettes,
+// the books he carries come home in the ending, Esc skips the whole ending,
+// no HUD over the ending, and the slingshot's ammo count sits inside its slot.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -9,6 +8,7 @@ const { test, loadGame, memoryStorage } = require('./harness');
 const { createPlaythrough } = require('./playthrough');
 const { toHall } = require('./finale-route');
 
+const plain = (value) => JSON.parse(JSON.stringify(value));
 const fixtureText = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8');
 
 function fromSave({ name = 'save-v1-W19.json', edit } = {}) {
@@ -132,4 +132,87 @@ test('a puppet he stands in front of fades so he stays in sight; its strings and
   }
   assert.equal(alphas.at(-1), 1, 'back to solid');
   for (let i = 1; i < alphas.length; i += 1) assert.ok(alphas[i] >= alphas[i - 1] - 1e-9 && alphas[i] - alphas[i - 1] < 0.2, `a gentle fade: ${alphas.join(' ')}`);
+});
+
+// ---------- 2. every book he carries comes home in the ending ----------
+
+const { route } = require('./finale-route');
+const HANDED_IN = /Are those\.\.\. books\?/;
+const fenwickSays = (VL, state) => [VL.pickDialogue(state, 'librarian').say].flat().join(' ');
+
+test('forgiveness hands in every book he carries (the hoard\'s three too): nothing is greeted as a new find afterwards, and the card counts them', () => {
+  const { VL, app, storage, drive } = fromSave({ edit: withBeats('finale:shown') });
+  const before = drive.state.library.returned.length;
+  const carried = VL.booksCarried(drive.state);
+  assert.ok(VL.HOARD_BOOKS.every((id) => carried.includes(id)), 'he comes out of the Lair carrying the hoard books');
+  route.ending(drive);
+  assert.equal(drive.state.finished, true);
+  assert.deepEqual(plain(VL.booksCarried(drive.state)), []);
+  for (const id of carried) assert.ok(VL.bookReturned(drive.state, id), `${id} is on the shelves`);
+  assert.equal(VL.readSlot(storage, 0).summary.books, before + carried.length, 'the FINISHED card counts every book he brought home');
+  drive.walkTo({ area: 'library', screen: '0,0', tx: 7, ty: 6 });
+  assert.doesNotMatch(fenwickSays(VL, drive.state), HANDED_IN);
+  void app;
+});
+
+test('an old finished save still carrying the hoard books (W20) shows them on its card and hands them in quietly on Continue', () => {
+  const { VL } = loadGame();
+  const text = fixtureText('save-v1-W20.json');
+  const saved = JSON.parse(text);
+  const backing = memoryStorage({ [VL.slotKey(0)]: text });
+  const storage = VL.createStorage(backing);
+  const slot = VL.readSlot(storage, 0);
+  assert.equal(slot.summary.finished, true);
+  assert.equal(slot.summary.books, saved.library.returned.length + VL.HOARD_BOOKS.length);
+  const app = VL.createApp({ storage });
+  app.startGame(VL.loadSlot(storage, 0), 0);
+  app.setScene('play');
+  const drive = createPlaythrough(VL, { app, milestones: ['ending'] }).drive;
+  drive.hold([], 0.2);
+  assert.deepEqual(plain(VL.booksCarried(drive.state)), []);
+  assert.ok(VL.HOARD_BOOKS.every((id) => VL.bookReturned(drive.state, id)));
+  assert.ok(!drive.state.events.some((e) => e.type === 'booksReturned'), 'no chime on waking up');
+  assert.equal(JSON.parse(backing.getItem(VL.slotKey(0))).library.returned.length, slot.summary.books, 'healed and saved');
+  assert.equal(VL.readSlot(storage, 0).summary.books, slot.summary.books, 'the card says the same after the heal');
+  drive.walkTo({ area: 'library', screen: '0,0', tx: 7, ty: 6 });
+  assert.doesNotMatch(fenwickSays(VL, drive.state), HANDED_IN);
+});
+
+test('an old save forgiven during the ending but closed before the credits is healed too, and plays the ending', () => {
+  const { VL, drive } = fromSave({ edit: withBeats('forgiven') });
+  drive.update();
+  assert.equal(drive.app.sceneId, 'ending');
+  assert.deepEqual(plain(VL.booksCarried(drive.state)), []);
+});
+
+test('a book found after the ending is a real new find: kept to hand in, and greeted at the library', () => {
+  const { VL } = loadGame();
+  const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: fixtureText('save-v1-W20.json') }));
+  const app = VL.createApp({ storage });
+  app.startGame(VL.loadSlot(storage, 0), 0);
+  app.setScene('play');
+  const drive = createPlaythrough(VL, { app, milestones: ['ending'] }).drive;
+  drive.hold([], 0.2);
+  const unfound = Object.keys(VL.BOOKS).find((id) => !VL.spotFound(drive.state, id));
+  VL.findBook(drive.state, unfound);
+  drive.hold([], 0.2);
+  drive.reload();
+  drive.hold([], 0.2);
+  assert.deepEqual(plain(VL.booksCarried(drive.state)), [unfound], 'still his to hand in');
+  assert.match(fenwickSays(VL, drive.state), HANDED_IN);
+});
+
+test('the W33 fixture (the finale played from the W19 save with the books brought home) loads FINISHED with nothing reset or left to hand in', () => {
+  const { VL } = loadGame();
+  const text = fixtureText('save-v1-W33.json');
+  const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: text }));
+  const slot = VL.readSlot(storage, 0);
+  assert.equal(slot.status, 'ok');
+  assert.deepEqual(plain(slot.resets), []);
+  assert.equal(slot.summary.finished, true);
+  assert.equal(slot.summary.books, JSON.parse(text).library.returned.length);
+  const game = VL.loadSlot(storage, 0);
+  assert.equal(game.flags['finale:booksHome'], true);
+  assert.deepEqual(plain(VL.booksCarried(game)), []);
+  assert.ok(VL.HOARD_BOOKS.every((id) => VL.bookReturned(game, id)));
 });

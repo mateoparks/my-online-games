@@ -57,11 +57,33 @@
     text: 'In front of the puppet stage, the trapdoor hangs open over a ladder going down into the dark. And where is Mrs. Fenwick?',
   });
 
+  // The ending brings home every book he carries (the hoard's three among
+  // them), so none is left to hand in afterwards. `finale:booksHome` marks it
+  // done; a save forgiven before W33 lacks it, so its carried books are still
+  // due (and books found after the ending are ordinary finds again).
+  VL.booksDueHome = (state) => (flag(state, 'forgiven') && !flag(state, 'finale:booksHome') ? VL.booksCarried(state) : []);
+  function bringBooksHome(state) {
+    const ids = VL.booksDueHome(state);
+    state.library.returned.push(...ids);
+    state.flags['finale:booksHome'] = true;
+    VL.earned(state);
+    return ids;
+  }
+
   // She gives back every book she took, and the shelves fill for good.
   VL.defineGift('finaleForgiven', (state) => {
     state.library.gone = [];
     state.library.noticed = 0;
+    bringBooksHome(state);
     state.events.push({ type: 'finaleForgiven' });
+  });
+
+  // An older save forgiven without them: quietly, on the first step after loading.
+  VL.defineSystem('finaleBooksHome', {
+    order: 1,
+    update(state) {
+      if (flag(state, 'forgiven') && !flag(state, 'finale:booksHome')) bringBooksHome(state);
+    },
   });
 
   const busy = (state) => Boolean(state.sceneRequest || state.transition || state.holdUp || VL.currentPopup(state)

@@ -40,7 +40,9 @@
   // The beats the librarian still has to play this visit (play state).
   VL.extendGame('libraryChain', () => ({ libraryChain: false, libraryBlurbs: null }), { transient: true });
 
-  VL.slotSource('books', (save) => save.library?.returned?.length ?? 0);
+  // Books returned, plus any the ending brings home that an older save has
+  // not handed in yet (W33), so the card agrees before and after Continue.
+  VL.slotSource('books', (save) => (save.library?.returned?.length ?? 0) + (save.library && save.flags ? VL.booksDueHome(save).length : 0));
 
   // ---------- the books ----------
 
