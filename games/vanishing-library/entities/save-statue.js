@@ -27,7 +27,7 @@
     onStand(state, statue) {
       VL.touchSavePoint(state, { area: state.player.area, screen: state.player.screen, tx: statue.x, ty: statue.y, facing: 'down' });
       state.events.push({ type: 'statue' });
-      state.dungeonNote = { text: 'The statue glows. Your journey is saved.', t: 0 };
+      state.dungeonNote = { text: VL.savedNote(state) || 'The statue glows. Your journey is saved.', t: 0 };
     },
     draw(ctx, statue, x, y, t) {
       VL.ART.drawSprite(ctx, 'prop-statue', x + 2, y - 11);

@@ -2,7 +2,7 @@
 // hides under the HUD, save points say where he wakes, broken shells show in
 // the counts, and the flash guard's red rule (that one lives in smoke.js).
 const assert = require('node:assert/strict');
-const { test, loadGame } = require('./harness');
+const { test, loadGame, fakeDocument, memoryStorage } = require('./harness');
 
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
@@ -117,6 +117,13 @@ test('the keys HUD is drawn inside VL.DUNGEON_HUD', () => {
   const outside = ctx.rects.filter((r) => r.x < box.x || r.y < box.y || r.x + r.w > box.x + box.w || r.y + r.h > box.y + box.h);
   assert.ok(ctx.rects.length > 0);
   assert.deepEqual(outside, []);
+  // A room's note (the longest a save point says) is drawn by the same layer, clear of the keys.
+  game.dungeonNote = { text: 'Your journey is saved. You\'ll wake up by the harbour.', t: 0 };
+  const withNote = recordingContext();
+  layer.draw(withNote, game, 0, 0, 0, 'overlay');
+  const note = withNote.rects.slice(ctx.rects.length);
+  assert.ok(note.length > 0, 'the note is drawn');
+  assert.deepEqual(note.filter((r) => meets(r, box)), [], 'the note keeps above the keys');
 });
 
 // The HUD bar's own pixels (past its background and bottom line), and a note's.
@@ -159,4 +166,82 @@ test('SAVED and COULD NOT SAVE sit in the HUD bar, clear of the hearts, the shel
     assert.ok(note.every((r) => r.y >= 0 && r.y + r.h <= VL.TUNING.hudHeight - 1), `${name} is inside the HUD bar`);
     assert.deepEqual(note.filter((r) => hud.some((h) => meets(r, h))), [], `${name} touches nothing else in the HUD`);
   }
+});
+
+// ---------- 3. a save point says where he will wake ----------
+
+function drawnText(VL, app, t = 1) {
+  const strings = [];
+  const original = VL.ART.text;
+  VL.ART.text = (ctx, str, ...rest) => {
+    strings.push(String(str));
+    return original(ctx, str, ...rest);
+  };
+  try {
+    VL.render(fakeDocument().createElement('canvas').getContext('2d'), app, t);
+  } finally {
+    VL.ART.text = original;
+  }
+  return strings;
+}
+
+// The Scriptorium's statue, with its boss beaten and (when `done`) the heart taken.
+function atScriptoriumStatue({ done }) {
+  const { VL } = loadGame();
+  const app = VL.createApp({ storage: VL.createStorage(memoryStorage()) });
+  app.game = VL.newGame({ name: 'Robin' });
+  app.setScene('play');
+  const game = app.game;
+  game.popups.seen.controls = true;
+  const [screen, statue] = Object.entries(VL.AREAS.scriptorium.screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'saveStatue').map((e) => [key, e]))[0];
+  VL.place(game, { area: 'scriptorium', screen, tx: statue.x, ty: statue.y, facing: 'down' });
+  VL.dungeonState(game, 'scriptorium').boss = true;
+  if (done) VL.markFound(game, VL.DUNGEONS.scriptorium.boss.heart);
+  VL.ENTITIES.saveStatue.onStand(game, statue);
+  return { VL, app, game };
+}
+
+test('a statue in a dungeon still to finish says the journey is saved; a finished one says he wakes at home', () => {
+  const open = atScriptoriumStatue({ done: false });
+  assert.equal(open.game.dungeonNote.text, 'The statue glows. Your journey is saved.');
+  assert.equal(open.VL.wakeWords(open.game), null);
+  const done = atScriptoriumStatue({ done: true });
+  assert.equal(done.VL.wakeWords(done.game), 'at home');
+  assert.equal(done.game.dungeonNote.text, 'Your journey is saved. You\'ll wake up at home.');
+});
+
+test('the faint screen and the pause menu name where he wakes when it is not the save point', () => {
+  for (const [done, faint, pause] of [[false, 'You wake up at your last save point.', 'CONTINUE STARTS AT YOUR LAST SAVE POINT'], [true, 'You wake up at home.', 'CONTINUE STARTS AT HOME']]) {
+    const { VL, app, game } = atScriptoriumStatue({ done });
+    app.setScene('pause');
+    app.pause.cursor = VL.PAUSE_OPTIONS.indexOf('Save & Quit');
+    assert.ok(drawnText(VL, app).includes(pause), `pause, done ${done}`);
+    app.setScene('play');
+    VL.faint(game, 'crab');
+    app.setScene('fainted');
+    assert.ok(drawnText(VL, app).includes(faint), `faint, done ${done}`);
+  }
+});
+
+test('the wreck\'s lantern, once the page is found, says he wakes by the harbour; before it, it only saves', () => {
+  for (const page of [false, true]) {
+    const { VL } = loadGame();
+    const game = VL.newGame({ name: 'Robin' });
+    const [screen, lantern] = Object.entries(VL.AREAS.wreck.screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'savePoint').map((e) => [key, e]))[0];
+    VL.place(game, { area: 'wreck', screen, tx: lantern.x, ty: lantern.y, facing: 'down' });
+    if (page) game.flags['found:pageShipwreck'] = true;
+    VL.ENTITIES.savePoint.onStand(game, lantern);
+    assert.equal(game.dungeonNote?.text ?? null, page ? 'Your journey is saved. You\'ll wake up by the harbour.' : null);
+    assert.equal(VL.wakeWords(game), page ? 'by the harbour' : null);
+  }
+});
+
+test('the hut\'s lantern out in the world shows no note: he wakes right there', () => {
+  const { VL } = loadGame();
+  const game = VL.newGame({ name: 'Robin' });
+  VL.place(game, VL.HOME_SAVE);
+  const lantern = game.room.entities.find((e) => e.type === 'savePoint');
+  VL.ENTITIES.savePoint.onStand(game, lantern);
+  assert.equal(game.dungeonNote ?? null, null);
+  assert.equal(VL.wakeWords(game), null);
 });

@@ -14,6 +14,9 @@
   VL.defineEntity('savePoint', {
     onStand(state, point) {
       VL.touchSavePoint(state, { area: state.player.area, screen: state.player.screen, tx: point.x, ty: point.y, facing: 'down' });
+      // Notes are drawn by the dungeon readout, so only inside one (the wreck).
+      const note = VL.dungeonOf(state) && VL.savedNote(state);
+      if (note) state.dungeonNote = { text: note, t: 0 };
     },
     draw(ctx, point, x, y, t) {
       VL.ART.drawShadow(ctx, x + 8, y + 13, 9);

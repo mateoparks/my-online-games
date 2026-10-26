@@ -154,6 +154,27 @@
     return point;
   };
 
+  // Words for a place a move rule wakes him at ('at home'), so a save point
+  // whose rule sends him elsewhere can say so.
+  const wakeNames = [];
+  VL.nameWakePlace = (place, words) => wakeNames.push({ place, words });
+  const samePlace = (a, b) => a.area === b.area && a.screen === b.screen && a.tx === b.tx && a.ty === b.ty;
+
+  // Where he wakes, in words, when it is not the save point he touched; null
+  // when it is (or the place has no name).
+  VL.wakeWords = function wakeWords(state) {
+    const point = state.savePoint;
+    const place = VL.respawnPlace(state);
+    if (isPlainObject(point) && samePlace(place, point)) return null;
+    return wakeNames.find((named) => samePlace(named.place, place))?.words ?? null;
+  };
+
+  // The note a save point shows: null when he simply wakes there.
+  VL.savedNote = function savedNote(state) {
+    const words = VL.wakeWords(state);
+    return words ? `Your journey is saved. You'll wake up ${words}.` : null;
+  };
+
   function stateFrom(save) {
     const { v, ...fields } = save;
     const state = Object.assign(VL.createGame({ name: save.name }), fields);

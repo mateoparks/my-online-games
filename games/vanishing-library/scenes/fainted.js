@@ -4,7 +4,7 @@
   VL.ART.addColors({ faintShade: '#1b1b24b0' });
   const WAKE_AFTER = 0.6;
   const BOX = { x: 28, y: 64, w: 200, h: 60 };
-  const LINES = ['Everything you found is still yours.', 'You wake up at your last save point.'];
+  const lines = (game) => ['Everything you found is still yours.', `You wake up ${VL.wakeWords(game) || 'at your last save point'}.`];
 
   VL.defineScene('fainted', {
     enter(app) {
@@ -26,7 +26,7 @@
       VL.ART.drawBox(ctx, BOX.x, BOX.y, BOX.w, BOX.h);
       const centre = VL.TUNING.width / 2;
       VL.ART.text(ctx, VL.faintLine(app.game.fainted?.cause), centre, BOX.y + 8, { align: 'center', color: 'goldLight', shadow: 'boxShade' });
-      LINES.forEach((line, i) => VL.ART.text(ctx, line, centre, BOX.y + 22 + i * 10, { align: 'center', color: 'text' }));
+      lines(app.game).forEach((line, i) => VL.ART.text(ctx, line, centre, BOX.y + 22 + i * 10, { align: 'center', color: 'text' }));
       if (app.faintScreen.t >= WAKE_AFTER && Math.floor(t * 2.5) % 2 === 0) {
         VL.ART.text(ctx, 'S: WAKE UP', centre, BOX.y + BOX.h - 12, { size: 'small', align: 'center', color: 'goldLight' });
       }
