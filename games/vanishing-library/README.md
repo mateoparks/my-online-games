@@ -15,7 +15,7 @@ Keyboard only for now (laptop or desktop).
 | Space | Use the item in your main hand (a sword, the slingshot, ...) |
 | D | Use the item in your off hand (a shield, ...) |
 | E | Equipment: choose what goes in each hand |
-| X | Dig with your shovel, whatever your hands hold (once you have a shovel) |
+| X | Dig with your shovel, whatever your hands hold (once you have a shovel); closes the equipment view and the maps (E, M and Esc do too) |
 | M | The map, once you have one (the world map, or a dungeon's map) |
 | N | Sound on or off |
 | Esc | Pause, or Save & Quit |

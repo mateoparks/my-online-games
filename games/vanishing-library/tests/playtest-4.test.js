@@ -58,3 +58,90 @@ test('the first berries popup says how to eat one, and leaves the regrowing for 
   assert.match(text, /heal a heart/);
   assert.doesNotMatch(text, /grow/i);
 });
+
+// ---------- X closes the equipment and the maps ----------
+
+const { fakeDocument } = require('./harness');
+
+function drawnStrings(VL, app) {
+  const strings = [];
+  const original = VL.ART.text;
+  VL.ART.text = (ctx, str, ...rest) => {
+    strings.push(String(str));
+    return original(ctx, str, ...rest);
+  };
+  try {
+    VL.render(fakeDocument().createElement('canvas').getContext('2d'), app, 0);
+  } finally {
+    VL.ART.text = original;
+  }
+  return strings;
+}
+
+const press = (VL, app, action) => app.update(VL.actions({ pressed: [action] }), 1 / 60);
+
+test('the equipment view closes with X as well as E and Esc, and its footer says X: BACK', () => {
+  const { VL } = loadGame();
+  for (const key of ['dig', 'equipment', 'pause']) {
+    const app = VL.createApp();
+    app.game = VL.newGame();
+    app.setScene('play');
+    press(VL, app, 'equipment');
+    assert.equal(app.sceneId, 'equipment');
+    for (const list of [[], ['woodSword'], ['woodSword', 'woodShield', 'woodShovel', 'grapplingRope', 'liftingGloves', 'slingshot']]) {
+      for (const id of list) app.game.items[id] = true;
+      const footer = drawnStrings(VL, app).find((s) => /BACK/.test(s));
+      assert.match(footer, /X: BACK$/, footer);
+      assert.doesNotMatch(footer, /E: BACK/);
+    }
+    press(VL, app, key);
+    assert.equal(app.sceneId, 'play', `${key} goes back to the game`);
+    assert.equal(app.game.player.dig ?? null, null, 'X closing the view does not dig');
+  }
+});
+
+test('the world map and the woods copy close with X, M or Esc; the map\'s footer says X: CLOSE', () => {
+  const { VL } = loadGame();
+  for (const key of ['dig', 'map', 'pause']) {
+    const app = VL.createApp();
+    app.game = VL.newGame();
+    app.setScene('play');
+    VL.giveItem(app.game, 'worldMap');
+    app.game.popups.queue.length = 0;
+    app.setScene('worldMap', { mode: 'view' });
+    const strings = drawnStrings(VL, app);
+    assert.ok(strings.includes('X: CLOSE'), strings.join('|'));
+    assert.ok(!strings.includes('M: CLOSE'));
+    press(VL, app, key);
+    assert.equal(app.sceneId, 'play', `${key} closes the world map`);
+    app.setScene('copyView', { id: 'woodsMapCopy' });
+    for (let i = 0; i < 30; i += 1) app.update(VL.actions({}), 1 / 60);
+    press(VL, app, key);
+    assert.equal(app.sceneId, 'play', `${key} closes the woods copy`);
+  }
+  // Asked whether to draw one, X says no like M.
+  const app = VL.createApp();
+  app.game = VL.newGame();
+  app.setScene('worldMap', { mode: 'ask', back: 'play' });
+  press(VL, app, 'dig');
+  assert.equal(app.sceneId, 'play');
+});
+
+test('a dungeon map closes with X, M or Esc, and its footer says X: BACK', () => {
+  const { VL } = loadGame();
+  for (const key of ['dig', 'map', 'pause']) {
+    const app = VL.createApp();
+    app.game = VL.newGame();
+    VL.place(app.game, { area: 'scriptorium', screen: '1,0', tx: 7, ty: 8, facing: 'up' });
+    app.setScene('play');
+    app.setScene('dungeonMap');
+    for (const map of [false, true]) {
+      VL.dungeonState(app.game, 'scriptorium').map = map;
+      const footer = drawnStrings(VL, app).find((s) => /BACK/.test(s));
+      assert.match(footer, /X: BACK$/, footer);
+      assert.doesNotMatch(footer, /M: BACK/);
+    }
+    press(VL, app, key);
+    assert.equal(app.sceneId, 'play', `${key} closes the dungeon map`);
+  }
+});
