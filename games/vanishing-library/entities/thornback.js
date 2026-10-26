@@ -27,7 +27,6 @@
   });
   const T = VL.TUNING;
   const DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
-  VL.THORNBACK_SWORD_NOTE = 'Its plates are too hard! Hook it with the rope.';
 
   // ---------- art ----------
 
@@ -209,7 +208,6 @@
       if (beetle.mode !== 'flipped') {
         beetle.hurt = 0;
         state.events.push({ type: 'thornTink' });
-        state.dungeonNote = { text: VL.THORNBACK_SWORD_NOTE, t: 0 };
         return;
       }
       beetle.life -= damage;

@@ -21,13 +21,15 @@ function step(milestone, fn) {
 // shutter; W13) says so with `passable(state, entity, area)`; a tile changed
 // for good with VL.saveTile (W14's boulders) is read from the save, and one
 // changed for this visit (a lifted rock) while the hero is on its screen.
-// A solid tile the hero may enter (VL.heroMayEnter: the raft on water) is open.
+// A solid tile the hero may enter (VL.heroMayEnter: the raft on water) is open,
+// unless walking on it `hurts` (lava): the scripted hero never plans over it.
 function isWalkable(VL, area, screen, tx, ty, state = null) {
   const room = state?.room;
   const visit = room && room.area === area && room.screen === screen ? room.tiles[`${tx},${ty}`] ?? null : null;
   const saved = visit ?? (state && VL.savedTile ? VL.savedTile(state, area, screen, tx, ty) : null);
   const info = VL.tileInfo(area, saved ?? VL.tileAt(area, screen, tx, ty));
   if (info.solid && !(state && VL.heroMayEnter?.(state, info))) return false;
+  if (info.hurts) return false;
   return !VL.getScreen(area, screen).entities.some((e) => {
     if (e.x !== tx || e.y !== ty) return false;
     const def = VL.ENTITIES[e.type];

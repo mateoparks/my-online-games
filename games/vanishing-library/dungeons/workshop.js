@@ -340,7 +340,6 @@
       [HER, 'Oh! {name}... and you too, dear? You were never supposed to find this place.'],
       [HIM, 'My dear? What are you doing up there? And why are those puppets so very big?'],
       [HER, 'Please, both of you, go back up! My puppets will see you out. Off you go, my lovelies!'],
-      [HIM, 'Look, {name}, strings! Cut the strings and they\'ll drop!'],
     ],
     showAsked: [
       [HER, 'Stop! Please... that\'s enough. My poor puppets.'],
@@ -360,7 +359,7 @@
 
   VL.defineDialogue('librarianFinale', [
     { when: { flag: 'marionettes' }, say: 'Let her speak, {name}. I want to hear it all.' },
-    { when: { flag: 'finale:confronted' }, say: 'The strings, {name}! Swing your sword through the strings above their hands!' },
+    { when: { flag: 'finale:confronted' }, say: 'Careful, {name}! Those puppets are bigger than both of us.' },
     { say: 'Stay close, {name}. I don\'t like the look of this at all.' },
   ]);
   VL.defineDialogue('wifeFinale', [
@@ -375,6 +374,7 @@
   const hero = (say) => ({ when: { progress: 'd4Boss', notFlag: 'forgiven' }, say });
   const after = (say) => ({ when: { flag: 'forgiven' }, say });
   VL.addDialogue('gran', [
+    ...VL.bossHintEntries(['marionettes']),
     after('I\'m writing a book, {name}! Seventy years by this well. Miss Quill says it will be ever so long.'),
     hero('You beat the Dragon? The whole town is talking about you, {name}!'),
   ]);

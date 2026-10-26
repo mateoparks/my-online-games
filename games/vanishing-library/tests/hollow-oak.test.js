@@ -251,14 +251,14 @@ function bossRoom(options) {
 }
 const beetleOf = (t) => t.find('thornback');
 
-test('the Thornback: a sword clinks off its plates and says to use the rope', () => {
+test('the Thornback: a sword clinks off its plates (and says nothing, W35)', () => {
   const t = bossRoom();
   const { VL } = t;
   const b = beetleOf(t);
   b.arriving = 0;
   VL.hitEnemy(t.game, b, 1, { x: 0, y: 0 });
   assert.deepEqual([b.life, b.rounds, b.plates], [VL.TUNING.thornbackRoundLife, 3, 3]);
-  assert.equal(t.game.dungeonNote.text, VL.THORNBACK_SWORD_NOTE);
+  assert.equal(t.game.dungeonNote, null);
   assert.ok(t.game.room.entities.includes(b));
 });
 
@@ -623,7 +623,7 @@ test('every word the Hollow Oak says fits its box and its font', () => {
     assert.deepEqual(plain(VL.ART.missingGlyphs(`${title || ''} ${text}`)), [], text);
     assert.ok(!VL.ART.popupLayout({ title, text }).overflow, `fits: ${text}`);
   }
-  for (const note of [VL.THORNBACK_SWORD_NOTE, 'The Thornback is beaten!']) {
+  for (const note of ['The Thornback is beaten!']) {
     assert.deepEqual(plain(VL.ART.missingGlyphs(note, 'small')), [], note);
     assert.ok(VL.ART.measureText(note, 'small') <= VL.TUNING.width - 8, note);
   }

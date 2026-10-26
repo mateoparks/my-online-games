@@ -173,7 +173,7 @@ test('the rope only stuns a tough spitter, never hurts it', () => {
   assert.equal(plant.hp, hp);
 });
 
-test('only the clearing\'s spitters and (W30) the Hollow Oak tangle\'s are that tough; every other enemy still falls to a wood sword', () => {
+test('only the clearing\'s spitters, the Hollow Oak tangle\'s and the Lighthouse\'s two thorny slimes are that tough; every other enemy still falls to a wood sword', () => {
   const VL = shared;
   const tough = [];
   for (const [areaId, area] of Object.entries(VL.AREAS)) {
@@ -181,7 +181,8 @@ test('only the clearing\'s spitters and (W30) the Hollow Oak tangle\'s are that 
       for (const e of screen.entities) if (e.tough) tough.push(`${areaId} ${key} ${e.type} (${e.x},${e.y})`);
     }
   }
-  assert.deepEqual(tough.sort(), ['hollowOak -1,-2 spitter (11,3)', 'hollowOak -1,-2 spitter (5,7)', 'overworld 7,-2 spitter (12,6)', 'overworld 7,-2 spitter (4,7)']);
+  // The Lair's thorny guards are spawned at the cave mouth, not placed.
+  assert.deepEqual(tough.sort(), ['hollowOak -1,-2 spitter (11,3)', 'hollowOak -1,-2 spitter (5,7)', 'lighthouse 0,-1 slime (11,7)', 'lighthouse 0,-2 slime (11,8)', 'overworld 7,-2 spitter (12,6)', 'overworld 7,-2 spitter (4,7)']);
   assert.deepEqual(plain(VL.TUNING.toughSwords), ['metalSword']);
 });
 

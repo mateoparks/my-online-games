@@ -16,6 +16,7 @@
   const { rect } = VL.ART;
   const DUNGEON = 'lighthouse';
   const SWORD_WORDS = 'Something huge is moving up there! Better bring a sword.';
+  const SHELL_WORDS = `Better bring ${VL.TUNING.lensCrabShellsAtDoor} broken shells for your slingshot up there!`;
 
   // ---------- tiles ----------
 
@@ -84,13 +85,12 @@
 
   // ---------- the rooms ----------
 
-  const heap = (x, y) => ({ type: 'shellHeap', x, y });
   const lamp = (id, x, y) => ({ type: 'glowLamp', id, x, y });
   // Books down from the highlands (ids kept for old saves).
   const trunk = (id, x, y) => ({ type: 'spot', id, x, y, how: 'trunk', by: 'W11', lock: id });
 
   VL.addScreens(DUNGEON, {
-    // The entrance: the statue, the door out, a heap of broken shells.
+    // The entrance: the statue, the door out.
     '0,0': {
       tiles: [
         '#######_########',
@@ -110,7 +110,6 @@
         { type: 'door', x: 7, y: 10, to: { area: 'overworld', screen: '-1,1', tx: 7, ty: 5, facing: 'down' } },
         { type: 'saveStatue', x: 3, y: 2 },
         { type: 'sign', x: 10, y: 2, title: 'The Lighthouse', text: 'The keeper\'s old lamps still line the dark rooms. Hold your Glowstone up to one (S) and it will burn again.' },
-        heap(12, 8),
       ],
     },
     // The cellar: a dark floor, one narrow way between the pits, key A at its end.
@@ -157,7 +156,7 @@
         { type: 'shutter', id: 'd3ShutterStair', x: 7, y: 0, open: { switch: 'd3TargetStair' } },
         { type: 'lockedDoor', id: 'd3DoorA', kind: 'small', x: 15, y: 5, lock: 'd3DoorA' },
         { type: 'sign', x: 10, y: 1, title: 'The keeper\'s note', text: 'Hit the target and the bars go up. My old slingshot is in the store room.' },
-        { type: 'slime', x: 11, y: 7 },
+        { type: 'slime', x: 11, y: 7, tough: true },
       ],
     },
     // The store room: the Slingshot in the big chest, and a target to try it on.
@@ -181,7 +180,6 @@
         { type: 'bigChest', id: 'd3SlingChest', x: 5, y: 2, item: 'slingshot' },
         { type: 'shellTarget', id: 'd3TargetStore', x: 12, y: 1 },
         { type: 'shutter', id: 'd3ShutterStore', x: 7, y: 10, open: { switch: 'd3TargetStore' } },
-        heap(2, 8),
       ],
     },
     // The cistern: the beam from the lamp shaft, a mirror on the floor and
@@ -208,7 +206,6 @@
         { type: 'beamCrystal', id: 'd3CrystalCistern', x: 3, y: 8 },
         { type: 'shutter', id: 'd3ShutterKeyB', x: 14, y: 7, open: { switch: 'd3CrystalCistern' } },
         { type: 'smallKey', id: 'd3KeyB', x: 14, y: 9, lock: 'd3KeyB' },
-        heap(12, 1),
         { type: 'bat', x: 5, y: 5 },
       ],
     },
@@ -228,13 +225,12 @@
         '#######_########',
       ],
       entities: [
-        { type: 'lockedDoor', id: 'd3BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd3BossDoor', oneWay: true, wants: { items: ['woodSword', 'metalSword'], note: SWORD_WORDS } },
+        { type: 'lockedDoor', id: 'd3BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd3BossDoor', oneWay: true, wants: { items: ['woodSword', 'metalSword'], note: SWORD_WORDS, has: { brokenShells: VL.TUNING.lensCrabShellsAtDoor }, hasNote: SHELL_WORDS } },
         { type: 'lockedDoor', id: 'd3DoorB', kind: 'small', x: 15, y: 5, lock: 'd3DoorB' },
-        { type: 'sign', x: 5, y: 1, title: 'Carved in the stone', text: 'A crab as big as a cart took the great lens for its shell! Shoot its eyes, then strike.' },
+        { type: 'sign', x: 5, y: 1, title: 'Carved in the stone', text: 'A crab as big as a cart took the great lens for its shell! Nobody has climbed to the lamp since.' },
         lamp('d3LampGalleryA', 2, 2),
         lamp('d3LampGalleryB', 13, 2),
-        heap(2, 9),
-        { type: 'slime', x: 11, y: 8 },
+        { type: 'slime', x: 11, y: 8, tough: true },
         { type: 'bat', x: 4, y: 6 },
       ],
     },
@@ -288,7 +284,7 @@
         { type: 'bat', x: 8, y: 3 },
       ],
     },
-    // The lamp room at the top: the Lens Crab, and heaps so the shells never run out.
+    // The lamp room at the top: the Lens Crab.
     '0,-3': {
       tiles: [
         '################',
@@ -305,8 +301,6 @@
       ],
       entities: [
         { type: 'lensCrab', x: 7, y: 3 },
-        heap(2, 9),
-        heap(13, 9),
       ],
     },
   });
@@ -316,6 +310,7 @@
   // ---------- the way in ----------
 
   VL.LIGHTHOUSE_SWORD_WORDS = SWORD_WORDS;
+  VL.LIGHTHOUSE_SHELL_WORDS = SHELL_WORDS;
   VL.LIGHTHOUSE_DARK_WORDS = 'Pitch dark in there! You can\'t see a thing. You\'d need a light of your own.';
   VL.fillSpot('lighthouseDoor', {
     type: 'door', needs: 'glowstone', locked: VL.LIGHTHOUSE_DARK_WORDS,
@@ -359,10 +354,6 @@
   const keys = `smallKey:${DUNGEON}`;
 
   VL.defineLock('lighthouseEntered', { ...VL.LOCKS.lighthouseEntered, place: { area: DUNGEON, screen: '0,0' }, reached: (state) => Boolean(state.visited[`${DUNGEON}:0,0`]) });
-  VL.defineLock('lighthouseShells', {
-    needs: ['lighthouseEntered'], gives: ['brokenShells'], renewable: true, optional: true, doc,
-    reached: (state) => Boolean(state.flags.lighthouseShells),
-  });
   VL.defineLock('d3KeyA', { type: 'item', needs: ['lighthouseEntered'], supplies: { [keys]: 1 }, doc, reached: found('d3KeyA') });
   VL.defineLock('d3DoorA', { needs: ['lighthouseEntered'], consumes: { [keys]: 1 }, doc, reached: door('d3DoorA') });
   VL.defineLock('slingshot', {
@@ -375,7 +366,7 @@
   VL.defineLock('d3KeyB', { type: 'item', needs: ['slingshot'], supplies: { [keys]: 1 }, doc, reached: found('d3KeyB') });
   VL.defineLock('d3DoorB', { needs: ['slingshot'], consumes: { [keys]: 1 }, doc, reached: door('d3DoorB') });
   VL.defineLock('d3BossKey', { type: 'item', needs: ['d3DoorB'], gives: [`bossKey:${DUNGEON}`], doc, reached: found('d3BossKey') });
-  VL.defineLock('d3BossDoor', { needs: ['slingshot', `bossKey:${DUNGEON}`, ['woodSword', 'metalSword']], doc, reached: door('d3BossDoor') });
+  VL.defineLock('d3BossDoor', { needs: ['slingshot', 'brokenShells', `bossKey:${DUNGEON}`, ['woodSword', 'metalSword']], doc, reached: door('d3BossDoor') });
   VL.defineLock('d3Boss', {
     ...VL.LOCKS.d3Boss,
     needs: ['lighthouseEntered', 'slingshot', 'brokenShells', ['woodSword', 'metalSword'], 'd3BossDoor'],

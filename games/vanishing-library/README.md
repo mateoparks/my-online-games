@@ -517,7 +517,8 @@ holds the heart containers.
   (`VL.graceAfterPopup`), since the world froze mid-attack under it.
 - **Enemies:** `VL.defineEnemy(type, { tuning, body: { w, h }, size, flies,
   rooted, faint, drops?, setup(state, e), think(state, e, dt), harmful(e),
-  onHit, onTouch, draw(ctx, e, cx, cy, t) })` also defines the entity type,
+  onHit(state, e, weapon), onTouch, draw(ctx, e, cx, cy, t) })` also defines
+  the entity type,
   so a region places one with `{ type: 'crab', x, y }` (tiles). `tuning`
   names a `VL.TUNING` entry whose `hp` and `damage` are read live. A live
   enemy keeps its body centre in pixels (`e.cx`, `e.cy`); move it with
@@ -899,7 +900,14 @@ title, then a kind show and the packed library (`w20-kind-show.png`,
 hero puppet, which fades (`w33-hero-over-puppet.png`), Esc in the ending's
 first fade-in, the ending with nothing in the HUD strip
 (`w33-ending-no-hud.png`), and the slingshot's ammo count inside its slot
-(`w33-ammo-in-slot.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
+(`w33-ammo-in-slot.png`). Then W35's dungeon notes, with real keys: a seed
+over the Hollow Oak's roots (`w35-seed-over-roots.png`), Gran Ottie's hint
+after a faint (`w35-gran-hint.png`), the Lighthouse with no heaps and a
+thorny slime, a step onto lava (`w35-lava.png`), the Lair's guards (a wood
+sword's "Clink!", the metal sword beats them, the cave opens), the hoard
+with no twinkle, the dazed Dragon untouched by wood and tinted by metal
+(`w35-dragon-hit-tint.png`), and the third round's fan (`w35-dragon-fan.png`).
+Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
 the beam, the Lens Crab's rounds, the Dragon's rounds, its fire through a
 metal shield, a stone head's fire bounced home, the slides up through the boss
 door into the Dragon's hoard (before and after the fight), down the trapdoor,
@@ -1879,7 +1887,8 @@ as ammo (hit far switches, stun enemies)"). Tests: `tests/lighthouse.test.js`.
   (`{ type: 'slingPellet', gx, gy, dx, dy }`, play state, drawn at its pixel
   `gx, gy`) flies over pits, water, chasms and low tiles and stops at walls,
   solid things and the screen's edge. With no broken shells it fires nothing
-  and says where to find some (a heap in a dungeon, the beaches outside).
+  and says where to find some (the beaches; W35 took the Lighthouse's heaps
+  away, as broken shells pile up from the beaches and digging anyway).
   The HUD writes the broken shells left in the slingshot's slot.
 - **What a shot meets:** an entity whose type has **`onShot(state, entity,
   pellet)`** answers it (a `shellTarget` is thrown, a `beamMirror` turns), a
@@ -1893,11 +1902,6 @@ as ammo (hit far switches, stun enemies)"). Tests: `tests/lighthouse.test.js`.
   lever, so a shutter opens on `{ switch: id }`. S only describes it, and
   neither the sword nor the rope's hook throws it, so what it opens stays
   behind the Slingshot.
-- **Shell heaps:** `{ type: 'shellHeap', x, y }` (solid): S tops the broken
-  shells up to `TUNING.shellHeapFill` (15), as often as he likes
-  (`VL.scoopShells`, flag `lighthouseShells`), so a kid never runs dry in a
-  dungeon. The Lighthouse has one in the entrance, the store room, the
-  cistern, the gallery and two in the boss room.
 - **Sounds:** events `slingFire`, `slingTink`, `slingHit`, `slingStun`,
   `slingEmpty` (`bump`).
 
@@ -1913,7 +1917,7 @@ the game, 6: "The Glowstone lets you enter", "dark floors").
   (`VL.hasItem(state, 'glowstone')`, W16's worn item), a hand's breadth
   without (`VL.glowRadius`).
 - **Never a guessing game:** past the light, keys, switches, targets,
-  mirrors, lamps, chests, locked doors, closed bars and heaps glint
+  mirrors, lamps, chests, locked doors and closed bars glint
   (`VL.DARK_GLINTS`, or `glintsInDark: true` on an entity type), a
   creature shows two red eyes, and anything `glowsInDark` (the beam's
   source, a lit crystal, a shell in flight) is drawn over the dark. The beam
@@ -1978,7 +1982,10 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
   crystal's bars), and the stairwell's target lifts the bars up to the
   gallery (door B, the boss door). Key A can't be wasted: door B lies past
   the stairwell's target. The workshop's crystal lifts the bars on the boss
-  key.
+  key. The boss door also wants a sword and
+  `TUNING.lensCrabShellsAtDoor` (12) broken shells on every entry until the
+  crab is beaten (`VL.LIGHTHOUSE_SHELL_WORDS`), since the lamp room has no
+  shells of its own and its gate shuts behind him.
 - **The Lens Crab** (`lensCrab`, `rooted`, `size: 'big'`): it scuttles along
   the top of the lamp room after the hero (`scuttle`), and every
   `lensCrabGlintEvery` the lens glints (`glint`) and throws a bolt of light
@@ -1998,11 +2005,15 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
   taken. The lamp room's boss gate (`lighthouseBossGate`, on the boss door's
   landing (7,10)) is the framework's too (W30). W11's thief
   takes the Primer on the next library visit once `d3Boss` is reached.
+- **Thorny slimes (W35):** the stairwell's and the gallery's slimes are
+  placed `tough: true` (drawn with woody thorns, like the Woods' spitters):
+  only the metal sword beats them, and nothing needs them beaten.
 - **Locks:** claims `lighthouseEntered` (a visit to the entrance) with the
   planned rule, and `slingshot` (`needs` adds `d3DoorA`) and `d3Boss` (adds
   `d3BossDoor`) with `replan`; adds `d3KeyA`, `d3DoorA`, `d3KeyB`, `d3DoorB`,
-  `d3BossKey`, `d3BossDoor` and `lighthouseShells` (the heaps, renewable
-  broken shells). Ids are `d3…` (and `heartD3`, `oreLighthouse`,
+  `d3BossKey` and `d3BossDoor` (needs `brokenShells` too, as the door's
+  `wants` says); its broken shells come from the beaches
+  (`beachBrokenShells`). Ids are `d3…` (and `heartD3`, `oreLighthouse`,
   `pageLighthouse`).
 - **Sounds:** events `crabEye`, `crabDazed`, `lensGlint`, `lensBolt`
   (`slingFire`), `crabTink` (`slingTink`).
@@ -2056,7 +2067,7 @@ lair's doorstep, -1,-5, and Continue starts at the hut: W31).
 
 ```
                        hoard (0,-3): the Dragon
-                            | boss door (oneWay, wants a sword)
+                            | boss door (oneWay, wants the metal sword)
   ledge (-1,-2) ------ great cave (0,-2) --door B-- forge (1,-2)
   spout -> key B, map       | bars (the hall's spout)   block, spout -> boss key
   shield room (-1,-1) --door A-- hall (0,-1)
@@ -2070,6 +2081,16 @@ Shield; the hall's stone head choked (the great cave), the ledge's (key B),
 door B, the forge's (a block shoved out of its line first; the boss key),
 the boss door, the Dragon.
 
+- **Lava** (`~`, W35): the hero may walk on it (hero footing `lava`); each
+  step onto a lava tile takes `TUNING.lavaDamage` (half a heart), standing
+  still on it is safe, and there is no timer (system `lavaBurns`, faint line
+  `lava`). To everything else it is still a solid pit: blocks, enemies,
+  knockback and chickens stay off it, fire crosses it. A chicken flight or
+  the rope's pull never burns him (`lavaBurns` skips both; the hook can't
+  land him on lava, which is solid to it). It opens no new ground (a test
+  labels the floor's stretches with every gate as a wall and checks no
+  lava step joins two), and the
+  playthrough's planner never walks on a tile that `hurts`.
 - **Fire** (`VL.spawnFire(state, { cx, cy, vx, vy, owner })`, entity
   `dragonFire`): flies straight over floors, pits and lava; walls and solid
   things stop it (`VL.fireStops`). It hurts `TUNING.fireDamage` (a full
@@ -2086,22 +2107,53 @@ the boss door, the Dragon.
   shot, the rope and S do not. Each sits in a wall or across lava.
 - **The Dragon** (`dragon`, `rooted`, `size: 'big'`): paces the back of the
   hoard after the hero, draws breath (`inhale`, its chest glowing) and
-  breathes a ball at him. The sword clinks off (`VL.DRAGON_SWORD_NOTE`);
+  breathes a ball at him. The sword clinks off, saying nothing (W35);
   its own ball bounced home dazes it (`onFire`), and then
-  `TUNING.dragonRoundLife` of sword damage ends the round. Three rounds, each
-  quicker (`dragonSpeedUp`); the third ends in a puff of smoke (`defeated`,
-  then gone). Nothing about it blinks (its hp is refilled and `hurt` cleared
-  on every hit; a hit shakes it), and the flash guard samples the fight.
+  `TUNING.dragonRoundLife` of **metal** sword damage ends the round (a sword
+  in `TUNING.toughSwords`; `onHit` gets the weapon; wood and throws
+  clink). Three rounds, each quicker (`dragonSpeedUp`); the third ends in
+  a puff of smoke (`defeated`, then gone). Nothing about it blinks (its hp
+  is refilled and `hurt` cleared on every hit; a hit shakes it), and the
+  flash guard samples the fight. A hit that counts (W35) tints it pale pink
+  for `dragonHitTintSeconds` (0.4 s, sprite `enemy-dragon-hit`, one change
+  each way, not a saturated red) and plays `dragonOuch` (event `dragonHurt`).
+- **Trickier round by round (W35, Matthew's decision):** `VL.dragonRound(d)`
+  is 1, 2 or 3. Round one is as before (`prowl`: pace after him, one ball).
+  Rounds two and three fly between `dragonPerches` (x 64, 128, 192, the one
+  nearest him that it isn't on) at `dragonPerchSpeed`, rest `dragonPerchRest`,
+  draw breath, and stay `dragonPerchLinger` after breathing (mode `perch`).
+  Round two breathes a pair, the second `dragonVolleyGap` (0.55 s) after the
+  first and aimed afresh (mode `volley`). Round three draws a longer breath
+  (`dragonFanInhaleSeconds`, 1.2 s, purple glows growing either side of the
+  chest) and breathes a fan: the middle ball aimed at him and two **wild**
+  balls `dragonFanSpread` (0.45 rad) either side, purple (`fx-fire-wild-*`),
+  which no shield bounces or blocks (size `wildFire`), so they must be
+  dodged; they fly wide of a hero who stands in the middle line. Still one
+  metal hit a round, three rounds; a faint rebuilds the room, so the fight
+  starts again at round one.
 - **The hoard spills** (`onDefeat`): the `lairHoard` decor turns from a
   mound behind the Dragon into books strewn over the floor (and stays so),
   and he carries three of them home (`VL.HOARD_BOOKS`, found with
   `VL.markFound`, held up, `VL.HOARD_WORDS`). `d4Boss` therefore supplies
   `books: 3` (replan), like the Bookworm's bundle. The heart waits where the
   Dragon began; W30's boss gate and the warp work as in every dungeon.
-- **Locks:** `dragonsLairEntered` (place lair 0,0), `mirrorShield` (replan:
-  behind door A), `d4Boss` (replan: behind the boss door; the hoard's books),
-  and one per key and door: `d4KeyA`, `d4DoorA`, `d4KeyB`, `d4DoorB`,
-  `d4BossKey`, `d4BossDoor` (any sword, as the door's `wants` says).
+- **The guards (W35):** two thorny spitters (`tough`, `guard`, at
+  `VL.LAIR_GUARDS.at`) stand by the cave mouth on overworld -1,-5 until the
+  metal sword beats them, which sets the flag `lairGuards` for good. The
+  cave door (`lairDoor`, `shutUntil: 'lairGuards'`, a `door` option) is shut
+  until then and says `VL.LAIR_GUARD_WORDS`; a wood sword clinks with W30's
+  "Clink!" word, so he learns what the Dragon needs before its gate shuts.
+  Only guards whose hp ran out count, so a room the playthrough cleared never
+  opens it. They stand out of line with the doorstep. A save that beat the
+  Dragon first gets the flag on its next visit. The playthrough forges the
+  metal sword again before the climb (the shockwave took it).
+- **Locks:** `lairGuards` (flag: highlands and the metal sword),
+  `dragonsLairEntered` (place lair 0,0; replan: behind the guards),
+  `mirrorShield` (replan: behind door A), `d4Boss` (replan: behind the boss
+  door, the metal sword; the hoard's books), and one per key and door:
+  `d4KeyA`, `d4DoorA`, `d4KeyB`, `d4DoorB`, `d4BossKey`, `d4BossDoor` (the
+  metal sword, as the door's `wants` says, checked on every entry: an old
+  save with the door open and only a wood sword is stopped at it).
 
 ## The finale (W20)
 
@@ -2214,6 +2266,24 @@ with them home (`finale:booksHome`, `finale:home:<id>`). W33's tests: `tests/w33
   (`dungeonBoss`), `finaleForgiven` (`libraryChime`), and the credits'
   `endingTune`.
 
+## Boss hints (W35)
+
+How to beat a boss is never told up front: no sign, no note on a wrong hit, no
+librarian nudge says it (the clink is the only answer; W30's "Clink!" popup
+for the thorny metal-only spitters stays, since they aren't bosses).
+`systems/boss-hints.js` holds `VL.BOSS_HINTS` (`scriptorium`, `hollowOak`,
+`lighthouse`, `lair`, `marionettes`): where the boss is fought (`at`), when
+it's beaten, and Gran Ottie's words. A faint while `at` holds sets the flag
+`bossFainted:<id>` (`VL.bossFaintFlag`); from then until the boss is beaten
+her first entry is that hint (`VL.bossHintDue`). Her entries come from
+`VL.bossHintEntries(ids)`: the dungeons' in `regions/townsfolk.js`, the
+marionettes' in `dungeons/workshop.js` ahead of the town's Dragon talk. The
+librarian's nudge before the first boss points to her; the Dragon's own hint
+is in A Child's Book of Dragons.
+Saved keys: `bossFainted:<id>` and the Lair's `lairGuards`, both in the
+free `flags` map; fixture `tests/fixtures/save-v1-W35.json` (played to the
+Dragon with the sword forged again and the guards beaten, then a faint to it).
+
 ## Dungeons (W13)
 
 `systems/dungeon.js` is the framework the four dungeons (W14, W15, W18, W19)
@@ -2287,10 +2357,17 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   on the two sides of one edge, and one lock per door id (the game spends a
   key per id, the solver one per lock).
   `VL.openLockedDoor(state, door)` returns `'opened'`, `'open'` or `'locked'`.
-  A door with `wants: { items: [...], note }` also stays shut, saying `note`,
-  until the hero holds one of `items` (the Lighthouse's boss door wants a
-  sword, so a swordless kid is never shut in with the Lens Crab); the lint
-  checks its lock needs the same items.
+  A door with `wants: { items: [...], note, has, hasNote }` also stays shut,
+  saying `note`, until the hero holds one of `items`, and saying `hasNote`
+  until he carries at least `has` of each counted thing (`{ brokenShells: 12 }`).
+  The Lighthouse's boss door wants a sword and `TUNING.lensCrabShellsAtDoor`
+  broken shells, so a kid is never shut in with the Lens Crab unable to win;
+  the Lair's wants the metal sword. The want is checked **on every entry
+  while the boss is unbeaten**, opened before or not (`VL.doorWantsBar`): an
+  opened door comes back shut on a visit he is short, and shuts again (never
+  on him) if he spends what it wants in the room below. Once he is through,
+  nothing changes; once the boss is beaten it is always open. The lint
+  checks its lock needs the same items and counted things.
 - **Push blocks:** `{ type: 'pushBlock', x, y, once = true }` slides a tile
   after the hero leans on it for `TUNING.blockPushSeconds`, once per visit
   (Zelda's rule; `once: false` for a free block), never onto a wall, another
@@ -2384,7 +2461,8 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   its own `{ bossBeaten: true }` shutter is refused at load: delete it.
   Since he is shut in until the boss falls or he faints, a boss must be
   able to make him faint, or the boss door's lock should need the weapon
-  (the sample's boss *lock* needs a sword, its door does not).
+  (the sample's boss *lock* needs a sword, its door does not); a boss door
+  with `wants` keeps him out until he has it, on every entry.
   `VL.bossBeaten(state, id)`.
 - **Entering and leaving:** ordinary `door` entities link the overworld and
   the dungeon both ways (fill W8's door spot from the dungeon's file). The

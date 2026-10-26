@@ -64,13 +64,15 @@
   VL.defineEntity('lockedDoor', {
     prepare(state, copy) {
       const dungeon = VL.dungeonOfArea(state.player.area);
-      copy.open = Boolean(dungeon && VL.dungeonState(state, dungeon.id).doors[copy.id]);
+      // Opened for good, unless a `wants` door's boss is unbeaten and he is
+      // short of what it wants: checked on every entry (systems/dungeon.js).
+      copy.open = Boolean(dungeon && VL.dungeonState(state, dungeon.id).doors[copy.id]) && !VL.doorWantsBar(state, copy, dungeon.id);
       copy.solid = !copy.open;
     },
-    // For the playthrough's pathing: open once its flag is saved.
+    // For the playthrough's pathing: open once its flag is saved (and its wants met).
     passable(state, entity, area) {
       const dungeon = VL.dungeonOfArea(area);
-      return Boolean(dungeon && VL.dungeonState(state, dungeon.id).doors[entity.id]);
+      return Boolean(dungeon && VL.dungeonState(state, dungeon.id).doors[entity.id]) && !VL.doorWantsBar(state, entity, dungeon.id);
     },
     onInteract(state, copy) {
       if (copy.open) return;

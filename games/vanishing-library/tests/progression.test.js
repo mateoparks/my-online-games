@@ -142,7 +142,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 141, 'W17 2, W18 7, W30 twelve late books, the moss key and door C, W19 6 keys and doors, and W34 the Woods\' paths and the island\'s crabs');
+  assert.equal(Object.keys(VL.LOCKS).length, 141, 'W17 2, W18 7 (W35: 6, no heaps), W30 twelve late books, the moss key and door C, W19 6 keys and doors, W34 the Woods\' paths and the island\'s crabs, and W35 the Lair guards');
 });
 
 test('implemented place locks name screens that exist', () => {

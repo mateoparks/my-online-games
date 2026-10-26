@@ -248,7 +248,7 @@ test('a sword bounces off its paper armour; three thrown pots beat it, and it is
   VL.hitEnemy(t.game, worm, 2, { x: worm.cx, y: worm.cy + 20 });
   assert.equal(worm.hits, 0, 'a sword does not count');
   assert.equal(worm.hp, VL.ENEMIES.bookworm.hp);
-  assert.equal(t.game.dungeonNote.text, 'Too tough for a sword! Something heavy, perhaps?', 'says what does work, too');
+  assert.equal(t.game.dungeonNote, null, 'no hint (W35: Gran Ottie gives it after a faint)');
   for (let i = 0; i < VL.TUNING.bookwormHits; i += 1) {
     t.until(() => worm.mode === 'up', 8);
     worm.struckBy = 'throw';
@@ -402,8 +402,6 @@ test('every word the Scriptorium says fits its box and its font', () => {
     const book = VL.BOOKS[id];
     assert.deepEqual(plain(VL.ART.missingGlyphs(`${book.title} ${book.blurb}`)), [], id);
   }
-  assert.deepEqual(plain(VL.ART.missingGlyphs('Too tough for a sword! Something heavy, perhaps?', 'small')), []);
-  assert.ok(VL.ART.measureText('Too tough for a sword! Something heavy, perhaps?', 'small') <= VL.TUNING.width - 8);
 });
 
 test('render smoke: every Scriptorium room draws, and the Bookworm in each of its moods', () => {

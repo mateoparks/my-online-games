@@ -1,5 +1,6 @@
-// { type: 'slime', x, y }: a field slime. It sits and wobbles, then hops:
-// towards a hero who comes near, anywhere otherwise.
+// { type: 'slime', x, y, tough? }: a field slime. It sits and wobbles, then
+// hops: towards a hero who comes near, anywhere otherwise. A tough one (only
+// the metal sword hurts it) wears woody thorns, as a tough spitter does.
 (() => {
   VL.tune({ enemySlime: { hp: 2, damage: 1, hopSpeed: 31, hopSeconds: 0.45, rest: 0.7, sense: 80 } });
   const T = () => VL.TUNING.enemySlime;
@@ -14,6 +15,16 @@
     colors,
     rows: ['...ssssss...', '.sLLsssssss.', 'ssssesssesss', 'ssssssssssss', 'sdssssssssds', '.dddddddddd.'],
   });
+
+  // Thorns poking out of its back, drawn under the body: [x, height] from its top-left.
+  const THORNS = [[1, 3], [4, 4], [7, 4], [10, 3]];
+  function thorns(ctx, x, y) {
+    for (const [dx, h] of THORNS) VL.ART.rect(ctx, 'outline', x + dx - 1, y - h + 1, 3, h + 1);
+    for (const [dx, h] of THORNS) {
+      VL.ART.rect(ctx, 'bark', x + dx, y - h + 3, 1, h - 1);
+      VL.ART.rect(ctx, 'woodLight', x + dx, y - h + 2, 1, 1);
+    }
+  }
 
   VL.defineEnemy('slime', {
     tuning: 'enemySlime',
@@ -45,14 +56,17 @@
     },
     draw(ctx, slime, cx, cy, t) {
       VL.ART.drawShadow(ctx, cx, cy + 5, 12);
+      let top = cy - 4;
+      let sprite = 'enemy-slime';
       if (slime.mode === 'hop') {
         const k = 1 - VL.clamp(slime.timer / T().hopSeconds, 0, 1);
-        VL.ART.drawSprite(ctx, 'enemy-slime', cx - 6, cy - 6 - Math.round(Math.sin(k * Math.PI) * 5));
+        top = cy - 6 - Math.round(Math.sin(k * Math.PI) * 5);
       } else if (Math.floor(t * 3) % 2) {
-        VL.ART.drawSprite(ctx, 'enemy-slime-squash', cx - 6, cy - 2);
-      } else {
-        VL.ART.drawSprite(ctx, 'enemy-slime', cx - 6, cy - 4);
+        top = cy - 2;
+        sprite = 'enemy-slime-squash';
       }
+      if (slime.tough) thorns(ctx, cx - 6, top);
+      VL.ART.drawSprite(ctx, sprite, cx - 6, top);
     },
   });
 })();

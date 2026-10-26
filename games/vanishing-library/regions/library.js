@@ -73,8 +73,8 @@
   titled('bookDragons', 'A Child\'s Book of Dragons', 'berry', 'reading-dragon', [
     'I read this to my wife when we were young. She never did like the ending.',
     'Dragons breathe fire, but here\'s a funny thing: they can\'t stand their own flames! Bounce them back, and whoosh!',
-    'Something shiny might do the trick. A mirror, perhaps?',
-  ], popupOnRead('dragonsRead', { title: 'A Child\'s Book of Dragons', text: 'Dragons can\'t stand their own fire. Something shiny might bounce it back.' }));
+    'Something shiny might do the trick. A mirror, perhaps? And while it\'s dazed, only good strong metal will scratch its scales.',
+  ], popupOnRead('dragonsRead', { title: 'A Child\'s Book of Dragons', text: 'Dragons can\'t stand their own fire. Something shiny might bounce it back. Only metal can hurt one.' }));
   titled('bookChickenAlmanac', 'The Chicken Keeper\'s Almanac', 'goldLight', 'reading-chicken', [
     'Oh, I love this one! Chickens are much stronger than they look.',
     'It says a good chicken has been known to carry a person clear across a gap! Stand next to one and press F.',
@@ -116,18 +116,18 @@
     scriptoriumKey: [{ say: 'Folk have been hiding books to keep them safe. Try the old trunk by the puppet stage in the square.' }],
     scriptoriumEntered: [{ say: 'That key opens the Old Scriptorium, just north of the library. Go and see what the scribes left behind!' }],
     liftingGloves: [{ say: 'The Scriptorium is full of heavy pots and stones. Perhaps the scribes kept something in there to help with the lifting.' }],
-    d1Boss: [{ say: 'Something has been chewing through the Scriptorium\'s shelves. A pot or two thrown its way might teach it some manners!' }],
+    d1Boss: [{ say: 'Something has been chewing through the Scriptorium\'s shelves. If it gets the better of you, Gran Ottie by the well knows all the old stories.' }],
     woodsMapCopy: [{ say: 'Nobody gets through the Whispering Woods without a map. There\'s a mural of the Woods in the Scriptorium: with paper from the mill and ink from berries, you could copy it.' }],
     hollowOakEntered: [{ say: 'Follow your copied map through the Whispering Woods. They say the Hollow Oak stands right at its heart.' }],
     grapplingRope: [{ say: 'The Hollow Oak is full of gaps and pits. Look for something in there that can pull you across.' }],
-    d2Boss: [{ say: 'Something with a hard shell guards the Hollow Oak. Hook its plates, then strike!' }],
+    d2Boss: [{ say: 'Something with a hard shell guards the top of the Hollow Oak. Be careful, {name}!' }],
     shockwave: [{ say: 'You beat the beast in the Hollow Oak? Well done, {name}! Funny... the shelves have been rattling all day.' }],
     raft: [{ say: 'You\'ll want to get out on the water. Nell in the harbour knows boats: take her your rope and some wood, and she\'ll lash you a raft.' }],
     lakeIsland: [{ say: 'A raft needs an oar. Buy one at the shop or make your own, and the island in the lake isn\'t far at all.' }],
     shipwreck: [{ say: 'There\'s an old wreck off the beach, past the tide pools. Who knows what washed up inside it?' }],
     lighthouseEntered: [{ say: 'That glowing stone you carry... the old Lighthouse on the cliffs is pitch dark inside. Perhaps it\'s time for a visit.' }],
     slingshot: [{ say: 'The Lighthouse has switches far out of reach. Look high and low in there for a way to hit them.' }],
-    d3Boss: [{ say: 'A great crab has taken the Lighthouse lens for its shell! Aim for its eyes, {name}.' }],
+    d3Boss: [{ say: 'A great crab has taken the Lighthouse lens for its shell! Mind its pincers, {name}.' }],
     climbersAlmanac: [
       { when: (state) => !VL.hasItem(state, 'shellPurse'), say: 'Miss Quill charges forty shells to bind a book, and your purse only holds fifteen! Bring me more books, {name}: I have a bigger purse put by for you.' },
       { say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow all over: by the library, by the lake, even into a chicken coop. Little Pip in the harbour might know something!' },
@@ -141,7 +141,10 @@
       { when: not(read('bookDragons')), say: 'If you find A Child\'s Book of Dragons, bring it to me. I think it was hidden somewhere up in the highlands.' },
       { say: 'Remember the dragon book? Dragons can\'t stand their own fire. Something shiny might bounce it back.' },
     ],
-    d4Boss: [{ say: 'Bounce the dragon\'s fire right back at it, then use your sword!' }],
+    d4Boss: [
+      { when: not(read('bookDragons')), say: 'The Dragon itself, {name}! I wish we had a book about dragons. Keep an eye out for one.' },
+      { say: 'Remember the dragon book? Bounce its fire right back at it, and strike with good strong metal!' },
+    ],
     trapdoorOpen: [{ say: 'Something strange is going on in the square, {name}. My wife hasn\'t been home all day.' }],
     marionettes: [{ say: 'The trapdoor in the square is open, and my wife is nowhere to be found. Whatever is down there, {name}, I\'m coming with you.' }],
     ending: [{ say: 'My wife is still down under the stage, {name}. Let\'s go back down and hear what she has to say.' }],

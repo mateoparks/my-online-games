@@ -15,7 +15,7 @@
 (() => {
   const { rect } = VL.ART;
   const DUNGEON = 'lair';
-  const SWORD_WORDS = 'A great rumbling snore comes from up there! Better bring a sword.';
+  const SWORD_WORDS = 'A great snore comes from up there! Better bring a metal sword.';
 
   // ---------- tiles ----------
 
@@ -35,8 +35,38 @@
     ...VL.DUNGEON_TILES,
     '#': { ...VL.DUNGEON_TILES['#'], art: 'lairWall' },
     _: { ...VL.DUNGEON_TILES._, art: 'lairFloor' },
-    // Lava: a gap like a pit (fire crosses it; no chicken flies it).
-    '~': { solid: true, pit: true, lava: true, art: 'lairLava' },
+    // Lava: a gap like a pit (fire crosses it; no chicken flies it, no block
+    // or enemy goes in). The hero may walk on it, and each step in hurts.
+    '~': { solid: true, pit: true, lava: true, hurts: true, art: 'lairLava' },
+  });
+
+  VL.tune({ lavaDamage: 1 });
+  VL.defineHeroFooting('lava', (state, info) => Boolean(info.lava));
+  VL.addFaintLine('lava', 'The lava was much too hot to walk on!');
+  // Each step onto a lava tile burns once; standing still on it is safe.
+  // In the air he is never burned: a chicken flight, or the rope's pull to a
+  // post (which never lands him on lava, since lava is solid to the hook).
+  VL.defineSystem('lavaBurns', {
+    order: 12,
+    update(state) {
+      const player = state.player;
+      if (state.hp <= 0 || player.flight || player.rope?.phase === 'pull' || state.transition) return;
+      const { tx, ty } = VL.heroTile(state);
+      const room = state.room;
+      const here = `${room.area}:${room.screen}:${tx},${ty}`;
+      if (!VL.tileInfo(room.area, VL.tileAt(room.area, room.screen, tx, ty, room)).lava) {
+        player.onLava = null;
+        return;
+      }
+      if (player.onLava === here) return;
+      player.onLava = here;
+      state.hp = Math.max(0, state.hp - VL.TUNING.lavaDamage);
+      state.events.push({ type: 'heroHurt', cause: 'lava', damage: VL.TUNING.lavaDamage });
+      if (state.hp <= 0) {
+        player.knockback = null;
+        VL.faint(state, 'lava');
+      }
+    },
   });
 
   VL.ART.defineTileStyle('lairWall', {
@@ -153,7 +183,6 @@
         spout('d4SpoutHall', 11, 0, 'down'),
         { type: 'shutter', id: 'd4BarsHall', x: 7, y: 0, open: { switch: 'd4SpoutHall' } },
         { type: 'lockedDoor', id: 'd4DoorA', kind: 'small', x: 0, y: 5, lock: 'd4DoorA' },
-        { type: 'sign', x: 4, y: 1, title: 'Carved in the stone', text: 'Only its own fire can hurt a dragon. A mirror sends fire right back where it came from.' },
         { type: 'bat', x: 4, y: 7 },
       ],
     },
@@ -194,9 +223,8 @@
         '#######_########',
       ],
       entities: [
-        { type: 'lockedDoor', id: 'd4BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd4BossDoor', oneWay: true, wants: { items: ['woodSword', 'metalSword'], note: SWORD_WORDS } },
+        { type: 'lockedDoor', id: 'd4BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd4BossDoor', oneWay: true, wants: { items: ['metalSword'], note: SWORD_WORDS } },
         { type: 'lockedDoor', id: 'd4DoorB', kind: 'small', x: 15, y: 5, lock: 'd4DoorB' },
-        { type: 'sign', x: 5, y: 1, title: 'A child\'s drawing', text: 'A dragon with a book in its mouth, and a little hero holding up a shiny shield. The dragon looks very surprised.' },
         { type: 'bat', x: 10, y: 4 },
         { type: 'bat', x: 4, y: 6 },
       ],
@@ -238,8 +266,8 @@
         '____________~~~#',
         '#___________~~~#',
         '#___________~~~#',
-        '#________#_#___#',
-        '#________#_#___#',
+        '#________#_#####',
+        '#________#_#####',
         '################',
       ],
       entities: [
@@ -283,7 +311,7 @@
     const box = VL.DUNGEON_HUD;
     return top < box.y + box.h && top + h > box.y && left + w > box.x ? box.x - w : left;
   };
-  VL.defineDecor('lairHoard', (ctx, x, y, t, decor) => {
+  VL.defineDecor('lairHoard', (ctx, x, y, _t, decor) => {
     const spilled = decor.spilled;
     const count = spilled ? 46 : 26;
     for (let i = 0; i < count; i += 1) {
@@ -318,7 +346,6 @@
         rect(ctx, 'paperWhite', bx + shift, by + 2, 7, 1);
       }
     }
-    VL.ART.drawSparkle(ctx, x + 60, y + 24, t * 0.5);
   });
 
   const hoardDecor = (state) => state.room.entities.find((e) => e.type === 'decor' && e.art === 'lairHoard');
@@ -341,9 +368,37 @@
 
   // ---------- the way in ----------
 
+  // Two thorny guards hold the cave mouth until the metal sword beats them,
+  // for good, so he learns what the Dragon needs before its gate shuts.
+  VL.LAIR_GUARDS = { screen: '-1,-5', at: [[6, 6], [8, 6]] };
+  VL.LAIR_GUARD_WORDS = 'Two thorny guards stand in the cave mouth, and they won\'t let you by!';
   VL.fillSpot('lairDoor', {
     type: 'door',
+    shutUntil: 'lairGuards',
+    locked: VL.LAIR_GUARD_WORDS,
     to: { area: DUNGEON, screen: '0,0', tx: 7, ty: 9, facing: 'up' },
+  });
+  const atLairMouth = (room) => room.area === 'overworld' && room.screen === VL.LAIR_GUARDS.screen;
+  VL.onRoomBuilt((state) => {
+    const room = state.room;
+    if (!atLairMouth(room)) return;
+    // A save from before the guards that already beat the Dragon finds the way clear.
+    if (!state.flags.lairGuards && VL.bossBeaten(state, DUNGEON)) state.flags.lairGuards = true;
+    if (state.flags.lairGuards) return;
+    room.lairGuards = VL.LAIR_GUARDS.at.map(([x, y]) => Object.assign(VL.spawnEnemy(state, 'spitter', x, y), { tough: true, guard: true }));
+  });
+  // Only guards really beaten (hp run out) count, so a room the playthrough
+  // cleared of enemies never opens the door.
+  VL.defineSystem('lairGuards', {
+    order: 32,
+    update(state) {
+      const room = state.room;
+      if (!atLairMouth(room) || state.flags.lairGuards || !room.lairGuards?.every((g) => g.hp <= 0)) return;
+      state.flags.lairGuards = true;
+      VL.earned(state);
+      const door = room.entities.find((e) => e.type === 'door' && e.shutUntil === 'lairGuards');
+      if (door) door.solid = false;
+    },
   });
 
   VL.LAIR_SWORD_WORDS = SWORD_WORDS;
@@ -381,9 +436,15 @@
   const door = (id) => (state) => Boolean(state.dungeons[DUNGEON]?.doors[id]);
   const found = (id) => (state) => VL.spotFound(state, id);
   const keys = `smallKey:${DUNGEON}`;
-  const anySword = ['woodSword', 'metalSword'];
 
-  VL.defineLock('dragonsLairEntered', { ...VL.LOCKS.dragonsLairEntered, place: { area: DUNGEON, screen: '0,0' }, reached: (state) => Boolean(state.visited[`${DUNGEON}:0,0`]) });
+  VL.defineLock('lairGuards', { type: 'flag', needs: ['highlands', 'metalSword'], doc, reached: (state) => Boolean(state.flags.lairGuards) });
+  VL.defineLock('dragonsLairEntered', {
+    ...VL.LOCKS.dragonsLairEntered,
+    needs: ['highlands', 'lairGuards'],
+    replan: 'thorny guards that only the metal sword beats hold the cave mouth (W35)',
+    place: { area: DUNGEON, screen: '0,0' },
+    reached: (state) => Boolean(state.visited[`${DUNGEON}:0,0`]),
+  });
   VL.defineLock('d4KeyA', { type: 'item', needs: ['dragonsLairEntered'], supplies: { [keys]: 1 }, doc, reached: found('d4KeyA') });
   VL.defineLock('d4DoorA', { needs: ['dragonsLairEntered'], consumes: { [keys]: 1 }, doc, reached: door('d4DoorA') });
   VL.defineLock('mirrorShield', {
@@ -396,12 +457,12 @@
   VL.defineLock('d4KeyB', { type: 'item', needs: ['mirrorShield'], supplies: { [keys]: 1 }, doc, reached: found('d4KeyB') });
   VL.defineLock('d4DoorB', { needs: ['mirrorShield'], consumes: { [keys]: 1 }, doc, reached: door('d4DoorB') });
   VL.defineLock('d4BossKey', { type: 'item', needs: ['d4DoorB'], gives: [`bossKey:${DUNGEON}`], doc, reached: found('d4BossKey') });
-  VL.defineLock('d4BossDoor', { needs: ['mirrorShield', `bossKey:${DUNGEON}`, anySword], doc, reached: door('d4BossDoor') });
+  VL.defineLock('d4BossDoor', { needs: ['mirrorShield', `bossKey:${DUNGEON}`, 'metalSword'], doc, reached: door('d4BossDoor') });
   VL.defineLock('d4Boss', {
     ...VL.LOCKS.d4Boss,
-    needs: ['dragonsLairEntered', 'mirrorShield', anySword, 'd4BossDoor'],
+    needs: ['dragonsLairEntered', 'mirrorShield', 'metalSword', 'd4BossDoor'],
     supplies: { books: VL.HOARD_BOOKS.length },
-    replan: 'the boss room lies behind the boss door, and its hoard spills a bundle of books (as the Bookworm\'s)',
+    replan: 'the boss room lies behind the boss door, its scales take only the metal sword (W35), and its hoard spills a bundle of books (as the Bookworm\'s)',
     reached: (state) => VL.bossBeaten(state, DUNGEON),
   });
 })();
