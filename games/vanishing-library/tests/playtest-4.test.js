@@ -174,3 +174,34 @@ test('a beaten enemy drops a heart about 70% less often than before (0.2 -> 0.06
   for (let i = 0; i < 1000; i += 1) counts[VL.enemyDrop((i + 0.5) / 1000)] += 1;
   assert.deepEqual(counts, { heart: 60, shell: 200, null: 740 });
 });
+
+// ---------- a dungeon map's popup, in every dungeon ----------
+
+test('each dungeon\'s map brings its own "A dungeon map!" popup, so it shows in every dungeon, once each', () => {
+  const { VL } = loadGame();
+  const maps = [];
+  for (const dungeon of Object.values(VL.DUNGEONS)) {
+    for (const [screen, def] of Object.entries(VL.AREAS[dungeon.area].screens)) {
+      for (const e of def.entities || []) if (e.type === 'dungeonMap') maps.push({ dungeon: dungeon.id, screen, ...e });
+    }
+  }
+  assert.deepEqual(maps.map((m) => m.dungeon).sort(), ['hollowOak', 'lair', 'lighthouse', 'scriptorium']);
+  const state = VL.newGame();
+  state.popups.seen.controls = true;
+  const shown = [];
+  for (const map of maps) {
+    VL.place(state, { area: VL.DUNGEONS[map.dungeon].area, screen: map.screen, tx: map.x, ty: map.y === 0 ? 1 : map.y - 1, facing: 'down' });
+    state.popups.queue.length = 0;
+    const entity = state.room.entities.find((e) => e.type === 'dungeonMap');
+    VL.ENTITIES.dungeonMap.onStand(state, entity);
+    assert.ok(VL.dungeonState(state, map.dungeon).map, `${map.dungeon}'s map is taken`);
+    const id = state.popups.queue.find((p) => /dungeonMap/.test(p));
+    assert.ok(id, `${map.dungeon} pops up its map`);
+    assert.equal(VL.POPUPS[id].title, 'A dungeon map!');
+    shown.push(id);
+    state.popups.seen[id] = true;
+  }
+  assert.equal(new Set(shown).size, 4, 'four popups, one per dungeon');
+  // An old save that saw the first one (id dungeonMap) still sees the others.
+  assert.equal(VL.DUNGEON_MAP_POPUPS.scriptorium, 'dungeonMap');
+});

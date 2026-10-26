@@ -2,17 +2,21 @@
 // the map screen (M, scenes/dungeon-map.js) shows every room and marks the
 // boss's; without it only the rooms visited so far.
 (() => {
-  VL.definePopup('dungeonMap', {
+  // One popup per dungeon (W34: each dungeon's map says it again). The
+  // first keeps the old id, so a save that saw it still sees the others.
+  const MAP_POPUP = {
     title: 'A dungeon map!',
     text: 'Press M to see every room of this dungeon, and where its guardian waits.',
-  });
+  };
+  VL.DUNGEON_MAP_POPUPS = { scriptorium: 'dungeonMap', hollowOak: 'dungeonMapHollowOak', lighthouse: 'dungeonMapLighthouse', lair: 'dungeonMapLair' };
+  for (const id of Object.values(VL.DUNGEON_MAP_POPUPS)) VL.definePopup(id, MAP_POPUP);
 
   VL.defineEntity('dungeonMap', {
     prepare: (state, copy) => !VL.spotFound(state, copy.id),
     onStand(state, map) {
       VL.dungeonPickup(state, map, (s, dungeonId) => {
         VL.giveDungeonMap(s, dungeonId);
-        VL.showPopup(s, 'dungeonMap');
+        VL.showPopup(s, VL.DUNGEON_MAP_POPUPS[dungeonId] || 'dungeonMap');
       });
     },
     draw(ctx, map, x, y, t) {
