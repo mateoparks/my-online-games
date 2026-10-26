@@ -297,8 +297,19 @@
       const all = room.entities.filter((e) => e.type === 'marionette');
       if (!all.length) return;
       const swing = state.player.swing;
+      // A swing that clonked wood and cut nothing says what to do, once a
+      // visit, when it is over (a string may be reached later in the swing).
+      const last = room.marionetteSwing;
+      if (last && last.swing !== swing) {
+        room.marionetteSwing = null;
+        if (!last.cut && !room.marionetteNoted && all.some((m) => m.clonkedBy === last.swing)) {
+          room.marionetteNoted = true;
+          VL.showMessage(state, { text: VL.MARIONETTE_NOTE });
+        }
+      }
       if (swing && VL.TUNING.swordDamage[swing.item]) {
         const box = VL.swordBox(state.player, swing.facing);
+        if (!room.marionetteSwing) room.marionetteSwing = { swing, cut: false };
         let cut = false;
         for (const m of VL.puppetsUp(state)) {
           if (m.stringSwing === swing) continue;
@@ -318,10 +329,7 @@
             state.events.push({ type: 'puppetDown', puppet: m.puppet });
           }
         }
-        if (!cut && !room.marionetteNoted && all.some((m) => m.clonkedBy === swing)) {
-          room.marionetteNoted = true;
-          VL.showMessage(state, { text: VL.MARIONETTE_NOTE });
-        }
+        if (cut) room.marionetteSwing.cut = true;
       }
       // All three down (counted against the map, so a room the playthrough
       // cleared of enemies never counts as won).
