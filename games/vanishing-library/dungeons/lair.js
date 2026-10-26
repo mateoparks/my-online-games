@@ -309,7 +309,7 @@
     const box = VL.DUNGEON_HUD;
     return top < box.y + box.h && top + h > box.y && left + w > box.x ? box.x - w : left;
   };
-  VL.defineDecor('lairHoard', (ctx, x, y, t, decor) => {
+  VL.defineDecor('lairHoard', (ctx, x, y, _t, decor) => {
     const spilled = decor.spilled;
     const count = spilled ? 46 : 26;
     for (let i = 0; i < count; i += 1) {
@@ -344,7 +344,6 @@
         rect(ctx, 'paperWhite', bx + shift, by + 2, 7, 1);
       }
     }
-    VL.ART.drawSparkle(ctx, x + 60, y + 24, t * 0.5);
   });
 
   const hoardDecor = (state) => state.room.entities.find((e) => e.type === 'decor' && e.art === 'lairHoard');

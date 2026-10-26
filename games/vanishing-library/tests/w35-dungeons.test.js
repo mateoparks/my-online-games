@@ -511,3 +511,20 @@ test('a tough slime wears woody thorns, in every pose; a plain one doesn\'t', ()
     assert.ok(!painted({ ...pose }, pose.t).includes(bark));
   }
 });
+
+// ---------- 8. no stray twinkle in the hoard ----------
+
+test('the Dragon\'s hoard room twinkles nowhere: the old sparkle by the book pile (nothing was ever there) is gone', () => {
+  const { VL, state } = inBossRoom('lair');
+  hold(VL, state, [], 0.1);
+  const sparkles = [];
+  const real = VL.ART.drawSparkle;
+  VL.ART.drawSparkle = (ctx, x, y) => sparkles.push([x, y]);
+  try {
+    const ctx = new Proxy({}, { get: () => () => ({ addColorStop() {} }), set: () => true });
+    for (const t of [0, 0.7, 1.9, 3.3]) VL.drawScreen(ctx, 'lair', '0,-3', 0, 0, t, state.room);
+  } finally {
+    VL.ART.drawSparkle = real;
+  }
+  assert.deepEqual(sparkles, []);
+});
