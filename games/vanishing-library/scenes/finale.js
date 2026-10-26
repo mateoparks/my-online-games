@@ -28,7 +28,7 @@
   // of whoever is in the picture), `fill` (how full the shelves get), `party`
   // (the town is there), `heroBook`, `cheer` (everyone hops).
   VL.ENDING_BEATS = [
-    { say: 'Mrs. Fenwick led the way back up the tunnel, and the whole town helped carry the Dragon\'s hoard home.', at: 'bottom', fill: 0.5 },
+    { say: 'Mrs. Fenwick led the way up the mountain, and the whole town helped carry the Dragon\'s hoard home.', at: 'bottom', fill: 0.5 },
     { say: 'One by one, the books went back on the shelves. And this time, they stayed.', at: 'bottom', fill: 1 },
     { speaker: 'Gran Ottie', say: 'Three cheers for {name}, who brought our books home!', at: 'top', party: true },
     { speaker: 'Everyone', say: 'Hip, hip, hooray! Hip, hip, hooray! Hip, hip, HOORAY!', at: 'top', party: true, cheer: true },

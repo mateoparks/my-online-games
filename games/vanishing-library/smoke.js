@@ -2589,12 +2589,14 @@ async function main() {
       await sleep(300);
       await tapKey('Space');
       if (!(await waitFor('g.flags.marionettes', 1500))) w20Problems.push('the last string cut did not win the fight');
-      await sleep(900);
-      await shot('w20-puppets-down');
+      // Moving again, so the last one falls into its heap before the shot.
       await evaluate('VL.ENEMIES.marionette.think = window.__marionetteThink');
+      await sleep(800);
+      await shot('w20-puppets-down');
 
       // She comes down, her last show, the apology and his forgiveness.
-      if (!(await waitFor("VL.app.sceneId === 'dialogue'", 3000))) w20Problems.push('she did not come down');
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'", 3000))) w20Problems.push('she did not speak after the fight');
+      if (!(await see("g.room.entities.some((e) => e.type === 'npc' && e.id === 'librarianWife')"))) w20Problems.push('she did not come down');
       await sleep(1200);
       await shot('w20-she-speaks');
       await pressThrough('dialogue');

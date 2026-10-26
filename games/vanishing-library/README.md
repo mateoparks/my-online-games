@@ -2091,8 +2091,9 @@ through the credits and Continue.
   he is in his library as always. Mrs. Fenwick is off her stage from the
   Dragon's fall until she is forgiven (S at the stage: "The stage is
   empty"); in the hall she works the puppets from the gallery (decor
-  `wsPuppeteer`) and, once they are down, stands on the floor (talk
-  `wifeFinale`).
+  `wsPuppeteer`) and comes down to the floor in the pause after the last one
+  falls (`VL.wifeComesDown`, beside the hero; on later visits she is there
+  already; talk `wifeFinale`).
 - **The marionettes** (`{ type: 'marionette', puppet: 'dragon' | 'hero' |
   'librarian' }`, flying, `rooted`, drawn at twice the art's size): they drift
   after the hero, wind up (a steady shake) and attack: the hero puppet lunges,

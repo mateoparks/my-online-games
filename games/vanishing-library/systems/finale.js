@@ -102,6 +102,7 @@
       if (!flag(state, 'marionettes')) return;
       state.room.finaleWait = (state.room.finaleWait || 0) + dt;
       if (state.room.finaleWait < VL.TUNING.finaleWinPause) return;
+      VL.wifeComesDown(state);
       if (!flag(state, 'finale:showAsked')) VL.conversation(state, words.showAsked, { set: 'finale:showAsked' });
       else if (!flag(state, 'finale:shown')) VL.requestScene(state, 'puppetShow', { confession: true, end: { set: 'finale:shown' } });
       else VL.conversation(state, words.forgiven, { set: 'forgiven', give: { finaleForgiven: true } });

@@ -203,6 +203,25 @@ test('all three down wins the fight, saved at once; on later visits they lie in 
   assert.ok(!drive.state.room.entities.some((e) => e.art === 'wsPuppeteer'));
 });
 
+test('she comes down from her gallery as soon as the last puppet falls, before she speaks, and never onto the hero', () => {
+  const t = hall();
+  const { VL, drive } = t;
+  for (const m of puppets(drive)) {
+    swingAt(t, m, -1);
+    m.jerk = 0;
+    swingAt(t, m, 1);
+  }
+  assert.equal(drive.state.flags.marionettes, true);
+  // He stands right where she would step down.
+  Object.assign(drive.state.player, VL.tileCenter(VL.FINALE.wifeAt.x, VL.FINALE.wifeAt.y));
+  drive.until(() => drive.app.sceneId === 'dialogue', VL.TUNING.finaleWinPause + 0.5);
+  const wives = npcs(drive, 'librarianWife');
+  assert.equal(wives.length, 1, 'on the floor as she speaks');
+  assert.ok(!drive.state.room.entities.some((e) => e.art === 'wsPuppeteer'), 'off her gallery');
+  const c = VL.tileCenter(wives[0].x, wives[0].y);
+  assert.ok(Math.abs(c.x - drive.state.player.x) >= 16, 'beside him, not on him');
+});
+
 test('a hall cleared of its puppets (as the playthrough clears enemies) never counts as won', () => {
   const t = hall();
   const { drive } = t;
@@ -453,7 +472,7 @@ test('the W20 fixture (the real finale played from the W19 save) loads with noth
   assert.ok(VL.LOCKS.ending.reached(app.game));
 });
 
-test('every finale line fits its box and the font, and says the hero\'s name, never a pronoun for them', () => {
+test('every finale line fits its box and the font, and a line about the hero names them with no he or she in it', () => {
   const { VL } = loadGame();
   const state = { name: 'Ñandú Élodïe' };
   const lines = [
@@ -468,6 +487,8 @@ test('every finale line fits its box and the font, and says the hero\'s name, ne
     const shown = VL.popupText(text, state);
     assert.deepEqual(plain(VL.ART.missingGlyphs(shown)), [], text);
     assert.ok(!VL.ART.popupLayout({ text: shown, title: 'Mrs. Fenwick' }).overflow || VL.dialoguePages(text, state).length > 1, `fits: ${text}`);
+    // A line about the hero names them; the he/she in other lines are the Fenwicks' and the dragon's.
+    if (/\{name\}|\bhero\b/i.test(text)) assert.doesNotMatch(text, /\b(he|him|his|himself|she|her|hers|herself)\b/i, `no pronoun beside the hero: ${text}`);
   }
   for (const beat of VL.ENDING_BEATS) assert.ok(!VL.ART.popupLayout({ text: VL.popupText(beat.say, state), title: beat.speaker || null }).overflow, `one page: ${beat.say}`);
   assert.ok(VL.ENDING_BEATS.some((b) => /\{name\}/.test(b.say)), 'the town thanks the hero by name');

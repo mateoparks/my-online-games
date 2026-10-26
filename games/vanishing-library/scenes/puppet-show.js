@@ -121,7 +121,7 @@
       { say: 'Her home was far over the hills, and she missed it every single day.', cast: { wife: 0.3, house: 0.75 }, move: { wife: 'shake' } },
       { say: 'She married a kind librarian. He loved his books and this town, and he would never, ever leave.', cast: { wife: 0.35, librarian: 0.65 }, move: { librarian: 'hop' } },
       { say: 'So she had a sad, silly idea. If the books were gone, perhaps he would want to leave too.', cast: { wife: 0.4, book: 0.7 } },
-      { say: 'Every night, she carried books down a secret tunnel to a sleepy old dragon, who was glad to keep them.', cast: { wife: 0.25, book: 0.5, dragon: 0.78 }, move: { book: 'run' } },
+      { say: 'Every night, she carried books up a secret tunnel to a sleepy old dragon, who was glad to keep them.', cast: { wife: 0.25, book: 0.5, dragon: 0.78 }, move: { book: 'run' } },
       { say: 'But the library only grew sadder, and so did the librarian. And so, at last, did she.', cast: { librarian: 0.4, wife: 0.65 }, move: { librarian: 'shake', wife: 'shake' } },
       { say: 'Then a brave young hero came along, and brought every book back home.', cast: { hero: 0.35, book: 0.6 }, move: { hero: 'hop' } },
       { speaker: 'Mrs. Fenwick', say: 'The end.', cast: { wife: 0.5 } },

@@ -207,7 +207,7 @@
   const CRATES = 'Crates of books, stamped LIBRARY. A few have little sooty claw marks on them.';
   const POSTCARD = 'A faded postcard: "Greetings from Little Wending, over the hills." On the back, in neat writing: "Home. One day."';
   const MAP = 'A map of the island. A line runs from this cellar all the way to the mountain, with a little dragon drawn at the end.';
-  const RUBBLE = 'Rocks have tumbled across the tunnel. Beyond them, it climbs on and on, all the way up to the Dragon\'s Lair.';
+  const RUBBLE = 'Rocks came tumbling down across the tunnel when the Dragon fell. Beyond them, it climbs on and on, all the way up to the Dragon\'s Lair.';
 
   VL.addScreens(AREA, {
     // The workshop under the stage.
@@ -302,9 +302,25 @@
     const at = VL.FINALE.librarianAt[room.screen];
     if (at) room.entities.push({ type: 'npc', id: 'librarian', talk: 'librarianFinale', x: at.x, y: at.y, facing: 'left' });
     if (room.screen !== VL.FINALE.hall) return;
-    if (state.flags.marionettes) room.entities.push({ type: 'npc', id: 'librarianWife', talk: 'wifeFinale', ...VL.FINALE.wifeAt, facing: 'down' });
+    if (state.flags.marionettes) VL.wifeComesDown(state);
     else room.entities.push({ type: 'decor', art: 'wsPuppeteer', x: 7, y: 0 });
   });
+
+  // Off her gallery and onto the hall floor (at once on a later visit, or in
+  // the pause after the last puppet falls), beside the hero, never on him.
+  VL.wifeComesDown = function wifeComesDown(state) {
+    const { room, player } = state;
+    if (room.entities.some((e) => e.type === 'npc' && e.id === 'librarianWife')) return;
+    room.entities = room.entities.filter((e) => e.art !== 'wsPuppeteer');
+    const { x, y } = VL.FINALE.wifeAt;
+    const clear = (tx) => {
+      const c = VL.tileCenter(tx, y);
+      return Math.abs(c.x - player.x) >= 16 || Math.abs(c.y - player.y) >= 16;
+    };
+    const tx = [x, x + 1, x - 1, x + 2].find(clear) ?? x - 2;
+    room.entities.push({ type: 'npc', id: 'librarianWife', talk: 'wifeFinale', x: tx, y, facing: 'down' });
+    state.events.push({ type: 'wifeComesDown' });
+  };
 
   VL.SOUND.onEvent('marionettesBeaten', 'dungeonBoss');
 
@@ -315,7 +331,7 @@
   VL.FINALE_WORDS = {
     emptyStage: 'The stage is empty, and every puppet is gone.',
     followed: [
-      [HIM, '{name}! Wait for me! I saw the trapdoor open from the library window.'],
+      [HIM, '{name}! I came down right behind you. I saw the trapdoor open from the library window.'],
       [HIM, 'Puppets... paint... and look, crates of books! Our books! But who would hide them down here?'],
       [HIM, 'Whatever is going on, we find out together. Lead the way, {name}.'],
     ],
@@ -337,7 +353,7 @@
       [HER, 'And I\'m sorry to you too, {name}. You worked so hard, and I only made it harder.'],
       [HIM, 'Oh, my dear. I never knew you missed home so much. I\'m sorry I never asked.'],
       [HIM, 'Of course I forgive you. Will you stay, and help me fill the shelves again?'],
-      [HER, 'I will. I\'ll carry every last book back up the tunnel myself. Thank you, my dear. And thank you, {name}.'],
+      [HER, 'I will. I\'ll carry every last book home from that mountain myself. Thank you, my dear. And thank you, {name}.'],
     ],
   };
 
