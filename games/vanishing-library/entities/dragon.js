@@ -4,8 +4,13 @@
 // after the hero, draws breath (its chest glows) and breathes a ball of fire
 // at him. The sword clinks off its scales; its own fire, bounced back by the
 // Mirror Shield, knocks it to the floor, dazed, and then the sword counts.
-// Three rounds, a little quicker each time; the third ends in a puff of
-// smoke (marked `defeated` before it leaves the room, README "Dungeons").
+// Three rounds, a little quicker each time, and trickier (W35): in the first
+// it paces after the hero and breathes one ball; in the second it flies
+// between perches and breathes two in a row; in the third, from its perches,
+// a fan of three, of which only the middle (orange) one bounces: the purple
+// ones beside it must be dodged. Every attack is drawn breath first. The
+// third round ends in a puff of smoke (marked `defeated` before it leaves the
+// room, README "Dungeons").
 // Nothing about it blinks: a hit shakes it instead (the flash guard, W18),
 // and a hit that counts tints it a pale hot pink for a moment.
 (() => {
@@ -23,6 +28,18 @@
     dragonRecoverSeconds: 0.8,
     dragonDyingSeconds: 1.6,
     dragonHitTintSeconds: 0.4,
+    // Rounds two and three: where it perches (x, in pixels), how fast it
+    // flies between them, how long it rests on one before drawing breath.
+    dragonPerches: [64, 128, 192],
+    dragonPerchSpeed: 70,
+    dragonPerchRest: 0.5,
+    // After breathing it stays on its perch this long, watching its fire go.
+    dragonPerchLinger: 0.8,
+    // Round two: the second ball of the pair follows this long after the first.
+    dragonVolleyGap: 0.55,
+    // Round three: a longer breath before the fan, and the fan's angle either side.
+    dragonFanInhaleSeconds: 1.2,
+    dragonFanSpread: 0.45,
   });
   const T = VL.TUNING;
   VL.DRAGON_WORDS = { beaten: 'The Dragon is beaten!' };
@@ -139,7 +156,26 @@
   }
 
   const fierce = (dragon) => T.dragonSpeedUp ** (T.dragonRounds - dragon.rounds);
-  const awake = (dragon) => ['prowl', 'inhale'].includes(dragon.mode);
+  // 1, 2 or 3: which round of the fight this is.
+  VL.dragonRound = (dragon) => T.dragonRounds - dragon.rounds + 1;
+  const awake = (dragon) => ['prowl', 'perch', 'inhale', 'volley'].includes(dragon.mode);
+  const moving = (dragon) => (VL.dragonRound(dragon) >= 2 ? 'perch' : 'prowl');
+
+  function breathe(state, dragon, angle = 0, wild = false) {
+    const mouth = { x: dragon.cx, y: dragon.cy - 2 };
+    const hero = VL.heroCentre(state);
+    const aim = Math.atan2(hero.y - mouth.y, hero.x - mouth.x) + angle;
+    const speed = T.dragonFireSpeed * fierce(dragon);
+    VL.spawnFire(state, { cx: mouth.x, cy: mouth.y, vx: Math.cos(aim) * speed, vy: Math.sin(aim) * speed, owner: dragon, wild });
+  }
+
+  // The next perch: the one nearest the hero that it isn't already on.
+  function pickPerch(state, dragon) {
+    const others = T.dragonPerches.filter((x) => Math.abs(x - dragon.cx) > 8);
+    const order = others.map((x) => ({ x, d: Math.abs(x - state.player.x) + VL.random(state) * 40 })).sort((a, b) => a.d - b.d);
+    dragon.perch = order[0].x;
+    dragon.perched = false;
+  }
 
   VL.defineEnemy('dragon', {
     tuning: 'enemyDragon',
@@ -160,7 +196,26 @@
       dragon.shake = Math.max(0, (dragon.shake || 0) - dt);
       dragon.tint = Math.max(0, (dragon.tint || 0) - dt);
       const mode = dragon.mode;
-      if (mode === 'prowl') {
+      if (mode === 'perch') {
+        if (dragon.linger > 0) {
+          dragon.linger = Math.max(0, dragon.linger - dt);
+          return;
+        }
+        if (dragon.perch === undefined || dragon.perch === null) pickPerch(state, dragon);
+        const dx = dragon.perch - dragon.cx;
+        const stepX = T.dragonPerchSpeed * fierce(dragon) * dt;
+        if (!dragon.perched) {
+          if (Math.abs(dx) <= stepX || !VL.moveEnemy(state, dragon, Math.sign(dx) * stepX, 0)) {
+            dragon.perched = true;
+            dragon.timer = 0;
+          }
+          return;
+        }
+        if (dragon.timer >= T.dragonPerchRest) {
+          setMode(dragon, 'inhale');
+          state.events.push({ type: 'dragonInhale' });
+        }
+      } else if (mode === 'prowl') {
         const dx = state.player.x - dragon.cx;
         const away = dragon.calm > 0 ? -1 : 1;
         if (Math.abs(dx) > 4) VL.moveEnemy(state, dragon, Math.sign(dx) * away * T.dragonSpeed * fierce(dragon) * dt, 0);
@@ -169,18 +224,30 @@
           state.events.push({ type: 'dragonInhale' });
         }
       } else if (mode === 'inhale') {
-        if (dragon.timer >= T.dragonInhaleSeconds) {
-          const mouth = { x: dragon.cx, y: dragon.cy - 2 };
-          const hero = VL.heroCentre(state);
-          const len = Math.hypot(hero.x - mouth.x, hero.y - mouth.y) || 1;
-          const speed = T.dragonFireSpeed * fierce(dragon);
-          VL.spawnFire(state, { cx: mouth.x, cy: mouth.y, vx: ((hero.x - mouth.x) / len) * speed, vy: ((hero.y - mouth.y) / len) * speed, owner: dragon });
-          setMode(dragon, 'prowl');
+        const round = VL.dragonRound(dragon);
+        if (dragon.timer < (round >= 3 ? T.dragonFanInhaleSeconds : T.dragonInhaleSeconds)) return;
+        breathe(state, dragon);
+        if (round >= 3) {
+          breathe(state, dragon, -T.dragonFanSpread, true);
+          breathe(state, dragon, T.dragonFanSpread, true);
         }
+        dragon.perch = null;
+        dragon.linger = T.dragonPerchLinger;
+        setMode(dragon, round === 2 ? 'volley' : moving(dragon));
+      } else if (mode === 'volley') {
+        // The second of the pair, aimed afresh, its mouth still glowing.
+        if (dragon.timer < T.dragonVolleyGap) return;
+        breathe(state, dragon);
+        dragon.linger = T.dragonPerchLinger;
+        setMode(dragon, moving(dragon));
       } else if (mode === 'dazed') {
         if (dragon.timer >= T.dragonDazedSeconds) setMode(dragon, 'recover');
       } else if (mode === 'recover') {
-        if (dragon.timer >= T.dragonRecoverSeconds) setMode(dragon, 'prowl');
+        if (dragon.timer >= T.dragonRecoverSeconds) {
+          dragon.perch = null;
+          dragon.linger = 0;
+          setMode(dragon, moving(dragon));
+        }
       } else if (mode === 'dying' && dragon.timer >= T.dragonDyingSeconds) {
         // A cartoon puff, then gone: the framework crowns it.
         dragon.defeated = true;
@@ -253,14 +320,22 @@
         }
         return;
       }
-      const step = dragon.mode === 'prowl' ? Math.floor((dragon.step || 0) * 4) % 2 : 0;
-      VL.ART.drawSprite(ctx, `enemy-dragon${dragon.mode === 'inhale' ? '-breath' : ''}-${step}`, x, y);
-      if (dragon.mode === 'inhale') {
-        // Its chest glows brighter as it draws breath, steadily, never blinking.
-        const k = VL.clamp(dragon.timer / T.dragonInhaleSeconds, 0, 1);
+      const walking = dragon.mode === 'prowl' || (dragon.mode === 'perch' && !dragon.perched);
+      const step = walking ? Math.floor((dragon.step || 0) * 4) % 2 : 0;
+      const breath = dragon.mode === 'inhale' || dragon.mode === 'volley';
+      VL.ART.drawSprite(ctx, `enemy-dragon${breath ? '-breath' : ''}-${step}`, x, y);
+      if (breath) {
+        // Its chest glows brighter as it draws breath, steadily, never blinking;
+        // before the fan, purple glows grow either side of it too.
+        const fan = VL.dragonRound(dragon) >= 3;
+        const k = dragon.mode === 'volley' ? 1 : VL.clamp(dragon.timer / (fan ? T.dragonFanInhaleSeconds : T.dragonInhaleSeconds), 0, 1);
         const r = Math.round(1 + k * 4);
         VL.ART.rect(ctx, 'fireMid', Math.round(cx) - r, y + 20 - r, r * 2, r * 2);
         if (k > 0.5) VL.ART.rect(ctx, 'fireCore', Math.round(cx) - 1, y + 19, 2, 2);
+        if (fan) {
+          const w = Math.round(1 + k * 3);
+          for (const side of [-1, 1]) VL.ART.rect(ctx, 'wildFireMid', Math.round(cx) + side * 11 - w, y + 20 - w, w * 2, w * 2);
+        }
       }
     },
   });

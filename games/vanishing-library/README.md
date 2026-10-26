@@ -2055,6 +2055,20 @@ the boss door, the Dragon.
   flash guard samples the fight. A hit that counts (W35) tints it pale pink
   for `dragonHitTintSeconds` (0.4 s, sprite `enemy-dragon-hit`, one change
   each way, not a saturated red) and plays `dragonOuch` (event `dragonHurt`).
+- **Trickier round by round (W35, Matthew's decision):** `VL.dragonRound(d)`
+  is 1, 2 or 3. Round one is as before (`prowl`: pace after him, one ball).
+  Rounds two and three fly between `dragonPerches` (x 64, 128, 192, the one
+  nearest him that it isn't on) at `dragonPerchSpeed`, rest `dragonPerchRest`,
+  draw breath, and stay `dragonPerchLinger` after breathing (mode `perch`).
+  Round two breathes a pair, the second `dragonVolleyGap` (0.55 s) after the
+  first and aimed afresh (mode `volley`). Round three draws a longer breath
+  (`dragonFanInhaleSeconds`, 1.2 s, purple glows growing either side of the
+  chest) and breathes a fan: the middle ball aimed at him and two **wild**
+  balls `dragonFanSpread` (0.45 rad) either side, purple (`fx-fire-wild-*`),
+  which no shield bounces or blocks (size `wildFire`), so they must be
+  dodged; they fly wide of a hero who stands in the middle line. Still one
+  metal hit a round, three rounds; a faint rebuilds the room, so the fight
+  starts again at round one.
 - **The hoard spills** (`onDefeat`): the `lairHoard` decor turns from a
   mound behind the Dragon into books strewn over the floor (and stays so),
   and he carries three of them home (`VL.HOARD_BOOKS`, found with

@@ -575,7 +575,7 @@ test('the hit tint is a pale pink, not a saturated red (the flash guard\'s red c
   }
 });
 
-// ---------- carried forward (W20 re-review 2, M9): the standoff's wall flip ----------
+// ---------- the marionettes' standoff by a wall ----------
 
 test('a puppet on the wall side of a hero who stands by that wall picks a spot on his open side, never against the wall on top of him', () => {
   for (const wall of ['left', 'right']) {
@@ -617,4 +617,138 @@ test('the W35 fixture (played to the Dragon with the metal sword forged again an
   assert.equal([].concat(VL.pickDialogue(game, 'gran').say).join(' '), VL.BOSS_HINTS.lair.say.join(' '));
   VL.place(game, { area: 'overworld', screen: '-1,-5', tx: 7, ty: 8, facing: 'up' });
   assert.deepEqual(plain(game.room.entities.filter((e) => e.guard)), [], 'the guards stay beaten');
+});
+
+// ---------- the Dragon, trickier round by round (Matthew's decision) ----------
+
+// A Dragon in the given round, awake, the hero below it with the Mirror Shield.
+function dragonRound(round, { shield = true } = {}) {
+  const { VL, state } = inBossRoom('lair');
+  VL.dungeonState(state, 'lair').doors.d4BossDoor = true;
+  Object.assign(state.items, { metalSword: true, mirrorShield: true });
+  state.hands = { mainHand: 'metalSword', offHand: shield ? 'mirrorShield' : null };
+  hold(VL, state, [], 0.1);
+  const dragon = state.room.entities.find((e) => e.type === 'dragon');
+  dragon.arriving = 0;
+  dragon.rounds = VL.TUNING.dragonRounds - round + 1;
+  dragon.mode = round >= 2 ? 'perch' : 'prowl';
+  dragon.timer = 0;
+  state.player.invuln = 0;
+  return { VL, state, dragon };
+}
+// Steps the world, recording each ball of fire the moment it is breathed.
+function watchFire(VL, state, seconds, held = []) {
+  const seen = [];
+  for (let t = 0; t < seconds; t += 1 / 60) {
+    VL.updateWorld(state, VL.actions({ held }), 1 / 60);
+    for (const ball of state.room.entities.filter((e) => e.type === 'dragonFire' && !seen.some((s) => s.ball === e))) seen.push({ ball, at: state.time, vx: ball.vx, vy: ball.vy, wild: Boolean(ball.wild) });
+  }
+  return seen;
+}
+
+test('round one is as before: it paces after the hero and breathes one ball at a time', () => {
+  const { VL, state, dragon } = dragonRound(1);
+  state.player.invuln = 99;
+  const balls = watchFire(VL, state, VL.TUNING.dragonBreatheEvery + VL.TUNING.dragonInhaleSeconds + 0.3);
+  assert.equal(balls.length, 1);
+  assert.equal(balls[0].wild, false);
+  assert.ok(!VL.TUNING.dragonPerches.includes(Math.round(dragon.cx)) || dragon.mode !== 'perch');
+});
+
+test('round two: it flies to one of its perches, draws breath there, then breathes two balls in a row, each aimed at him', () => {
+  const { VL, state, dragon } = dragonRound(2);
+  state.player.invuln = 99;
+  const inhaleAt = [];
+  let breathAt = null;
+  const balls = [];
+  for (let t = 0; t < 6 && balls.length < 2; t += 1 / 60) {
+    VL.updateWorld(state, VL.actions({}), 1 / 60);
+    if (dragon.mode === 'inhale' && breathAt === null) {
+      breathAt = state.time;
+      inhaleAt.push(Math.round(dragon.cx));
+    }
+    for (const ball of state.room.entities.filter((e) => e.type === 'dragonFire' && !balls.some((b) => b.ball === e))) balls.push({ ball, at: state.time });
+  }
+  assert.ok(VL.TUNING.dragonPerches.some((x) => Math.abs(x - inhaleAt[0]) <= 2), `drew breath on a perch (${inhaleAt[0]})`);
+  assert.equal(balls.length, 2, 'a pair');
+  assert.ok(balls[0].at - breathAt >= VL.TUNING.dragonInhaleSeconds - 1e-6, 'the breath is drawn first (the wind-up)');
+  assert.ok(balls[1].at - balls[0].at >= VL.TUNING.dragonVolleyGap - 1e-6, 'one after the other');
+  assert.ok(balls.every((b) => !b.ball.wild), 'both can be bounced');
+  for (const { ball } of balls) assert.ok(ball.vy > 0, 'aimed down at him');
+});
+
+test('round three: a longer breath, then a fan of three: only the middle one bounces off the Mirror Shield; the purple ones hurt through it', () => {
+  const { VL, state, dragon } = dragonRound(3);
+  state.player.invuln = 99;
+  const balls = [];
+  let breathAt = null;
+  for (let t = 0; t < 8 && balls.length < 3; t += 1 / 60) {
+    VL.updateWorld(state, VL.actions({}), 1 / 60);
+    if (dragon.mode === 'inhale' && breathAt === null) breathAt = state.time;
+    for (const ball of state.room.entities.filter((e) => e.type === 'dragonFire' && !balls.includes(e))) balls.push(ball);
+  }
+  assert.equal(balls.length, 3, 'a fan of three, breathed together');
+  assert.ok(state.time - breathAt >= VL.TUNING.dragonFanInhaleSeconds - 1e-6, 'a longer wind-up before it');
+  assert.deepEqual(balls.map((b) => Boolean(b.wild)), [false, true, true], 'the middle one is the ordinary one');
+  const angle = (b) => Math.atan2(b.vy, b.vx);
+  assert.ok(Math.abs(Math.abs(angle(balls[1]) - angle(balls[0])) - VL.TUNING.dragonFanSpread) < 1e-6);
+  assert.ok(Math.abs(Math.abs(angle(balls[2]) - angle(balls[0])) - VL.TUNING.dragonFanSpread) < 1e-6);
+  // A purple ball straight at a raised Mirror Shield hurts him.
+  const t = dragonRound(1);
+  t.state.player.facing = 'up';
+  const hero = VL.heroCentre(t.state);
+  const hp = t.state.hp;
+  VL.spawnFire(t.state, { cx: hero.x, cy: hero.y - 40, vx: 0, vy: 80, owner: t.dragon, wild: true });
+  hold(t.VL, t.state, ['offHand'], 0.8);
+  assert.equal(t.state.hp, hp - VL.TUNING.fireDamage, 'not bounced, it burns');
+  assert.equal(t.state.dungeonNote, null, 'and says nothing');
+});
+
+test('the fan is fair: a hero who stands in its middle line, shield up, bounces the middle ball and the purple ones fly wide of him', () => {
+  const { VL, state, dragon } = dragonRound(3);
+  state.player.facing = 'up';
+  Object.assign(state.player, VL.tileCenter(VL.tileOf(dragon.cx, dragon.cy).tx, 6));
+  const hp = state.hp;
+  let dazed = false;
+  for (let t = 0; t < 8 && !dazed; t += 1 / 60) {
+    VL.updateWorld(state, VL.actions({ held: ['offHand'] }), 1 / 60);
+    dazed = dragon.mode === 'dazed';
+    // Stand where it will breathe: under its perch, once it is on one.
+    if (dragon.perched && dragon.mode === 'perch') Object.assign(state.player, VL.tileCenter(VL.tileOf(dragon.cx, dragon.cy).tx, 6), { facing: 'up' });
+  }
+  assert.ok(dazed, 'the middle ball came home');
+  assert.equal(state.hp, hp, 'no purple ball touched him');
+});
+
+test('the same hits win as before, and a faint resets the fight to round one', () => {
+  const { VL, state, dragon } = dragonRound(1);
+  state.player.invuln = 99;
+  let hits = 0;
+  for (let round = 1; round <= 3; round += 1) {
+    assert.equal(VL.dragonRound(dragon), round);
+    VL.ENEMIES.dragon.onFire(state, dragon, { owner: dragon });
+    VL.hitEnemy(state, dragon, VL.TUNING.swordDamage.metalSword, VL.heroCentre(state), 'metalSword');
+    hits += 1;
+    for (let t = 0; t < 2 && !['perch', 'prowl', 'dying'].includes(dragon.mode); t += 1 / 60) VL.updateWorld(state, VL.actions({}), 1 / 60);
+  }
+  assert.equal(dragon.mode, 'dying');
+  assert.equal(hits, VL.TUNING.dragonRounds, 'one metal hit a round, three rounds');
+  const again = dragonRound(3);
+  again.state.player.invuln = 0;
+  again.state.hp = 1;
+  VL.faint(again.state, 'dragon');
+  VL.respawn(again.state);
+  VL.place(again.state, { area: 'lair', screen: '0,-3', tx: 7, ty: 8, facing: 'up' });
+  const fresh = again.state.room.entities.find((e) => e.type === 'dragon');
+  assert.deepEqual([VL.dragonRound(fresh), fresh.mode, fresh.life], [1, 'prowl', VL.TUNING.dragonRoundLife]);
+});
+
+test('the purple fire and the fan\'s glow are drawn in their own colours, none a saturated red', () => {
+  const { VL } = loadGame();
+  for (const name of ['wildFireCore', 'wildFireMid', 'wildFireEdge']) {
+    const hex = VL.ART.color(name);
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    assert.ok(r / (r + g + b) < 0.8, `${name} ${hex}`);
+  }
+  assert.ok(VL.ART.SPRITES['fx-fire-wild-0'] && VL.ART.SPRITES['fx-fire-wild-1']);
 });

@@ -247,6 +247,14 @@ function fightDragon(drive) {
       continue;
     }
     const hero = drive.state.player;
+    // Fire on the way (W35: the second of a pair may still be coming when the
+    // first has dazed it): stand and block it; the purple balls of the fan fly
+    // wide of a hero who stays put.
+    if (drive.state.room.entities.some((e) => e.type === 'dragonFire' && !e.bounced)) {
+      if (hero.facing !== 'up') face(drive, 'up');
+      drive.hold([shield()], 1 / 15);
+      continue;
+    }
     if (d.mode === 'dazed') {
       dazes.add(d.rounds);
       const target = VL.tileOf(d.cx, d.cy + 30);
@@ -271,7 +279,7 @@ function fightDragon(drive) {
       continue;
     }
     const dx = d.cx - hero.x;
-    if (Math.abs(dx) > 10 && d.mode === 'prowl') {
+    if (Math.abs(dx) > 10 && ['prowl', 'perch'].includes(d.mode)) {
       drive.hold([dx < 0 ? 'left' : 'right'], 1 / 30);
       continue;
     }

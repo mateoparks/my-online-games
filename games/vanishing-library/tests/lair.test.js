@@ -339,7 +339,7 @@ test('the Dragon takes three bounce-and-strike rounds, then goes up in a puff of
   d.arriving = 0;
   t.game.player.invuln = 99;
   for (let round = 1; round <= 3; round += 1) {
-    t.until(() => d.mode === 'prowl' || d.mode === 'inhale', 2);
+    t.until(() => ['prowl', 'perch', 'inhale', 'volley'].includes(d.mode), 2);
     VL.ENEMIES.dragon.onFire(t.game, d, { owner: d });
     assert.equal(d.mode, 'dazed', `round ${round}: dazed`);
     for (let hit = 1; hit <= VL.TUNING.dragonRoundLife; hit += 1) VL.hitEnemy(t.game, d, 1, { x: 0, y: 0 }, 'metalSword');

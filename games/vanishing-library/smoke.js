@@ -2228,7 +2228,8 @@ async function main() {
       };
       // After the Lighthouse: the sword, the Glowstone, the Chicken Keeper's
       // Almanac read; no enemies about. `setup` adds the rest.
-      const ARMED = "g.items.woodSword = true; g.items.mirrorShield = true; g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' };";
+      // The Dragon takes only the metal sword (W35).
+      const ARMED = "g.items.metalSword = true; g.items.mirrorShield = true; g.hands = { mainHand: 'metalSword', offHand: 'mirrorShield' };";
       const stage = (where, setup = '') => evaluate(`(() => {
         VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
         const g = VL.app.game;
@@ -2754,6 +2755,150 @@ async function main() {
       for (const problem of w33Problems) console.log(`     ${problem}`);
     }
 
+    // W35, Matthew's fourth playtest notes on the dungeons: a seed over the
+    // Hollow Oak's roots, Gran Ottie's hint after a faint, the Lighthouse
+    // without heaps and its thorny slimes, lava walked on, the Lair's guards
+    // (wood clinks, metal beats them, the cave opens), the Dragon's hit tint
+    // under the metal sword, and the hoard with no twinkle. Real keys. Saved
+    // as w35-*.png.
+    {
+      errors.length = 0;
+      const w35Problems = [];
+      const codes = { KeyS: [83, 's'], Space: [32, ' '] };
+      const keyEvent = (code) => ({ key: codes[code][1], code, windowsVirtualKeyCode: codes[code][0], nativeVirtualKeyCode: codes[code][0] });
+      const tapKey = async (code) => {
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent(code) });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent(code) });
+        if (!(await settle())) w35Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      // `enemies: false` clears the room's enemies (but not a boss or a guard).
+      const stage = (where, setup = '', { enemies = false } = {}) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap', 'brokenShell']) g.popups.seen[id] = true;
+        Object.assign(g.flags, { shockwave: true, shockwaveWoke: true, 'gave:helperWood': true, 'met:gran': true });
+        Object.assign(g.items, { glowstone: true, woodSword: true });
+        g.hands = { mainHand: 'woodSword', offHand: null };
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        if (!${enemies}) g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e) || e.type === 'dragon' || e.guard);
+        document.getElementById('game').focus();
+      })()`);
+      const closePopups = async () => {
+        for (let i = 0; i < 8 && ['popup', 'dialogue'].includes(await see('VL.app.sceneId')); i += 1) {
+          await sleep(350);
+          await tapKey('KeyS');
+        }
+      };
+
+      // 1. The tangle's north room: a seed over three roots.
+      await stage({ area: 'hollowOak', screen: '-1,-2', tx: 11, ty: 7, facing: 'up' }, '', { enemies: true });
+      await evaluate("(() => { const g = VL.app.game; g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e) || (e.x === 11 && e.y === 3)); })()");
+      if (await waitFor("g.room.entities.some((e) => e.type === 'projectile' && e.overWalls && e.cy > 4 * 16 + 4 && e.cy < 6 * 16 + 12)", 5000)) await shot('w35-seed-over-roots');
+      else w35Problems.push('no seed seen over the roots');
+      const hp = await see('g.maxHp');
+      if (!(await waitFor(`g.hp < ${hp}`, 3000))) w35Problems.push('the seed over the roots never hit him');
+
+      // 2. Gran Ottie after a faint to the Lens Crab: S beside her.
+      await stage({ area: 'overworld', screen: '2,0', tx: 5, ty: 9, facing: 'up' }, "g.flags['bossFainted:lighthouse'] = true;");
+      await evaluate("(() => { const g = VL.app.game; const gran = g.room.entities.find((e) => e.type === 'npc' && e.id === 'gran'); Object.assign(gran, { x: 5, y: 8, wander: 0, walk: null }); })()");
+      await tapKey('KeyS');
+      if (await waitFor("VL.app.sceneId === 'dialogue'", 2000)) {
+        await sleep(400);
+        await shot('w35-gran-hint');
+        const said = await see('VL.app.dialogue.pages.flat().join(" ")');
+        if (!/crab wearing the lighthouse lens/i.test(said)) w35Problems.push(`Gran said: ${said}`);
+        await closePopups();
+      } else w35Problems.push(`no talk with Gran: ${await see('VL.app.sceneId')}`);
+
+      // 3 and 6. The Lighthouse: no heaps; a thorny slime in the stairwell.
+      await stage({ area: 'lighthouse', screen: '0,-3', tx: 7, ty: 8, facing: 'up' }, "g.dungeons.lighthouse.doors.d3BossDoor = true;");
+      await sleep(300);
+      await shot('w35-lighthouse-lamp-room');
+      if (await see("Object.values(VL.AREAS.lighthouse.screens).some((s) => s.entities.some((e) => /heap/i.test(e.type)))")) w35Problems.push('a shell heap is left');
+      await stage({ area: 'lighthouse', screen: '0,-1', tx: 9, ty: 7, facing: 'right' }, '', { enemies: true });
+      await evaluate("(() => { const g = VL.app.game; g.player.invuln = 99; })()");
+      await sleep(500);
+      await shot('w35-thorny-slime');
+
+      // 4. Lava in the Lair's cellar: walked onto with a real arrow, it burns once.
+      await stage({ area: 'lair', screen: '-1,0', tx: 7, ty: 5, facing: 'up' });
+      const before = await see('g.hp');
+      await holdArrowUntil('Up', 'VL.heroTile(g).ty === 4', 1500);
+      await sleep(600);
+      await shot('w35-lava');
+      const onLava = await see("[VL.heroTile(g).tx, VL.heroTile(g).ty, g.hp]");
+      if (onLava.join() !== `7,4,${before - 1}`) w35Problems.push(`one step onto lava: tile and hp = ${onLava} (from ${before})`);
+
+      // 5. The cave mouth: two thorny guards, a wood sword clinks, the metal sword beats them.
+      await stage({ area: 'overworld', screen: '-1,-5', tx: 6, ty: 7, facing: 'up' }, "g.items.metalSword = true;", { enemies: true });
+      await evaluate("(() => { VL.app.game.player.invuln = 99; })()");
+      await sleep(700);
+      await shot('w35-lair-guards');
+      if ((await see('g.room.entities.filter((e) => e.guard).length')) !== 2) w35Problems.push('no guards at the cave mouth');
+      await tapKey('Space');
+      if (await waitFor("VL.app.sceneId === 'popup'", 1500)) {
+        await sleep(300);
+        await shot('w35-guard-clink');
+        await closePopups();
+      } else w35Problems.push('the wood sword on a guard said nothing');
+      await evaluate("(() => { const g = VL.app.game; g.hands = { mainHand: 'metalSword', offHand: null }; g.player.invuln = 99; })()");
+      for (const x of [6, 8]) {
+        await evaluate(`(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(${x}, 7), { facing: 'up', invuln: 99 }); })()`);
+        for (let i = 0; i < 4 && (await see(`g.room.entities.some((e) => e.guard && e.x === ${x})`)); i += 1) {
+          await sleep(300);
+          await tapKey('Space');
+        }
+      }
+      await sleep(300);
+      if (!(await see('g.flags.lairGuards'))) w35Problems.push('the metal sword did not beat the guards');
+      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(7, 5), { facing: 'up' }); })()");
+      await holdArrowUntil('Up', "g.player.area === 'lair'", 1500);
+      if ((await see('g.player.area')) !== 'lair') w35Problems.push('the cave stayed shut after the guards');
+
+      // 9. The Dragon dazed: the wood sword does nothing, the metal sword tints it.
+      await stage({ area: 'lair', screen: '0,-3', tx: 7, ty: 6, facing: 'up' }, "Object.assign(g.items, { mirrorShield: true, metalSword: true }); g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' }; g.dungeons.lair.doors.d4BossDoor = true;");
+      await sleep(400);
+      await shot('w35-hoard-no-twinkle');
+      const daze = `(() => {
+        const g = VL.app.game;
+        const d = g.room.entities.find((e) => e.type === 'dragon');
+        d.arriving = 0;
+        VL.ENEMIES.dragon.onFire(g, d, { owner: d });
+        Object.assign(g.player, VL.tileCenter(VL.tileOf(d.cx, d.cy + 30).tx, VL.tileOf(d.cx, d.cy + 30).ty), { facing: 'up', invuln: 99 });
+      })()`;
+      await evaluate(daze);
+      await tapKey('Space');
+      await sleep(400);
+      const wood = await see("(() => { const d = g.room.entities.find((e) => e.type === 'dragon'); return [d.life, d.rounds, VL.app.sceneId]; })()");
+      if (wood.join() !== `${await see('VL.TUNING.dragonRoundLife')},3,play`) w35Problems.push(`the wood sword on the dazed Dragon: life, rounds, scene = ${wood}`);
+      await evaluate("(() => { const g = VL.app.game; g.hands.mainHand = 'metalSword'; })()");
+      await evaluate(daze);
+      await tapKey('Space');
+      if (await waitFor("g.room.entities.some((e) => e.type === 'dragon' && e.tint > 0)", 1000)) await shot('w35-dragon-hit-tint');
+      else w35Problems.push('the metal sword\'s hit showed no tint');
+
+      w35Problems.push(...errors);
+      if (w35Problems.length) failures += 1;
+      console.log(`${w35Problems.length ? 'FAIL' : 'ok  '} playtest notes 4 (dungeons): seed over the roots, Gran's hint, no heaps, thorny slime, lava, the Lair's guards, the Dragon's tint, ${path.join(outDir, 'w35-*.png')}`);
+      for (const problem of w35Problems) console.log(`     ${problem}`);
+    }
+
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
     // app of their own and drawn to an offscreen canvas every 1/60 s. In 16x16
     // cells, a flip is a change in mean relative luminance against the last
@@ -2947,10 +3092,11 @@ async function main() {
           }
           return null;
         }, (app, g) => g.room.entities.some((e) => e.type === 'lensCrab' && e.rounds < 3)));
+        // The metal sword, which the Dragon takes (W35): its hit tint is sampled too.
         const lairArm = (g, shield) => {
-          g.items.woodSword = true;
+          g.items.metalSword = true;
           g.items[shield] = true;
-          g.hands = { mainHand: 'woodSword', offHand: shield };
+          g.hands = { mainHand: 'metalSword', offHand: shield };
           g.dungeons.lair.doors.d4BossDoor = true;
           VL.place(g, { area: 'lair', screen: '0,-3', tx: 7, ty: 6, facing: 'up' });
           g.popups.queue.length = 0;
