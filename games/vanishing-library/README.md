@@ -2097,12 +2097,15 @@ through the credits and Continue.
   'librarian' }`, flying, `rooted`, drawn at twice the art's size): they drift
   after the hero, wind up (a steady shake) and attack: the hero puppet lunges,
   the dragon puffs paper fire, the librarian throws books (both small, so a
-  shield blocks them), half a heart each. The sword only clonks (hp refilled,
+  shield blocks them), half a heart each. They hover with their chests level
+  with him. The sword only clonks (hp refilled,
   no hurt blink; after a swing that cut nothing, `VL.MARIONETTE_NOTE` once a
   visit). Each hangs from two strings (`VL.PUPPET_SHAPES`): a sword swing
-  whose box crosses a string above its hand cuts it, one string per puppet a
-  swing, the nearest (stand `VL.STRING_REACH` to its side, level with its
-  chest, and swing at it). A cut puppet jerks up out of reach (harmless for
+  whose box crosses a string above its hand, or within `VL.STRING_SLACK` of it
+  (the hand and wrist, and a little either side), cuts it, one string per
+  puppet a swing, the nearest. So a swing from anywhere beside a puppet, his
+  feet between its shoulders and its belt, cuts the string on that side
+  (`VL.STRING_REACH` is the middle of that window). A cut puppet jerks up out of reach (harmless for
   `marionetteJerkSeconds`) and sags slower; with both cut it drops into a heap.
   All three down sets `marionettes` (counted against the map's three, so a
   room the playthrough cleared of enemies never counts). Later visits show the

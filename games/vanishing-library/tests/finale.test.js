@@ -243,6 +243,71 @@ test('the scripted fight with real keys wins in under two minutes of game time',
   assert.ok(t.drive.state.time < 120, `${t.drive.state.time.toFixed(1)} s`);
 });
 
+// The hero's feet against the puppet's centre and side, as a kid lines up
+// "beside" it: anywhere from its shoulders to its belt, near enough to reach.
+const BESIDE = { dx: [26, 44], feet: [-8, 8] };
+const isBeside = (drive, m) => {
+  const { x, y } = drive.state.player;
+  const dx = Math.abs(x - m.cx);
+  return dx >= BESIDE.dx[0] && dx <= BESIDE.dx[1] && y - m.cy >= BESIDE.feet[0] && y - m.cy <= BESIDE.feet[1];
+};
+
+test('a swing from anywhere beside a puppet, shoulders to belt, cuts the string on that side', () => {
+  for (const puppet of ['dragon', 'hero', 'librarian']) {
+    for (let dx = BESIDE.dx[0]; dx <= BESIDE.dx[1]; dx += 4) {
+      for (let feet = BESIDE.feet[0]; feet <= BESIDE.feet[1]; feet += 4) {
+        for (const side of [-1, 1]) {
+          const t = hall();
+          const { drive } = t;
+          t.freeze();
+          const m = puppets(drive).find((p) => p.puppet === puppet);
+          m.arriving = 0;
+          drive.state.player.invuln = 99;
+          Object.assign(drive.state.player, { x: m.cx + side * dx, y: m.cy + feet, facing: side < 0 ? 'right' : 'left' });
+          drive.press('mainHand');
+          drive.hold([], 0.35);
+          assert.deepEqual(plain(m.strings.map((s) => s.cut)), side < 0 ? [true, false] : [false, true], `${puppet} ${side < 0 ? 'left' : 'right'} ${dx} px out, feet ${feet} from its centre`);
+        }
+      }
+    }
+  }
+});
+
+test('a kid who walks up beside a drifting puppet and just keeps swinging cuts a string within a few swings', () => {
+  for (const puppet of ['dragon', 'hero', 'librarian']) kidSwingsAt(puppet);
+});
+function kidSwingsAt(puppet) {
+  const t = hall();
+  const { VL, drive } = t;
+  const m = puppets(drive).find((p) => p.puppet === puppet);
+  let swings = 0;
+  for (let frame = 0; frame < 60 * 30 && !m.strings.some((s) => s.cut); frame += 1) {
+    drive.state.player.invuln = 99;
+    drive.state.hp = Math.max(drive.state.hp, 3);
+    if (drive.app.sceneId !== 'play') {
+      drive.closePopups();
+      continue;
+    }
+    const player = drive.state.player;
+    if (!isBeside(drive, m)) {
+      // Rough steering, as a kid walks over: towards the near side, never to an exact spot.
+      const side = player.x < m.cx ? -1 : 1;
+      const held = [];
+      const dx = m.cx + side * 32 - player.x;
+      if (Math.abs(dx) > 6) held.push(dx > 0 ? 'right' : 'left');
+      if (Math.abs(player.y - m.cy) > 6) held.push(player.y > m.cy ? 'up' : 'down');
+      drive.update(VL.actions({ held }));
+      continue;
+    }
+    drive.update(VL.actions({ held: [player.x < m.cx ? 'right' : 'left'] }));
+    drive.press('mainHand');
+    swings += 1;
+    drive.hold([], 0.5);
+  }
+  assert.ok(m.strings.some((s) => s.cut), `${puppet}: no string cut after ${swings} swings`);
+  assert.ok(swings <= 4, `${puppet}: ${swings} swings`);
+}
+
 // ---------- the confession, the forgiveness ----------
 
 test('after the fight: her words, her last show (the true story, with the hero\'s own puppet), then her apology and his forgiveness', () => {

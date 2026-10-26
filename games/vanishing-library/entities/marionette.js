@@ -35,6 +35,9 @@
   };
   // Where the hero stands to cut a string: this far to its side, level with its chest.
   VL.STRING_REACH = { dx: 28, dy: -2 };
+  // How far past the string the blade still counts: the hand and wrist below
+  // it, and a little either side, so a swing from anywhere beside a puppet cuts.
+  VL.STRING_SLACK = { x: 4, y: 10 };
 
   const shape = (m) => VL.PUPPET_SHAPES[m.puppet];
   VL.stringBottom = (m) => m.cy - shape(m).reach;
@@ -174,7 +177,8 @@
     const hero = VL.heroCentre(state);
     m.target = {
       x: VL.clamp(hero.x + (VL.random(m) - 0.5) * 120, b.left, b.right),
-      y: VL.clamp(hero.y - 10 + (VL.random(m) - 0.5) * 50, b.top, b.bottom),
+      // Its chest level with him, so standing beside it puts the blade by its hands.
+      y: VL.clamp(state.player.y + 4 + (VL.random(m) - 0.5) * 20, b.top, b.bottom),
     };
   }
 
@@ -326,8 +330,8 @@
         let cut = false;
         for (const m of VL.puppetsUp(state)) {
           if (m.stringSwing === swing) continue;
-          const bottom = VL.stringBottom(m);
-          const hits = m.strings.filter((s) => !s.cut && Math.abs(m.cx + s.dx - box.x) * 2 < box.w + 1 && box.y - box.h / 2 < bottom);
+          const bottom = VL.stringBottom(m) + VL.STRING_SLACK.y;
+          const hits = m.strings.filter((s) => !s.cut && Math.abs(m.cx + s.dx - box.x) * 2 < box.w + 2 * VL.STRING_SLACK.x && box.y - box.h / 2 < bottom);
           if (!hits.length) continue;
           const string = hits.sort((a, b) => Math.abs(m.cx + a.dx - state.player.x) - Math.abs(m.cx + b.dx - state.player.x))[0];
           string.cut = true;
