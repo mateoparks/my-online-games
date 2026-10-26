@@ -204,10 +204,11 @@ test('the framework refuses a hand-made boss gate and needs a boss door (or boss
 
 // ---------- note 4: the library's rewards at 10, 20 and 30 books ----------
 
+// W34 moved most of them down from the highlands (tests/playtest-4.test.js).
 const LATE_BOOKS = {
-  bookCliffLedge: 'climbersAlmanac', bookHighShelfA: 'highlands', bookHighShelfB: 'highlands', bookHighScree: 'highlands',
-  bookHighGapA: 'highlands', bookHighGapB: 'highlands', bookHighPathA: 'highlands', bookHighPathB: 'highlands',
-  bookLairA: 'highlands', bookLairB: 'highlands', bookLakeIsland: 'lakeIsland', bookWreckDeck: 'shipwreck',
+  bookCliffLedge: 'climbersAlmanac', bookHighShelfA: 'woodsPaths', bookHighShelfB: 'woodsPaths', bookHighScree: 'shipwreck',
+  bookHighGapA: 'grapplingRope', bookHighGapB: 'wreckDoor', bookHighPathA: 'lakeIsland', bookHighPathB: 'lakeIsland',
+  bookLairA: 'highlands', bookLairB: 'shipwreck', bookLakeIsland: 'lakeIsland', bookWreckDeck: 'woods',
 };
 
 test('rewards come at 10, 20 and 30 books returned, in the order heart, Big Shell Purse, Swiftfoot Boots, and the solver counts the same', () => {

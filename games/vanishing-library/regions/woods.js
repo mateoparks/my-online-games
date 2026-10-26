@@ -140,6 +140,8 @@
       ],
       entities: [
         { type: 'bat', x: 10, y: 5 },
+        // W34 moved these two books down from the highlands (ids kept for old saves).
+        spot('bookHighShelfB', 2, 4, 'trunk', 'W11'),
       ],
     },
     // Two pockets that never meet: a dead end from the west (with a secret
@@ -238,7 +240,8 @@
         { type: 'spitter', x: 12, y: 6, tough: true },
         { type: 'decor', art: 'hollowOak', x: 5, y: 1 },
         spot('hollowOakDoor', 7, 3, 'door', 'W15', 'hollowOakEntered'),
-        spot('bookChickenAlmanac', 10, 8, 'trunk', 'W11'),
+        // W34 swapped the Chicken Keeper's Almanac out to the wreck for this one.
+        spot('bookWreckDeck', 10, 8, 'trunk', 'W11'),
       ],
     },
     // Wrong turns (VL.WOODS_WRONG_EXITS): look-alike screens that wind back
@@ -325,6 +328,7 @@
       ],
       entities: [
         { type: 'bat', x: 8, y: 3 },
+        spot('bookHighShelfA', 14, 7, 'trunk', 'W11'),
       ],
     },
   });

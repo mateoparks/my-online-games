@@ -1303,19 +1303,24 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   come along the path rather than all at once. The Primer is in a trunk on
   the east road (past the boulders, so with the gloves, as Dungeon 1's
   mortar makes ink for a map); the Herbalist's Notes beside the Woods'
-  path on 5,-2 (well away from the secret ore on 6,-1, which the Smith's
-  Ledger reveals) and the Chicken Keeper's Almanac at the Hollow Oak's
-  clearing (after Dungeon 1); the Smith's Ledger on the lake island and the
-  Tide Tables on the shipwreck's deck (by raft, after the shockwave, when
-  gear and shells are needed again); A Child's Book of Dragons in the
-  highlands, on the way to the Mirror Shield. Their locks' `needs` say so,
-  and `tests/overworld.test.js` checks each spot against them. Sixteen books
-  can be returned before the shockwave. **W30's late books:** twelve more
-  untitled books in trunks in the late places (one on the cliff-base
-  ledge, nine across the highlands and the lair's doorstep, one on the lake
-  island, one on the shipwreck's deck; `regions/finds.js` gives their
-  locks), so 32 books can be returned in all and the 30-book reward is in
-  reach even for a kid who misses a couple. A later item (W18's Lighthouse,
+  path on 5,-2 (well away from the secret ore on 6,-1); the Smith's Ledger
+  on the lake island; the Tide Tables and (W34, swapped with the Captain's
+  Logbook, which now lies at the Hollow Oak's clearing) the Chicken Keeper's
+  Almanac on the shipwreck's deck (by raft, after the shockwave, nearer the
+  highlands it opens); A Child's Book of Dragons in the highlands, on the
+  way to the Mirror Shield. Their locks' `needs` say so, and
+  `tests/overworld.test.js` checks each spot against them. **W30's late
+  books** are twelve more untitled books in trunks (`regions/finds.js` gives
+  their locks). **W34 (Matthew: far too many in the highlands)** left only
+  two books up there, A Child's Book of Dragons and Ashton Co-op
+  (`bookLairA`, by the lair's door: "Adventures in learning! Or maybe just
+  adventures. Who knows?"), and spread the rest, ids unchanged so old saves'
+  found flags still match: two in the Woods (5,-1 and the wrong turn 6,0),
+  `bookHighlands` under a rock at the cliff base (-1,0), two in the lake
+  island's shallows (off the sand, so its eleven digging spots stay), four
+  below the wreck's deck (hold, bilge, cabin). That makes 19 books before
+  the shockwave (the 10-book heart there, the purse after), 29 before the
+  binding (the purse at 20 well before its 40 shells) and 35 in all. A later item (W18's Lighthouse,
   W19's lair) may add more the same way: a spot, a lock supplying
   `books: 1`, a `defineBook`.
 - **Rewards:** `TUNING.libraryRewards` (10 a heart container, 20 the Big
@@ -1994,7 +1999,7 @@ played route is `tests/highlands-route.js`.
   -1,-3); its planned rule is kept (cliffs, the Almanac, the long flight).
 - **Playthrough:** the `climbersAlmanac` step gathers the last two pages
   (the field by the library, Henrietta carried home to Pip), opens the
-  Chicken Keeper's Almanac's trunk in the Woods, hands every book in and sits
+  Chicken Keeper's Almanac's trunk (on the wreck's deck since W34), hands every book in and sits
   through the readings, sells berries for the binding's 15 shells and binds;
   `highlands` climbs the path and flies the ledge's chicken over.
 

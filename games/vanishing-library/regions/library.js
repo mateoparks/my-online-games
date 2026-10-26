@@ -27,7 +27,8 @@
   generic('bookHighGapB', 'The Windy Cookbook', 'leafLight', 'Every recipe ends with "and then the wind blew it away." Very short meals.');
   generic('bookHighPathA', 'The Brave Little Hedgehog', 'roof', 'A hedgehog who is scared of nothing at all. Except balloons. Fair enough.');
   generic('bookHighPathB', 'Snoring Through the Ages', 'tunic', 'A history of snoring. It says dragons snore the loudest of all. Hmm!');
-  generic('bookLairA', 'Warm Socks for Cold Toes', 'berry', 'Knitting patterns for the highlands. One sock is long enough for a giraffe.');
+  // W34: Matthew's easter egg, his words.
+  generic('bookLairA', 'Ashton Co-op', 'berry', 'Adventures in learning! Or maybe just adventures. Who knows?');
   generic('bookLairB', 'Stars Over the Highlands', 'gold', 'A map of the night sky. Someone drew a smiling face on the moon.');
   generic('bookLakeIsland', 'Island Living for Beginners', 'leaf', 'Lesson one: bring a boat. Lesson two: see above.');
   generic('bookWreckDeck', 'The Captain\'s Logbook', 'water', 'Day one: sailing. Day two: more sailing. Day three: "Oops." The last page is very wet.');
@@ -129,7 +130,7 @@
     d3Boss: [{ say: 'A great crab has taken the Lighthouse lens for its shell! Aim for its eyes, {name}.' }],
     climbersAlmanac: [{ say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow all over: by the library, by the lake, even into a chicken coop. Little Pip in the harbour might know something!' }],
     highlands: [
-      { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think someone hid it at the heart of the Whispering Woods.' },
+      { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think it washed up on the old wreck off the beach.' },
       { say: 'The Climber\'s Almanac shows a hidden path at the foot of the cliffs. From there, let the chickens carry you up!' },
     ],
     dragonsLairEntered: [{ say: 'The Dragon\'s Lair is at the very top of the highlands. Be brave, {name}.' }],

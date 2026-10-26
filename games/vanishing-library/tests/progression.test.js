@@ -597,10 +597,10 @@ test('broken: a required item only reachable before an event, and a milestone li
   assert.ok(problems.includes('highlands is required but unreachable after primerTaken'));
   // A one-time chest whose contents the shockwave takes is simply used up, and what else it held is kept.
   const used = copyTable(VL);
-  used.bookChickenAlmanac.gives.push('woodShovel');
+  used.d1Boss.gives.push('woodShovel');
   const report = VL.solveProgression(used);
   assert.deepEqual([...report.problems], []);
-  assert.ok(report.stages[1].disabled.includes('bookChickenAlmanac') && report.stages[1].keys.includes('chickenAlmanacRead'));
+  assert.ok(report.stages[1].disabled.includes('d1Boss') && report.stages[1].keys.includes('mortarPestle'));
   const milestones = VL.MILESTONES.slice();
   const i = milestones.indexOf('shockwave');
   [milestones[i], milestones[i + 1]] = [milestones[i + 1], milestones[i]];

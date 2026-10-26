@@ -67,7 +67,8 @@
   lock('bookSmithsLedger', { type: 'item', needs: ['lakeIsland', 'library'], gives: ['smithsLedgerRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Smith\'s Ledger', by: 'W8' });
   lock('bookPrimer', { type: 'item', needs: ['eastRoad', 'library'], gives: ['primerOnShelf'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Cartographer\'s Primer', by: 'W8' });
   lock('bookDragons', { type: 'item', needs: ['highlands', 'library'], gives: ['dragonsRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: A Child\'s Book of Dragons', by: 'W8' });
-  lock('bookChickenAlmanac', { type: 'item', needs: ['woods', 'library'], gives: ['chickenAlmanacRead'], supplies: { books: 1 }, doc: '§ Books, pages and the library: The Chicken Keeper\'s Almanac', by: 'W8' });
+  // W34: out on the wreck, so it comes nearer the highlands it opens.
+  lock('bookChickenAlmanac', { type: 'item', needs: ['shipwreck', 'library'], gives: ['chickenAlmanacRead'], supplies: { books: 1 }, doc: '§ Books, pages and the library: The Chicken Keeper\'s Almanac', by: 'W8' });
   lock('heartLibrary', { type: 'item', needs: ['library'], count: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('shellPurse', { type: 'item', needs: ['library'], count: { books: 20 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('swiftfootBoots', { type: 'item', needs: ['library'], count: { books: 30 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });

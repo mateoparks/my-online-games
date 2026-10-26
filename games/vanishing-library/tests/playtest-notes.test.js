@@ -144,7 +144,7 @@ test('the six titled books wait behind later progress, each where it is useful',
   const behind = {
     bookPrimer: 'liftingGloves', // the east road, as D1's mortar brings ink for a map
     bookHerbalist: 'liftingGloves', // in the Woods, after D1 (no map needed since W34)
-    bookChickenAlmanac: 'woodsMapCopy', // at the heart of the Woods, long before the highlands
+    bookChickenAlmanac: 'rafting', // on the wreck's deck since W34, nearer the highlands it opens
     bookSmithsLedger: 'shockwave', // the lake island, when gear must be forged again
     bookTideTables: 'shockwave', // the shipwreck, when shells must be dug again
     bookDragons: 'climbersAlmanac', // the highlands, on the way to the dragon
@@ -167,17 +167,17 @@ test('the Herbalist\'s trunk keeps away from the Woods\' secret ore, so the Smit
   assert.match(VL.BOOKS.bookSmithsLedger.reading.join(' '), /ore hiding in the Woods/);
 });
 
-test('the solver stays green; the 10-book heart comes before the shockwave, the purse and the boots after it (W30)', () => {
+test('the solver stays green; the 10-book heart comes before the shockwave, the purse and the boots after it (W30; W34 moved the Chicken Almanac to the wreck)', () => {
   const { VL } = loadGame();
   const result = VL.solveProgression();
   assert.deepEqual([...result.problems], []);
   const beforeShockwave = result.stages[0].reached;
-  for (const id of ['heartLibrary', 'bookPrimer', 'bookHerbalist', 'bookChickenAlmanac']) assert.ok(beforeShockwave.includes(id), id);
+  for (const id of ['heartLibrary', 'bookPrimer', 'bookHerbalist']) assert.ok(beforeShockwave.includes(id), id);
   for (const id of ['shellPurse', 'swiftfootBoots']) {
     assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
     assert.ok(result.stages.some((stage) => stage.reached.includes(id)), `${id} is reachable`);
   }
-  for (const id of ['bookSmithsLedger', 'bookTideTables', 'bookDragons']) assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
+  for (const id of ['bookSmithsLedger', 'bookTideTables', 'bookDragons', 'bookChickenAlmanac']) assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
 });
 
 // Walking speed: W34 slowed it again (tests/playtest-4.test.js).

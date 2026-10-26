@@ -72,6 +72,10 @@
         spot('oreLakeIsland', 7, 4, 'pickup', 'W17'),
         spot('bookSmithsLedger', 10, 3, 'trunk', 'W11'),
         spot('bookLakeIsland', 6, 3, 'trunk', 'W11'),
+        // W34: washed up in the shallows (off the sand, so the island's
+        // eleven digging spots stay); ids kept from the highlands.
+        spot('bookHighPathA', 11, 3, 'trunk', 'W11'),
+        spot('bookHighPathB', 10, 2, 'trunk', 'W11'),
       ],
     },
   });

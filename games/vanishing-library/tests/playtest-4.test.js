@@ -306,3 +306,63 @@ test('the wreck\'s hatch is on the south side of the deck: holding Up out of the
   for (let t = 0; t < 1 && state.player.area !== 'wreck'; t += 1 / 60) VL.updateWorld(state, VL.actions({ held: ['down'] }), 1 / 60);
   assert.equal(state.player.area, 'wreck');
 });
+
+// ---------- where the books lie ----------
+
+const bookLocks = (VL) => Object.keys(VL.LOCKS).filter((id) => VL.LOCKS[id].supplies.books && VL.SPOTS[id]);
+const regionOfSpot = (VL, id) => {
+  const spot = VL.SPOTS[id];
+  if (spot.area === 'overworld') return VL.regionOf('overworld', spot.screen);
+  return spot.area;
+};
+
+test('only two books lie in the highlands: A Child\'s Book of Dragons and Ashton Co-op; the rest are spread out (the Woods and the shipwreck have a few more)', () => {
+  const { VL } = loadGame();
+  const by = {};
+  for (const id of bookLocks(VL)) (by[regionOfSpot(VL, id)] ||= []).push(id);
+  assert.deepEqual(by.highlands.sort(), ['bookDragons', 'bookLairA']);
+  assert.ok(by.woods.length >= 5, `woods: ${by.woods}`);
+  assert.ok(by.shipwreck.length + (by.wreck || []).length >= 5, `shipwreck: ${by.shipwreck} / ${by.wreck}`);
+  // No other place holds more than the shipwreck.
+  for (const [region, ids] of Object.entries(by)) assert.ok(ids.length <= 6, `${region}: ${ids}`);
+});
+
+test('the Chicken Keeper\'s Almanac is on the shipwreck\'s deck now, and the Captain\'s Logbook took its trunk by the Hollow Oak; the librarian\'s hint follows it', () => {
+  const { VL } = loadGame();
+  assert.deepEqual([VL.SPOTS.bookChickenAlmanac.screen, VL.SPOTS.bookChickenAlmanac.how], ['5,2', 'trunk']);
+  assert.deepEqual([VL.SPOTS.bookWreckDeck.screen, VL.SPOTS.bookWreckDeck.x, VL.SPOTS.bookWreckDeck.y], ['7,-2', 10, 8]);
+  assert.deepEqual(plain(VL.LOCKS.bookChickenAlmanac.needs), ['shipwreck', 'library']);
+  assert.ok(VL.LOCKS.bookWreckDeck.needs.includes('woods'));
+  const hint = VL.LIBRARY_HINTS.highlands[0].say;
+  assert.match(hint, /wreck/);
+  assert.doesNotMatch(hint, /Woods/);
+});
+
+test('Ashton Co-op: a book near the end, and the librarian says "Adventures in learning! Or maybe just adventures. Who knows?"', () => {
+  const { VL } = loadGame();
+  const book = VL.BOOKS.bookLairA;
+  assert.equal(book.kind, 'generic');
+  assert.equal(book.title, 'Ashton Co-op');
+  assert.equal(book.blurb, 'Adventures in learning! Or maybe just adventures. Who knows?');
+  assert.equal(VL.SPOTS.bookLairA.screen, '-1,-5', 'on the lair\'s doorstep');
+  assert.deepEqual([...VL.ART.missingGlyphs(`"${book.title}." ${book.blurb}`, 'normal')], []);
+});
+
+test('the book margins: the 10-book heart before the shockwave, the purse after it but well before the binding needs it, and the boots in reach', () => {
+  const { VL } = loadGame();
+  const result = VL.solveProgression();
+  assert.deepEqual([...result.problems], []);
+  const before = result.stages[0];
+  assert.ok(before.counts.books >= 10 + 3 && before.counts.books < 20, `before the shockwave: ${before.counts.books}`);
+  assert.ok(before.reached.includes('heartLibrary') && !before.reached.includes('shellPurse'));
+  // Every book a kid can find before the binding (nothing behind the Climber's Almanac or the highlands).
+  const after = (id, key) => {
+    const needs = VL.LOCKS[id].needs.flat();
+    return needs.includes(key) || needs.some((n) => VL.LOCKS[n] && n !== id && after(n, key));
+  };
+  const books = Object.keys(VL.LOCKS).filter((id) => VL.LOCKS[id].supplies.books);
+  const beforeBinding = books.filter((id) => !after(id, 'climbersAlmanac')).reduce((n, id) => n + VL.LOCKS[id].supplies.books, 0);
+  assert.ok(beforeBinding >= 20 + 6, `${beforeBinding} books before the binding`);
+  const total = books.reduce((n, id) => n + VL.LOCKS[id].supplies.books, 0);
+  assert.ok(total >= 30 + 5, `${total} books in all`);
+});
