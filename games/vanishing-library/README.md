@@ -309,10 +309,14 @@ gap above (lower case rises 1px, capitals 2-3px). Name entry takes any character
 font has, so a new glyph is typeable at once.
 
 **HUD and popups.** `VL.ART.drawHud` draws hearts (from `hp`/`maxHp`), the
-whole-shell count and the main-hand (Space) and off-hand (D) slots. The file
+whole-shell count, the broken-shell count beside it once there are any (W32),
+and the main-hand (Space) and off-hand (D) slots. The SAVED / COULD NOT SAVE
+note is drawn in the bar too, right-aligned before the slots
+(`HUD_LAYOUT.note`), so it never covers the play area. The file
 that owns a value plugs in its reader once:
 `VL.ART.hudSource('shells', (state) => state.inventory.shells)` (also
-`mainHand` and `offHand`, returning an item id). Popups, dialogue and menus use
+`brokenShells`, and `mainHand` and `offHand`, returning an item id). A shop
+dealing in shells lists broken ones after them in its YOU HAVE line. Popups, dialogue and menus use
 `VL.ART.drawPopup(ctx, { title, text, at: 'bottom' | 'top' | 'center', prompt }, t)`
 or the bare frame `VL.ART.drawBox(ctx, x, y, w, h)`. A popup holds 4 lines;
 `VL.ART.popupLayout(...)` reports `overflow` when the text needs more.
@@ -380,7 +384,10 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   hold(state, hand), count(state), sword, prefers })` from the item's own file;
   `icon` names the `item-<icon>` sprite the HUD and the equipment screen draw.
   `VL.giveItem(state, id)` owns it, puts it in an empty hand (the main hand
-  first; `prefers: 'offHand'` for a shield), queues its popup and earns.
+  first; `prefers: 'offHand'` for a shield), queues its popup and earns. An
+  item with `takesHand: 'offHand'` (the Mirror Shield, which its boss needs)
+  goes into that hand the first time it is given even when the hand is full;
+  the old item stays owned, in the equipment list.
   `VL.hasItem`, `VL.setHand(state, hand, id)` (choosing the held item again
   empties the hand) and `VL.equipmentItems(state)` do the rest. **Read a hand
   with `VL.heldItem(state, hand)`**, never `state.hands` directly: it is the
@@ -640,7 +647,11 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   A place done with can hand its save point on:
   `VL.moveSavePoint((state, point) => place or null)` is asked on every
   Continue and faint (`VL.respawnPlace`); the shipwreck and every finished
-  dungeon use it (see "The boss room"). `VL.keepSavePoint((state, point) =>
+  dungeon use it (see "The boss room"). Name the place a rule wakes him at
+  with `VL.nameWakePlace(place, 'at home')`: `VL.wakeWords(state)` is then
+  those words whenever he will not wake at his save point, and the statue,
+  the wreck's lantern, the faint screen and the pause hint say so
+  (`VL.savedNote(state)`). `VL.keepSavePoint((state, point) =>
   true or false)` holds a save point where it is ahead of every move rule
   (the Hollow Oak until the shockwave). Neither changes `savePoint` itself.
   `finished` marks a finished game: the slot shows FINISHED and loads the
@@ -830,7 +841,15 @@ D held until it goes home and the head is choked (`w19-spout-fire.png`,
 `w19-spout-choked.png`), and the Dragon up, drawing breath, its fire
 bounced back (dazed), struck and beaten, the hoard spilled, with the boss
 gate shut until the heart is taken (`w19-boss.png`, `w19-boss-breath.png`,
-`w19-boss-dazed.png`, `w19-boss-beaten.png`, `w19-hoard.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
+`w19-boss-dazed.png`, `w19-boss-beaten.png`, `w19-hoard.png`). Then W32's
+polish pass: S at the lair's big chest with the slingshot in the off hand,
+the Mirror Shield taking that hand (`w32-mirror-shield-popup.png`), SAVED in
+the HUD bar over a lair room with both keys (`w32-saved-in-hud.png`), the
+spilled hoard clear of the keys (`w32-hoard-hud.png`), broken shells in the
+HUD and the smithy's YOU HAVE line (`w32-broken-hud.png`,
+`w32-smithy-purse.png`), and the arrow onto a finished Scriptorium's statue,
+then a faint, both saying he wakes at home (`w32-statue-home.png`,
+`w32-faint-home.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
 the beam, the Lens Crab's rounds, the Dragon's rounds, its fire through a
 metal shield, a stone head's fire bounced home, the shockwave, the chicken
 swarm, popups and a faint are each stepped by hand and drawn offscreen at 60 fps, in 16 px
@@ -839,8 +858,12 @@ flips brightness (0.05 relative luminance) more than 3 times, or over 2.8% of
 it (a quarter of WCAG's 341x256 px field at scale 4, where the canvas fills
 WCAG's 1024x768 reference screen; stricter than WCAG at scale 3, where a
 quarter of the field is about 4.9%) flips by WCAG's 0.1
-more than 6 times (over 3 flash pairs). A control run with the steady layers
-off must fail both. It runs for 240 s at most (about twice its run time). A
+more than 6 times (over 3 flash pairs), or over 2.8% of it has more than 3
+saturated-red flash pairs (WCAG's red flash rule, W32: a change of over 20 in
+(R - G - B) x 320 from linear R, G, B, negatives as 0, with the red side at
+R / (R + G + B) of 0.8 or more). A control run with the steady layers
+off must fail the first two, and a red-and-black strobe over 6% of the
+canvas the red one. It runs for 240 s at most (about twice its run time). A
 test file that runs no tests, and an `async` test function, both fail the
 node run.
 
@@ -2060,8 +2083,9 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   one of those two things, a map key with `reveal` or `VL.giveSmallKey`,
   never a `smallKey` entity pushed into `room.entities` (it would be found
   but never counted, so `VL.dungeonPickup` throws on one). The keys in hand
-  show over the play area while in a dungeon (`dungeonHud`, on the second
-  row at the right, under the SAVED note; drawn in the hero layers'
+  show over the play area while in a dungeon (`dungeonHud`, inside
+  `VL.DUNGEON_HUD` at the top right; no room may draw anything there, which
+  `tests/w32-polish.test.js` checks for every dungeon room; drawn in the hero layers'
   `overlay` pass: over the light, never hidden by the hurt flash) and on the
   map screen.
 - **Locked doors:** `{ type: 'lockedDoor', id, kind: 'small' | 'boss', x, y,
