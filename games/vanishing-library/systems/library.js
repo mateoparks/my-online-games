@@ -21,7 +21,7 @@
     // Whole shells a purse holds (W29: every price in town fits the first).
     shellCap: 15,
     shellCapPurse: 250,
-    swiftfootSpeed: 1.35,
+    swiftfootSpeed: 2,
   });
 
   VL.extendGame('library', () => ({

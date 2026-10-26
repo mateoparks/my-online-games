@@ -358,7 +358,7 @@ test('the canyon boulders: too heavy without the gloves; lifted with them they s
   assert.equal(t.tileHere(5, 5), 'P');
   assert.ok(findPath(VL, { area: 'overworld', screen: '4,0', tx: 3, ty: 5 }, { area: 'overworld', screen: '5,0', tx: 2, ty: 5 }, t.game), 'the road is open');
   assert.equal(VL.LOCKS.eastRoad.reached(t.game), false);
-  t.until((g) => g.player.screen === '5,0' && !g.transition, 4, ['right']);
+  t.until((g) => g.player.screen === '5,0' && !g.transition, 6, ['right']);
   assert.ok(VL.LOCKS.eastRoad.reached(t.game), 'the east road is reached');
 });
 

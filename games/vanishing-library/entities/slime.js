@@ -1,7 +1,7 @@
 // { type: 'slime', x, y }: a field slime. It sits and wobbles, then hops:
 // towards a hero who comes near, anywhere otherwise.
 (() => {
-  VL.tune({ enemySlime: { hp: 2, damage: 1, hopSpeed: 46, hopSeconds: 0.45, rest: 0.7, sense: 80 } });
+  VL.tune({ enemySlime: { hp: 2, damage: 1, hopSpeed: 31, hopSeconds: 0.45, rest: 0.7, sense: 80 } });
   const T = () => VL.TUNING.enemySlime;
 
   VL.ART.addColors({ slime: '#5cc48a', slimeLight: '#b8f0cc', slimeDark: '#2f8a5a' });

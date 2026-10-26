@@ -13,7 +13,7 @@
     bookwormUpSeconds: 2.8,
     bookwormUpFaster: 0.5,
     bookwormSpitSeconds: 1,
-    bookwormSpitSpeed: 64,
+    bookwormSpitSpeed: 43,
     bookwormHurtSeconds: 0.7,
     bookwormDiveSeconds: 0.35,
     bookwormDyingSeconds: 1.6,

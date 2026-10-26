@@ -1075,7 +1075,7 @@ test("the boss warp makes the dungeon's entrance the save point, and with the du
   t.game.flags['found:heartSample'] = true;
   t.d.doors.sampleBossDoor = true;
   t.place(at('0,-2', 7, 9, 'up'));
-  t.hold(['up'], 0.5);
+  t.hold(['up'], 0.8);
   assert.equal(t.game.player.area, 'sampleYard', 'out through the warp');
   assert.deepEqual(plain(t.game.savePoint), plain(t.VL.DUNGEONS.sample.entrance));
   t.step();

@@ -29,7 +29,8 @@ function walk(drive, target) {
       drive.closePopups();
       // Back off a step so a townsperson standing in the way can stroll on.
       const back = { up: 'down', down: 'up', left: 'right', right: 'left' }[drive.state.player.facing];
-      drive.hold([tries % 2 ? back : ['left', 'right', 'up', 'down'][tries % 4]], 0.3);
+      // A step's worth (21 px, 0.3 s at the W30 pace), past the shy distance.
+      drive.hold([tries % 2 ? back : ['left', 'right', 'up', 'down'][tries % 4]], 21 / drive.VL.TUNING.heroSpeed);
       drive.hold([], 1.2);
     }
   }
