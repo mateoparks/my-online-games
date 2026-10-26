@@ -2752,7 +2752,7 @@ async function main() {
           VL.place(g, { area: 'lair', screen: '0,-1', tx: 11, ty: 4, facing: 'up' });
           g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
         }, () => VL.actions({ held: ['offHand'] }), (app, g) => g.dungeons.lair.switches.d4SpoutHall));
-        // W20 (and W19 QA's note): walking up through the boss door into the
+        // Walking up through the boss door into the
         // Dragon's hoard, the strongest slide in the game, before the fight
         // (the mound) and after it (the books strewn over the floor).
         const intoHoard = (spilled) => (app, g) => {
