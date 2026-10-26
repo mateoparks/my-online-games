@@ -1,6 +1,6 @@
 // The Whispering Woods: a maze of look-alike screens north of the east road,
 // with the Hollow Oak (Dungeon 2) at its heart. VL.WOODS_ROUTE is the one way
-// through, for W15's copied-map mechanic; the wrong exits loop back.
+// through, which the copied map shows; the wrong exits loop back.
 (() => {
   const { rect } = VL.ART;
 
@@ -140,6 +140,8 @@
       ],
       entities: [
         { type: 'bat', x: 10, y: 5 },
+        // Down from the highlands (its id kept for old saves).
+        spot('bookHighShelfB', 2, 4, 'trunk', 'W11'),
       ],
     },
     // Two pockets that never meet: a dead end from the west (with a secret
@@ -238,7 +240,7 @@
         { type: 'spitter', x: 12, y: 6, tough: true },
         { type: 'decor', art: 'hollowOak', x: 5, y: 1 },
         spot('hollowOakDoor', 7, 3, 'door', 'W15', 'hollowOakEntered'),
-        spot('bookChickenAlmanac', 10, 8, 'trunk', 'W11'),
+        spot('bookWreckDeck', 10, 8, 'trunk', 'W11'),
       ],
     },
     // Wrong turns (VL.WOODS_WRONG_EXITS): look-alike screens that wind back
@@ -325,6 +327,8 @@
       ],
       entities: [
         { type: 'bat', x: 8, y: 3 },
+        // Down from the highlands (its id kept for old saves).
+        spot('bookHighShelfA', 14, 7, 'trunk', 'W11'),
       ],
     },
   });
@@ -340,8 +344,13 @@
 
   VL.defineRegion('woods', {
     screens: ['5,-1', '6,-1', '7,-1', '5,-2', '6,-2', '7,-2', '4,-2', '4,-1', '6,-3', '7,0', '6,0'],
-    place: 'woods',
-    softGate: 'woodsMapCopy',
+    place: 'woodsPaths',
+  });
+  // W34: the maze's paths are open to all from the east road; its heart, the
+  // Oak's clearing past the gate tree (systems/woods-map.js), is `woods`.
+  VL.defineLock('woodsPaths', {
+    type: 'place', needs: ['eastRoad'], doc: '§ The world: Whispering Woods',
+    reached: (state) => VL.regionVisited(state, 'woods'),
   });
   // Walking into the maze is not the place; reaching its heart is.
   VL.defineLock('woods', {

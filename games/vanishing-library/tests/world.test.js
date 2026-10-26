@@ -110,7 +110,7 @@ test('walking moves the hero and sets facing', () => {
   addFixtureWorld(VL);
   const state = playState(VL, { area: 'test', screen: '0,0', tx: 8, ty: 2, facing: 'down' });
   const { x, y } = state.player;
-  hold(VL, state, ['left'], 0.25);
+  hold(VL, state, ['left'], 0.4);
   assert.ok(state.player.x < x - 15);
   assert.equal(state.player.y, y);
   assert.equal(state.player.facing, 'left');
@@ -141,7 +141,7 @@ test('solid tiles block and the hero slides along walls', () => {
   const wallY = 80 + VL.TUNING.heroBox.h / 2;
   assert.ok(Math.abs(state.player.y - wallY) < 1, `stopped at the tree: ${state.player.y}`);
   assert.equal(state.player.x, x);
-  hold(VL, state, ['up', 'left'], 0.15);
+  hold(VL, state, ['up', 'left'], 0.25);
   assert.ok(Math.abs(state.player.y - wallY) < 1, 'still against the tree');
   assert.ok(state.player.x < x - 6, 'slid left along it');
 });
@@ -176,7 +176,7 @@ test('all four edge directions transition', () => {
   ];
   for (const c of cases) {
     const state = playState(VL, { area: 'test', screen: c.from, tx: c.tx, ty: c.ty });
-    hold(VL, state, [c.dir], 0.5);
+    holdUntil(VL, state, [c.dir], (s) => s.player.screen !== c.from, 1);
     assert.equal(state.player.screen, c.to, `${c.dir} from ${c.from}`);
     assert.equal(state.transition.dir, c.dir);
   }

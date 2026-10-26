@@ -142,7 +142,7 @@ test('the trapdoor is under the puppet stage, a place of its own', () => {
   assert.equal(VL.LOCKS.puppetStage.type, 'place');
   assert.equal(VL.LOCKS.puppetStage.by, 'W11');
   assert.deepEqual([...VL.LOCKS.trapdoorOpen.needs], ['d4Boss', 'puppetStage']);
-  assert.equal(Object.keys(VL.LOCKS).length, 139, 'W17 2, W18 7 (W35: 6, no heaps), W30 twelve late books, the moss key and door C, W19 6 keys and doors, and W35 the Lair guards');
+  assert.equal(Object.keys(VL.LOCKS).length, 141, 'W17 2, W18 7 (W35: 6, no heaps), W30 twelve late books, the moss key and door C, W19 6 keys and doors, W34 the Woods\' paths and the island\'s crabs, and W35 the Lair guards');
 });
 
 test('implemented place locks name screens that exist', () => {
@@ -597,10 +597,10 @@ test('broken: a required item only reachable before an event, and a milestone li
   assert.ok(problems.includes('highlands is required but unreachable after primerTaken'));
   // A one-time chest whose contents the shockwave takes is simply used up, and what else it held is kept.
   const used = copyTable(VL);
-  used.bookChickenAlmanac.gives.push('woodShovel');
+  used.d1Boss.gives.push('woodShovel');
   const report = VL.solveProgression(used);
   assert.deepEqual([...report.problems], []);
-  assert.ok(report.stages[1].disabled.includes('bookChickenAlmanac') && report.stages[1].keys.includes('chickenAlmanacRead'));
+  assert.ok(report.stages[1].disabled.includes('d1Boss') && report.stages[1].keys.includes('mortarPestle'));
   const milestones = VL.MILESTONES.slice();
   const i = milestones.indexOf('shockwave');
   [milestones[i], milestones[i + 1]] = [milestones[i + 1], milestones[i]];

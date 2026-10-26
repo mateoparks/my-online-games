@@ -1,8 +1,9 @@
 // The way to the highlands played for real (W19), from wherever the
 // Lighthouse left the hero: the last two loose pages (the field by the
 // library, and Henrietta carried home to Pip), the Chicken Keeper's Almanac
-// from its trunk in the Woods, every carried book handed in and read, berries
-// sold for the binding, Miss Quill's Climber's Almanac; then up the hidden
+// from its trunk on the wreck, trunks opened until 20 books earn the Big
+// Shell Purse (W34), every carried book handed in and read, berries sold for
+// the binding's 40 shells, Miss Quill's Climber's Almanac; then up the hidden
 // path and over both chasms with the chickens, to the lair's mouth.
 const assert = require('node:assert/strict');
 const { findPath } = require('./playthrough');
@@ -29,7 +30,8 @@ function walk(drive, target) {
       drive.closePopups();
       // Back off a step so a townsperson standing in the way can stroll on.
       const back = { up: 'down', down: 'up', left: 'right', right: 'left' }[drive.state.player.facing];
-      drive.hold([tries % 2 ? back : ['left', 'right', 'up', 'down'][tries % 4]], 0.3);
+      // A step's worth (21 px, 0.3 s at the W30 pace), past the shy distance.
+      drive.hold([tries % 2 ? back : ['left', 'right', 'up', 'down'][tries % 4]], 21 / drive.VL.TUNING.heroSpeed);
       drive.hold([], 1.2);
     }
   }
@@ -100,18 +102,41 @@ function henriettaHome(drive) {
   walk(drive, ow('2,1', 7, 5));
 }
 
-function chickenAlmanacBook(drive) {
+// Opens a book's trunk from the first side a path reaches (any area).
+function openTrunk(drive, id) {
   const { VL } = drive;
-  if (VL.spotFound(drive.state, 'bookChickenAlmanac')) return;
-  const trunk = VL.SPOTS.bookChickenAlmanac;
+  if (VL.spotFound(drive.state, id)) return;
+  const trunk = VL.SPOTS[id];
+  const at = (tx, ty) => ({ area: trunk.area, screen: trunk.screen, tx, ty });
   const side = [[0, 1, 'up'], [-1, 0, 'right'], [1, 0, 'left'], [0, -1, 'down']]
-    .map(([dx, dy, dir]) => ({ at: ow(trunk.screen, trunk.x + dx, trunk.y + dy), dir }))
-    .find(({ at }) => !VL.isSolidAt('overworld', trunk.screen, at.tx, at.ty) && findPath(VL, here(drive), at, drive.state));
+    .map(([dx, dy, dir]) => ({ at: at(trunk.x + dx, trunk.y + dy), dir }))
+    .find(({ at: spot }) => !VL.isSolidAt(trunk.area, trunk.screen, spot.tx, spot.ty) && findPath(VL, here(drive), spot, drive.state));
+  assert.ok(side, `a way to ${id}'s trunk`);
   walk(drive, side.at);
   face(drive, side.dir);
   drive.press('interact');
   drive.closePopups();
-  assert.ok(VL.spotFound(drive.state, 'bookChickenAlmanac'), 'the Almanac was in its trunk');
+  assert.ok(VL.spotFound(drive.state, id), `${id} was in its trunk`);
+}
+
+function chickenAlmanacBook(drive) {
+  openTrunk(drive, 'bookChickenAlmanac');
+}
+
+// W34: the binding's 40 shells need the Big Shell Purse (20 books returned),
+// so books from trunks along the way, nearest places first, until there
+// are enough to hand in.
+const PURSE_TRUNKS = ['bookPrimer', 'bookHighShelfB', 'bookHerbalist', 'bookWoods', 'bookWreckDeck', 'bookHighShelfA', 'bookLighthouse',
+  'bookHighPathB', 'bookHighScree', 'bookLairB', 'bookHighPathA', 'bookLakeIsland', 'bookHighGapB'];
+function booksForThePurse(drive) {
+  const { VL } = drive;
+  const { shellPurse } = VL.TUNING.libraryRewards;
+  const counted = () => VL.booksReturned(drive.state) + VL.booksCarried(drive.state).length;
+  for (const id of PURSE_TRUNKS) {
+    if (VL.hasItem(drive.state, 'shellPurse') || counted() >= shellPurse) break;
+    openTrunk(drive, id);
+  }
+  assert.ok(VL.hasItem(drive.state, 'shellPurse') || counted() >= shellPurse, `${counted()} books for the purse`);
 }
 
 // Hands every carried book in and sits through the readings (W11's step).
@@ -148,8 +173,10 @@ const route = {
     henriettaHome(drive);
     assert.ok(VL.loosePages(drive.state) >= VL.pagesToBind(), `${VL.loosePages(drive.state)} pages`);
     chickenAlmanacBook(drive);
+    booksForThePurse(drive);
     readAtTheLibrary(drive);
     assert.ok(drive.state.flags.chickenAlmanacRead, 'the librarian read the Chicken Keeper\'s Almanac');
+    assert.ok(VL.hasItem(drive.state, 'shellPurse'), 'the librarian gave the Big Shell Purse');
     shellsFor(drive, VL.TUNING.prices.binding.shells);
     buy(drive, 'bindery', ['bindPages']);
     drive.until((state) => VL.hasItem(state, 'climbersAlmanac'), 1);

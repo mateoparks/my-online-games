@@ -56,7 +56,8 @@
       const { pressed } = actions;
       const view = app.equipment;
       const game = app.game;
-      if (pressed.equipment || pressed.pause) {
+      // X is the key the footer names (W34); E and Esc still work.
+      if (pressed.dig || pressed.equipment || pressed.pause) {
         VL.sfx('menuSelect');
         app.setScene('play');
         return;
@@ -137,7 +138,7 @@
         centred(ctx, icon, x + 4, y + 3);
         VL.ART.text(ctx, String(game.inventory[kind]).padStart(2, '0'), x + 10, y, { color: 'text' });
       });
-      const hint = list.length > GRID.cols ? '←→↑↓ CHOOSE   ␣/D: HOLD   S: USE   E: BACK' : list.length ? '←→ CHOOSE   ␣/D: HOLD   S: USE   E: BACK' : 'E: BACK';
+      const hint = list.length > GRID.cols ? '←→↑↓ CHOOSE   ␣/D: HOLD   S: USE   X: BACK' : list.length ? '←→ CHOOSE   ␣/D: HOLD   S: USE   X: BACK' : 'X: BACK';
       VL.ART.text(ctx, hint, BOX.x + BOX.w / 2, BOX.y + BOX.h - 11, { size: 'small', align: 'center', color: 'textDim' });
     },
   });

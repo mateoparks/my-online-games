@@ -39,7 +39,8 @@
     update(app, actions, dt) {
       app.dungeonMapView.t += dt;
       const { pressed } = actions;
-      if (pressed.map || pressed.pause || pressed.equipment || !VL.dungeonOf(app.game)) {
+      // X is the key the footer names (W34).
+      if (pressed.dig || pressed.map || pressed.pause || pressed.equipment || !VL.dungeonOf(app.game)) {
         VL.sfx('menuSelect');
         app.setScene('play');
       }
@@ -77,7 +78,7 @@
       VL.ART.text(ctx, 'MAP', SIDE_X, GRID.y + 60, { size: 'small', color: 'textDim' });
       if (d.map) VL.ART.drawSprite(ctx, 'pickup-dungeon-map', SIDE_X, GRID.y + 69);
       else VL.ART.text(ctx, '-', SIDE_X + 1, GRID.y + 70, { color: 'textDim' });
-      VL.ART.text(ctx, d.map ? 'M: BACK' : 'ROOMS YOU HAVE SEEN   M: BACK', BOX.x + BOX.w / 2, BOX.y + BOX.h - 11, { size: 'small', align: 'center', color: 'textDim' });
+      VL.ART.text(ctx, d.map ? 'X: BACK' : 'ROOMS YOU HAVE SEEN   X: BACK', BOX.x + BOX.w / 2, BOX.y + BOX.h - 11, { size: 'small', align: 'center', color: 'textDim' });
     },
   });
 })();

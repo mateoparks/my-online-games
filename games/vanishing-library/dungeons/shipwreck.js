@@ -138,6 +138,8 @@
 
   const post = (x, y) => ({ type: 'grapplePost', x, y });
 
+  const trunk = (id, x, y) => ({ type: 'spot', id, x, y, how: 'trunk', by: 'W11', lock: id });
+
   VL.addScreens(AREA, {
     // The hold, under the hatch: the ladder up, a lantern on the way down
     // (a faint or a reload wakes him here until the page is found), and the
@@ -157,7 +159,7 @@
         '#######_########',
       ],
       entities: [
-        { type: 'door', x: 7, y: 0, to: { area: 'overworld', screen: '5,2', tx: 8, ty: 6, facing: 'down' } },
+        { type: 'door', x: 7, y: 0, to: { area: 'overworld', screen: '5,2', tx: 8, ty: 5, facing: 'up' } },
         { type: 'savePoint', x: 7, y: 3 },
         { type: 'lockedDoor', id: 'wreckDoor', kind: 'small', x: 15, y: 5, lock: 'wreckDoor' },
         { type: 'crab', x: 3, y: 4 },
@@ -186,6 +188,7 @@
         post(11, 8),
         { type: 'chest', id: 'wreckKeyChest', x: 3, y: 9, contents: [{ smallKey: 'wreck' }] },
         { type: 'ore', id: 'oreShipwreck', x: 13, y: 9 },
+        trunk('bookHighGapA', 8, 9),
       ],
     },
     // The captain's cabin.
@@ -208,6 +211,7 @@
         { type: 'decor', art: 'wreckDesk', x: 1, y: 1 },
         { type: 'page', id: 'pageShipwreck', x: 11, y: 3 },
         { type: 'chest', id: 'wreckShellChest', x: 7, y: 2, contents: [{ resource: 'shells', amount: 5 }] },
+        trunk('bookHighGapB', 14, 2),
       ],
     },
   });
@@ -227,7 +231,7 @@
   VL.defineDungeon('wreck', {
     area: AREA,
     name: 'Shipwreck',
-    entrance: { area: 'overworld', screen: '5,2', tx: 8, ty: 6, facing: 'down' },
+    entrance: { area: 'overworld', screen: '5,2', tx: 8, ty: 5, facing: 'up' },
     light: 'indoor',
   });
 

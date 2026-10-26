@@ -198,6 +198,8 @@
       ],
       entities: [
         { type: 'gull', x: 11, y: 4 },
+        // W34: down from the highlands (its id kept for old saves).
+        spot('bookHighlands', 9, 5, 'rock', 'W14'),
       ],
     },
     // The lighthouse headland.

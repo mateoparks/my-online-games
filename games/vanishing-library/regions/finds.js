@@ -19,17 +19,27 @@
     bookCliffRoad: book(['cliffs']),
     bookLighthouse: book(['cliffs']),
     bookEastRoad: book(['eastRoad']),
-    bookWoods: book(['woods']),
-    bookHighlands: book(['highlands', 'liftingGloves']),
+    bookWoods: book(['woodsPaths']),
+    bookHighlands: book(['cliffs', 'liftingGloves']),
     bookMeadowRock: book(['start', 'liftingGloves']),
   });
   // W30: twelve more untitled books in the late places, so the 30-book
   // reward is in reach even for a kid who misses a few.
   const late = (place, ids) => ids.forEach((id) => VL.defineLock(id, { ...book(place), doc: '§ Books, pages and the library: Rewards for books returned' }));
   late(['cliffs', 'climbersAlmanac'], ['bookCliffLedge']);
-  late(['highlands'], ['bookHighShelfA', 'bookHighShelfB', 'bookHighScree', 'bookHighGapA', 'bookHighGapB', 'bookHighPathA', 'bookHighPathB', 'bookLairA', 'bookLairB']);
+  // W34: only bookLairA (Ashton Co-op) stays in the highlands; the ids keep
+  // their W30 names so old saves' found flags still match.
+  late(['highlands'], ['bookLairA']);
+  late(['woodsPaths'], ['bookHighShelfA', 'bookHighShelfB']);
+  late(['woods'], ['bookWreckDeck']);
   late(['lakeIsland'], ['bookLakeIsland']);
-  late(['shipwreck'], ['bookWreckDeck']);
+  // In the Lighthouse, a room apiece: on the way to the binding, so a kid
+  // who skips the lake island still finds them before the purse is needed.
+  late(['lighthouseEntered'], ['bookHighPathB', 'bookHighScree']);
+  late(['d3DoorA'], ['bookLairB']);
+  late(['slingshot'], ['bookHighPathA']);
+  late(['shipwreck', 'grapplingRope'], ['bookHighGapA']);
+  late(['shipwreck', 'wreckDoor'], ['bookHighGapB']);
   for (const id of ['hiddenBookSealed', 'bookHerbalist', 'bookTideTables', 'bookSmithsLedger', 'bookPrimer', 'bookDragons', 'bookChickenAlmanac']) {
     VL.defineLock(id, { ...VL.LOCKS[id], by: 'W11' });
   }

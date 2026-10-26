@@ -16,19 +16,20 @@
   generic('bookWoods', 'Whispers of the Woods', 'leafLight', 'They say the paths in the Woods wander about at night, like sleepy cats.');
   generic('bookScriptoriumRock', 'Neat Letters for Messy Scribes', 'tunic', 'Page one is very neat. By page ninety, the scribe had clearly given up.');
   generic('bookLakeShore', 'Fish I Have Known', 'waterLight', 'Every fish gets its own chapter. Chapter twelve just says "splash".');
-  generic('bookHighlands', 'Songs for Tired Legs', 'roof', 'A songbook from the highlands. Every song is about wanting to sit down.');
+  generic('bookHighlands', 'Songs for Tired Legs', 'roof', 'A songbook for cliff climbers. Every song is about wanting to sit down.');
   generic('bookMeadowRock', 'A Field Guide to Flowers', 'berryLight', 'Pressed flowers between the pages! Somebody loved this book.');
   // W30: the late places' books.
   generic('bookCliffLedge', 'Knots for Nervous Climbers', 'wood', 'Every knot is called "the tight one." The author was clearly very nervous.');
-  generic('bookHighShelfA', 'A Goat\'s Guide to Mountains', 'rockLight', 'Chapter one: jump. Chapter two: jump higher. A goat wrote it, I think.');
+  generic('bookHighShelfA', 'A Squirrel\'s Guide to Trees', 'rockLight', 'Chapter one: climb. Chapter two: climb higher. Chapter three: nuts. A squirrel wrote it, I think.');
   generic('bookHighShelfB', 'Clouds and What They Mean', 'waterLight', 'Fluffy means sunshine. Grey means rain. One shaped like a chicken? Nobody knows.');
   generic('bookHighScree', 'Pebbles of Every Colour', 'rock', 'Two hundred pages about pebbles. Somebody liked pebbles very much.');
   generic('bookHighGapA', 'How to Talk to Gulls', 'sand', 'Step one: say "squawk." Step two: run. That seems to be all the advice there is.');
   generic('bookHighGapB', 'The Windy Cookbook', 'leafLight', 'Every recipe ends with "and then the wind blew it away." Very short meals.');
   generic('bookHighPathA', 'The Brave Little Hedgehog', 'roof', 'A hedgehog who is scared of nothing at all. Except balloons. Fair enough.');
   generic('bookHighPathB', 'Snoring Through the Ages', 'tunic', 'A history of snoring. It says dragons snore the loudest of all. Hmm!');
-  generic('bookLairA', 'Warm Socks for Cold Toes', 'berry', 'Knitting patterns for the highlands. One sock is long enough for a giraffe.');
-  generic('bookLairB', 'Stars Over the Highlands', 'gold', 'A map of the night sky. Someone drew a smiling face on the moon.');
+  // W34: Matthew's easter egg, his words.
+  generic('bookLairA', 'Ashton Co-op', 'berry', 'Adventures in learning! Or maybe just adventures. Who knows?');
+  generic('bookLairB', 'Stars Over the Sea', 'gold', 'The old keeper\'s map of the night sky. Someone drew a smiling face on the moon, and a little hat.');
   generic('bookLakeIsland', 'Island Living for Beginners', 'leaf', 'Lesson one: bring a boat. Lesson two: see above.');
   generic('bookWreckDeck', 'The Captain\'s Logbook', 'water', 'Day one: sailing. Day two: more sailing. Day three: "Oops." The last page is very wet.');
 
@@ -61,9 +62,9 @@
   ], popupOnRead('tideTablesRead', { title: 'Tide Tables', text: 'Digging on the beach turns up whole shells more often now.' }));
   titled('bookSmithsLedger', 'The Smith\'s Ledger', 'roof', 'reading-anvil', [
     'Brannock\'s great-grandfather kept this. Every lump of ore he ever used!',
-    'Here: "Best ore of my life, found deep in the Whispering Woods." So there\'s ore hiding in the Woods!',
+    'And a note at the back: "Rumour has it there\'s ore in the hold of the old shipwreck." If you draw a map, I\'ll mark it for you!',
     'And here\'s his trick for using fewer shells at the forge! I\'ll tell Brannock, and he\'ll charge you less.',
-  ], popupOnRead('smithsLedgerRead', { title: 'The Smith\'s Ledger', text: 'Ore lies hidden deep in the Whispering Woods. The smith forges metal gear for fewer shells now.' }));
+  ], popupOnRead('smithsLedgerRead', { title: 'The Smith\'s Ledger', text: 'Rumour has it there\'s ore on the old shipwreck: a map you draw will show it. The smith forges metal gear for fewer shells now.' }));
   titled('bookPrimer', 'The Cartographer\'s Primer', 'gold', 'reading-map', [
     'How to draw a map of every place you have ever been. How wonderful!',
     'With paper and ink, you could draw the whole island. I\'ll keep this one safe on the shelf for you, {name}.',
@@ -127,9 +128,12 @@
     lighthouseEntered: [{ say: 'That glowing stone you carry... the old Lighthouse on the cliffs is pitch dark inside. Perhaps it\'s time for a visit.' }],
     slingshot: [{ say: 'The Lighthouse has switches far out of reach. Look high and low in there for a way to hit them.' }],
     d3Boss: [{ say: 'A great crab has taken the Lighthouse lens for its shell! Mind its pincers, {name}.' }],
-    climbersAlmanac: [{ say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow all over: by the library, by the lake, even into a chicken coop. Little Pip in the harbour might know something!' }],
+    climbersAlmanac: [
+      { when: (state) => !VL.hasItem(state, 'shellPurse'), say: 'Miss Quill charges forty shells to bind a book, and your purse only holds fifteen! Bring me more books, {name}: I have a bigger purse put by for you.' },
+      { say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow all over: by the library, by the lake, even into a chicken coop. Little Pip in the harbour might know something!' },
+    ],
     highlands: [
-      { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think someone hid it at the heart of the Whispering Woods.' },
+      { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think it washed up on the old wreck off the beach.' },
       { say: 'The Climber\'s Almanac shows a hidden path at the foot of the cliffs. From there, let the chickens carry you up!' },
     ],
     dragonsLairEntered: [{ say: 'The Dragon\'s Lair is at the very top of the highlands. Be brave, {name}.' }],

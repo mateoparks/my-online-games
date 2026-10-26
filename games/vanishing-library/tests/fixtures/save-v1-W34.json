@@ -1,0 +1,99 @@
+{
+  "v": 1,
+  "name": "Robin",
+  "rngState": 1,
+  "maxHp": 6,
+  "flags": {},
+  "visited": {
+    "overworld:1,1": true,
+    "overworld:3,-3": true
+  },
+  "savePoint": null,
+  "finished": false,
+  "inventory": {
+    "wood": 0,
+    "shells": 50,
+    "brokenShells": 0,
+    "berries": 0,
+    "ore": 0,
+    "paper": 0,
+    "ink": 0
+  },
+  "items": {
+    "shellPurse": true
+  },
+  "hands": {
+    "mainHand": null,
+    "offHand": null
+  },
+  "popups": {
+    "seen": {},
+    "queue": []
+  },
+  "dungeons": {
+    "scriptorium": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "hollowOak": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "lighthouse": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "wreck": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "lair": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    }
+  },
+  "tileChanges": {},
+  "library": {
+    "returned": [],
+    "read": [],
+    "gone": [],
+    "trips": 0,
+    "lastTripAt": 0,
+    "stolen": {
+      "trips": 0,
+      "bosses": 0
+    },
+    "noticed": 0
+  },
+  "crabs": {
+    "killed": 13,
+    "angry": true,
+    "feast": true
+  },
+  "afterThornbackDone": []
+}

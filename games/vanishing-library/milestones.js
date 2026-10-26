@@ -55,18 +55,19 @@
   lock('woodShovel', { type: 'item', needs: ['town', ['wood', 'shells']], renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
   lock('metalSword', { type: 'item', needs: ['blacksmith', 'shells'], consumes: { ore: 1 }, renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
   lock('metalShield', { type: 'item', needs: ['blacksmith', 'shells'], consumes: { ore: 1 }, renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
-  lock('metalShovel', { type: 'item', needs: ['blacksmith', 'shells'], consumes: { ore: 1 }, renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
+  lock('metalShovel', { type: 'item', needs: ['blacksmith', 'shells', 'wood'], consumes: { ore: 1 }, renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
   lock('buriedSecrets', { needs: ['metalShovel'], optional: true, renewable: true, doc: '§ Tools: two tiers, Shovel', by: 'W10' });
 
   // ---------- books, pages and the library ----------
 
   lock('hiddenBooks', { type: 'item', needs: ['town', 'library'], supplies: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Hidden books', by: 'W8' });
-  lock('bookHerbalist', { type: 'item', needs: ['woods', 'library'], gives: ['herbalistRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Herbalist\'s Notes', by: 'W8' });
+  lock('bookHerbalist', { type: 'item', needs: ['woodsPaths', 'library'], gives: ['herbalistRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Herbalist\'s Notes', by: 'W8' });
   lock('bookTideTables', { type: 'item', needs: ['shipwreck', 'library'], gives: ['tideTablesRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Tide Tables', by: 'W8' });
   lock('bookSmithsLedger', { type: 'item', needs: ['lakeIsland', 'library'], gives: ['smithsLedgerRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Smith\'s Ledger', by: 'W8' });
   lock('bookPrimer', { type: 'item', needs: ['eastRoad', 'library'], gives: ['primerOnShelf'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Cartographer\'s Primer', by: 'W8' });
   lock('bookDragons', { type: 'item', needs: ['highlands', 'library'], gives: ['dragonsRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: A Child\'s Book of Dragons', by: 'W8' });
-  lock('bookChickenAlmanac', { type: 'item', needs: ['woods', 'library'], gives: ['chickenAlmanacRead'], supplies: { books: 1 }, doc: '§ Books, pages and the library: The Chicken Keeper\'s Almanac', by: 'W8' });
+  // W34: out on the wreck, so it comes nearer the highlands it opens.
+  lock('bookChickenAlmanac', { type: 'item', needs: ['shipwreck', 'library'], gives: ['chickenAlmanacRead'], supplies: { books: 1 }, doc: '§ Books, pages and the library: The Chicken Keeper\'s Almanac', by: 'W8' });
   lock('heartLibrary', { type: 'item', needs: ['library'], count: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('shellPurse', { type: 'item', needs: ['library'], count: { books: 20 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('swiftfootBoots', { type: 'item', needs: ['library'], count: { books: 30 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
@@ -75,7 +76,8 @@
   lock('pageFieldA', { type: 'item', needs: ['town'], supplies: { pages: 1 }, doc: '§ Books, pages and the library: Missing pages', by: 'W8' });
   lock('pageFieldB', { type: 'item', needs: ['lake'], supplies: { pages: 1 }, doc: '§ Books, pages and the library: Missing pages', by: 'W8' });
   lock('worldMap', { type: 'item', needs: ['primerOnShelf', 'paper', 'ink'], renewable: true, optional: true, doc: '§ Paper and ink: Your own world map', by: 'W12' });
-  lock('heartFieldA', { type: 'item', needs: ['eastRoad'], optional: true, doc: '§ Hearts and combat', by: 'W8' });
+  // W34: buried under the grass, so only the metal shovel digs it up.
+  lock('heartFieldA', { type: 'item', needs: ['eastRoad', 'metalShovel'], optional: true, doc: '§ Hearts and combat', by: 'W8' });
   lock('heartFieldB', { type: 'item', needs: ['cliffs'], optional: true, doc: '§ Hearts and combat', by: 'W8' });
 
   // ---------- chickens ----------
@@ -96,7 +98,8 @@
   // ---------- the Woods and Dungeon 2: the Hollow Oak ----------
 
   lock('woodsMapCopy', { type: 'item', needs: ['woodsMural', 'paper', 'ink'], doc: '§ Paper and ink: Copying', by: 'W12' });
-  lock('oreWoods', { type: 'item', needs: ['woods'], supplies: { ore: 1 }, doc: '§ Tools: two tiers, Ore is scarce (3)', by: 'W8' });
+  // W34: the Woods' paths are open without the map; only the Oak's clearing needs it.
+  lock('oreWoods', { type: 'item', needs: ['woodsPaths'], supplies: { ore: 1 }, doc: '§ Tools: two tiers, Ore is scarce (3)', by: 'W8' });
   lock('hollowOakEntered', { type: 'place', needs: ['woods'], doc: '§ The path through the game, 3', by: 'W15' });
   lock('grapplingRope', { type: 'item', needs: ['hollowOakEntered'], doc: '§ The path through the game, 3', by: 'W15' });
   // W30: the Hollow Oak's thorny spitters and the key under its grass.
@@ -129,7 +132,8 @@
 
   // ---------- the highlands and Dungeon 4: the Dragon's Lair ----------
 
-  lock('climbersAlmanac', { type: 'item', needs: ['bindery', 'shells'], count: { pages: 5 }, doc: '§ The path through the game, 7', by: 'W19' });
+  // W34: the binding's 40 shells fit only the Big Shell Purse.
+  lock('climbersAlmanac', { type: 'item', needs: ['bindery', 'shells', 'shellPurse'], count: { pages: 5 }, doc: '§ The path through the game, 7', by: 'W19' });
   lock('highlands', { type: 'place', needs: ['cliffs', 'climbersAlmanac', 'chickenFlightLong'], doc: '§ The path through the game, 7', by: 'W19' });
   lock('dragonsLairEntered', { type: 'place', needs: ['highlands'], doc: '§ The path through the game, 8', by: 'W19' });
   lock('mirrorShield', { type: 'item', needs: ['dragonsLairEntered'], doc: '§ The path through the game, 8', by: 'W19' });

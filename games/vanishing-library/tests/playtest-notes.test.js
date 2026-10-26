@@ -143,8 +143,8 @@ test('the six titled books wait behind later progress, each where it is useful',
   const { VL } = loadGame();
   const behind = {
     bookPrimer: 'liftingGloves', // the east road, as D1's mortar brings ink for a map
-    bookHerbalist: 'woodsMapCopy', // in the Woods, after D1
-    bookChickenAlmanac: 'woodsMapCopy', // at the heart of the Woods, long before the highlands
+    bookHerbalist: 'liftingGloves', // in the Woods, after D1 (no map needed since W34)
+    bookChickenAlmanac: 'rafting', // on the wreck's deck since W34, nearer the highlands it opens
     bookSmithsLedger: 'shockwave', // the lake island, when gear must be forged again
     bookTideTables: 'shockwave', // the shipwreck, when shells must be dug again
     bookDragons: 'climbersAlmanac', // the highlands, on the way to the dragon
@@ -157,43 +157,29 @@ test('the six titled books wait behind later progress, each where it is useful',
   }
 });
 
-test('the Herbalist\'s trunk keeps away from the Woods\' secret ore, so the Smith\'s Ledger still has it to reveal', () => {
+test('the Herbalist\'s trunk keeps away from the Woods\' secret ore (W34: no book reveals it now; the Ledger tells of the wreck\'s)', () => {
   const { VL } = loadGame();
   const herbalist = VL.SPOTS.bookHerbalist;
   const ore = VL.SPOTS.oreWoods;
   assert.equal(herbalist.area, 'overworld');
   assert.ok(VL.REGIONS.woods.screens.includes(herbalist.screen), `still in the Woods (${herbalist.screen})`);
   assert.notEqual(herbalist.screen, ore.screen, 'not on the ore\'s screen');
-  assert.match(VL.BOOKS.bookSmithsLedger.reading.join(' '), /ore hiding in the Woods/);
 });
 
-test('the solver stays green; the 10-book heart comes before the shockwave, the purse and the boots after it (W30)', () => {
+test('the solver stays green; the 10-book heart comes before the shockwave, the purse and the boots after it (W30; W34 moved the Chicken Almanac to the wreck)', () => {
   const { VL } = loadGame();
   const result = VL.solveProgression();
   assert.deepEqual([...result.problems], []);
   const beforeShockwave = result.stages[0].reached;
-  for (const id of ['heartLibrary', 'bookPrimer', 'bookHerbalist', 'bookChickenAlmanac']) assert.ok(beforeShockwave.includes(id), id);
+  for (const id of ['heartLibrary', 'bookPrimer', 'bookHerbalist']) assert.ok(beforeShockwave.includes(id), id);
   for (const id of ['shellPurse', 'swiftfootBoots']) {
     assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
     assert.ok(result.stages.some((stage) => stage.reached.includes(id)), `${id} is reachable`);
   }
-  for (const id of ['bookSmithsLedger', 'bookTideTables', 'bookDragons']) assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
+  for (const id of ['bookSmithsLedger', 'bookTideTables', 'bookDragons', 'bookChickenAlmanac']) assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
 });
 
-// ---------- walking speed ----------
-
-test('the hero starts about 12% slower, and the Swiftfoot Boots are still clearly faster', () => {
-  const { VL } = loadGame();
-  const before = 80;
-  assert.ok(Math.abs(VL.TUNING.heroSpeed / before - 0.88) < 0.02, `start speed ${VL.TUNING.heroSpeed}`);
-  const state = VL.newGame();
-  const walking = VL.heroSpeed(state);
-  state.items.swiftfootBoots = true;
-  const booted = VL.heroSpeed(state);
-  assert.equal(walking, VL.TUNING.heroSpeed);
-  assert.ok(booted >= walking * 1.3, `boots ${booted} vs ${walking}`);
-  assert.ok(booted > before, 'the boots beat even the old starting pace');
-});
+// Walking speed: W34 slowed it again (tests/playtest-4.test.js).
 
 // ---------- holding it up ----------
 

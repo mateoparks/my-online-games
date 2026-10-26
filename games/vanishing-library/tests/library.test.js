@@ -262,8 +262,9 @@ test('the effects: Herbalist marks, Ledger ore and cheaper forging, Primer, Drag
   returnAndRead(VL, game, ['bookHerbalist', 'bookSmithsLedger', 'bookPrimer', 'bookDragons', 'bookChickenAlmanac', 'hiddenBookSealed']);
   const marks = plain(VL.mapMarks(game));
   assert.deepEqual(marks.filter((m) => m.kind === 'berries').map((m) => m.screen).sort(), ['-1,-3', '0,0', '7,-2'], 'the three berry bushes (hut, Woods, highlands since W29)');
-  assert.deepEqual(marks.filter((m) => m.kind === 'ore'), [{ kind: 'ore', area: 'overworld', screen: VL.SPOTS.oreWoods.screen, tx: VL.SPOTS.oreWoods.x, ty: VL.SPOTS.oreWoods.y }]);
-  VL.markFound(game, 'oreWoods');
+  // W34: the Ledger's rumour is of the wreck's ore, marked over the hatch.
+  assert.deepEqual(marks.filter((m) => m.kind === 'ore').map((m) => m.screen), ['5,2']);
+  VL.markFound(game, 'oreShipwreck');
   assert.ok(!VL.mapMarks(game).some((m) => m.kind === 'ore'), 'no mark once the ore is found');
   assert.ok(VL.smithsLedgerRead(game));
   assert.ok(VL.primerOnShelf(game));
@@ -363,7 +364,7 @@ test('two rewards earned in one trip both come, one after the other', () => {
   assert.ok(VL.rewardGiven(t.game, 'heartLibrary'));
 });
 
-test('the purse holds 15 whole shells; the Big Shell Purse holds 250 (W29)', () => {
+test('the purse holds 15 whole shells; the Big Shell Purse holds 50 (W29; W34, was 250)', () => {
   const t = setup();
   const { VL } = t;
   VL.addResource(t.game, 'shells', 150);
@@ -375,7 +376,7 @@ test('the purse holds 15 whole shells; the Big Shell Purse holds 250 (W29)', () 
   t.game.items.shellPurse = true;
   VL.addResource(t.game, 'shells', 2000);
   t.step();
-  assert.equal(t.game.inventory.shells, 250);
+  assert.equal(t.game.inventory.shells, 50);
 });
 
 test('a full purse turns a trade away before the wood or the berry is paid', () => {

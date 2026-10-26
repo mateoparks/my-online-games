@@ -8,7 +8,7 @@ VL.TUNING = {
   hudHeight: 16,
 
   startMaxHp: 6,
-  heroSpeed: 70,
+  heroSpeed: 47,
   heroBox: { w: 10, h: 8 },
 
   step: 1 / 60,

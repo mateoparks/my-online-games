@@ -1,7 +1,7 @@
-// The Whispering Woods gate (W15): without the copied map every step from
-// one Woods screen into another turns the hero back to the edge of the Woods;
-// with it the paths are true and the scribes' marks show the way. Also the
-// pathfinder's fixes this needed (edge rules, shutters seen from outside).
+// The Whispering Woods gate (W15, reworked by W34): the Woods are open to
+// explore without the copied map, but the trees in the pass below the Hollow
+// Oak (7,-1) stay shut until the copy is owned; no turn-backs, no marks. Also
+// the pathfinder's fixes this needed (edge rules, shutters seen from outside).
 const assert = require('node:assert/strict');
 const { test, loadGame, playApp, fakeDocument } = require('./harness');
 const { findPath } = require('./playthrough');
@@ -70,121 +70,82 @@ function woodsEdges(VL) {
 
 // ---------- the gate ----------
 
-test('without the copied map, the first step deeper into the Woods turns the hero back to their edge, and says why', () => {
-  const t = setup();
-  const { VL } = t;
-  t.place(ow('5,-1', 3, 1));
-  t.until((g) => VL.heroTile(g).ty === VL.WOODS_ENTRY.ty, 2, ['up']);
-  assert.deepEqual(plain([t.game.player.screen, VL.heroTile(t.game), t.game.player.facing]), ['5,-1', { tx: VL.WOODS_ENTRY.tx, ty: VL.WOODS_ENTRY.ty }, 'down']);
-  assert.equal(t.game.visited['overworld:5,-2'], undefined, 'never set foot on the next screen');
-  t.until(() => t.app.sceneId === 'popup', 1);
-  assert.equal(VL.currentPopup(t.game).id, 'woodsLost', 'the first time explains');
-  t.close();
-  // The second time is a short message, not the whole explanation again.
-  t.place(ow('5,-1', 3, 1));
-  t.until((g) => g.message || t.app.sceneId === 'popup', 2, ['up']);
-  assert.match(t.game.message.text, /trees whisper/);
-});
+const OAK = { area: 'overworld', screen: '7,-2', tx: 7, ty: 5 };
+const PASS = { area: 'overworld', screen: '7,-1', tx: 7, ty: 3 };
 
-test('without the map every crossing between two Woods screens turns back; with it none does, and leaving the Woods never does', () => {
-  const t = setup();
-  const { VL } = t;
-  const pairs = woodsEdges(VL);
-  assert.ok(pairs.length >= 10, `${pairs.length} Woods crossings`);
-  for (const { from, to } of pairs) {
-    const turn = VL.edgeTurn(t.game, 'overworld', from, to);
-    assert.deepEqual(plain(turn && [turn.screen, turn.tx, turn.ty, turn.rule]), ['5,-1', VL.WOODS_ENTRY.tx, VL.WOODS_ENTRY.ty, 'woods'], `${from} -> ${to}`);
-  }
-  assert.equal(VL.edgeTurn(t.game, 'overworld', '5,-1', '5,0'), null, 'out to the east road');
-  assert.equal(VL.edgeTurn(t.game, 'overworld', '5,0', '5,-1'), null, 'in from the east road');
-  assert.equal(VL.edgeTurn(t.game, 'overworld', '2,0', '3,0'), null, 'anywhere else');
-  t.game.items.woodsMapCopy = true;
-  for (const { from, to } of pairs) assert.equal(VL.edgeTurn(t.game, 'overworld', from, to), null, `${from} -> ${to} with the map`);
-});
-
-test('a real walk into every Woods crossing without the map lands at the edge; with it, on the neighbour', () => {
+test('without the copied map every crossing between two Woods screens leads on to the neighbour (W34: no turning back)', () => {
   for (const copy of [false, true]) {
     const t = setup({ copy });
     const { VL } = t;
-    for (const { from, to, tx, ty, dir } of woodsEdges(VL)) {
+    const pairs = woodsEdges(VL);
+    assert.ok(pairs.length >= 10, `${pairs.length} Woods crossings`);
+    for (const { from, to, tx, ty, dir } of pairs) {
+      assert.equal(VL.edgeTurn(t.game, 'overworld', from, to), null, `${from} -> ${to}`);
       t.place(ow(from, tx, ty, dir));
-      t.game.popups.seen.woodsLost = true;
       t.game.popups.seen.woodsWithMap = true;
       t.until((g) => g.player.screen !== from || g.transition, 1, [dir]);
       t.until(settled, 1);
       t.close();
-      assert.equal(t.game.player.screen, copy ? to : '5,-1', `${from} ${dir} ${copy ? 'with' : 'without'} the map`);
+      assert.equal(t.game.player.screen, to, `${from} ${dir} ${copy ? 'with' : 'without'} the map`);
     }
   }
 });
 
-test('with the map, the route walks through to the Hollow Oak, and a first visit says how the map helps', () => {
-  const t = setup({ copy: true });
-  const { VL } = t;
-  t.place(ow('5,0', 6, 2));
-  const route = findPath(VL, { area: 'overworld', screen: '5,0', tx: 6, ty: 2 }, { area: 'overworld', screen: '7,-2', tx: 7, ty: 5 }, t.game);
-  assert.ok(route, 'a path to the Hollow Oak');
-  const screens = [...new Set(route.map((node) => node.screen))];
-  assert.deepEqual(screens, ['5,0', ...VL.WOODS_ROUTE]);
-  t.until((g) => g.player.screen === '5,-1' && settled(g), 2, ['up']);
-  t.app.update(VL.noActions(), STEP);
-  assert.equal(VL.currentPopup(t.game)?.id, 'woodsWithMap');
-});
-
-test('the pathfinder never crosses an edge that turns back: no way to the Hollow Oak without the map', () => {
+test('without the map the hero walks to every Woods screen but the Oak\'s clearing: the pass below it is all trees until the copy opens one', () => {
   const t = setup();
   const { VL } = t;
   const from = { area: 'overworld', screen: '5,0', tx: 6, ty: 2 };
-  assert.equal(findPath(VL, from, { area: 'overworld', screen: '7,-2', tx: 7, ty: 5 }, t.game), null);
-  assert.ok(findPath(VL, from, { area: 'overworld', screen: '5,-1', tx: 6, ty: 8 }, t.game), 'the edge of the Woods is open to all');
+  for (const key of VL.REGIONS.woods.screens.filter((k) => k !== '7,-2')) {
+    const screen = VL.getScreen('overworld', key);
+    const open = [];
+    screen.tiles.forEach((row, ty) => [...row].forEach((ch, tx) => {
+      if (!VL.isSolidAt('overworld', key, tx, ty, null)) open.push({ tx, ty });
+    }));
+    assert.ok(open.some((spot) => findPath(VL, from, { area: 'overworld', screen: key, ...spot }, t.game)), `${key} can be reached`);
+  }
+  assert.ok(findPath(VL, from, PASS, t.game), 'the pass below the Oak is reached');
+  assert.equal(findPath(VL, from, OAK, t.game), null, 'but not the Oak');
+  const gate = VL.WOODS_GATE_TREE;
+  assert.equal(VL.tileAt('overworld', gate.screen, gate.tx, gate.ty), 'J');
+  // A tree in every column of the pass's row: no way round it.
+  const row = VL.getScreen('overworld', '7,-1').tiles[gate.ty];
+  assert.ok([...row].every((ch, tx) => VL.isSolidAt('overworld', '7,-1', tx, gate.ty, null)), row);
   t.game.items.woodsMapCopy = true;
-  t.hold([], 0.05); // the copy opens the tree before the Oak (W29)
-  assert.ok(findPath(VL, from, { area: 'overworld', screen: '7,-2', tx: 7, ty: 5 }, t.game));
+  t.hold([], 0.05);
+  assert.equal(VL.savedTile(t.game, 'overworld', gate.screen, gate.tx, gate.ty), 'P', 'one tree is a dirt path now');
+  assert.ok(findPath(VL, from, OAK, t.game), 'and the Oak is reached');
 });
 
-test('a chicken flight stops short of a Woods edge without the map', () => {
-  const t = setup();
-  const { VL } = t;
-  t.place(ow('5,-1', 3, 1));
-  const plan = VL.planFlight(t.game, 'up');
-  assert.ok(plan.land <= 1 && plan.reach <= 1, `stays on the screen: ${JSON.stringify(plain(plan))}`);
-  t.game.items.woodsMapCopy = true;
-  assert.ok(VL.planFlight(t.game, 'up').land >= 2, 'with the map it may glide on');
-});
-
-// ---------- the marks ----------
-
-test('with the map, each route screen but the last has a mark beside its way on, and nothing else has one', () => {
+test('with the map, the route walks through to the Hollow Oak, and a first visit says the copy shows the way (nothing about marks)', () => {
   const t = setup({ copy: true });
   const { VL } = t;
-  const route = VL.WOODS_ROUTE;
-  const side = (from, to) => {
-    const [ax, ay] = from.split(',').map(Number);
-    const [bx, by] = to.split(',').map(Number);
-    return [bx - ax, by - ay];
-  };
-  for (const key of VL.REGIONS.woods.screens) {
-    t.place(ow(key, 7, 5));
-    const marks = t.game.room.entities.filter((e) => e.type === 'woodsBlaze');
-    const index = route.indexOf(key);
-    if (index === -1 || index === route.length - 1) {
-      assert.equal(marks.length, 0, `${key} has no mark`);
-      continue;
+  t.place(ow('5,0', 6, 2));
+  const route = findPath(VL, { area: 'overworld', screen: '5,0', tx: 6, ty: 2 }, OAK, t.game);
+  assert.ok(route, 'a path to the Hollow Oak');
+  const screens = [...new Set(route.map((node) => node.screen))];
+  assert.deepEqual(screens, ['5,0', ...VL.WOODS_ROUTE]);
+  t.until((g) => g.player.screen === '5,-1' && settled(g), 3, ['up']);
+  t.app.update(VL.noActions(), STEP);
+  assert.equal(VL.currentPopup(t.game)?.id, 'woodsWithMap');
+  assert.doesNotMatch(VL.POPUPS.woodsWithMap.text, /mark|blue/i);
+});
+
+test('no turn-back popup and no scribes\' marks are left in the Woods, with the map or without', () => {
+  for (const copy of [false, true]) {
+    const t = setup({ copy });
+    const { VL } = t;
+    assert.equal(VL.POPUPS.woodsLost, undefined);
+    assert.equal(VL.ENTITIES.woodsBlaze, undefined);
+    for (const key of VL.REGIONS.woods.screens) {
+      t.place(ow(key, 7, 5));
+      assert.ok(!t.game.room.entities.some((e) => /blaze/i.test(e.type)), key);
     }
-    assert.equal(marks.length, 1, `${key} has one mark`);
-    const [dx, dy] = side(key, route[index + 1]);
-    const mark = marks[0];
-    const { cols, rows } = VL.TUNING;
-    // On the edge it marks, on a tree, next to an open tile of that edge.
-    if (dx) assert.equal(mark.x, dx < 0 ? 0 : cols - 1, key);
-    else assert.equal(mark.y, dy < 0 ? 0 : rows - 1, key);
-    assert.ok(VL.isSolidAt('overworld', key, mark.x, mark.y), `${key} mark on a tree`);
-    const along = dx ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
-    assert.ok(along.some(([ax, ay]) => !VL.isSolidAt('overworld', key, mark.x + ax, mark.y + ay)), `${key} mark beside the way on`);
   }
-  const bare = setup();
-  bare.place(ow('5,-1', 7, 5));
-  assert.equal(bare.game.room.entities.filter((e) => e.type === 'woodsBlaze').length, 0, 'no marks without the map');
+});
+
+test('the librarian still says where a map of the Woods can be copied', () => {
+  const { VL } = loadGame();
+  assert.match(VL.LIBRARY_HINTS.woodsMapCopy[0].say, /mural of the Woods in the Scriptorium/);
 });
 
 test('the copy shows where the hero stands in the Woods', () => {
@@ -202,14 +163,9 @@ test('the copy shows where the hero stands in the Woods', () => {
 
 test('every word the Woods say fits its box and its font', () => {
   const { VL } = loadGame();
-  for (const id of ['woodsLost', 'woodsWithMap']) {
-    const popup = VL.POPUPS[id];
-    assert.deepEqual(plain(VL.ART.missingGlyphs(`${popup.title} ${popup.text}`)), [], id);
-    assert.ok(!VL.ART.popupLayout({ title: popup.title, text: popup.text }).overflow, id);
-  }
-  assert.match(VL.WOODS_TURNED_TEXT, /map of these woods/, 'every turn-back says what is needed');
-  assert.deepEqual(plain(VL.ART.missingGlyphs(VL.WOODS_TURNED_TEXT)), []);
-  assert.ok(!VL.ART.popupLayout({ text: VL.WOODS_TURNED_TEXT }).overflow);
+  const popup = VL.POPUPS.woodsWithMap;
+  assert.deepEqual(plain(VL.ART.missingGlyphs(`${popup.title} ${popup.text}`)), []);
+  assert.ok(!VL.ART.popupLayout({ title: popup.title, text: popup.text }).overflow);
 });
 
 // ---------- the pathfinder, seen from outside a dungeon ----------

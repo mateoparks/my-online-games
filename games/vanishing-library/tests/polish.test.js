@@ -136,7 +136,7 @@ test('corner assist: walking right into a 1-tile gap in a wall column, a few pix
 test('corner assist: stopped flush above a wall row, the hero still walks sideways (the W5 snag)', () => {
   const { VL } = loadGame();
   const state = cornerState(VL, 6 * 16 + 8, 157);
-  hold(VL, state, ['left'], 0.5);
+  hold(VL, state, ['left'], 0.8);
   assert.ok(state.player.x < 5 * 16, `walked left (x ${state.player.x})`);
 });
 

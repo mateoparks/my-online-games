@@ -20,8 +20,9 @@
     wifeStages: [{ books: 3 }, { books: 7, boss: 'd1Boss' }, { books: 12, boss: 'd2Boss' }],
     // Whole shells a purse holds (W29: every price in town fits the first).
     shellCap: 15,
-    shellCapPurse: 250,
-    swiftfootSpeed: 1.35,
+    // So the 40-shell binding needs it, but no more.
+    shellCapPurse: 50,
+    swiftfootSpeed: 2,
   });
 
   VL.extendGame('library', () => ({
@@ -183,8 +184,18 @@
     title: 'Your purse is full!',
     text: `It only holds ${VL.TUNING.shellCap} whole shells. The librarian might know where to find a bigger one.`,
   });
+  // Not "holds 50": an old save can hold more than that until it spends.
+  VL.definePopup('bigPurseFull', {
+    title: 'Your Big Shell Purse is full!',
+    text: 'Not one more shell will fit. Spend a few at the shops to make room!',
+  });
   VL.shellCap = (state) => (VL.hasItem(state, 'shellPurse') ? VL.TUNING.shellCapPurse : VL.TUNING.shellCap);
-  VL.RESOURCE_CAPS.shells = { most: VL.shellCap, full: 'Your purse is full!' };
+  // VL.addResource stops a gain here and the popup says why, once.
+  VL.RESOURCE_CAPS.shells = {
+    most: VL.shellCap,
+    full: 'Your purse is full!',
+    over: (state) => VL.showPopup(state, VL.hasItem(state, 'shellPurse') ? 'bigPurseFull' : 'purseFull'),
+  };
 
   // ---------- the thief ----------
 
@@ -240,7 +251,8 @@
   // ---------- marks for the drawn map (W12) ----------
 
   // { kind, area, screen, tx, ty }: the berry bushes once the Herbalist's
-  // Notes are read, and the Woods ore (until found) once the Smith's Ledger is.
+  // Notes are read, and (W34) the wreck's ore, over its hatch on the
+  // overworld, until found once the Smith's Ledger is.
   VL.mapMarks = function mapMarks(state) {
     const marks = [];
     if (VL.bookRead(state, 'bookHerbalist')) {
@@ -253,25 +265,12 @@
         }
       }
     }
-    if (VL.bookRead(state, 'bookSmithsLedger') && !VL.spotFound(state, 'oreWoods')) {
-      const spot = VL.SPOTS.oreWoods;
-      marks.push({ kind: 'ore', area: spot.area, screen: spot.screen, tx: spot.x, ty: spot.y });
+    if (VL.bookRead(state, 'bookSmithsLedger') && !VL.spotFound(state, 'oreShipwreck')) {
+      const hatch = VL.SPOTS.shipwreckHatch;
+      marks.push({ kind: 'ore', area: hatch.area, screen: hatch.screen, tx: hatch.x, ty: hatch.y });
     }
     return marks;
   };
-
-  // ---------- the purse limit ----------
-
-  VL.defineSystem('shellPurse', {
-    order: 95,
-    update(state) {
-      const cap = VL.shellCap(state);
-      if (state.inventory.shells <= cap) return;
-      state.inventory.shells = cap;
-      VL.showPopup(state, 'purseFull');
-      VL.earned(state);
-    },
-  });
 
   // ---------- talking to the librarian ----------
 

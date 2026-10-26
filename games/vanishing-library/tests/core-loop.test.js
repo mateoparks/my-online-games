@@ -259,13 +259,13 @@ test('the sword cuts the bush in front: it opens for this visit, rolls a drop, a
   assert.deepEqual(plain(drops.map((d) => d.kind)), expected ? [expected] : []);
   assert.ok(entitiesOf(t.game, 'leaves').length, 'leaves fly');
   // Down through the gap (a drop there opens its popup), then off the east edge.
-  t.hold(['down'], 0.3);
+  t.hold(['down'], 0.45);
   t.closePopups();
-  t.hold(['down'], 0.3);
+  t.hold(['down'], 0.45);
   assert.ok(VL.heroTile(t.game).ty >= 5, 'below the bushes');
-  t.hold(['right'], 3.2);
+  t.hold(['right'], 4.8);
   assert.equal(t.game.player.screen, '1,0');
-  t.hold(['left'], 3.2);
+  t.hold(['left'], 4.8);
   assert.equal(t.game.player.screen, '0,0');
   assert.equal(VL.isSolidAt('grove', '0,0', 4, 4, t.game.room), true, 'the bush grew back');
 });
@@ -343,14 +343,14 @@ test('walking onto a drop picks it up: wood and shells are earned, a heart heals
   drop('shell', 10);
   drop('heart', 11);
   t.game.hp = 2;
-  t.hold(['right'], 0.3);
+  t.hold(['right'], 0.45);
   assert.equal(t.game.inventory.wood, 1);
   assert.deepEqual(plain(t.game.popups.queue), ['wood']);
   assert.ok(t.sounds.includes('pickup'));
   t.closePopups();
-  t.hold(['right'], 0.25);
+  t.hold(['right'], 0.4);
   t.closePopups();
-  t.hold(['right'], 0.25);
+  t.hold(['right'], 0.4);
   t.closePopups();
   assert.equal(t.game.inventory.shells, 1);
   assert.ok(t.sounds.includes('shell'));
@@ -358,7 +358,7 @@ test('walking onto a drop picks it up: wood and shells are earned, a heart heals
   assert.equal(t.game.hp, 4, 'a heart is two half hearts');
   assert.equal(entitiesOf(t.game, 'drop').length, 0);
   drop('wood', 13);
-  t.hold(['right'], 0.6);
+  t.hold(['right'], 0.9);
   t.closePopups();
   assert.equal(t.game.inventory.wood, 2);
   assert.ok(!t.game.popups.queue.includes('wood'), 'the wood popup is shown once');

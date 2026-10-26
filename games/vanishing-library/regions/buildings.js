@@ -367,7 +367,8 @@
     ],
   });
 
-  // Metal gear is its own tier, not an upgrade: forging needs no wood piece,
+  // Metal gear is its own tier, not an upgrade: forging needs no wood piece
+  // (the metal shovel takes plain wood for its haft, W34),
   // and the wood offer steps aside while the metal one is owned. Each metal
   // offer has a cheaper twin shown once the Smith's Ledger is read; both are
   // sold out while the piece is owned, so the smith re-forges only lost gear.
@@ -382,7 +383,7 @@
   }));
   const metalOffers = (ledger) => GEAR.map((g) => ({
     id: ledger ? `${g.metal}Ledger` : g.metal, name: VL.ITEMS[g.metal].name, icon: `item-${VL.ITEMS[g.metal].icon}`,
-    cost: ledger ? prices.metalGearLedger : prices.metalGear, give: forge(g.metal),
+    cost: prices[ledger ? `${g.metal}Ledger` : g.metal] || (ledger ? prices.metalGearLedger : prices.metalGear), give: forge(g.metal),
     soldOut: owns(g.metal), hidden: (state) => VL.smithsLedgerRead(state) !== ledger, about: g.metalAbout,
   }));
   VL.defineShop('smithy', {
@@ -420,7 +421,10 @@
         refuse(state) {
           const have = VL.loosePages(state);
           const need = VL.pagesToBind();
-          return have < need ? `You have ${have} of ${need} pages. Bring me all ${need}!` : null;
+          if (have < need) return `You have ${have} of ${need} pages. Bring me all ${need}!`;
+          const price = prices.binding.shells;
+          const holds = VL.shellCap(state);
+          return price > holds ? `It's ${price} shells, and your purse holds only ${holds}! Bring Mr. Fenwick books for a bigger one.` : null;
         },
         give(state) {
           state.flags.pagesBound = true;

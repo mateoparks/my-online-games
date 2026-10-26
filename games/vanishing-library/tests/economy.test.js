@@ -80,7 +80,9 @@ test('one price table in VL.TUNING holds every price, starting from the design d
     shopShovel: { shells: 15 },
     metalGear: { ore: 1, shells: 10 },
     metalGearLedger: { ore: 1, shells: 6 },
-    binding: { shells: 15 },
+    metalShovel: { wood: 3, ore: 1, shells: 10 },
+    metalShovelLedger: { wood: 3, ore: 1, shells: 6 },
+    binding: { shells: 40 },
     raft: { wood: 4 },
     oarShells: { shells: 8 },
     oarWood: { wood: 3 },
@@ -93,8 +95,8 @@ test('one price table in VL.TUNING holds every price, starting from the design d
     mill: { millTrade: p.millTrade, paper: p.paper },
     smithy: {
       woodSword: p.woodSword, woodShield: p.woodShield, woodShovel: p.woodShovel,
-      metalSword: p.metalGear, metalShield: p.metalGear, metalShovel: p.metalGear,
-      metalSwordLedger: p.metalGearLedger, metalShieldLedger: p.metalGearLedger, metalShovelLedger: p.metalGearLedger,
+      metalSword: p.metalGear, metalShield: p.metalGear, metalShovel: p.metalShovel,
+      metalSwordLedger: p.metalGearLedger, metalShieldLedger: p.metalGearLedger, metalShovelLedger: p.metalShovelLedger,
       oar: p.oarWood,
     },
     bookbinder: { bindPages: p.binding },
@@ -321,6 +323,8 @@ test('the smith makes wood gear from wood, one of each while you have it', () =>
 test('the smith forges metal gear from 1 ore and 10 shells each; no ore, no forging', () => {
   const { VL } = loadGame();
   const game = VL.newGame();
+  // More than the first purse holds (W34: a gain stops at the cap at once).
+  game.items.shellPurse = true;
   give(VL, game, { shells: 30 });
   const sword = offer(VL, 'smithy', 'metalSword');
   assert.deepEqual([VL.buyOffer(game, sword).reason, VL.buyOffer(game, sword).kind], ['notEnough', 'ore']);
@@ -332,6 +336,8 @@ test('the smith forges metal gear from 1 ore and 10 shells each; no ore, no forg
   // W3 known limit: the smith re-forges only gear that was lost, never a second one.
   assert.equal(VL.buyOffer(game, sword).reason, 'soldOut');
   assert.equal(game.inventory.ore, 1);
+  // W34: the shovel takes 3 wood as well.
+  give(VL, game, { wood: 3 });
   assert.equal(VL.buyOffer(game, offer(VL, 'smithy', 'metalShovel')).ok, true);
   assert.equal(VL.hasItem(game, 'metalShovel'), true);
   assert.deepEqual([game.inventory.ore, game.inventory.shells], [0, 10]);
@@ -378,6 +384,7 @@ function shockwave(VL, game) {
 test('after the shockwave: lost gear can be bought and forged again, with the ore you kept', () => {
   const { VL } = loadGame();
   const game = VL.newGame();
+  game.items.shellPurse = true;
   give(VL, game, { ore: 2, shells: 20, wood: 4, paper: 2 });
   for (const id of ['metalSword', 'metalShield']) assert.equal(VL.buyOffer(game, offer(VL, 'smithy', id)).ok, true);
   VL.giveItem(game, 'woodShovel');
@@ -415,7 +422,7 @@ test('after the shockwave: lost gear reads as lost, but paper (a source, like be
 
 // ---------- the bindery ----------
 
-test('the bindery binds five loose pages for 15 shells, once', () => {
+test('the bindery binds five loose pages for 40 shells (W34), once', () => {
   const { VL } = loadGame();
   // Stand-ins for the page finds later items claim (W11, W17, W18).
   const pageLocks = Object.values(VL.LOCKS).filter((lock) => lock.supplies.pages);
@@ -425,7 +432,8 @@ test('the bindery binds five loose pages for 15 shells, once', () => {
   }
   const game = VL.newGame();
   const bind = offer(VL, 'bookbinder', 'bindPages');
-  give(VL, game, { shells: 20 });
+  game.items.shellPurse = true;
+  give(VL, game, { shells: 45 });
   assert.equal(VL.loosePages(game), 0);
   let result = VL.buyOffer(game, bind);
   assert.equal(result.reason, 'refused');
@@ -440,7 +448,7 @@ test('the bindery binds five loose pages for 15 shells, once', () => {
   pageLocks.slice(0, 4).forEach(findPage);
   assert.equal(VL.loosePages(game), 4);
   assert.match(VL.buyOffer(game, bind).text, /4 of 5/);
-  assert.equal(game.inventory.shells, 20, 'a refusal takes nothing');
+  assert.equal(game.inventory.shells, 45, 'a refusal takes nothing');
   pageLocks.forEach(findPage);
   assert.equal(VL.loosePages(game), 5);
   result = VL.buyOffer(game, bind);

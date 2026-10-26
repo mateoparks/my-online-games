@@ -15,7 +15,7 @@ Keyboard only for now (laptop or desktop).
 | Space | Use the item in your main hand (a sword, the slingshot, ...) |
 | D | Use the item in your off hand (a shield, ...) |
 | E | Equipment: choose what goes in each hand |
-| X | Dig with your shovel, whatever your hands hold (once you have a shovel) |
+| X | Dig with your shovel, whatever your hands hold (once you have a shovel); closes the equipment view and the maps (E, M and Esc do too) |
 | M | The map, once you have one (the world map, or a dungeon's map) |
 | N | Sound on or off |
 | Esc | Pause, or Save & Quit |
@@ -558,7 +558,11 @@ holds the heart containers.
   `id` found, shows its popup the first time only, plays `fanfare` and earns.
   W6 fills the `heartFieldA` (east road, among the bushes) and `heartFieldB`
   (cliff ledge) spots; bosses (W13+) call it directly. No new saved field:
-  `maxHp` and the found flags were already saved.
+  `maxHp` and the found flags were already saved. **W34 buried `heartFieldA`**
+  (`reveal: 'dug'`, spot `how: 'buried'`): it is hidden until the metal
+  shovel digs exactly its tile (X), then comes up into the hole like the
+  Hollow Oak's moss key and is taken by stepping on it, once. Its lock needs
+  `metalShovel` and stays optional.
 - **Sounds:** events `enemyHit` (`hit`), `heroHurt` (`hurt`), `blocked`
   (`clank`), `enemyDefeated` (`poof`), `spit`, `squawk` and `heartContainer`
   (`fanfare`).
@@ -576,6 +580,33 @@ holds the heart containers.
 - **Townsfolk (W9):** the sword passes through NPCs (only enemies are hit),
   S on an NPC only talks, a knockback stops at an NPC's tile (NPCs are solid),
   and enemies wait with the rest of the world while a dialogue or shop is open.
+
+## Crabs (W34)
+
+Matthew's crab notes, in `entities/crab.js`. Tests: `tests/crabs.test.js`.
+Saved field `crabs: { killed, angry, feast }` (fixture
+`tests/fixtures/save-v1-W34.json`; an older save loads it as none killed).
+
+- **Angry crabs:** every beach crab beaten on the overworld counts
+  (`onDefeat`, a new enemy hook in `systems/combat.js`); the wreck's crabs,
+  the Lens Crab and the island's eleven never do. At
+  `TUNING.crabsAngryAfter` (10) the `crabsAngry` popup says so once ("For
+  killing so many, the crabs now consider you their enemy! Watch out!") and
+  every overworld crab from then on is angry: one more hp (3 hits with the
+  wood sword, 2 with the metal one), darker with frowning brows, and it
+  walks straight at the hero over any open ground (grass too) at
+  `TUNING.angryCrabSpeed` (34, under his 47, so he can always walk away),
+  backing off while calm. `moveEnemy` keeps it on its own screen. The usual
+  arrival grace still holds, and the shockwave's quiet home screens still
+  have no enemies for a sword-less hero.
+- **The island's eleven:** `VL.islandDigTiles()` is the lake island's sand
+  (3,-3) but the trunks' tiles: eleven (the ore's counts once picked up).
+  Digging all eleven in one visit spawns a crab (`egg: true`) on each hole,
+  angry if the crabs already are. Beating all eleven fills the purse to its
+  cap (15 or 50) and every heart, once ever (`crabs.feast`), with the
+  `crabFeast` popup; after that they still come out, and give nothing.
+  Leaving the screen sends them home and fills the holes in. Lock
+  `islandCrabs` (optional: the island and a shovel).
 
 ## Engine notes
 
@@ -788,8 +819,10 @@ thrown over the pits onto the switch (`w14-lift.png`, `w14-throw.png`,
 boulder (`w14-boulder.png`) and the Bookworm up, hit and beaten
 (`w14-boss.png`, `w14-boss-hit.png`, `w14-reward-popup.png`,
 `w14-reward.png`). Then W15's Woods and Hollow Oak with real keys: a step
-deeper into the Woods without the map turning back (`w15-woods-lost.png`),
-the same step with it (`w15-woods-map.png`, its popup and a blazed tree),
+deeper into the Woods without the map leading on (`w15-woods-no-map.png`),
+the pass below the Oak shut by trees (`w15-woods-pass-shut.png`), the same
+step with the map (`w15-woods-map.png`, its popup; `w15-woods-edge-map.png`,
+no marks),
 the copy's "you are here" (`w15-woods-copy.png`), every room
 (`w15-room-<x>_<y>.png`), the rope from the big chest
 (`w15-rope-popup.png`), the hook out and the pull across the vault's pits
@@ -922,21 +955,21 @@ node run.
 | `town` (`town.js`) | library, mill, square, smithy, harbour, Scriptorium grounds, riverside | `town` | nothing |
 | `lake` (`lake.js`) | shore, open water + island | `lake` | town; the island needs `rafting` |
 | `canyon`, `eastRoad` (`east-road.js`) | the boulder canyon, the road | `eastRoad` | boulders `O`, `gate: 'liftingGloves'` |
-| `woods` (`woods.js`) | 6-screen route (`WOOD`, Hollow Oak at 7,-2) and 5 wrong-turn screens (`wood`) | `woods` | `softGate: 'woodsMapCopy'`: without the copy every step deeper turns back (W15, see [The Whispering Woods](#the-whispering-woods-w15)) |
+| `woods` (`woods.js`) | 6-screen route (`WOOD`, Hollow Oak at 7,-2) and 5 wrong-turn screens (`wood`) | `woodsPaths` (W34) | the east road; the Oak's clearing (`woods`) is behind the gate tree `J`, `gate: 'woodsMapCopy'` (see [The Whispering Woods](#the-whispering-woods-w15)) |
 | `cliffs` (`cliffs.js`) | cliff road, lighthouse, cliff base | `cliffs` | town |
 | `highlands` (`highlands.js`) | 5 shelves up to the lair | `highlands` (W19) | hidden path `h`, `gate: 'climbersAlmanac'` (opened for good, see [The highlands](#the-highlands-w19)), then 4-tile chasms |
 | `shipwreck` (`beach.js`) | the wreck offshore | `shipwreck` (W17) | `rafting` |
 
-- **Regions:** `VL.defineRegion(id, { screens, place, softGate })` tags
+- **Regions:** `VL.defineRegion(id, { screens, place })` tags
   screens; `VL.regionOf(area, key)` and `VL.regionVisited(state, id)` read
   them. A place lock W8 claims is reached on entering its region (the
-  Woods: on reaching the Hollow Oak clearing, 7,-2).
+  Woods' `woodsPaths`; their heart, `woods`, on reaching the Hollow Oak
+  clearing, 7,-2).
 - **The Woods maze:** `VL.WOODS_ROUTE` lists the route screens in order.
   `VL.WOODS_WRONG_EXITS` lists the three wrong exits (`{ from, side, back }`):
   each leads into one or two look-alike screens that wind back to `back`, a
-  route screen no further in than `from`. They are plain loops; without the
-  copied map no step between two Woods screens is taken at all (W15's edge
-  rule enforces the `softGate`).
+  route screen no further in than `from`. They are plain loops, with the
+  copied map or without it (W34).
 - **Gate tiles** carry `gate: '<key>'` and stay solid until the item that
   owns the key makes them passable (W14 lifts boulders for good with
   `VL.saveTile`, see Lifting; W19 opens the hidden path). Rocks (`rock: true`) are liftable with the gloves and bushes are
@@ -1293,7 +1326,9 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
 - **Readings and effects:** a reading ends (by its last page or Esc) with
   `VL.finishReading(state, id)`: read for good, then the book's effect. The
   Tide Tables raise `VL.digChance` to 30% (W10 reads the lock); the Smith's
-  Ledger swaps in the smith's cheaper metal offers and marks the Woods ore;
+  Ledger swaps in the smith's cheaper metal offers and (W34) tells of a
+  rumour of ore on the old shipwreck, marking it over the wreck's hatch on a
+  drawn map, gleaming, until the hold's ore is found;
   the Herbalist's Notes mark the three berry bushes: both through
   `VL.mapMarks(state)` (`{ kind: 'berries' | 'ore', area, screen, tx, ty }`)
   for W12's drawn map. The Primer lets W12 draw the map while
@@ -1305,19 +1340,26 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   come along the path rather than all at once. The Primer is in a trunk on
   the east road (past the boulders, so with the gloves, as Dungeon 1's
   mortar makes ink for a map); the Herbalist's Notes beside the Woods'
-  path on 5,-2 (well away from the secret ore on 6,-1, which the Smith's
-  Ledger reveals) and the Chicken Keeper's Almanac at the Hollow Oak's
-  clearing (after Dungeon 1); the Smith's Ledger on the lake island and the
-  Tide Tables on the shipwreck's deck (by raft, after the shockwave, when
-  gear and shells are needed again); A Child's Book of Dragons in the
-  highlands, on the way to the Mirror Shield. Their locks' `needs` say so,
-  and `tests/overworld.test.js` checks each spot against them. Sixteen books
-  can be returned before the shockwave. **W30's late books:** twelve more
-  untitled books in trunks in the late places (one on the cliff-base
-  ledge, nine across the highlands and the lair's doorstep, one on the lake
-  island, one on the shipwreck's deck; `regions/finds.js` gives their
-  locks), so 32 books can be returned in all and the 30-book reward is in
-  reach even for a kid who misses a couple. A later item (W18's Lighthouse,
+  path on 5,-2 (well away from the secret ore on 6,-1); the Smith's Ledger
+  on the lake island; the Tide Tables and (W34, swapped with the Captain's
+  Logbook, which now lies at the Hollow Oak's clearing) the Chicken Keeper's
+  Almanac on the shipwreck's deck (by raft, after the shockwave, nearer the
+  highlands it opens); A Child's Book of Dragons in the highlands, on the
+  way to the Mirror Shield. Their locks' `needs` say so, and
+  `tests/overworld.test.js` checks each spot against them. **W30's late
+  books** are twelve more untitled books in trunks (`regions/finds.js` gives
+  their locks). **W34 (Matthew: far too many in the highlands)** left only
+  two books up there, A Child's Book of Dragons and Ashton Co-op
+  (`bookLairA`, by the lair's door: "Adventures in learning! Or maybe just
+  adventures. Who knows?"), and spread the rest, ids unchanged so old saves'
+  found flags still match: two in the Woods (5,-1 and the wrong turn 6,0),
+  `bookHighlands` under a rock at the cliff base (-1,0), two below the
+  wreck's deck (bilge, cabin), and four in the Lighthouse, a room apiece
+  (entrance, stairwell, store room, cistern: on the way to the binding, so a
+  kid who skips the optional lake island still finds them). No screen holds
+  more than two books (`tests/playtest-4.test.js`). That makes 19 books before
+  the shockwave (the 10-book heart there, the purse after), 29 before the
+  binding (the purse at 20 well before its 40 shells) and 35 in all. A later item (W18's Lighthouse,
   W19's lair) may add more the same way: a spot, a lock supplying
   `books: 1`, a `defineBook`.
 - **Rewards:** `TUNING.libraryRewards` (10 a heart container, 20 the Big
@@ -1326,11 +1368,17 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   under an older count keeps it and is never given it twice: the W26 save
   that got the purse at 5 gets the heart at 10 and nothing at 20
   (`tests/fixtures/save-v1-W26.json`). The purse raises
-  `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (250); every price in town fits the first purse (a test checks); the
-  `shellPurse` system trims anything over (a drop, a dig) and says who might
-  help; a shop trade at the cap is refused instead ("Your purse is full!",
-  `VL.RESOURCE_CAPS.shells`), so no wood or berry is lost. The boots
-  carry `speed: TUNING.swiftfootSpeed` on their item and `VL.heroSpeed(state)`
+  `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (50 since
+  W34, was 250). Every price in town fits the first purse except the
+  binding (40 shells since W34, so the purse comes first: the
+  `climbersAlmanac` lock needs `shellPurse`, and the librarian's hint for it
+  says so while the purse is missing); a test checks. `VL.addResource` stops
+  a gain at the cap (`VL.RESOURCE_CAPS.shells`, whose `over` shows the
+  `purseFull` popup once: who might help), and a purse already over it (an
+  old save with up to 250) keeps what it holds until spent below 50. A shop
+  trade at the cap is refused instead ("Your purse is full!"), so no wood or
+  berry is lost. The boots carry `speed: TUNING.swiftfootSpeed` (2, so 94
+  px/s against the walk's 47 since W34) on their item and `VL.heroSpeed(state)`
   (`systems/movement.js`) uses the fastest worn item. Worn items never fill a hand.
 - **The thief:** `VL.applyThefts(state)` runs as the hero walks into the
   library (the shelves' `prepare`). Each return trip since the last visit
@@ -1558,27 +1606,24 @@ through to the Bookworm, two canyon boulders lifted).
 The gate on W8's maze (design: The world, "You need the copied map to get
 through"), in `systems/woods-map.js`. Tests: `tests/woods-gate.test.js`.
 
-- **Without the copied map** (`woodsMapCopy`, the region's `softGate`) the
-  edge of the Woods (5,-1) is open to all, but **every step from one Woods
-  screen into another turns the hero back** to `VL.WOODS_ENTRY` (5,-1, by the
-  road, facing out), with the slide he walked into. The first time a popup
-  (`woodsLost`) says why and points at the Scriptorium's mural; after that a
-  short message (`VL.WOODS_TURNED_TEXT`) and a whisper. Nothing is ever lost,
-  so it is a nudge, never a grind.
-- **With the map** the paths are true: the route leads to the Hollow Oak and
-  the wrong turns still wind back (`VL.WOODS_WRONG_EXITS`). The first Woods
-  screen says so (`woodsWithMap`), each route screen but the last shows the
-  scribes' blue mark (`woodsBlaze`, added as the room is built) on the tree
-  beside its way on (`VL.woodsBlaze(key)`), and the copy (E, or its hand
-  key) blinks where the hero stands (`VL.woodsMapHere`).
+- **Without the copied map** (`woodsMapCopy`) the Woods are open to explore
+  (W34, Matthew's fourth playtest: the old turn-back to the edge and its
+  `woodsLost` popup are gone): every screen but the Hollow Oak's clearing
+  can be walked to, and the Woods' ore and books lie on the open paths
+  (lock `woodsPaths`, needs the east road). The librarian's hint still
+  points at the Scriptorium's mural.
+- **With the map** the first Woods screen says so (`woodsWithMap`: the copy
+  shows the way, open it from E) and the copy blinks where the hero stands
+  (`VL.woodsMapHere`). The scribes' blue marks on the trees are gone (W34:
+  looking at the map is enough). The wrong turns still wind back
+  (`VL.WOODS_WRONG_EXITS`).
 - **The trees before the Oak (W29):** the pass from 7,-1 up to the Hollow
-  Oak's clearing is closed by trees, one of them the gate tile `J`
+  Oak's clearing is a whole row of trees, one of them the gate tile `J`
   (`gate: 'woodsMapCopy'`, at `VL.WOODS_GATE_TREE`). Once the copy is owned
   it becomes a dirt path for good (`VL.saveTile` with an explicit screen),
   checked as each room is built and every step, so an old save that copied
-  the map finds it open as it loads. The turn-back rule above still keeps a
-  hero without the copy from reaching 7,-1 at all; the trees are the same
-  lock shown on the map, and on the drawn map the path appears with the
+  the map finds it open as it loads. This is the Woods' only lock (like the
+  highlands' hidden path), and on the drawn map the path appears with the
   copy. `VL.saveTile(state, tx, ty, ch, { area, screen })` saves a tile on
   any screen.
 - **Edge rules** (`engine.js`): `VL.defineEdgeRule(id, (state, area, from,
@@ -1586,13 +1631,12 @@ through"), in `systems/woods-map.js`. Tests: `tests/woods-gate.test.js`.
   `systems/movement.js` follows it and pushes `{ type: 'edgeTurned', rule,
   from, to }`; a chicken flight stops short of such an edge
   (`systems/chickens.js`), and the playthrough's `findPath` never crosses
-  one. `VL.edgeTurn(state, area, from, to)` asks. W8's overworld test models
-  the soft gate the same way (its edge open, no step within it).
+  one. `VL.edgeTurn(state, area, from, to)` asks. No rule is defined since
+  W34 took out the Woods' turn-back; the hook stays for a later gate.
 - **Pathfinder fix:** `findPath` asks `passable(state, entity, area)` with the
   entity's own area, so a route planned from the overworld into a dungeon
   reads that dungeon's shutters and doors (`VL.dungeonCondition(state, cond,
   { dungeon })`).
-- **Sounds:** `woodsWhisper` (event `woodsWhisper`).
 
 ## The Grappling Rope (W15)
 
@@ -1803,8 +1847,10 @@ wreck and the place locks in `dungeons/shipwreck.js`. Tests:
 The mini-dungeon below the wreck's deck (design: The world, Shipwreck), in
 `dungeons/shipwreck.js` on W13's framework (dungeon `wreck`, area `wreck`, no
 boss). The raft lands only at the stove-in side (3,6 → 4,6 on 5,2); the
-Tide Tables' trunk is on deck and the hatch (W8's `shipwreckHatch`) leads
-down.
+Tide Tables' trunk is on deck and the hatch (W8's `shipwreckHatch`, on the
+deck's south row at 8,6 since W34) leads down; the ladder brings him back up
+north of it (8,5) facing up, so holding Up out of the hold never loops him
+back in.
 
 ```
   hold (0,0): ladder up, lantern ── locked door ── captain's cabin (1,0): the page, 5 shells
@@ -2001,8 +2047,10 @@ played route is `tests/highlands-route.js`.
   -1,-3); its planned rule is kept (cliffs, the Almanac, the long flight).
 - **Playthrough:** the `climbersAlmanac` step gathers the last two pages
   (the field by the library, Henrietta carried home to Pip), opens the
-  Chicken Keeper's Almanac's trunk in the Woods, hands every book in and sits
-  through the readings, sells berries for the binding's 15 shells and binds;
+  Chicken Keeper's Almanac's trunk (on the wreck's deck since W34), opens
+  trunks along the way until 20 books earn the Big Shell Purse (W34), hands
+  every book in and sits through the readings, sells berries for the
+  binding's 40 shells and binds;
   `highlands` climbs the path and flies the ledge's chicken over.
 
 ## The Dragon's Lair (W19)

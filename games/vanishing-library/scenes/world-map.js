@@ -102,6 +102,8 @@
     for (const mark of map.marks) {
       const { x, y } = cell(mark.screen);
       centred(ctx, mark.kind === 'ore' ? 'icon-ore' : 'icon-berry', x + mark.tx, y + mark.ty);
+      // The Ledger's rumoured ore gleams (W34).
+      if (mark.kind === 'ore') VL.ART.drawSparkle(ctx, x + mark.tx + 3, y + mark.ty - 3, t);
     }
     if (map.hero && Math.floor(t * 3) % 3 !== 2) {
       const { x, y } = cell(map.hero.screen);
@@ -125,7 +127,7 @@
       centred(ctx, 'icon-ore', legendX + 3, footY + 2);
       VL.ART.text(ctx, 'ORE', legendX + 10, footY, { size: 'small', color: 'mapInk' });
     }
-    VL.ART.text(ctx, 'M: CLOSE', BOX.x + BOX.w - 10, footY, { size: 'small', align: 'right', color: 'mapInk' });
+    VL.ART.text(ctx, 'X: CLOSE', BOX.x + BOX.w - 10, footY, { size: 'small', align: 'right', color: 'mapInk' });
   }
 
   // ---------- asking before drawing ----------
@@ -165,7 +167,7 @@
       };
       view.t += dt;
       if (view.mode === 'ask') {
-        if (pressed.map || pressed.pause) return close();
+        if (pressed.dig || pressed.map || pressed.pause) return close();
         if (pressed.left || pressed.right || pressed.up || pressed.down) {
           view.choice = 1 - view.choice;
           VL.sfx('menuMove');
@@ -181,10 +183,11 @@
         const revealed = Math.min(total, Math.floor((view.t / VL.TUNING.mapRevealSeconds) * total) + 1);
         if (revealed > view.revealed) VL.sfx('penScratch');
         view.revealed = revealed;
-        if (view.t >= VL.TUNING.mapRevealSeconds || VL.confirmed(actions) || pressed.map) Object.assign(view, { mode: 'view', t: 0 });
+        if (view.t >= VL.TUNING.mapRevealSeconds || VL.confirmed(actions) || pressed.map || pressed.dig) Object.assign(view, { mode: 'view', t: 0 });
         return undefined;
       }
-      if (pressed.map || pressed.pause || pressed.equipment || VL.confirmed(actions)) close();
+      // X is the key the footer names (W34).
+      if (pressed.dig || pressed.map || pressed.pause || pressed.equipment || VL.confirmed(actions)) close();
       return undefined;
     },
 
@@ -215,7 +218,7 @@
       const { pressed } = actions;
       view.t += dt;
       if (view.t < READY) return;
-      if (pressed.map || pressed.pause || pressed.equipment || VL.confirmed(actions)) {
+      if (pressed.dig || pressed.map || pressed.pause || pressed.equipment || VL.confirmed(actions)) {
         VL.sfx('menuSelect');
         app.setScene(view.back);
       }

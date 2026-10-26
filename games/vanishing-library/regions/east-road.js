@@ -73,7 +73,7 @@
       entities: [
         { type: 'slime', x: 3, y: 8 },
         { type: 'slime', x: 10, y: 6 },
-        spot('heartFieldA', 14, 8, 'pickup', 'W6'),
+        spot('heartFieldA', 14, 8, 'buried', 'W6'),
         spot('bookEastRoad', 10, 3, 'bush', 'W11'),
         spot('bookPrimer', 2, 3, 'trunk', 'W11'),
       ],

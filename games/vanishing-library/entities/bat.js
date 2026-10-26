@@ -2,7 +2,7 @@
 // flutters at them in a wobbly line for a moment, flies off and dozes again.
 // It flies, so trees don't stop it, but it never leaves its screen.
 (() => {
-  VL.tune({ enemyBat: { hp: 1, damage: 1, speed: 44, wake: 56, flutterSeconds: 2.4, leaveSeconds: 1.2, doze: 1.5 } });
+  VL.tune({ enemyBat: { hp: 1, damage: 1, speed: 30, wake: 56, flutterSeconds: 2.4, leaveSeconds: 1.2, doze: 1.5 } });
   const T = () => VL.TUNING.enemyBat;
 
   VL.ART.addColors({ bat: '#5a4a7a', batLight: '#8f7bb8', batDark: '#2e2444' });

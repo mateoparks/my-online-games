@@ -54,19 +54,18 @@
 // ---------- regions ----------
 
 // Named groups of screens (town, woods, …), each optionally the place lock it
-// opens. `softGate` names a key the region needs that is not a tile: the
-// Woods maze lets you walk in, but only the copied map gets you through.
+// opens.
 VL.REGIONS = {};
 VL.REGION_OF = {};
 
-VL.defineRegion = function defineRegion(id, { area = 'overworld', screens, place = null, softGate = null }) {
+VL.defineRegion = function defineRegion(id, { area = 'overworld', screens, place = null }) {
   if (VL.REGIONS[id]) throw new Error(`region ${id} is already defined`);
   for (const key of screens) {
     const owner = VL.REGION_OF[`${area}:${key}`];
     if (owner) throw new Error(`screen ${area} ${key} is already in region ${owner}`);
     VL.REGION_OF[`${area}:${key}`] = id;
   }
-  VL.REGIONS[id] = { id, area, screens: screens.slice(), place, softGate };
+  VL.REGIONS[id] = { id, area, screens: screens.slice(), place };
   return VL.REGIONS[id];
 };
 

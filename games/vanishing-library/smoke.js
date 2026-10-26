@@ -292,7 +292,9 @@ async function main() {
       if (incoming.length < 3 || outgoing.length < 3) slideProblems.push(`only ${incoming.length}/${outgoing.length} mid-slide frames of the new/old screen were drawn`);
       for (const d of incoming) if (!(Math.sign(d[axis]) === sign && Math.abs(d[axis]) < span)) slideProblems.push(`new screen ${slide.to} drawn at ${d.x},${d.y} at ${d.k.toFixed(2)}: it should enter from the ${slide.dir.toLowerCase()} edge`);
       for (const d of outgoing) if (!(Math.sign(d[axis]) === -sign && Math.abs(d[axis]) < span)) slideProblems.push(`old screen ${slide.from} drawn at ${d.x},${d.y} at ${d.k.toFixed(2)}: it should leave through the far edge`);
-      for (const d of draws.filter((h) => h.hero)) if (!(d.x >= -1 && d.x <= 256 && d.y >= -1 && d.y <= 176)) slideProblems.push(`hero drawn off the canvas at ${d.x},${d.y} during the slide`);
+      // One pixel of slack either side: the step that crosses an edge can
+      // overshoot it by under a pixel (W34's 47 px/s walk rounds it to 257).
+      for (const d of draws.filter((h) => h.hero)) if (!(d.x >= -1 && d.x <= 257 && d.y >= -1 && d.y <= 177)) slideProblems.push(`hero drawn off the canvas at ${d.x},${d.y} during the slide`);
       slideProblems.push(...errors);
     }
     if (slideProblems.length) failures += 1;
@@ -693,7 +695,8 @@ async function main() {
       const block = await read('[g.hp, g.maxHp]');
       if (!blocked || block[0] !== block[1]) combatProblems.push(`the raised shield did not block the seed: blocked ${blocked}, hearts ${block}`);
 
-      const heart = await read('VL.SPOTS.heartFieldA');
+      // The cliff ledge's heart (W34 buried the east road's).
+      const heart = await read('VL.SPOTS.heartFieldB');
       await stage({ area: heart.area, screen: heart.screen, tx: heart.x, ty: heart.y, facing: 'down' });
       await sleep(100);
       await key('keyDown', 'ArrowLeft');
@@ -701,7 +704,7 @@ async function main() {
       await key('keyUp', 'ArrowLeft');
       await sleep(1400);
       await shot('w6-heart-container');
-      const container = await read('[VL.app.sceneId, g.maxHp, VL.spotFound(g, "heartFieldA")]');
+      const container = await read('[VL.app.sceneId, g.maxHp, VL.spotFound(g, "heartFieldB")]');
       if (container[0] !== 'popup' || container[1] !== 8 || !container[2]) combatProblems.push(`the heart container: ${JSON.stringify(container)}`);
 
       combatProblems.push(...errors);
@@ -1483,8 +1486,9 @@ async function main() {
     }
 
     // W15, the Whispering Woods and the Hollow Oak with real keys: a step
-    // deeper into the Woods without the copied map turning back, the same
-    // step with it (its popup, a blazed tree), the copy's "you are here",
+    // deeper into the Woods without the copied map leading on (W34), the
+    // pass below the Oak all trees, the same step with the map (its popup,
+    // no marks), the copy's "you are here",
     // every room, the rope from the big chest, the hook out and the pull
     // over the vault's pits, key B dragged off its island, and the
     // Thornback: up, flipped by the hook, hit and beaten. Saved as w15-*.png.
@@ -1529,11 +1533,16 @@ async function main() {
       const ow = (screen, tx, ty, facing = 'up') => ({ area: 'overworld', screen, tx, ty, facing });
 
       await oakGame(ow('5,-1', 3, 1), '');
-      await holdArrowUntil('Up', "VL.app.sceneId === 'popup'");
+      await holdArrowUntil('Up', "g.player.screen === '5,-2' && !g.transition");
       await sleep(200);
-      await shot('w15-woods-lost');
-      const lost = await see("[g.player.screen, VL.heroTile(g).ty, VL.currentPopup(g) && VL.currentPopup(g).id]");
-      if (lost.join() !== '5,-1,9,woodsLost') oakProblems.push(`a step deeper without the map: screen, row, popup = ${lost}`);
+      await shot('w15-woods-no-map');
+      const lost = await see("[g.player.screen, VL.app.sceneId]");
+      if (lost.join() !== '5,-2,play') oakProblems.push(`a step deeper without the map: screen, scene = ${lost}`);
+      await evaluate(`VL.place(VL.app.game, ${JSON.stringify(ow('7,-1', 7, 3))})`);
+      await holdArrowUntil('Up', 'false', 600);
+      await shot('w15-woods-pass-shut');
+      const shut = await see("[g.player.screen, VL.heroTile(g).ty, VL.tileAt('overworld', '7,-1', 7, 2)]");
+      if (shut.join() !== '7,-1,3,J') oakProblems.push(`the pass below the Oak without the map: screen, row, tile = ${shut}`);
 
       await oakGame(ow('5,-1', 3, 1), "g.items.woodsMapCopy = true; g.popups.seen.woodsWithMap = false;");
       await holdArrowUntil('Up', "VL.app.sceneId === 'popup'");
@@ -1545,8 +1554,8 @@ async function main() {
       await tapKey('KeyS');
       await evaluate(`VL.place(VL.app.game, ${JSON.stringify(ow('5,-1', 3, 2))})`);
       await sleep(250);
-      await shot('w15-woods-blaze');
-      if (!(await see("g.room.entities.some((e) => e.type === 'woodsBlaze')"))) oakProblems.push('no blazed tree on the Woods edge with the map');
+      await shot('w15-woods-edge-map');
+      if (await see("g.room.entities.some((e) => /blaze/i.test(e.type))")) oakProblems.push('a scribes\' mark on the Woods edge (W34 took them out)');
       await evaluate(`(() => { VL.place(VL.app.game, ${JSON.stringify(ow('6,-2', 7, 5))}); VL.app.setScene('copyView', { id: 'woodsMapCopy' }); })()`);
       await sleep(400);
       await shot('w15-woods-copy');
@@ -2148,8 +2157,8 @@ async function main() {
       await shoot('w17-wreck-aboard');
       const aboard = await read("[g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty, VL.LOCKS.shipwreck.reached(g)]");
       if (aboard.join() !== '5,2,4,6,true') raftProblems.push(`aboard the wreck: screen, tx, ty, reached = ${aboard}`);
-      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(8, 6), { facing: 'up' }); })()");
-      await holdArrowUntil('Up', "g.player.area === 'wreck'");
+      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(8, 5), { facing: 'down' }); })()");
+      await holdArrowUntil('Down', "g.player.area === 'wreck'");
       await sleep(300);
       if ((await read('g.player.area')) !== 'wreck') raftProblems.push('the hatch did not lead below deck');
       for (const [screen, ty] of [['0,0', 2], ['0,1', 2], ['1,0', 4]]) {
@@ -2245,12 +2254,13 @@ async function main() {
       })()`);
       const lair = (screen, tx, ty, facing = 'up') => ({ area: 'lair', screen, tx, ty, facing });
 
-      // The bindery: five pages found, fifteen shells, S across the counter.
+      // The bindery: five pages found, forty shells in the Big Shell Purse (W34), S across the counter.
       await stage({ area: 'bindery', screen: '0,0', tx: 7, ty: 4, facing: 'up' }, `
         for (const id of ['pageFieldA', 'pageFieldB', 'lostChicken', 'pageLostChicken', 'pageShipwreck', 'pageLighthouse']) VL.markFound(g, id);
         g.dungeons.lighthouse.boss = true;
         g.flags['met:quill'] = true;
-        g.inventory.shells = 15;`);
+        g.items.shellPurse = true;
+        g.inventory.shells = 40;`);
       if ((await see('VL.loosePages(g)')) < 5) w19Problems.push(`only ${await see('VL.loosePages(g)')} pages staged`);
       await tapKey('KeyS');
       await waitFor("VL.app.sceneId === 'dialogue' || VL.app.sceneId === 'shop'");
@@ -2268,7 +2278,7 @@ async function main() {
       }
       await waitFor('VL.app.popupView && VL.app.popupView.t >= 0.35');
       await shot('w19-almanac-popup');
-      if (!(await see("VL.hasItem(g, 'climbersAlmanac') && g.inventory.shells === 0"))) w19Problems.push('no Climber\'s Almanac for fifteen shells');
+      if (!(await see("VL.hasItem(g, 'climbersAlmanac') && g.inventory.shells === 0"))) w19Problems.push('no Climber\'s Almanac for forty shells');
 
       // The hidden path: up from the cliff road, its popup, the climb.
       await stage({ area: 'overworld', screen: '-1,-1', tx: 6, ty: 2, facing: 'up' }, 'g.items.climbersAlmanac = true;');
@@ -2903,6 +2913,124 @@ async function main() {
       if (w35Problems.length) failures += 1;
       console.log(`${w35Problems.length ? 'FAIL' : 'ok  '} playtest notes 4 (dungeons): seed over the roots, Gran's hint, no heaps, thorny slime, lava, the Lair's guards, the Dragon's tint and its fan, ${path.join(outDir, 'w35-*.png')}`);
       for (const problem of w35Problems) console.log(`     ${problem}`);
+    }
+
+    // W34, Matthew's fourth playtest notes: X closes the equipment view and
+    // the map (their footers say so), the east road's buried heart dug up
+    // with X, holding Up out of the wreck's hold never loops back in, the
+    // Ledger's rumoured ore gleaming on a drawn map, an angry crab chasing
+    // over the grass, and the lake island's eleven crabs. Saved as w34-*.png.
+    {
+      errors.length = 0;
+      const w34Problems = [];
+      const codes = { KeyX: [88, 'x'], KeyE: [69, 'e'], KeyM: [77, 'm'] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) w34Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const stage = (where, setup = '', keepEnemies = false) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap', 'digKey', 'woodsWithMap']) g.popups.seen[id] = true;
+        g.items.woodSword = true;
+        g.hands = { mainHand: 'woodSword', offHand: null };
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        if (!${keepEnemies}) g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+      const ow = (screen, tx, ty, facing = 'up') => ({ area: 'overworld', screen, tx, ty, facing });
+
+      // The equipment view and the world map close with X.
+      await stage(ow('1,1', 8, 4), 'g.items.worldMap = true;');
+      await settle();
+      await tapKey('KeyE');
+      await sleep(200);
+      await shot('w34-equipment-x-back');
+      if ((await see('VL.app.sceneId')) !== 'equipment') w34Problems.push('E did not open the equipment view');
+      await tapKey('KeyX');
+      await sleep(150);
+      if ((await see('VL.app.sceneId')) !== 'play') w34Problems.push(`X did not close the equipment view: ${await see('VL.app.sceneId')}`);
+      await tapKey('KeyM');
+      await sleep(600);
+      await shot('w34-map-x-close');
+      await tapKey('KeyX');
+      await sleep(150);
+      if ((await see('VL.app.sceneId')) !== 'play') w34Problems.push(`X did not close the map: ${await see('VL.app.sceneId')}`);
+
+      // The buried heart: the bush in front cut, X with the metal shovel.
+      await stage(ow('5,0', 12, 8, 'right'), "g.items.metalShovel = true;");
+      await evaluate("(() => { const g = VL.app.game; VL.setRoomTile(g, 13, 8, '.'); Object.assign(g.player, VL.tileCenter(13, 8), { facing: 'right' }); })()");
+      await settle();
+      if (!(await see("g.room.entities.some((e) => e.type === 'heartContainer' && e.hidden)"))) w34Problems.push('the east road\'s heart is not buried');
+      await tapKey('KeyX');
+      await sleep(500);
+      await shot('w34-heart-dug-up');
+      if (!(await see("g.room.entities.some((e) => e.type === 'heartContainer' && !e.hidden)"))) w34Problems.push('X did not dig the heart up');
+      await holdArrowUntil('Right', "VL.spotFound(g, 'heartFieldA')", 1500);
+      if (!(await see("VL.spotFound(g, 'heartFieldA')"))) w34Problems.push('the dug-up heart was not taken');
+
+      // Out of the wreck's hold holding Up: on deck, and he stays there.
+      await stage({ area: 'wreck', screen: '0,0', tx: 7, ty: 2, facing: 'up' }, 'g.items.raft = true; g.items.oar = true;');
+      await settle();
+      await holdArrowUntil('Up', 'false', 2500);
+      await shot('w34-wreck-out');
+      const out = await see("[g.player.area, g.player.screen, VL.heroTile(g).ty]");
+      if (out.join() !== 'overworld,5,2,5') w34Problems.push(`holding Up out of the hold: ${out}`);
+
+      // The Ledger read: the wreck's ore gleams on the drawn map.
+      await stage(ow('1,1', 8, 4), "g.items.worldMap = true; g.library.returned.push('bookSmithsLedger'); g.library.read.push('bookSmithsLedger'); VL.markFound(g, 'bookSmithsLedger'); g.visited['overworld:5,2'] = true;");
+      await settle();
+      await tapKey('KeyM');
+      await sleep(700);
+      await shot('w34-ledger-ore-map');
+      if (!(await see("VL.mapView(g).marks.some((m) => m.kind === 'ore' && m.screen === '5,2')"))) w34Problems.push('no ore mark over the wreck');
+      await tapKey('KeyX');
+
+      // An angry crab: off its sand row towards him.
+      await stage(ow('4,1', 8, 1, 'down'), 'Object.assign(g.crabs, { killed: 10, angry: true }); g.player.invuln = 99;', true);
+      const rowBefore = await see("g.room.entities.filter((e) => e.type === 'crab').map((c) => c.cy)");
+      await sleep(1800);
+      await shot('w34-angry-crab');
+      const rowAfter = await see("g.room.entities.filter((e) => e.type === 'crab').map((c) => c.cy)");
+      if (!rowAfter.some((y, i) => y < rowBefore[i] - 8)) w34Problems.push(`no angry crab left its row: ${rowBefore} -> ${rowAfter}`);
+
+      // The island's eleven: every sand tile dug with X, a crab from each hole.
+      await stage(ow('3,-3', 8, 4, 'up'), "g.items.woodShovel = true; VL.markFound(g, 'oreLakeIsland'); g.player.invuln = 99;");
+      await settle();
+      const tiles = await see('VL.islandDigTiles()');
+      for (const { tx, ty } of tiles) {
+        await evaluate(`(() => {
+          const g = VL.app.game;
+          const sides = [[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'left'], [-1, 0, 'right']];
+          const [dx, dy, facing] = sides.find(([sx, sy]) => !VL.isSolidAt('overworld', '3,-3', ${tx} + sx, ${ty} + sy, g.room) && !g.room.entities.some((e) => e.type === 'bookTrunk' && e.x === ${tx} + sx && e.y === ${ty} + sy));
+          Object.assign(g.player, VL.tileCenter(${tx} + dx, ${ty} + dy), { facing });
+          g.player.invuln = 99;
+        })()`);
+        await settle();
+        await tapKey('KeyX');
+        await sleep(350);
+      }
+      await sleep(300);
+      await shot('w34-island-crabs');
+      const out11 = await see("g.room.entities.filter((e) => e.type === 'crab' && e.egg).length");
+      if (out11 !== 11) w34Problems.push(`island crabs out: ${out11} of 11 (${tiles.length} tiles)`);
+
+      w34Problems.push(...errors);
+      if (w34Problems.length) failures += 1;
+      console.log(`${w34Problems.length ? 'FAIL' : 'ok  '} fourth playtest: X closes the equipment and the map, the buried heart dug up, out of the hold holding Up, the Ledger's ore on the map, an angry crab, the island's eleven crabs, ${path.join(outDir, 'w34-*.png')}`);
+      for (const problem of w34Problems) console.log(`     ${problem}`);
     }
 
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an

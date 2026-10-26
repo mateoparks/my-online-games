@@ -193,7 +193,7 @@ test('the wreck has one landing, its stove-in side, onto the deck by the hatch',
   assert.deepEqual(landings, [[3, 6]]);
   state.player.x = VL.tileCenter(3, 6).x;
   state.player.y = VL.tileCenter(3, 6).y;
-  hold(VL, state, ['right'], 0.5);
+  hold(VL, state, ['right'], 0.8);
   assert.deepEqual(where(VL, state), ['5,2', 4, 6], 'aboard');
   assert.ok(!state.player.afloat);
 });
