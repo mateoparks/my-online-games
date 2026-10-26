@@ -292,7 +292,9 @@ async function main() {
       if (incoming.length < 3 || outgoing.length < 3) slideProblems.push(`only ${incoming.length}/${outgoing.length} mid-slide frames of the new/old screen were drawn`);
       for (const d of incoming) if (!(Math.sign(d[axis]) === sign && Math.abs(d[axis]) < span)) slideProblems.push(`new screen ${slide.to} drawn at ${d.x},${d.y} at ${d.k.toFixed(2)}: it should enter from the ${slide.dir.toLowerCase()} edge`);
       for (const d of outgoing) if (!(Math.sign(d[axis]) === -sign && Math.abs(d[axis]) < span)) slideProblems.push(`old screen ${slide.from} drawn at ${d.x},${d.y} at ${d.k.toFixed(2)}: it should leave through the far edge`);
-      for (const d of draws.filter((h) => h.hero)) if (!(d.x >= -1 && d.x <= 256 && d.y >= -1 && d.y <= 176)) slideProblems.push(`hero drawn off the canvas at ${d.x},${d.y} during the slide`);
+      // One pixel of slack either side: the step that crosses an edge can
+      // overshoot it by under a pixel (W34's 47 px/s walk rounds it to 257).
+      for (const d of draws.filter((h) => h.hero)) if (!(d.x >= -1 && d.x <= 257 && d.y >= -1 && d.y <= 177)) slideProblems.push(`hero drawn off the canvas at ${d.x},${d.y} during the slide`);
       slideProblems.push(...errors);
     }
     if (slideProblems.length) failures += 1;
