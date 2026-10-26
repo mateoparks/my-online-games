@@ -421,7 +421,10 @@
         refuse(state) {
           const have = VL.loosePages(state);
           const need = VL.pagesToBind();
-          return have < need ? `You have ${have} of ${need} pages. Bring me all ${need}!` : null;
+          if (have < need) return `You have ${have} of ${need} pages. Bring me all ${need}!`;
+          const price = prices.binding.shells;
+          const holds = VL.shellCap(state);
+          return price > holds ? `It's ${price} shells, and your purse holds only ${holds}! Bring Mr. Fenwick books for a bigger one.` : null;
         },
         give(state) {
           state.flags.pagesBound = true;

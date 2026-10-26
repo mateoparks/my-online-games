@@ -417,6 +417,26 @@ test('the rumoured ore\'s mark gleams on the drawn map', () => {
 
 // ---------- the Big Shell Purse holds 50; the binding costs 40 ----------
 
+test('with all five pages but only the small purse, Miss Quill says plainly that her price won\'t fit in it and where a bigger purse comes from; with the Big Shell Purse she binds', () => {
+  const { VL } = loadGame();
+  VL.loosePages = () => VL.pagesToBind();
+  const offer = offerIn(VL, 'bookbinder', 'bindPages');
+  const state = VL.newGame({ name: 'Robin' });
+  state.inventory.shells = VL.TUNING.shellCap;
+  const refused = VL.buyOffer(state, offer);
+  assert.equal(refused.reason, 'refused');
+  assert.match(refused.text, /40 shells/);
+  assert.match(refused.text, /purse holds only 15/);
+  assert.match(refused.text, /Mr\. Fenwick/);
+  assert.ok(VL.ART.wrapText(refused.text, 208).length <= 2, 'fits the counter\'s two note lines');
+  state.items.shellPurse = true;
+  state.inventory.shells = 39;
+  assert.deepEqual(plain(VL.buyOffer(state, offer)), { ok: false, reason: 'notEnough', kind: 'shells' });
+  state.inventory.shells = 40;
+  assert.deepEqual(plain(VL.buyOffer(state, offer)), { ok: true });
+  assert.equal(state.flags.pagesBound, true);
+});
+
 test('the Big Shell Purse holds 50 whole shells (the first one 15), and its words say so', () => {
   const { VL } = loadGame();
   assert.equal(VL.TUNING.shellCap, 15);
