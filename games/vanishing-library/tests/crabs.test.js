@@ -65,6 +65,17 @@ test('the wreck\'s crabs and other enemies never count; only overworld beach cra
   assert.equal(state.crabs.killed, 0);
 });
 
+test('once the crabs are angry, the wreck\'s hold crabs stay calm: base hit points, no chase', () => {
+  const { VL } = loadGame();
+  const state = beach(VL, { area: 'wreck', screen: '0,0', tx: 7, ty: 2, facing: 'down' }, (s) => Object.assign(s.crabs, { killed: 10, angry: true }));
+  const crabs = crabsIn(state);
+  assert.ok(crabs.length > 0, 'the hold has crabs');
+  for (const crab of crabs) {
+    assert.ok(!crab.angry, 'calm');
+    assert.equal(crab.hp, VL.TUNING.enemyCrab.hp);
+  }
+});
+
 function angryBeach(VL, where = ow('4,1', 8, 2, 'down')) {
   return beach(VL, where, (state) => Object.assign(state.crabs, { killed: 10, angry: true }));
 }

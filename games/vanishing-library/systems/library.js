@@ -20,7 +20,7 @@
     wifeStages: [{ books: 3 }, { books: 7, boss: 'd1Boss' }, { books: 12, boss: 'd2Boss' }],
     // Whole shells a purse holds (W29: every price in town fits the first).
     shellCap: 15,
-    // W34: 50 (was 250), so the 40-shell binding needs it but no more.
+    // So the 40-shell binding needs it, but no more.
     shellCapPurse: 50,
     swiftfootSpeed: 2,
   });

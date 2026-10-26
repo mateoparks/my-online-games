@@ -140,7 +140,7 @@
       ],
       entities: [
         { type: 'bat', x: 10, y: 5 },
-        // W34 moved these two books down from the highlands (ids kept for old saves).
+        // Down from the highlands (its id kept for old saves).
         spot('bookHighShelfB', 2, 4, 'trunk', 'W11'),
       ],
     },
@@ -240,7 +240,6 @@
         { type: 'spitter', x: 12, y: 6, tough: true },
         { type: 'decor', art: 'hollowOak', x: 5, y: 1 },
         spot('hollowOakDoor', 7, 3, 'door', 'W15', 'hollowOakEntered'),
-        // W34 swapped the Chicken Keeper's Almanac out to the wreck for this one.
         spot('bookWreckDeck', 10, 8, 'trunk', 'W11'),
       ],
     },
@@ -328,6 +327,7 @@
       ],
       entities: [
         { type: 'bat', x: 8, y: 3 },
+        // Down from the highlands (its id kept for old saves).
         spot('bookHighShelfA', 14, 7, 'trunk', 'W11'),
       ],
     },

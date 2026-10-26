@@ -54,7 +54,6 @@
     },
   });
 
-  // W34: Matthew's playtest buried the east road's one; the cliff ledge's stays out.
   VL.fillSpot('heartFieldA', { type: 'heartContainer', id: 'heartFieldA', reveal: 'dug' });
   VL.fillSpot('heartFieldB', { type: 'heartContainer', id: 'heartFieldB' });
 })();

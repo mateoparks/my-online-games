@@ -134,7 +134,6 @@
         { type: 'decor', art: 'wreck', x: 3, y: 4 },
         spot('shipwreckHatch', 8, 6, 'door', 'W17', 'shipwreck'),
         spot('bookTideTables', 10, 6, 'trunk', 'W11'),
-        // W34: swapped out here from the Hollow Oak's clearing.
         spot('bookChickenAlmanac', 5, 5, 'trunk', 'W11'),
       ],
     },
