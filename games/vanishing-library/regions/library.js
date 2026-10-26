@@ -156,6 +156,8 @@
   ];
   const booksHandedIn = 'Are those... books? You found books, {name}! Let me put them on the shelves.';
   const whereWereWe = 'Now, where were we? Ah, yes!';
+  const welcomeHome = 'Welcome back, {name}! Every shelf is full again, and my wife is helping me look after them all.';
+  const endingBooksToShow = (state) => VL.endingBooks(state).some((id) => VL.BOOKS[id].kind === 'generic');
   // Books gone since his last remark come first, whatever else he has to say.
   const remarks = (also, after, give) => VL.VANISHED_REMARKS.map((line) => ({
     when: { test: remarking(line, also) },
@@ -167,6 +169,9 @@
   VL.defineDialogue('librarian', [
     // A kid who walks in already carrying the first book still meets him first.
     { when: { notFlag: 'met:fenwick', test: carrying }, say: [...introduction, booksHandedIn], set: 'met:fenwick', give: { returnBooks: true } },
+    // The first talk after the ending, before any hand-in or beat it leads into.
+    { when: { flag: 'forgiven', notFlag: 'finale:welcomedHome', test: endingBooksToShow }, say: [welcomeHome, 'And look at the books you brought home with you! Let me tell you about them.'], set: 'finale:welcomedHome', give: { welcomeHome: true } },
+    { when: { flag: 'forgiven', notFlag: 'finale:welcomedHome' }, say: welcomeHome, set: 'finale:welcomedHome', give: { welcomeHome: true } },
     ...remarks(carrying, booksHandedIn, { returnBooks: true }),
     { when: { test: carrying }, say: booksHandedIn, give: { returnBooks: true }, repeat: true },
     ...remarks(beatsWaiting, whereWereWe, { libraryChain: true }),

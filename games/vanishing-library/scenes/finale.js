@@ -108,6 +108,13 @@
       const game = app.game;
       view.t += dt;
       if (view.phase === 'fadeIn') {
+        // Esc skips to the credits here too, fading out from as dark as it is.
+        if (actions.pressed.pause) {
+          const dark = Math.max(0, 1 - view.t / T.fadeIn);
+          startPhase(view, 'fadeOut');
+          view.t = dark * T.fadeOut;
+          return;
+        }
         if (view.t >= T.fadeIn) startPhase(view, 'beats');
         return;
       }
@@ -150,11 +157,11 @@
         if (view.t >= T.fadeOut) finish(app, view);
         return;
       }
-      // The credits roll up; S jumps to the end, and once THE END is up, S
-      // goes back to the title.
+      // The credits roll up; S (or Esc) jumps to the end, and once THE END is
+      // up, goes back to the title.
       const end = creditsHeight() + VL.TUNING.height / 2 - LINE;
       const rolled = Math.min(end, view.t * T.creditsSpeed);
-      if (!VL.confirmed(actions)) return;
+      if (!VL.confirmed(actions) && !actions.pressed.pause) return;
       if (rolled < end) view.t = end / T.creditsSpeed;
       else {
         VL.sfx('menuSelect');
@@ -181,7 +188,7 @@
         return;
       }
       const beat = view.phase === 'beats' ? beatOf(view) : null;
-      VL.drawWorld(ctx, game, t);
+      VL.drawWorld(ctx, game, t, { hud: false });
       if (beat) {
         const text = textOf(view, game);
         // Typed along the final line breaks, so words never jump between lines.

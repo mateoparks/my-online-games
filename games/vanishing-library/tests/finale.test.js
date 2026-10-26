@@ -493,6 +493,7 @@ test('once forgiven she steals no more, the shelves are packed, her shows are ki
   assert.ok(shelves.every((s) => s.fill === 1 && s.heroBook));
   assert.deepEqual(plain(lib.gone), []);
   // With nothing to hand in and no reward waiting, he says the shelves are full.
+  drive.state.flags['finale:welcomedHome'] = true;
   for (const id of VL.booksCarried(drive.state)) lib.returned.push(id);
   for (const id of Object.keys(VL.TUNING.libraryRewards)) drive.state.flags[`reward:${id}`] = true;
   for (const id of lib.returned) if (VL.BOOKS[id].kind !== 'generic' && !lib.read.includes(id)) lib.read.push(id);

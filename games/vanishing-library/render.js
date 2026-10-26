@@ -18,7 +18,8 @@ VL.drawScreen = function drawScreen(ctx, areaId, key, ox, oy, t, room) {
   }
 };
 
-VL.drawWorld = function drawWorld(ctx, state, t) {
+// `hud: false` leaves the strip dark (the ending, a cinematic).
+VL.drawWorld = function drawWorld(ctx, state, t, { hud = true } = {}) {
   const { width, rows, tile, hudHeight } = VL.TUNING;
   const playHeight = rows * tile;
   const player = state.player;
@@ -53,5 +54,5 @@ VL.drawWorld = function drawWorld(ctx, state, t) {
   // hidden by the flash.
   for (const layer of VL.HERO_LAYERS) layer.draw(ctx, state, heroX, heroY, t, 'overlay');
   ctx.restore();
-  VL.ART.drawHud(ctx, state, t);
+  if (hud) VL.ART.drawHud(ctx, state, t);
 };

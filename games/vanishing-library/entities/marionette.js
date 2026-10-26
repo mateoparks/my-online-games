@@ -38,6 +38,11 @@
     hero: { hands: [-18, 18], reach: 16 },
     librarian: { hands: [-18, 18], reach: 16 },
   };
+  // How much of its painted shape (room pixels from its centre) a puppet
+  // covers, and how far it fades while he stands in front of it: the hero
+  // puppet wears his colours, so over it he would melt into the picture.
+  VL.PUPPET_COVER = { person: { half: 24, top: 30, bottom: 26 }, dragon: { half: 32, top: 22, bottom: 20 } };
+  VL.PUPPET_FADE = { alpha: 0.45, perSecond: 4 };
   // Where the hero stands to cut a string: this far to its side, level with its chest.
   VL.STRING_REACH = { dx: 28, dy: -2 };
   // How far past the string the blade still counts: the hand and wrist below
@@ -300,13 +305,18 @@
       const shake = Math.round(Math.sin(t * 40) * (m.shake > 0 ? 2 : 0) + (m.mode === 'windup' ? Math.sin(t * 30) * 2 : 0));
       const px = x + shake;
       const py = Math.round(y + fallen);
+      const alpha = 1 - (1 - VL.PUPPET_FADE.alpha) * (m.fade || 0);
+      ctx.save();
+      ctx.globalAlpha *= alpha;
       VL.ART.drawShadow(ctx, x, y + 26, m.puppet === 'dragon' ? 40 : 28);
-      // The strings, straight up into the rafters.
+      ctx.restore();
+      // The strings, straight up into the rafters (never faded: he aims at them).
       for (const s of m.strings) {
         if (s.cut) continue;
         rect(ctx, 'puppetString', px + s.dx, top, 1, Math.max(0, py - shape(m).reach - top));
       }
       ctx.save();
+      ctx.globalAlpha *= alpha;
       ctx.translate(px, py);
       ctx.scale(SCALE, SCALE);
       if (m.puppet === 'dragon') drawDragon(ctx, m, 0, 0, t);
@@ -315,14 +325,28 @@
     },
   });
 
+  // A puppet standing up behind him eases towards see-through (never a blink:
+  // the fade takes a quarter of a second each way). His sprite is about 12 x 16.
+  function fadeOverHero(state, all, dt) {
+    const { x, y } = state.player;
+    for (const m of all) {
+      const cover = VL.PUPPET_COVER[m.puppet === 'dragon' ? 'dragon' : 'person'];
+      const behind = !(m.fallen && m.fell >= T.marionetteFallSeconds)
+        && Math.abs(x - m.cx) < cover.half + 6 && y + 6 > m.cy - cover.top && y - 10 < m.cy + cover.bottom;
+      const step = VL.PUPPET_FADE.perSecond * (dt || 0);
+      m.fade = VL.clamp((m.fade || 0) + (behind ? step : -step), 0, 1);
+    }
+  }
+
   // Each puppet's two strings: the blade through one cuts it (one per puppet a
   // swing, the nearest). The body only clonks, which says so once a visit.
   VL.defineSystem('marionetteStrings', {
     order: 31,
-    update(state) {
+    update(state, actions, dt) {
       const room = state.room;
       const all = room.entities.filter((e) => e.type === 'marionette');
       if (!all.length) return;
+      fadeOverHero(state, all, dt);
       const swing = state.player.swing;
       // A swing that clonked wood and cut nothing says what to do, once a
       // visit, when it is over (a string may be reached later in the swing).
