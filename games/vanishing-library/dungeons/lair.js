@@ -35,8 +35,36 @@
     ...VL.DUNGEON_TILES,
     '#': { ...VL.DUNGEON_TILES['#'], art: 'lairWall' },
     _: { ...VL.DUNGEON_TILES._, art: 'lairFloor' },
-    // Lava: a gap like a pit (fire crosses it; no chicken flies it).
-    '~': { solid: true, pit: true, lava: true, art: 'lairLava' },
+    // Lava: a gap like a pit (fire crosses it; no chicken flies it, no block
+    // or enemy goes in). The hero may walk on it, and each step in hurts.
+    '~': { solid: true, pit: true, lava: true, hurts: true, art: 'lairLava' },
+  });
+
+  VL.tune({ lavaDamage: 1 });
+  VL.defineHeroFooting('lava', (state, info) => Boolean(info.lava));
+  VL.addFaintLine('lava', 'The lava was much too hot to walk on!');
+  // Each step onto a lava tile burns once; standing still on it is safe.
+  VL.defineSystem('lavaBurns', {
+    order: 12,
+    update(state) {
+      const player = state.player;
+      if (state.hp <= 0 || player.flight || state.transition) return;
+      const { tx, ty } = VL.heroTile(state);
+      const room = state.room;
+      const here = `${room.area}:${room.screen}:${tx},${ty}`;
+      if (!VL.tileInfo(room.area, VL.tileAt(room.area, room.screen, tx, ty, room)).lava) {
+        player.onLava = null;
+        return;
+      }
+      if (player.onLava === here) return;
+      player.onLava = here;
+      state.hp = Math.max(0, state.hp - VL.TUNING.lavaDamage);
+      state.events.push({ type: 'heroHurt', cause: 'lava', damage: VL.TUNING.lavaDamage });
+      if (state.hp <= 0) {
+        player.knockback = null;
+        VL.faint(state, 'lava');
+      }
+    },
   });
 
   VL.ART.defineTileStyle('lairWall', {
@@ -236,8 +264,8 @@
         '____________~~~#',
         '#___________~~~#',
         '#___________~~~#',
-        '#________#_#___#',
-        '#________#_#___#',
+        '#________#_#####',
+        '#________#_#####',
         '################',
       ],
       entities: [

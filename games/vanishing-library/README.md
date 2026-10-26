@@ -2018,6 +2018,13 @@ Shield; the hall's stone head choked (the great cave), the ledge's (key B),
 door B, the forge's (a block shoved out of its line first; the boss key),
 the boss door, the Dragon.
 
+- **Lava** (`~`, W35): the hero may walk on it (hero footing `lava`); each
+  step onto a lava tile takes `TUNING.lavaDamage` (half a heart), standing
+  still on it is safe, and there is no timer (system `lavaBurns`, faint line
+  `lava`). To everything else it is still a solid pit: blocks, enemies,
+  knockback and chickens stay off it, fire crosses it. It opens no new
+  ground (a test compares what is reached with and without it), and the
+  playthrough's planner never walks on a tile that `hurts`.
 - **Fire** (`VL.spawnFire(state, { cx, cy, vx, vy, owner })`, entity
   `dragonFire`): flies straight over floors, pits and lava; walls and solid
   things stop it (`VL.fireStops`). It hurts `TUNING.fireDamage` (a full

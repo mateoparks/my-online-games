@@ -227,3 +227,103 @@ test('every beach broken shell comes back on the next visit, so a kid can always
   hold(VL, state, ['down'], 0.4);
   assert.equal(state.inventory.brokenShells, 2);
 });
+
+// ---------- 4. lava: walkable, each step onto it hurts ----------
+
+// The cellar: floor at (6,5), lava at (7,3)..(10,4) above-right of it.
+function cellar(hp) {
+  const { VL } = loadGame();
+  const state = playState(VL, { area: 'lair', screen: '-1,0', tx: 7, ty: 5, facing: 'up' });
+  state.room.entities = state.room.entities.filter((e) => !VL.isEnemy(e));
+  state.popups.queue.length = 0;
+  if (hp) state.hp = hp;
+  return { VL, state };
+}
+const tileNow = (VL, state) => [VL.heroTile(state).tx, VL.heroTile(state).ty];
+function stepTo(VL, state, dir, tile) {
+  for (let i = 0; i < 120 && tileNow(VL, state).join() !== tile.join(); i += 1) VL.updateWorld(state, VL.actions({ held: [dir] }), 1 / 60);
+  assert.deepEqual(tileNow(VL, state), tile, `reached ${tile}`);
+  hold(VL, state, [], 0.1);
+}
+
+test('lava can be walked on: the first step onto it hurts, standing on it doesn\'t, every new lava tile hurts again', () => {
+  const { VL, state } = cellar();
+  assert.equal(VL.tileInfo('lair', VL.tileAt('lair', '-1,0', 7, 4)).lava, true);
+  const full = state.hp;
+  stepTo(VL, state, 'up', [7, 4]);
+  assert.equal(state.hp, full - VL.TUNING.lavaDamage, 'one step in, one burn');
+  hold(VL, state, [], 5);
+  assert.equal(state.hp, full - VL.TUNING.lavaDamage, 'no timer: standing still is safe');
+  stepTo(VL, state, 'up', [7, 3]);
+  assert.equal(state.hp, full - 2 * VL.TUNING.lavaDamage, 'lava to lava burns again');
+  stepTo(VL, state, 'right', [8, 3]);
+  assert.equal(state.hp, full - 3 * VL.TUNING.lavaDamage);
+  stepTo(VL, state, 'down', [8, 4]);
+  stepTo(VL, state, 'down', [8, 5]);
+  assert.equal(state.hp, full - 4 * VL.TUNING.lavaDamage, 'stepping off is free');
+  stepTo(VL, state, 'up', [8, 4]);
+  assert.equal(state.hp, full - 5 * VL.TUNING.lavaDamage, 'and back on burns');
+});
+
+test('a step onto lava at the last half heart faints him, and he wakes at the Lair\'s statue with everything kept', () => {
+  const { VL, state } = cellar(1);
+  state.savePoint = { area: 'lair', screen: '0,0', tx: 3, ty: 3, facing: 'down' };
+  VL.dungeonState(state, 'lair').keysGiven = 1;
+  stepTo(VL, state, 'up', [7, 4]);
+  assert.equal(state.hp, 0);
+  assert.deepEqual(plain(state.fainted), { cause: 'lava' });
+  assert.match(VL.faintLine('lava'), /lava/);
+  VL.respawn(state);
+  assert.deepEqual([state.player.area, state.player.screen], ['lair', '0,0']);
+  assert.equal(state.hp, state.maxHp);
+  assert.equal(VL.dungeonState(state, 'lair').keysGiven, 1);
+});
+
+test('lava stays shut to everything but his feet: no block, no enemy, no knockback, and the scripted hero never plans across it', () => {
+  const { VL, state } = cellar();
+  const info = VL.tileInfo('lair', '~');
+  assert.ok(info.solid && info.pit && !info.flyOver, 'still a solid pit for blocks, enemies, chickens and fire');
+  assert.ok(VL.isSolidAt('lair', '-1,0', 7, 4), 'solid to anything that isn\'t the hero');
+  const { isWalkable } = require('./playthrough');
+  assert.equal(isWalkable(VL, 'lair', '-1,0', 7, 4, state), false, 'the planner keeps off it');
+  // Knocked back towards the lava, he stops at its edge.
+  Object.assign(state.player, VL.tileCenter(7, 5));
+  state.player.knockback = { vx: 0, vy: -120, t: 0.5, room: state.room };
+  const hp = state.hp;
+  hold(VL, state, [], 0.6);
+  assert.deepEqual(tileNow(VL, state), [7, 5]);
+  assert.equal(state.hp, hp);
+});
+
+test('lava opens no new ground: the floor reached over lava is the floor reached without it, so nothing ever needs a step on it', () => {
+  const { VL } = loadGame();
+  const { cols, rows } = VL.TUNING;
+  const reach = (overLava) => {
+    const seen = new Set();
+    const queue = [['0,0', 7, 9]];
+    while (queue.length) {
+      const [key, tx, ty] = queue.shift();
+      const id = `${key}|${tx},${ty}`;
+      if (seen.has(id)) continue;
+      const info = VL.tileInfo('lair', VL.tileAt('lair', key, tx, ty));
+      if (info.solid && !(overLava && info.lava)) continue;
+      seen.add(id);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = tx + dx;
+        const y = ty + dy;
+        if (x >= 0 && y >= 0 && x < cols && y < rows) queue.push([key, x, y]);
+        else {
+          const next = VL.neighborKey(key, dx, dy);
+          if (VL.screenExists('lair', next)) queue.push([next, (x + cols) % cols, (y + rows) % rows]);
+        }
+      }
+    }
+    return [...seen].filter((id) => {
+      const [key, xy] = id.split('|');
+      const [x, y] = xy.split(',').map(Number);
+      return !VL.tileInfo('lair', VL.tileAt('lair', key, x, y)).lava;
+    }).sort();
+  };
+  assert.deepEqual(reach(true), reach(false));
+  assert.ok(reach(false).length > 500);
+});
