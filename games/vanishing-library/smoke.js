@@ -2661,6 +2661,99 @@ async function main() {
       for (const problem of w20Problems) console.log(`     ${problem}`);
     }
 
+    // W33, finale fixes: the hero in front of the hero puppet (it fades, its
+    // strings stay solid), Esc in the ending's first fade-in, the ending with
+    // no HUD over it, and the slingshot's ammo count inside its slot. Saved as
+    // w33-*.png.
+    {
+      errors.length = 0;
+      const w33Problems = [];
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const escape = async () => {
+        const key = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...key });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...key });
+        if (!(await settle())) w33Problems.push('animation frames stopped after Escape');
+      };
+      const stage = (where, flags, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
+        Object.assign(g.items, { woodSword: true, mirrorShield: true, slingshot: true });
+        g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' };
+        g.dungeons.lair.boss = true;
+        VL.markFound(g, 'heartD4');
+        for (const id of ${JSON.stringify(flags)}) g.flags[id] = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+      const FINALE = ['trapdoorOpen', 'finale:followed', 'finale:confronted'];
+
+      // In front of the hero puppet, where he stands to cut its string.
+      await stage({ area: 'workshop', screen: '0,-1', tx: 7, ty: 9, facing: 'up' }, FINALE);
+      await sleep(300);
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        window.__w33Think = VL.ENEMIES.marionette.think;
+        VL.ENEMIES.marionette.think = () => {};
+        const all = g.room.entities.filter((e) => e.type === 'marionette');
+        all.forEach((m, i) => Object.assign(m, { cx: [60, 128, 196][i], cy: i === 1 ? 120 : 84, arriving: 0, jerk: 0 }));
+        const m = all.find((e) => e.puppet === 'hero');
+        Object.assign(m, { cx: 128, cy: 120 });
+        Object.assign(g.player, { x: 128 + VL.STRING_REACH.dx, y: 120 + VL.STRING_REACH.dy, facing: 'left', invuln: 99 });
+      })()`);
+      await sleep(700);
+      await shot('w33-hero-over-puppet');
+      const fade = await see("g.room.entities.find((e) => e.type === 'marionette' && e.puppet === 'hero').fade");
+      if (!(fade > 0.9)) w33Problems.push(`the puppet behind him did not fade: ${fade}`);
+      await evaluate('VL.ENEMIES.marionette.think = window.__w33Think');
+
+      // The ending: Esc in its first fade-in skips to the credits.
+      const ALL = [...FINALE, 'marionettes', 'finale:showAsked', 'finale:shown', 'forgiven'];
+      await stage({ area: 'library', screen: '0,0', tx: 7, ty: 6, facing: 'up' }, ALL);
+      await sleep(300);
+      const fadeIn = await see("[VL.app.sceneId, VL.app.ending && VL.app.ending.phase]");
+      await escape();
+      await sleep(100);
+      const skipped = await see('VL.app.ending.phase');
+      if (fadeIn.join() !== 'ending,fadeIn' || !['fadeOut', 'credits'].includes(skipped)) w33Problems.push(`Esc in the fade-in: ${fadeIn} -> ${skipped}`);
+      // The ending again, with no HUD over it.
+      await stage({ area: 'library', screen: '0,0', tx: 7, ty: 6, facing: 'up' }, ALL, "g.inventory.brokenShells = 15;");
+      await sleep(3200);
+      await shot('w33-ending-no-hud');
+      const strip = await evaluate(`(() => {
+        const c = document.getElementById('game');
+        const probe = document.createElement('canvas');
+        probe.width = 256;
+        probe.height = 192;
+        const p = probe.getContext('2d');
+        p.drawImage(c, 0, 0, 256, 192);
+        const { data } = p.getImageData(0, 0, 256, 14);
+        let lit = 0;
+        for (let i = 0; i < data.length; i += 4) if (data[i] + data[i + 1] + data[i + 2] > 120) lit += 1;
+        return lit;
+      })()`);
+      if (Number(strip) > 0) w33Problems.push(`something is drawn in the HUD strip during the ending: ${strip} px`);
+
+      // The slingshot in the off hand, 15 broken shells.
+      await stage({ area: 'overworld', screen: '0,0', tx: 7, ty: 6, facing: 'down' }, [], "g.hands = { mainHand: 'woodSword', offHand: 'slingshot' }; g.inventory.brokenShells = 15;");
+      await sleep(400);
+      await shot('w33-ammo-in-slot');
+
+      w33Problems.push(...errors);
+      if (w33Problems.length) failures += 1;
+      console.log(`${w33Problems.length ? 'FAIL' : 'ok  '} finale fixes: the puppet behind him fades, Esc in the ending's fade-in, no HUD over the ending, the ammo count inside its slot, ${path.join(outDir, 'w33-*.png')}`);
+      for (const problem of w33Problems) console.log(`     ${problem}`);
+    }
+
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
     // app of their own and drawn to an offscreen canvas every 1/60 s. In 16x16
     // cells, a flip is a change in mean relative luminance against the last
@@ -2933,6 +3026,18 @@ async function main() {
           Object.assign(g.player, { x: m.cx + side * VL.STRING_REACH.dx, y: m.cy + VL.STRING_REACH.dy, facing: side < 0 ? 'right' : 'left' });
           return VL.actions({ pressed: ['mainHand'] });
         }, (app, g) => g.flags.marionettes));
+        results.push(run('a puppet fading as he steps in front of it and out again, as often as the fade allows', 6, (app, g) => {
+          finaleFlags(g, ['trapdoorOpen', 'finale:followed', 'finale:confronted']);
+          VL.place(g, { area: 'workshop', screen: '0,-1', tx: 7, ty: 9, facing: 'up' });
+          g.player.invuln = 999;
+        }, (app, g, s) => {
+          const m = g.room.entities.find((e) => e.type === 'marionette' && e.puppet === 'hero');
+          if (!m) return null;
+          Object.assign(m, { cx: 128, cy: 120, mode: 'drift', target: { x: 128, y: 120 }, jerk: 0 });
+          const inFront = Math.floor((s * 60) / 15) % 2 === 0;
+          Object.assign(g.player, { x: inFront ? 128 + VL.STRING_REACH.dx : 128 + 70, y: 118, invuln: 999 });
+          return VL.actions({ pressed: app.sceneId !== 'play' && Math.round(s * 60) % 30 === 0 ? ['interact'] : [] });
+        }, (app, g) => g.room.entities.some((e) => e.type === 'marionette' && e.fade > 0.9)));
         results.push(run('her confession show, beat by beat', 8, (app, g) => {
           finaleFlags(g, ['trapdoorOpen', 'finale:followed', 'finale:confronted', 'marionettes', 'finale:showAsked']);
           app.setScene('puppetShow', { confession: true });

@@ -862,11 +862,16 @@ her last show, the apology (`w20-she-speaks.png`, `w20-confession.png`,
 `w20-ending-book.png`, `w20-ending-promise.png`, `w20-ending-town-books.png`),
 the credits and THE END (`w20-credits.png`, `w20-the-end.png`) back to the
 title, then a kind show and the packed library (`w20-kind-show.png`,
-`w20-library-full.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
+`w20-library-full.png`). Then W33's finale fixes: the hero in front of the
+hero puppet, which fades (`w33-hero-over-puppet.png`), Esc in the ending's
+first fade-in, the ending with nothing in the HUD strip
+(`w33-ending-no-hud.png`), and the slingshot's ammo count inside its slot
+(`w33-ammo-in-slot.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
 the beam, the Lens Crab's rounds, the Dragon's rounds, its fire through a
 metal shield, a stone head's fire bounced home, the slides up through the boss
 door into the Dragon's hoard (before and after the fight), down the trapdoor,
-the marionettes (strings cut, puppets falling, hurt over and over), her
+the marionettes (strings cut, puppets falling, hurt over and over), a puppet
+fading as he steps in front of it and out again, her
 confession show, the ending (fades, shelves filling, the cheer, the credits),
 the shockwave, the chicken swarm, popups and a faint are each stepped by hand and drawn offscreen at 60 fps, in 16 px
 cells. It fails when, within any one second, over a quarter of the canvas
@@ -2061,7 +2066,9 @@ there, the townsfolk's lines after the Dragon and after the ending),
 shows are in `scenes/puppet-show.js`. Tests: `tests/finale.test.js`,
 `tests/finale-route.js`, `tests/steps/w20.steps.js`. Fixture:
 `tests/fixtures/save-v1-W20.json`, the real finale played from the W19 save
-through the credits and Continue.
+through the credits and Continue (from before the books came home: it still
+carries the hoard's three), and `tests/fixtures/save-v1-W33.json`, the same
+with them home (`finale:booksHome`). W33's tests: `tests/w33-finale-fixes.test.js`.
 
 ```
   tunnel (-1,-1) ── hall (0,-1): her gallery, the three marionettes
@@ -2077,7 +2084,13 @@ through the credits and Continue.
   (all three down), `finale:showAsked`, `finale:shown` (her last show,
   `VL.CONFESSION_SHOW`; Esc ends it with its flag), `forgiven` (her apology
   and his forgiveness; every book she took comes back: `library.gone`
-  empties). The beats after the fight play in the hall; once `forgiven`, the
+  empties; and every book he carries, the hoard's three among them, is
+  handed in (`library.returned`, so it counts on the card and towards the
+  10/20/30 rewards like any book he brings home) and `finale:booksHome` is
+  set). A save forgiven without `finale:booksHome` hands its carried books in
+  quietly on the first step after loading (system `finaleBooksHome`), and its
+  card already counts them (`VL.booksDueHome`); a book found after the ending
+  is an ordinary find again. The beats after the fight play in the hall; once `forgiven`, the
   `ending` scene plays wherever he is. Nothing below is a save point and
   nothing shuts behind him, so a reload or a faint at any beat wakes him at
   his last save point (the hut: every dungeon is finished by then) and the
@@ -2096,7 +2109,10 @@ through the credits and Continue.
   falls (`VL.wifeComesDown`, beside the hero; on later visits she is there
   already; talk `wifeFinale`).
 - **The marionettes** (`{ type: 'marionette', puppet: 'dragon' | 'hero' |
-  'librarian' }`, flying, `rooted`, drawn at twice the art's size): they drift
+  'librarian' }`, flying, `rooted`, drawn at twice the art's size, under the
+  hero; one he stands in front of, `VL.PUPPET_COVER`, eases to
+  `VL.PUPPET_FADE.alpha` in a quarter of a second and back, its strings
+  never faded, since the hero puppet wears his colours): they drift
   after the hero, wind up (a steady shake) and attack: the hero puppet lunges,
   the dragon puffs paper fire, the librarian throws books (both small, so a
   shield blocks them), half a heart each. They hover with their chests level
@@ -2127,9 +2143,12 @@ through the credits and Continue.
 - **The ending** (`scenes/finale.js`): the library staged with the town in it
   (`VL.ENDING_BEATS`: the shelves filling, Gran's three cheers, the cheer,
   Miss Quill's "The Adventures of {name}", the promise to visit her home town,
-  the town writing its own books), a fade, then `VL.CREDITS` rolling (S jumps
-  to THE END; S again goes to the title). `finished` is set and saved as the
-  credits begin. Esc during the beats skips to the credits.
+  the town writing its own books), a fade, then `VL.CREDITS` rolling (S or Esc jumps
+  to THE END; again goes to the title). `finished` is set and saved as the
+  credits begin. Esc during the first fade-in or the beats skips to the
+  credits (from the fade-in, the fade-out starts as dark as it was). No HUD is
+  drawn over the ending (`VL.drawWorld(..., { hud: false })`): the strip stays
+  dark.
 - **Continue after the credits:** the slot shows FINISHED; Continue wakes him
   at his last save point before the finale (the hut) in the world after the
   ending (everything earned is kept, as always); the ending never plays again.
