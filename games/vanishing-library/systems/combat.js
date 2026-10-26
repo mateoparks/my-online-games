@@ -150,7 +150,7 @@
   // { hp, damage (half hearts), size ('small' | 'big', what a shield must be
   // rated for), body: { w, h }, flies, rooted, faint (the fainted line),
   // drops?: { heart, shell }, setup(state, enemy), think(state, enemy, dt),
-  // harmful(enemy), draw(ctx, enemy, cx, cy, t) } with (cx, cy) the body's
+  // harmful(enemy), onDefeat?(state, enemy), draw(ctx, enemy, cx, cy, t) } with (cx, cy) the body's
   // centre in pixels. An enemy in a region file is { type, x, y } in tiles.
   VL.ENEMIES = {};
 
@@ -359,6 +359,7 @@
     const tile = kind && dropTile(state, enemy);
     if (tile) room.entities.push({ type: 'drop', kind, x: tile.tx, y: tile.ty, born: state.time });
     state.events.push({ type: 'enemyDefeated', enemy: enemy.type, drop: tile ? kind : null });
+    VL.ENEMIES[enemy.type].onDefeat?.(state, enemy);
   }
 
   // A sword that only clinks off a tough enemy says so, once a visit (W30).

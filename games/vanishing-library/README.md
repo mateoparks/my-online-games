@@ -580,6 +580,33 @@ holds the heart containers.
   S on an NPC only talks, a knockback stops at an NPC's tile (NPCs are solid),
   and enemies wait with the rest of the world while a dialogue or shop is open.
 
+## Crabs (W34)
+
+Matthew's crab notes, in `entities/crab.js`. Tests: `tests/crabs.test.js`.
+Saved field `crabs: { killed, angry, feast }` (fixture
+`tests/fixtures/save-v1-W34.json`; an older save loads it as none killed).
+
+- **Angry crabs:** every beach crab beaten on the overworld counts
+  (`onDefeat`, a new enemy hook in `systems/combat.js`); the wreck's crabs,
+  the Lens Crab and the island's eleven never do. At
+  `TUNING.crabsAngryAfter` (10) the `crabsAngry` popup says so once ("For
+  killing so many, the crabs now consider you their enemy! Watch out!") and
+  every overworld crab from then on is angry: one more hp (3 hits with the
+  wood sword, 2 with the metal one), darker with frowning brows, and it
+  walks straight at the hero over any open ground (grass too) at
+  `TUNING.angryCrabSpeed` (34, under his 47, so he can always walk away),
+  backing off while calm. `moveEnemy` keeps it on its own screen. The usual
+  arrival grace still holds, and the shockwave's quiet home screens still
+  have no enemies for a sword-less hero.
+- **The island's eleven:** `VL.islandDigTiles()` is the lake island's sand
+  (3,-3) but the trunks' tiles: eleven (the ore's counts once picked up).
+  Digging all eleven in one visit spawns a crab (`egg: true`) on each hole,
+  angry if the crabs already are. Beating all eleven fills the purse to its
+  cap (15 or 50) and every heart, once ever (`crabs.feast`), with the
+  `crabFeast` popup; after that they still come out, and give nothing.
+  Leaving the screen sends them home and fills the holes in. Lock
+  `islandCrabs` (optional: the island and a shovel).
+
 ## Engine notes
 
 - Logical canvas 256×192: a 16px HUD strip over a 16×11 grid of 16px tiles.
