@@ -217,3 +217,69 @@ test('the metal sword\'s popup says it hits twice as hard and to equip it with E
   assert.equal(VL.ART.popupLayout({ title, text }).overflow, false);
   assert.deepEqual([...VL.ART.missingGlyphs(`${title}${text}`, 'normal')], []);
 });
+
+// ---------- the east road's heart container, buried ----------
+
+// It lies in a nook of bushes; the one in front is cut for this visit.
+function roadHeart(VL, shovel) {
+  const state = playState(VL, ow('5,0', 12, 8, 'right'));
+  state.room.entities = state.room.entities.filter((e) => !VL.isEnemy(e));
+  VL.setRoomTile(state, 13, 8, '.');
+  state.player.x = VL.tileCenter(13, 8).x;
+  if (shovel) VL.giveItem(state, shovel);
+  state.popups.queue.length = 0;
+  state.popups.seen.digKey = true;
+  state.popups.seen.controls = true;
+  const heart = () => state.room.entities.find((e) => e.type === 'heartContainer');
+  const dig = () => {
+    VL.updateWorld(state, VL.actions({ pressed: ['dig'] }), 1 / 60);
+    hold(VL, state, [], 0.5);
+  };
+  return { state, heart, dig };
+}
+
+test('the east road\'s heart container lies buried: nothing shows and walking over it finds nothing', () => {
+  const { VL } = loadGame();
+  const { state, heart } = roadHeart(VL, null);
+  assert.equal(VL.SPOTS.heartFieldA.how, 'buried');
+  assert.ok(heart() && heart().hidden, 'there, but hidden');
+  const maxHp = state.maxHp;
+  hold(VL, state, ['right'], 0.6);
+  assert.equal(VL.heroTile(state).tx, 14, 'standing on its tile');
+  assert.equal(state.maxHp, maxHp);
+  assert.ok(!VL.spotFound(state, 'heartFieldA'));
+  assert.ok(VL.SPOTS.heartFieldB.how === 'pickup', 'the cliff ledge\'s heart still sits in the open');
+});
+
+test('digging exactly that tile with the metal shovel brings the heart up into the hole, once; a wood shovel can\'t dig grass, and any other tile is just a hole', () => {
+  const { VL } = loadGame();
+  {
+    const { state, heart, dig } = roadHeart(VL, 'woodShovel');
+    dig();
+    assert.ok(heart().hidden, 'the wood shovel bounces off grass');
+  }
+  {
+    const { state, heart, dig } = roadHeart(VL, 'metalShovel');
+    state.player.facing = 'left';
+    dig();
+    assert.equal(VL.tileAt('overworld', '5,0', 12, 8, state.room), '*', 'a hole in the grass beside it');
+    assert.ok(heart().hidden, 'the tile beside it hides nothing');
+  }
+  const { state, heart, dig } = roadHeart(VL, 'metalShovel');
+  dig();
+  assert.equal(heart().hidden, false, 'up it comes');
+  const maxHp = state.maxHp;
+  hold(VL, state, ['right'], 0.6);
+  assert.equal(state.maxHp, maxHp + VL.TUNING.heartContainerHp);
+  assert.ok(VL.spotFound(state, 'heartFieldA'));
+  VL.place(state, ow('5,0', 13, 8, 'right'));
+  assert.equal(heart(), undefined, 'only once');
+});
+
+test('the progression table: the buried heart needs the metal shovel and stays optional; the solver is clean', () => {
+  const { VL } = loadGame();
+  const lock = VL.LOCKS.heartFieldA;
+  assert.equal(lock.optional, true);
+  assert.ok(lock.needs.includes('metalShovel'));
+  assert.deepEqual([...VL.solveProgression().problems], []);
+});

@@ -693,7 +693,8 @@ async function main() {
       const block = await read('[g.hp, g.maxHp]');
       if (!blocked || block[0] !== block[1]) combatProblems.push(`the raised shield did not block the seed: blocked ${blocked}, hearts ${block}`);
 
-      const heart = await read('VL.SPOTS.heartFieldA');
+      // The cliff ledge's heart (W34 buried the east road's).
+      const heart = await read('VL.SPOTS.heartFieldB');
       await stage({ area: heart.area, screen: heart.screen, tx: heart.x, ty: heart.y, facing: 'down' });
       await sleep(100);
       await key('keyDown', 'ArrowLeft');
@@ -701,7 +702,7 @@ async function main() {
       await key('keyUp', 'ArrowLeft');
       await sleep(1400);
       await shot('w6-heart-container');
-      const container = await read('[VL.app.sceneId, g.maxHp, VL.spotFound(g, "heartFieldA")]');
+      const container = await read('[VL.app.sceneId, g.maxHp, VL.spotFound(g, "heartFieldB")]');
       if (container[0] !== 'popup' || container[1] !== 8 || !container[2]) combatProblems.push(`the heart container: ${JSON.stringify(container)}`);
 
       combatProblems.push(...errors);

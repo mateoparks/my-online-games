@@ -271,7 +271,7 @@ test('spots sit on tiles that fit how they are found, and name real locks', () =
     const fits = {
       rock: info.rock && needs.includes('liftingGloves'),
       bush: info.cuttable,
-      buried: info.sand && needs.some((entry) => Array.isArray(entry) && entry.includes('woodShovel')),
+      buried: (info.sand && needs.some((entry) => Array.isArray(entry) && entry.includes('woodShovel'))) || (info.grass && needs.includes('metalShovel')),
       stage: info.stage,
       trapdoor: info.trapdoor && !info.solid,
     }[spot.how] ?? !info.solid;

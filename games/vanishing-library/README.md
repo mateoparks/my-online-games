@@ -557,7 +557,11 @@ holds the heart containers.
   `id` found, shows its popup the first time only, plays `fanfare` and earns.
   W6 fills the `heartFieldA` (east road, among the bushes) and `heartFieldB`
   (cliff ledge) spots; bosses (W13+) call it directly. No new saved field:
-  `maxHp` and the found flags were already saved.
+  `maxHp` and the found flags were already saved. **W34 buried `heartFieldA`**
+  (`reveal: 'dug'`, spot `how: 'buried'`): it is hidden until the metal
+  shovel digs exactly its tile (X), then comes up into the hole like the
+  Hollow Oak's moss key and is taken by stepping on it, once. Its lock needs
+  `metalShovel` and stays optional.
 - **Sounds:** events `enemyHit` (`hit`), `heroHurt` (`hurt`), `blocked`
   (`clank`), `enemyDefeated` (`poof`), `spit`, `squawk` and `heartContainer`
   (`fanfare`).

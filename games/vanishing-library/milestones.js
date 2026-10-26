@@ -76,7 +76,8 @@
   lock('pageFieldA', { type: 'item', needs: ['town'], supplies: { pages: 1 }, doc: '§ Books, pages and the library: Missing pages', by: 'W8' });
   lock('pageFieldB', { type: 'item', needs: ['lake'], supplies: { pages: 1 }, doc: '§ Books, pages and the library: Missing pages', by: 'W8' });
   lock('worldMap', { type: 'item', needs: ['primerOnShelf', 'paper', 'ink'], renewable: true, optional: true, doc: '§ Paper and ink: Your own world map', by: 'W12' });
-  lock('heartFieldA', { type: 'item', needs: ['eastRoad'], optional: true, doc: '§ Hearts and combat', by: 'W8' });
+  // W34: buried under the grass, so only the metal shovel digs it up.
+  lock('heartFieldA', { type: 'item', needs: ['eastRoad', 'metalShovel'], optional: true, doc: '§ Hearts and combat', by: 'W8' });
   lock('heartFieldB', { type: 'item', needs: ['cliffs'], optional: true, doc: '§ Hearts and combat', by: 'W8' });
 
   // ---------- chickens ----------

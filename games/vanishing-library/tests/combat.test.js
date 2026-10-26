@@ -941,12 +941,13 @@ test('a heart container adds a heart, fills every heart, and explains itself onc
   const { VL } = t;
   const max = t.game.maxHp;
   t.game.hp = 1;
-  standOn(t, 'heartFieldA');
+  // The cliff ledge's (W34 buried the east road's: tests/playtest-4.test.js).
+  standOn(t, 'heartFieldB');
   assert.equal(t.game.maxHp, max + VL.TUNING.heartContainerHp);
   assert.equal(VL.TUNING.heartContainerHp, 2, 'one whole heart');
   assert.equal(t.game.hp, t.game.maxHp);
-  assert.ok(VL.spotFound(t.game, 'heartFieldA'));
-  assert.ok(VL.LOCKS.heartFieldA.reached(t.game));
+  assert.ok(VL.spotFound(t.game, 'heartFieldB'));
+  assert.ok(VL.LOCKS.heartFieldB.reached(t.game));
   assert.equal(t.app.sceneId, 'play', 'held up first');
   t.hold([], VL.TUNING.holdUpSeconds);
   assert.equal(t.app.sceneId, 'popup');
@@ -955,7 +956,8 @@ test('a heart container adds a heart, fills every heart, and explains itself onc
   t.hold([], 0.5);
   t.press('interact');
   assert.equal(t.app.sceneId, 'play');
-  standOn(t, 'heartFieldB');
+  VL.giveHeartContainer(t.game);
+  t.hold([], VL.TUNING.holdUpSeconds + 0.1);
   assert.equal(t.game.maxHp, max + 4);
   assert.equal(t.app.sceneId, 'play', 'no second popup');
   assert.equal(VL.currentPopup(t.game), null);
@@ -965,12 +967,12 @@ test('a heart container is saved at once, and is gone for good once taken', () =
   const t = setup({ storage: true });
   const { VL } = t;
   const max = t.game.maxHp;
-  standOn(t, 'heartFieldA');
+  standOn(t, 'heartFieldB');
   const reloaded = VL.reloadApp(t.app);
   assert.equal(reloaded.game.maxHp, max + 2, 'saved without anything else happening');
   assert.equal(reloaded.game.hp, max + 2, 'loads with every heart full');
-  const spot = VL.SPOTS.heartFieldA;
-  VL.place(reloaded.game, { area: spot.area, screen: spot.screen, tx: spot.x - 1, ty: spot.y });
+  const spot = VL.SPOTS.heartFieldB;
+  VL.place(reloaded.game, { area: spot.area, screen: spot.screen, tx: spot.x + 1, ty: spot.y });
   assert.ok(!reloaded.game.room.entities.some((e) => e.type === 'heartContainer'), 'not there on the next visit');
 });
 

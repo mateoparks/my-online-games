@@ -1,5 +1,7 @@
-// { type: 'heartContainer', id }: one more heart for good, found once
-// (design: Hearts and combat). README "Combat".
+// { type: 'heartContainer', id, reveal?: 'dug' }: one more heart for good,
+// found once (design: Hearts and combat). With `reveal: 'dug'` it lies
+// buried until a shovel that digs its ground digs its tile (W34), then comes
+// up into the hole like the Hollow Oak's moss key. README "Combat".
 (() => {
   VL.tune({ heartContainerHp: 2 });
 
@@ -32,13 +34,19 @@
   };
 
   VL.defineEntity('heartContainer', {
-    prepare: (state, heart) => !VL.spotFound(state, heart.id),
+    prepare(state, copy) {
+      if (VL.spotFound(state, copy.id)) return false;
+      copy.hidden = copy.reveal === 'dug';
+      return true;
+    },
     onStand(state, heart) {
+      if (heart.hidden) return;
       state.room.entities = state.room.entities.filter((e) => e !== heart);
       state.room.standingOn = null;
       VL.giveHeartContainer(state, heart.id);
     },
     draw(ctx, heart, x, y, t) {
+      if (heart.hidden) return;
       const bob = Math.round(Math.sin(t * 3) * 1.5);
       VL.ART.drawShadow(ctx, x + 8, y + 13, 9);
       VL.ART.drawSprite(ctx, 'pickup-heart-container', x + 4, y + 2 + bob);
@@ -46,6 +54,7 @@
     },
   });
 
-  VL.fillSpot('heartFieldA', { type: 'heartContainer', id: 'heartFieldA' });
+  // W34: Matthew's playtest buried the east road's one; the cliff ledge's stays out.
+  VL.fillSpot('heartFieldA', { type: 'heartContainer', id: 'heartFieldA', reveal: 'dug' });
   VL.fillSpot('heartFieldB', { type: 'heartContainer', id: 'heartFieldB' });
 })();
