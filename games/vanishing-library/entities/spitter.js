@@ -1,6 +1,7 @@
 // { type: 'spitter', x, y }: a Woods plant rooted to its tile. It turns its
 // mouth to a hero in range, puffs up as a warning, then spits a seed straight
 // along that line, so stepping out of line or raising a shield beats it.
+// `overWalls: true` spits seeds that fly over walls to the screen's edge.
 (() => {
   VL.tune({ enemySpitter: { hp: 2, damage: 1, range: 96, warn: 0.45, reload: 2.2, seedSpeed: 75 } });
   const T = () => VL.TUNING.enemySpitter;
@@ -77,6 +78,7 @@
         cause: 'spitter',
         sprite: 'fx-seed',
         owner: plant,
+        overWalls: Boolean(plant.overWalls),
       });
       state.events.push({ type: 'spit' });
       plant.mode = 'wait';

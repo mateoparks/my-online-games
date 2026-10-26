@@ -206,8 +206,8 @@
       ],
       entities: [
         { type: 'smallKey', id: 'd2KeyA', x: 4, y: 3, lock: 'd2KeyA', reveal: 'cleared' },
-        { type: 'spitter', x: 11, y: 3, tough: true },
-        { type: 'spitter', x: 5, y: 7, tough: true },
+        { type: 'spitter', x: 11, y: 3, tough: true, overWalls: true },
+        { type: 'spitter', x: 5, y: 7, tough: true, overWalls: true },
       ],
     },
     // The great hollow: door A east, the boss door north, a warning carved
