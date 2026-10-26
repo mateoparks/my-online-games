@@ -3,6 +3,7 @@
 (() => {
   VL.defineNpc('gran', { name: 'Gran Ottie', look: 'elder', wander: 1 });
   VL.defineDialogue('gran', [
+    ...VL.bossHintEntries(['scriptorium', 'hollowOak', 'lighthouse', 'lair']),
     {
       when: { notFlag: 'met:gran' },
       say: ['Oh! You must be {name}, from the hut down by the beach.', 'I have lived by this well for seventy years. Come and chat whenever you like.'],

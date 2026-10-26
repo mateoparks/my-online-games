@@ -184,7 +184,7 @@ function swingAt(t, m, side) {
   drive.hold([], 0.35);
 }
 
-test('the sword only clonks off a puppet (it says so once, and nothing blinks); a swing through a string cuts it', () => {
+test('the sword only clonks off a puppet (it says nothing, W35, and nothing blinks); a swing through a string cuts it', () => {
   const t = hall();
   const { VL, drive } = t;
   const m = puppets(drive).find((p) => p.puppet === 'hero');
@@ -194,12 +194,10 @@ test('the sword only clonks off a puppet (it says so once, and nothing blinks); 
   drive.state.player.invuln = 99;
   Object.assign(drive.state.player, { x: m.cx, y: m.cy + 40, facing: 'up' });
   drive.press('mainHand');
-  drive.until(() => drive.app.sceneId === 'popup', 1);
-  assert.equal(VL.currentPopup(drive.state).text, VL.MARIONETTE_NOTE);
+  drive.hold([], 0.5);
+  assert.notEqual(drive.app.sceneId, 'popup', 'no word about the strings');
   assert.equal(m.hurt, 0, 'no hurt blink');
   assert.deepEqual(plain(m.strings.map((s) => s.cut)), [false, false]);
-  drive.closePopups();
-  drive.hold([], 0.5);
   swingAt(t, m, -1);
   assert.deepEqual(plain(m.strings.map((s) => s.cut)), [true, false], 'the near string, and only it');
   assert.ok(m.jerk > 0 && !VL.ENEMIES.marionette.harmful(m), 'it jerks up, harmless for a moment');
@@ -213,7 +211,7 @@ test('the sword only clonks off a puppet (it says so once, and nothing blinks); 
   Object.assign(drive.state.player, { x: 120, y: 150, facing: 'up' });
   drive.press('mainHand');
   drive.hold([], 0.5);
-  assert.notEqual(drive.app.sceneId, 'popup', 'the note comes once a visit');
+  assert.notEqual(drive.app.sceneId, 'popup');
 });
 
 test('all three down wins the fight, saved at once; on later visits they lie in heaps and she stands on the floor', () => {
@@ -611,7 +609,7 @@ test('every finale line fits its box and the font, and a line about the hero nam
     ...VL.CONFESSION_SHOW.beats.map((b) => b.say),
     ...VL.KIND_SHOWS.flatMap((s) => s.beats.map((b) => b.say)),
     ...VL.CREDITS.map((l) => (typeof l === 'string' ? l : l.big)),
-    VL.MARIONETTE_NOTE, VL.POPUPS.trapdoorOpen.text,
+    VL.POPUPS.trapdoorOpen.text,
   ];
   for (const text of lines) {
     const shown = VL.popupText(text, state);

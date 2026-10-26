@@ -56,7 +56,7 @@
   });
 
   VL.OUT_OF_SHELLS = {
-    dungeon: 'Out of shells! Scoop some from a shell heap.',
+    dungeon: 'Out of shells! The beaches outside are covered in them.',
     outside: 'Out of broken shells! The beaches are covered in them.',
   };
 

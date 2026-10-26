@@ -1,12 +1,14 @@
 // { type: 'door', x, y, to: Place, needs?, locked? }: stepping on the tile moves the hero to `to`
 // with no slide. Arrival spots sit one tile off the door so it doesn't re-fire.
-// A door that `needs` an item (the Scriptorium's key) is solid without it,
-// and S says `locked` (words) instead.
+// A door that `needs` an item (the Scriptorium's key), or is `shutUntil` a
+// flag is set (the Lair's guards beaten), is solid until then, and S says
+// `locked` (words) instead.
+const doorOpen = (state, door) => (!door.needs || VL.hasItem(state, door.needs)) && (!door.shutUntil || Boolean(state.flags[door.shutUntil]));
 VL.defineEntity('door', {
   prepare(state, door) {
-    door.solid = Boolean(door.needs && !VL.hasItem(state, door.needs));
+    door.solid = !doorOpen(state, door);
   },
-  passable: (state, door) => !door.needs || VL.hasItem(state, door.needs),
+  passable: doorOpen,
   // Only a shut door takes S; an open one leaves the press to a bush or berries beside it.
   takesS: (state, door) => Boolean(door.solid),
   onInteract(state, door) {

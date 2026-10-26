@@ -387,7 +387,7 @@
       return true;
     }
     knockEnemy(state, enemy, from);
-    VL.ENEMIES[enemy.type].onHit?.(state, enemy);
+    VL.ENEMIES[enemy.type].onHit?.(state, enemy, weapon);
     return true;
   };
 
@@ -421,9 +421,9 @@
 
   // ---------- projectiles ----------
 
-  // { cx, cy, vx, vy, size, damage, cause, sprite, owner? }: flies straight
-  // until it hits the hero, a solid tile or the screen edge. A hit calms the
-  // enemy that is its `owner`.
+  // { cx, cy, vx, vy, size, damage, cause, sprite, owner?, overWalls? }:
+  // flies straight until it hits the hero, a solid tile or the screen edge
+  // (`overWalls`: only the hero or the edge). A hit calms its `owner`.
   VL.spawnProjectile = function spawnProjectile(state, shot) {
     const projectile = { type: 'projectile', ...shot };
     sync(projectile);
@@ -440,7 +440,7 @@
       shot.cy += shot.vy * dt;
       sync(shot);
       const { tx, ty } = VL.tileOf(shot.cx, shot.cy);
-      let gone = shot.cx < 0 || shot.cy < 0 || shot.cx >= width || shot.cy >= rows * tile || VL.isSolidAt(room.area, room.screen, tx, ty, room);
+      let gone = shot.cx < 0 || shot.cy < 0 || shot.cx >= width || shot.cy >= rows * tile || (!shot.overWalls && VL.isSolidAt(room.area, room.screen, tx, ty, room));
       if (!gone && state.hp > 0 && overlap(heroBody(player), { x: shot.cx, y: shot.cy, w: 4, h: 4 })) {
         const from = { x: player.x - shot.vx, y: player.y - 5 - shot.vy };
         gone = VL.hurtHero(state, { damage: shot.damage, size: shot.size, from, cause: shot.cause }) !== 'ignored';

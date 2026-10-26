@@ -185,7 +185,6 @@
       if (worm.struckBy !== 'throw') {
         worm.hurt = 0;
         state.events.push({ type: 'wormTink' });
-        state.dungeonNote = { text: 'Too tough for a sword! Something heavy, perhaps?', t: 0 };
         return;
       }
       worm.hits += 1;

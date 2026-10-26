@@ -24,6 +24,9 @@
     fireCore: '#fff2a8',
     fireMid: '#ffb03a',
     fireEdge: '#e8572a',
+    wildFireCore: '#f3e2ff',
+    wildFireMid: '#b37cf2',
+    wildFireEdge: '#6a3ab0',
   });
 
   VL.ART.defineSprite('item-shield-mirror', {
@@ -33,6 +36,16 @@
   for (const frame of [0, 1]) {
     VL.ART.defineSprite(`fx-fire-${frame}`, {
       colors: { c: 'fireCore', m: 'fireMid', e: 'fireEdge' },
+      rows: frame
+        ? ['..ee..', '.emme.', 'emccme', 'emccme', '.emme.', '..ee..']
+        : ['..e...', '.emme.', 'emccme', 'emcme.', '.emme.', '...e..'],
+    });
+  }
+
+  // Wild fire (`wild: true`, the Dragon's fan): purple, and no shield bounces it.
+  for (const frame of [0, 1]) {
+    VL.ART.defineSprite(`fx-fire-wild-${frame}`, {
+      colors: { c: 'wildFireCore', m: 'wildFireMid', e: 'wildFireEdge' },
       rows: frame
         ? ['..ee..', '.emme.', 'emccme', 'emccme', '.emme.', '..ee..']
         : ['..e...', '.emme.', 'emccme', 'emcme.', '.emme.', '...e..'],
@@ -58,8 +71,8 @@
 
   // ---------- fire ----------
 
-  // { cx, cy, vx, vy, owner, damage }: owner is the entity that breathed it,
-  // kept by reference so a bounced ball flies home to it.
+  // { cx, cy, vx, vy, owner, damage, wild? }: owner is the entity that
+  // breathed it, kept by reference so a bounced ball flies home to it.
   VL.spawnFire = function spawnFire(state, fire) {
     const ball = { type: 'dragonFire', damage: T.fireDamage, bounced: false, age: 0, ...fire };
     syncTile(ball);
@@ -139,13 +152,13 @@
       } else {
         gone = VL.fireStops(state, ball.x, ball.y, ball.owner);
         if (!gone && state.hp > 0 && near({ x: ball.cx, y: ball.cy }, { x: player.x, y: player.y - 5 }, 14, 18)) {
-          if (player.shieldItem === 'mirrorShield' && sideOf(state, ball) === player.facing) {
+          if (!ball.wild && player.shieldItem === 'mirrorShield' && sideOf(state, ball) === player.facing) {
             bounce(state, ball);
             continue;
           }
           const shielded = player.shieldItem && sideOf(state, ball) === player.facing;
-          const result = VL.hurtHero(state, { damage: ball.damage, size: 'fire', from: { x: ball.cx - ball.vx, y: ball.cy - ball.vy }, cause: ball.owner?.type === 'dragon' ? 'dragon' : 'fireSpout' });
-          if (result === 'hurt' && shielded && VL.dungeonOf(state)) state.dungeonNote = { text: VL.SHIELD_FIRE_NOTE, t: 0 };
+          const result = VL.hurtHero(state, { damage: ball.damage, size: ball.wild ? 'wildFire' : 'fire', from: { x: ball.cx - ball.vx, y: ball.cy - ball.vy }, cause: ball.owner?.type === 'dragon' ? 'dragon' : 'fireSpout' });
+          if (result === 'hurt' && shielded && !ball.wild && VL.dungeonOf(state)) state.dungeonNote = { text: VL.SHIELD_FIRE_NOTE, t: 0 };
           gone = result !== 'ignored';
         }
       }
@@ -161,7 +174,7 @@
       const px = x + Math.round(ball.cx - ball.x * T.tile);
       const py = y + Math.round(ball.cy - ball.y * T.tile);
       VL.ART.drawShadow(ctx, px, py + 7, 4);
-      VL.ART.drawSprite(ctx, `fx-fire-${Math.floor(t * 8) % 2}`, px - 3, py - 3);
+      VL.ART.drawSprite(ctx, `fx-fire-${ball.wild ? 'wild-' : ''}${Math.floor(t * 8) % 2}`, px - 3, py - 3);
     },
   });
 

@@ -216,7 +216,7 @@ test('fair in the dark: the Glowstone lights a wide circle, and every key, switc
   assert.ok(VL.glowRadius(game).outer >= 5 * VL.TUNING.tile, 'and a glow out to five');
   delete game.items.glowstone;
   assert.ok(VL.glowRadius(game).outer < 2 * VL.TUNING.tile, 'without it, a hand\'s breadth');
-  const PUZZLE = ['smallKey', 'bossKey', 'dungeonMap', 'switch', 'shellTarget', 'beamMirror', 'beamCrystal', 'glowLamp', 'lockedDoor', 'shutter', 'shellHeap', 'beamSource', 'bigChest'];
+  const PUZZLE = ['smallKey', 'bossKey', 'dungeonMap', 'switch', 'shellTarget', 'beamMirror', 'beamCrystal', 'glowLamp', 'lockedDoor', 'shutter', 'beamSource', 'bigChest'];
   for (const key of Object.keys(VL.DARK_ROOMS)) {
     const [area, screen] = key.split(':');
     for (const e of VL.getScreen(area, screen).entities) {
@@ -484,20 +484,6 @@ test('the Slingshot stuns a creature: it holds still and is harmless for a momen
   assert.ok(!(slime.stunned > 0));
 });
 
-test('shell heaps top the hero up as often as he likes, so a kid never runs dry: one in the entrance, beside every shot puzzle and in the boss room', () => {
-  const t = setup({ where: lh('0,0', 12, 7, 'down') });
-  const { VL } = t;
-  t.press('interact');
-  assert.equal(t.game.inventory.brokenShells, VL.TUNING.shellHeapFill);
-  assert.ok(VL.LOCKS.lighthouseShells.reached(t.game));
-  t.game.inventory.brokenShells = 3;
-  t.press('interact');
-  assert.equal(t.game.inventory.brokenShells, VL.TUNING.shellHeapFill, 'again');
-  const heaps = (screen) => VL.getScreen(AREA, screen).entities.filter((e) => e.type === 'shellHeap').length;
-  for (const screen of ['0,0', '1,-1', '1,0', '0,-2', '0,-3']) assert.ok(heaps(screen) >= 1, `a heap in ${screen}`);
-  assert.ok(heaps('0,-3') >= 2, 'two in the boss room');
-  assert.ok(VL.TUNING.shellHeapFill >= 10);
-});
 
 test('the HUD shows the broken shells left beside the slingshot in its slot', () => {
   const t = setup({ where: lh('0,0', 7, 6) });
@@ -583,7 +569,7 @@ test('the beam passes the hero and pits but a closed shutter stops it', () => {
 test('the boss door: with the boss key but no sword it stays shut and says a sword is needed; with one it opens', () => {
   const t = setup({ where: null });
   const { VL } = t;
-  t.arm();
+  t.arm(VL.TUNING.lensCrabShellsAtDoor);
   t.place(lh('0,-2', 7, 1, 'up'));
   t.hold(['up'], 0.6);
   assert.equal(t.game.dungeonNote.text, 'The big lock needs the boss key.', 'no key: the key comes first');
@@ -617,14 +603,14 @@ function bossRoom() {
 }
 const crabOf = (t) => t.find('lensCrab');
 
-test('the Lens Crab: a sword clinks off the lens and says to shoot its eyes', () => {
+test('the Lens Crab: a sword clinks off the lens (and says nothing, W35)', () => {
   const t = bossRoom();
   const { VL } = t;
   const c = crabOf(t);
   c.arriving = 0;
   VL.hitEnemy(t.game, c, 1, { x: 0, y: 0 }, 'woodSword');
   assert.deepEqual([c.life, c.rounds, c.mode], [VL.TUNING.lensCrabRoundLife, 3, 'scuttle']);
-  assert.equal(t.game.dungeonNote.text, VL.LENS_CRAB_SWORD_NOTE);
+  assert.equal(t.game.dungeonNote, null);
 });
 
 test('the Lens Crab: two shots at its face from below shut both eyes and daze it; the sword then counts; it wakes in time', () => {
@@ -653,7 +639,7 @@ test('the Lens Crab: a shot from above or the side bounces off the lens; one eye
   c.arriving = 0;
   VL.ENEMIES.lensCrab.onShot(t.game, c, { dy: 1, gx: c.cx });
   assert.deepEqual(plain(c.eyes), { left: true, right: true });
-  assert.equal(t.game.dungeonNote.text, VL.LENS_CRAB_BACK_NOTE);
+  assert.equal(t.game.dungeonNote, null);
   VL.ENEMIES.lensCrab.onShot(t.game, c, { dy: -1, gx: c.cx - 5 });
   assert.deepEqual(plain(c.eyes), { left: false, right: true });
   t.game.player.invuln = 99;
@@ -730,9 +716,9 @@ test('after Dungeon 3, the thief takes the Primer on the next visit to the libra
 
 // ---------- the table ----------
 
-test('W18 claims lighthouseEntered, slingshot and d3Boss with the doors they lie behind; one lock per key and door; the heaps supply shells', () => {
+test('W18 claims lighthouseEntered, slingshot and d3Boss with the doors they lie behind; one lock per key and door; broken shells come from the beaches', () => {
   const { VL } = loadGame();
-  for (const id of ['lighthouseEntered', 'slingshot', 'd3Boss', 'd3KeyA', 'd3DoorA', 'd3KeyB', 'd3DoorB', 'd3BossKey', 'd3BossDoor', 'lighthouseShells']) {
+  for (const id of ['lighthouseEntered', 'slingshot', 'd3Boss', 'd3KeyA', 'd3DoorA', 'd3KeyB', 'd3DoorB', 'd3BossKey', 'd3BossDoor']) {
     assert.ok(VL.LOCKS[id].reached, `${id} is implemented`);
   }
   assert.deepEqual([...VL.LOCKS.lighthouseEntered.needs], ['cliffs', 'glowstone']);
@@ -740,7 +726,7 @@ test('W18 claims lighthouseEntered, slingshot and d3Boss with the doors they lie
   assert.deepEqual([...VL.LOCKS.d3DoorB.needs], ['slingshot'], 'key A can never be spent on door B');
   assert.ok(VL.LOCKS.d3Boss.needs.includes('d3BossDoor') && VL.LOCKS.d3Boss.needs.includes('brokenShells'));
   assert.deepEqual({ ...VL.LOCKS.d3Boss.supplies }, { ore: 1, pages: 1 });
-  assert.deepEqual([...VL.LOCKS.lighthouseShells.gives], ['brokenShells']);
+  assert.equal(VL.LOCKS.lighthouseShells, undefined, 'no heaps (W35)');
   assert.deepEqual(plain(VL.LOCKS.lighthouseEntered.place), { area: AREA, screen: '0,0' });
   assert.deepEqual([...VL.solveProgression().problems], []);
 });
@@ -809,7 +795,7 @@ test('every word the Lighthouse says fits its box and its font', () => {
     assert.deepEqual(plain(VL.ART.missingGlyphs(`${box.title || ''} ${box.text}`)), [], box.text);
     assert.ok(!VL.ART.popupLayout(box).overflow, `fits: ${box.text}`);
   }
-  const notes = [VL.LIGHTHOUSE_SWORD_WORDS, VL.LENS_CRAB_SWORD_NOTE, VL.LENS_CRAB_BACK_NOTE, VL.OUT_OF_SHELLS.dungeon, VL.SHELL_HEAP_WORDS.full, VL.SHELL_HEAP_WORDS.scooped(VL.TUNING.shellHeapFill), 'The Lens Crab is beaten!'];
+  const notes = [VL.LIGHTHOUSE_SWORD_WORDS, VL.OUT_OF_SHELLS.dungeon, 'The Lens Crab is beaten!'];
   for (const note of notes) {
     assert.deepEqual(plain(VL.ART.missingGlyphs(note, 'small')), [], note);
     assert.ok(VL.ART.measureText(note, 'small') <= VL.TUNING.width - 8, note);
@@ -849,14 +835,14 @@ test('render smoke: every Lighthouse room draws, dark and lit, the beam, the sli
     Object.assign(c, { mode, timer: 0.2 });
     assert.ok(draw() > 20, mode);
   }
-  for (const id of ['item-slingshot', 'prop-shell-heap', 'prop-glow-lamp', 'prop-glow-lamp-lit', 'prop-shell-target', 'prop-shell-target-hit', 'prop-mirror-slash', 'prop-mirror-backslash', 'prop-crystal', 'prop-crystal-lit', 'prop-beam-source', 'enemy-lens-crab-dazed']) {
+  for (const id of ['item-slingshot', 'prop-glow-lamp', 'prop-glow-lamp-lit', 'prop-shell-target', 'prop-shell-target-hit', 'prop-mirror-slash', 'prop-mirror-backslash', 'prop-crystal', 'prop-crystal-lit', 'prop-beam-source', 'enemy-lens-crab-dazed']) {
     assert.ok(VL.ART.SPRITES[id], id);
   }
 });
 
 test('README documents the Lighthouse, the Slingshot, dark rooms and the beam', () => {
   const readme = read('README.md');
-  for (const word of ['## The Lighthouse (W18)', '## The Slingshot (W18)', '## Dark rooms (W18)', '## The beam (W18)', 'save-v1-W18.json', 'shellHeap', 'VL.defineDarkRooms', 'onShot']) {
+  for (const word of ['## The Lighthouse (W18)', '## The Slingshot (W18)', '## Dark rooms (W18)', '## The beam (W18)', 'save-v1-W18.json', 'VL.defineDarkRooms', 'onShot']) {
     assert.ok(readme.includes(word), `README mentions ${word}`);
   }
 });

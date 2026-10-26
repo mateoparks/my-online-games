@@ -14,7 +14,6 @@ const STEP = 1 / 60;
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const AREA = 'lair';
 const lr = (screen, tx, ty, facing = 'up') => ({ area: AREA, screen, tx, ty, facing });
-const SWORDS = ['woodSword', 'metalSword'];
 
 function setup({ where, enemies = false, items = [] } = {}) {
   const { VL } = loadGame();
@@ -74,7 +73,9 @@ function fixtureApp(VL, name) {
 // ---------- the way in ----------
 
 test('the lair door at the top of the highlands leads into the entrance hall, and the mat leads back out', () => {
-  const t = setup({ where: { area: 'overworld', screen: '-1,-5', tx: 7, ty: 5, facing: 'up' } });
+  const t = setup();
+  t.game.flags.lairGuards = true;
+  t.place({ area: 'overworld', screen: '-1,-5', tx: 7, ty: 5, facing: 'up' });
   const { VL } = t;
   const door = VL.getScreen('overworld', '-1,-5').entities.find((e) => e.spot === 'lairDoor');
   assert.deepEqual(plain([door.type, door.to]), ['door', { area: AREA, screen: '0,0', tx: 7, ty: 9, facing: 'up' }]);
@@ -264,14 +265,19 @@ test('the choked heads survive a reload (saved in the dungeon\'s switches)', () 
 
 // ---------- the boss door and the Dragon ----------
 
-test('the boss door: with the boss key but no sword it stays shut and says why; with one it opens', () => {
+test('the boss door: with the boss key but no metal sword (W35) it stays shut and says why; with one it opens', () => {
   const t = setup({ where: lr('0,-2', 7, 1) });
   const { VL } = t;
   VL.giveBossKey(t.game, AREA);
   t.hold(['up'], 0.6);
   assert.ok(!t.d.doors.d4BossDoor);
   assert.equal(t.game.dungeonNote?.text, VL.LAIR_SWORD_WORDS);
-  t.arm();
+  t.arm('mirrorShield', 'woodSword');
+  t.game.dungeonNote = null;
+  t.hold(['down'], 0.2);
+  t.hold(['up'], 0.6);
+  assert.ok(!t.d.doors.d4BossDoor, 'a wood sword is not enough');
+  t.arm('mirrorShield', 'metalSword');
   t.hold(['up'], 0.6);
   assert.ok(t.d.doors.d4BossDoor);
 });
@@ -280,19 +286,19 @@ function bossRoom() {
   const t = setup();
   t.d.doors.d4BossDoor = true;
   t.place(lr('0,-3', 7, 6));
-  t.arm();
+  t.arm('mirrorShield', 'metalSword');
   return t;
 }
 const dragonOf = (t) => t.find('dragon');
 
-test('the Dragon: the sword clinks off its scales and says to bounce its fire back', () => {
+test('the Dragon: the sword clinks off its scales (and says nothing, W35)', () => {
   const t = bossRoom();
   const { VL } = t;
   const d = dragonOf(t);
   d.arriving = 0;
   VL.hitEnemy(t.game, d, 1, { x: 0, y: 0 }, 'woodSword');
   assert.deepEqual([d.life, d.rounds, d.mode], [VL.TUNING.dragonRoundLife, 3, 'prowl']);
-  assert.equal(t.game.dungeonNote.text, VL.DRAGON_SWORD_NOTE);
+  assert.equal(t.game.dungeonNote, null);
   assert.equal(d.hurt, 0, 'no hurt blink');
 });
 
@@ -305,7 +311,7 @@ test('the Dragon breathes fire at the hero; bounced home with the Mirror Shield 
   assert.equal(t.find('dragonFire').owner, d);
   t.until(() => d.mode === 'dazed', 3, ['offHand']);
   assert.equal(VL.enemyHarmful(d), false, 'harmless while dazed');
-  VL.hitEnemy(t.game, d, 1, { x: 0, y: 0 }, 'woodSword');
+  VL.hitEnemy(t.game, d, 1, { x: 0, y: 0 }, 'metalSword');
   assert.equal(d.life, VL.TUNING.dragonRoundLife - 1);
   t.game.player.invuln = 99;
   t.until(() => d.mode === 'prowl', VL.TUNING.dragonDazedSeconds + VL.TUNING.dragonRecoverSeconds + 0.3);
@@ -333,10 +339,10 @@ test('the Dragon takes three bounce-and-strike rounds, then goes up in a puff of
   d.arriving = 0;
   t.game.player.invuln = 99;
   for (let round = 1; round <= 3; round += 1) {
-    t.until(() => d.mode === 'prowl' || d.mode === 'inhale', 2);
+    t.until(() => ['prowl', 'perch', 'inhale', 'volley'].includes(d.mode), 2);
     VL.ENEMIES.dragon.onFire(t.game, d, { owner: d });
     assert.equal(d.mode, 'dazed', `round ${round}: dazed`);
-    for (let hit = 1; hit <= VL.TUNING.dragonRoundLife; hit += 1) VL.hitEnemy(t.game, d, 1, { x: 0, y: 0 }, 'woodSword');
+    for (let hit = 1; hit <= VL.TUNING.dragonRoundLife; hit += 1) VL.hitEnemy(t.game, d, 1, { x: 0, y: 0 }, 'metalSword');
     if (round < 3) assert.equal(d.mode, 'recover', `round ${round} done: it shakes itself awake`);
   }
   assert.equal(d.mode, 'dying');
@@ -383,7 +389,8 @@ test('W19 claims dragonsLairEntered, mirrorShield and d4Boss with the doors they
   for (const id of ['dragonsLairEntered', 'mirrorShield', 'd4Boss', 'd4KeyA', 'd4DoorA', 'd4KeyB', 'd4DoorB', 'd4BossKey', 'd4BossDoor']) assert.ok(VL.LOCKS[id].reached, `${id} is implemented`);
   assert.deepEqual([...VL.LOCKS.mirrorShield.needs], ['dragonsLairEntered', 'd4DoorA']);
   assert.deepEqual([...VL.LOCKS.d4DoorB.needs], ['mirrorShield'], 'key A can never be spent on door B');
-  assert.ok(VL.LOCKS.d4BossDoor.needs.some((need) => Array.isArray(need) && SWORDS.every((s) => need.includes(s))));
+  assert.ok(VL.LOCKS.d4BossDoor.needs.includes('metalSword'), 'W35: the metal sword');
+  assert.ok(VL.LOCKS.d4Boss.needs.includes('metalSword'));
   assert.ok(VL.LOCKS.d4Boss.needs.includes('d4BossDoor') && VL.LOCKS.d4Boss.needs.includes('mirrorShield'));
   assert.deepEqual({ ...VL.LOCKS.d4Boss.supplies }, { books: 3 });
   assert.deepEqual([...VL.LOCKS.d4Boss.gives], ['heartD4']);
@@ -446,14 +453,14 @@ test('every word the lair says fits its box and its font', () => {
   const { VL } = loadGame();
   const boxes = [];
   for (const screen of Object.values(VL.AREAS.lair.screens)) for (const e of screen.entities) if (e.type === 'sign') boxes.push({ title: e.title, text: e.text });
-  assert.equal(boxes.length, 3);
+  assert.equal(boxes.length, 1, 'the entrance warning (W35: the mirror signs are gone)');
   boxes.push(VL.POPUPS.mirrorShield, VL.HOARD_WORDS, { text: VL.SPOUT_WORDS });
   for (const id of VL.HOARD_BOOKS) boxes.push({ title: 'You found a book!', text: VL.BOOKS[id].blurb });
   for (const box of boxes) {
     assert.deepEqual(plain(VL.ART.missingGlyphs(`${box.title || ''} ${box.text}`)), [], box.text);
     assert.ok(!VL.ART.popupLayout(box).overflow, `fits: ${box.text}`);
   }
-  for (const note of [VL.LAIR_SWORD_WORDS, VL.DRAGON_SWORD_NOTE, VL.SHIELD_FIRE_NOTE, VL.DRAGON_WORDS.beaten]) {
+  for (const note of [VL.LAIR_SWORD_WORDS, VL.SHIELD_FIRE_NOTE, VL.DRAGON_WORDS.beaten]) {
     assert.deepEqual(plain(VL.ART.missingGlyphs(note, 'small')), [], note);
     assert.ok(VL.ART.measureText(note, 'small') <= VL.TUNING.width - 8, note);
   }

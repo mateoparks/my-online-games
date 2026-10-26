@@ -6,7 +6,7 @@
 // between.
 const assert = require('node:assert/strict');
 const { route: climb, walk, flyFrom, ow } = require('./highlands-route');
-const { equip, face } = require('./metal-gear-route');
+const { equip, face, earnShells } = require('./metal-gear-route');
 
 const AREA = 'lair';
 const at = (screen, tx, ty) => ({ area: AREA, screen, tx, ty });
@@ -64,7 +64,7 @@ function equipShield(drive) {
 
 function equipSword(drive) {
   const { VL } = drive;
-  if (handHolding(drive, 'woodSword') || handHolding(drive, 'metalSword')) return;
+  if (handHolding(drive, 'metalSword')) return;
   equip(drive, VL.hasItem(drive.state, 'metalSword') ? 'metalSword' : 'woodSword', 'mainHand');
 }
 
@@ -75,10 +75,73 @@ function pickUp(drive, before, dir, done) {
   drive.closePopups();
 }
 
+// The shockwave took the metal sword; the Dragon and its guards want one
+// (W35). The smith forges it again from an ore lump and shells from berries.
+function forgeMetalSword(drive) {
+  const { VL } = drive;
+  drive.closePopups();
+  if (!VL.hasItem(drive.state, 'metalSword')) {
+    assert.ok(drive.state.inventory.ore >= 1, `an ore lump for the sword (${drive.state.inventory.ore})`);
+    const price = VL.TUNING.prices.metalGear.shells;
+    if (drive.state.inventory.shells < price) earnShells(drive, price);
+    walk(drive, { area: 'blacksmith', screen: '0,0', ...VL.BUILDINGS.blacksmith.talkAt });
+    face(drive, 'up');
+    drive.press('interact');
+    for (let i = 0; i < 30 && drive.app.sceneId !== 'shop'; i += 1) {
+      drive.hold([], 0.15);
+      drive.press('interact');
+    }
+    assert.equal(drive.app.sceneId, 'shop', 'the smith opened his counter');
+    const view = drive.app.shopView;
+    const index = VL.shopRows(drive.state, view).findIndex((row) => row !== 'leave' && /^metalSword/.test(row.id));
+    assert.ok(index >= 0, 'the smith forges a metal sword');
+    while (view.cursor !== index) drive.press(view.cursor < index ? 'down' : 'up');
+    drive.press('interact');
+    drive.press('interact');
+    drive.press('pause');
+    drive.closePopups();
+    assert.ok(VL.hasItem(drive.state, 'metalSword'), `the metal sword is forged again (${JSON.stringify(drive.state.inventory)})`);
+  }
+  equip(drive, 'metalSword', 'mainHand');
+}
+
+// The cave mouth's two thorny guards, beaten with the metal sword from below.
+function beatTheGuards(drive) {
+  const { VL } = drive;
+  if (drive.state.flags.lairGuards) return;
+  equip(drive, 'metalSword', 'mainHand');
+  // Fights are on from the screen below: the drive clears enemies otherwise.
+  if (drive.state.player.screen === '-1,-5') walk(drive, ow('-1,-4', 7, 1));
+  walk(drive, ow('-1,-4', 7, 0));
+  drive.fight = true;
+  for (const [x, y] of VL.LAIR_GUARDS.at) {
+    for (let tries = 0; tries < 8; tries += 1) {
+      const guard = drive.state.room.entities.find((e) => e.guard && e.x === x && e.y === y && e.hp > 0);
+      if (!guard && drive.state.player.screen === '-1,-5') break;
+      if (drive.app.sceneId === 'fainted') {
+        drive.hold([], 0.8);
+        drive.press('interact');
+        drive.fight = false;
+        return beatTheGuards(drive);
+      }
+      walk(drive, ow('-1,-5', x, y + 1));
+      if (!drive.state.room.entities.some((e) => e.guard && e.x === x && e.y === y && e.hp > 0)) break;
+      face(drive, 'up');
+      drive.press(handHolding(drive, 'metalSword'));
+      drive.hold([], 0.4);
+      drive.closePopups();
+    }
+  }
+  drive.hold([], 0.1);
+  assert.ok(drive.state.flags.lairGuards, 'the metal sword beat both guards');
+  drive.fight = false;
+}
+
 const route = {
   dragonsLairEntered(drive) {
     drive.closePopups();
     toTheLair(drive);
+    beatTheGuards(drive);
     walk(drive, ow('-1,-5', 7, 5));
     drive.until((state) => state.player.area === AREA && settled(state), 2, ['up']);
     drive.closePopups();
@@ -184,6 +247,14 @@ function fightDragon(drive) {
       continue;
     }
     const hero = drive.state.player;
+    // Fire on the way (W35: the second of a pair may still be coming when the
+    // first has dazed it): stand and block it; the purple balls of the fan fly
+    // wide of a hero who stays put.
+    if (drive.state.room.entities.some((e) => e.type === 'dragonFire' && !e.bounced)) {
+      if (hero.facing !== 'up') face(drive, 'up');
+      drive.hold([shield()], 1 / 15);
+      continue;
+    }
     if (d.mode === 'dazed') {
       dazes.add(d.rounds);
       const target = VL.tileOf(d.cx, d.cy + 30);
@@ -208,7 +279,7 @@ function fightDragon(drive) {
       continue;
     }
     const dx = d.cx - hero.x;
-    if (Math.abs(dx) > 10 && d.mode === 'prowl') {
+    if (Math.abs(dx) > 10 && ['prowl', 'perch'].includes(d.mode)) {
       drive.hold([dx < 0 ? 'left' : 'right'], 1 / 30);
       continue;
     }
@@ -222,4 +293,4 @@ function fightDragon(drive) {
 
 const ROUTE = Object.keys(route);
 
-module.exports = { route, ROUTE, at, toTheLair, sendFireHome, fightDragon, equipShield, equipSword };
+module.exports = { route, ROUTE, at, toTheLair, sendFireHome, fightDragon, equipShield, equipSword, forgeMetalSword, beatTheGuards };
