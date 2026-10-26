@@ -2155,8 +2155,8 @@ async function main() {
       await shoot('w17-wreck-aboard');
       const aboard = await read("[g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty, VL.LOCKS.shipwreck.reached(g)]");
       if (aboard.join() !== '5,2,4,6,true') raftProblems.push(`aboard the wreck: screen, tx, ty, reached = ${aboard}`);
-      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(8, 6), { facing: 'up' }); })()");
-      await holdArrowUntil('Up', "g.player.area === 'wreck'");
+      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(8, 5), { facing: 'down' }); })()");
+      await holdArrowUntil('Down', "g.player.area === 'wreck'");
       await sleep(300);
       if ((await read('g.player.area')) !== 'wreck') raftProblems.push('the hatch did not lead below deck');
       for (const [screen, ty] of [['0,0', 2], ['0,1', 2], ['1,0', 4]]) {

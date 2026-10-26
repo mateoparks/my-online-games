@@ -1797,8 +1797,10 @@ wreck and the place locks in `dungeons/shipwreck.js`. Tests:
 The mini-dungeon below the wreck's deck (design: The world, Shipwreck), in
 `dungeons/shipwreck.js` on W13's framework (dungeon `wreck`, area `wreck`, no
 boss). The raft lands only at the stove-in side (3,6 → 4,6 on 5,2); the
-Tide Tables' trunk is on deck and the hatch (W8's `shipwreckHatch`) leads
-down.
+Tide Tables' trunk is on deck and the hatch (W8's `shipwreckHatch`, on the
+deck's south row at 8,6 since W34) leads down; the ladder brings him back up
+north of it (8,5) facing up, so holding Up out of the hold never loops him
+back in.
 
 ```
   hold (0,0): ladder up, lantern ── locked door ── captain's cabin (1,0): the page, 5 shells

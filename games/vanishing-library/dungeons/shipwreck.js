@@ -157,7 +157,7 @@
         '#######_########',
       ],
       entities: [
-        { type: 'door', x: 7, y: 0, to: { area: 'overworld', screen: '5,2', tx: 8, ty: 6, facing: 'down' } },
+        { type: 'door', x: 7, y: 0, to: { area: 'overworld', screen: '5,2', tx: 8, ty: 5, facing: 'up' } },
         { type: 'savePoint', x: 7, y: 3 },
         { type: 'lockedDoor', id: 'wreckDoor', kind: 'small', x: 15, y: 5, lock: 'wreckDoor' },
         { type: 'crab', x: 3, y: 4 },
@@ -227,7 +227,7 @@
   VL.defineDungeon('wreck', {
     area: AREA,
     name: 'Shipwreck',
-    entrance: { area: 'overworld', screen: '5,2', tx: 8, ty: 6, facing: 'down' },
+    entrance: { area: 'overworld', screen: '5,2', tx: 8, ty: 5, facing: 'up' },
     light: 'indoor',
   });
 

@@ -49,10 +49,11 @@
     rect(ctx, 'foam', x + 1, y + 33 + bob, 2, 13);
     rect(ctx, 'woodDark', x + 2, y + 31, 13, 2);
     rect(ctx, 'woodDark', x + 2, y + 47, 9, 2);
-    // the hatch over the spot tile (x + 80..96, y + 16..32)
-    rect(ctx, 'outline', x + 81, y + 17, 14, 14);
-    rect(ctx, 'doorway', x + 82, y + 18, 12, 12);
-    rect(ctx, 'woodDark', x + 82, y + 18, 12, 2);
+    // the hatch over the spot tile (x + 80..96, y + 32..48), on the deck's
+    // south row so a hero holding Up out of the hold walks away from it (W34)
+    rect(ctx, 'outline', x + 81, y + 33, 14, 14);
+    rect(ctx, 'doorway', x + 82, y + 34, 12, 12);
+    rect(ctx, 'woodDark', x + 82, y + 34, 12, 2);
     // mast and torn sail
     rect(ctx, 'outline', x + 103, y - 30, 6, 50);
     rect(ctx, 'bark', x + 104, y - 29, 4, 48);
@@ -131,7 +132,7 @@
       ],
       entities: [
         { type: 'decor', art: 'wreck', x: 3, y: 4 },
-        spot('shipwreckHatch', 8, 5, 'door', 'W17', 'shipwreck'),
+        spot('shipwreckHatch', 8, 6, 'door', 'W17', 'shipwreck'),
         spot('bookTideTables', 10, 6, 'trunk', 'W11'),
         spot('bookWreckDeck', 5, 5, 'trunk', 'W11'),
       ],

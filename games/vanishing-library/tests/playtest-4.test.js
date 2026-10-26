@@ -283,3 +283,26 @@ test('the progression table: the buried heart needs the metal shovel and stays o
   assert.ok(lock.needs.includes('metalShovel'));
   assert.deepEqual([...VL.solveProgression().problems], []);
 });
+
+// ---------- the wreck's hatch, on the deck's south side ----------
+
+test('the wreck\'s hatch is on the south side of the deck: holding Up out of the hold leaves him on deck, not back down the hatch', () => {
+  const { VL } = loadGame();
+  const hatch = VL.getScreen('overworld', '5,2').entities.find((e) => e.type === 'door');
+  assert.deepEqual([hatch.x, hatch.y], [8, 6]);
+  const deck = VL.getScreen('overworld', '5,2').tiles;
+  assert.notEqual(deck[hatch.y + 1][hatch.x], 'b', 'the deck\'s south row');
+  assert.deepEqual(plain(VL.DUNGEONS.wreck.entrance), { area: 'overworld', screen: '5,2', tx: 8, ty: 5, facing: 'up' });
+  const state = playState(VL, { area: 'wreck', screen: '0,0', tx: 7, ty: 2, facing: 'up' });
+  state.popups.seen.controls = true;
+  const areas = [state.player.area];
+  for (let t = 0; t < 4; t += 1 / 60) {
+    VL.updateWorld(state, VL.actions({ held: ['up'] }), 1 / 60);
+    if (areas.at(-1) !== state.player.area) areas.push(state.player.area);
+  }
+  assert.deepEqual(areas, ['wreck', 'overworld'], 'out once, and he stays out');
+  assert.deepEqual([state.player.screen, VL.heroTile(state).tx, VL.heroTile(state).ty, state.player.facing], ['5,2', 8, 5, 'up']);
+  // Walking down onto the hatch takes him below.
+  for (let t = 0; t < 1 && state.player.area !== 'wreck'; t += 1 / 60) VL.updateWorld(state, VL.actions({ held: ['down'] }), 1 / 60);
+  assert.equal(state.player.area, 'wreck');
+});
