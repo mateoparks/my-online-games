@@ -167,13 +167,18 @@
 
   // Opens a locked door for good: the door's flag is the spent key (one
   // saved fact, so a reload can never keep one without the other); the boss
-  // key is shown, not spent. A door with `wants: { items, note }` also stays
-  // shut until the hero holds one of `items` (a boss behind it he couldn't
-  // beat would shut him in). Returns 'opened', 'open' or 'locked'.
+  // key is shown, not spent. A door with `wants: { items, note, has, hasNote }`
+  // also stays shut until the hero holds one of `items` and at least `has`
+  // of each counted thing (`{ brokenShells: 12 }`): a boss behind it he
+  // couldn't beat would shut him in. That check runs on every entry while
+  // the boss is unbeaten, opened before or not: a kid who faints
+  // inside and comes back short finds it shut again. Once he's through,
+  // nothing changes. Returns 'opened', 'open' or 'locked'.
   VL.openLockedDoor = function openLockedDoor(state, door) {
     const dungeon = here(state);
     const d = VL.dungeonState(state, dungeon.id);
     if (door.open || d.doors[door.id]) {
+      if (!door.open && wantsBar(state, door, dungeon.id)) return 'locked';
       door.open = true;
       door.solid = false;
       return 'open';
@@ -188,7 +193,19 @@
     return 'opened';
   };
 
-  const lacksWanted = (state, door) => Boolean(door.wants && !door.wants.items.some((id) => VL.hasItem(state, id)));
+  // Why a `wants` door won't let him by (its note), or null.
+  const wantedNote = (state, door) => {
+    const wants = door.wants;
+    if (!wants) return null;
+    if (wants.items && !wants.items.some((id) => VL.hasItem(state, id))) return wants.note;
+    for (const [what, least] of Object.entries(wants.has || {})) if ((state.inventory?.[what] ?? 0) < least) return wants.hasNote;
+    return null;
+  };
+  const lacksWanted = (state, door) => wantedNote(state, door) !== null;
+  // A `wants` door shuts again, even once opened, while its boss is unbeaten
+  // and he lacks what it wants.
+  const wantsBar = (state, door, dungeonId) => Boolean(door.wants) && !VL.dungeonState(state, dungeonId).boss && lacksWanted(state, door);
+  VL.doorWantsBar = (state, door, dungeonId) => wantsBar(state, door, dungeonId);
 
   // ---------- plates, switches, shutters ----------
 
@@ -351,11 +368,17 @@
             VL.pushBlock(state, e, push.dx, push.dy);
           }
         } else e.pushT = 0;
+      } else if (e.type === 'lockedDoor' && e.open && e.wants && wantsBar(state, e, here(state).id) && !VL.heroBoxOverlaps(state, e.x, e.y)) {
+        // Open on entry, then short of what it wants (shells spent in the
+        // room): it shuts again, never on him.
+        e.open = false;
+        e.solid = true;
+        e.tried = null;
       } else if (e.type === 'lockedDoor' && !e.open) {
         // One try per lean, and again when the keys in hand change.
         if (push?.entity === e) {
           const dungeon = here(state);
-          const keys = `${VL.smallKeys(state, dungeon.id)}/${VL.dungeonState(state, dungeon.id).bossKey}/${lacksWanted(state, e)}`;
+          const keys = `${VL.smallKeys(state, dungeon.id)}/${VL.dungeonState(state, dungeon.id).bossKey}/${wantedNote(state, e)}`;
           if (e.tried !== keys) {
             e.tried = keys;
             if (VL.openLockedDoor(state, e) === 'locked') VL.lockedDoorNote(state, e);
@@ -369,9 +392,9 @@
   VL.lockedDoorNote = function lockedDoorNote(state, door) {
     state.events.push({ type: 'doorLocked', door: door.id, kind: door.kind });
     const d = VL.dungeonHere(state);
-    const keyed = door.kind === 'boss' ? d.bossKey : VL.smallKeys(state, here(state).id) > 0;
+    const keyed = Boolean(d.doors[door.id]) || (door.kind === 'boss' ? d.bossKey : VL.smallKeys(state, here(state).id) > 0);
     let text = door.kind === 'boss' ? 'The big lock needs the boss key.' : 'Locked. A small key would open it.';
-    if (keyed && lacksWanted(state, door)) text = door.wants.note;
+    if (keyed && lacksWanted(state, door)) text = wantedNote(state, door);
     if (door.told === text) return;
     door.told = text;
     state.dungeonNote = { text, t: 0 };
@@ -433,7 +456,7 @@
     for (const e of state.room.entities) {
       if (e.type === 'shutter') settleShutter(state, e);
       else if (e.type === 'pressurePlate') settlePlate(state, e);
-      else if (e.type === 'lockedDoor' && !e.open && VL.dungeonHere(state).doors[e.id]) Object.assign(e, { open: true, solid: false });
+      else if (e.type === 'lockedDoor' && !e.open && VL.dungeonHere(state).doors[e.id] && !wantsBar(state, e, here(state).id)) Object.assign(e, { open: true, solid: false });
       else if (e.type === 'switch' && VL.dungeonHere(state).switches[e.id]) e.on = true;
       else if (e.hidden && e.reveal === 'cleared' && VL.roomCleared(state)) {
         e.hidden = false;
@@ -569,6 +592,10 @@
           if (expect.gives && !lock.gives.includes(expect.gives) && lock.id !== expect.gives) problems.push(`${where}: lock ${e.lock} must give '${expect.gives}'`);
           if (expect.needs && !lock.needs.flat().includes(expect.needs)) problems.push(`${where}: lock ${e.lock} must need '${expect.needs}'`);
           if (e.wants && !lock.needs.some((need) => [need].flat().every((id) => e.wants.items.includes(id)))) problems.push(`${where} wants ${e.wants.items.join(' or ')}: lock ${e.lock} must need them`);
+          for (const what of Object.keys(e.wants?.has || {})) {
+            if (!lock.needs.flat().includes(what)) problems.push(`${where} wants ${what}: lock ${e.lock} must need it`);
+            if (!e.wants.hasNote) problems.push(`${where} wants ${what}: say why with wants.hasNote`);
+          }
         }
       }
     }

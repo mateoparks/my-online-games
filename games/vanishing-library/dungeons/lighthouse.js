@@ -16,6 +16,7 @@
   const { rect } = VL.ART;
   const DUNGEON = 'lighthouse';
   const SWORD_WORDS = 'Something huge is moving up there! Better bring a sword.';
+  const SHELL_WORDS = `Better bring ${VL.TUNING.lensCrabShellsAtDoor} broken shells for your slingshot up there!`;
 
   // ---------- tiles ----------
 
@@ -218,7 +219,7 @@
         '#######_########',
       ],
       entities: [
-        { type: 'lockedDoor', id: 'd3BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd3BossDoor', oneWay: true, wants: { items: ['woodSword', 'metalSword'], note: SWORD_WORDS } },
+        { type: 'lockedDoor', id: 'd3BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd3BossDoor', oneWay: true, wants: { items: ['woodSword', 'metalSword'], note: SWORD_WORDS, has: { brokenShells: VL.TUNING.lensCrabShellsAtDoor }, hasNote: SHELL_WORDS } },
         { type: 'lockedDoor', id: 'd3DoorB', kind: 'small', x: 15, y: 5, lock: 'd3DoorB' },
         { type: 'sign', x: 5, y: 1, title: 'Carved in the stone', text: 'A crab as big as a cart took the great lens for its shell! Nobody has climbed to the lamp since.' },
         lamp('d3LampGalleryA', 2, 2),
@@ -303,6 +304,7 @@
   // ---------- the way in ----------
 
   VL.LIGHTHOUSE_SWORD_WORDS = SWORD_WORDS;
+  VL.LIGHTHOUSE_SHELL_WORDS = SHELL_WORDS;
   VL.LIGHTHOUSE_DARK_WORDS = 'Pitch dark in there! You can\'t see a thing. You\'d need a light of your own.';
   VL.fillSpot('lighthouseDoor', {
     type: 'door', needs: 'glowstone', locked: VL.LIGHTHOUSE_DARK_WORDS,
@@ -358,7 +360,7 @@
   VL.defineLock('d3KeyB', { type: 'item', needs: ['slingshot'], supplies: { [keys]: 1 }, doc, reached: found('d3KeyB') });
   VL.defineLock('d3DoorB', { needs: ['slingshot'], consumes: { [keys]: 1 }, doc, reached: door('d3DoorB') });
   VL.defineLock('d3BossKey', { type: 'item', needs: ['d3DoorB'], gives: [`bossKey:${DUNGEON}`], doc, reached: found('d3BossKey') });
-  VL.defineLock('d3BossDoor', { needs: ['slingshot', `bossKey:${DUNGEON}`, ['woodSword', 'metalSword']], doc, reached: door('d3BossDoor') });
+  VL.defineLock('d3BossDoor', { needs: ['slingshot', 'brokenShells', `bossKey:${DUNGEON}`, ['woodSword', 'metalSword']], doc, reached: door('d3BossDoor') });
   VL.defineLock('d3Boss', {
     ...VL.LOCKS.d3Boss,
     needs: ['lighthouseEntered', 'slingshot', 'brokenShells', ['woodSword', 'metalSword'], 'd3BossDoor'],

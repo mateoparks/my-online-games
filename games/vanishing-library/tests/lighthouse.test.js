@@ -569,7 +569,7 @@ test('the beam passes the hero and pits but a closed shutter stops it', () => {
 test('the boss door: with the boss key but no sword it stays shut and says a sword is needed; with one it opens', () => {
   const t = setup({ where: null });
   const { VL } = t;
-  t.arm();
+  t.arm(VL.TUNING.lensCrabShellsAtDoor);
   t.place(lh('0,-2', 7, 1, 'up'));
   t.hold(['up'], 0.6);
   assert.equal(t.game.dungeonNote.text, 'The big lock needs the boss key.', 'no key: the key comes first');

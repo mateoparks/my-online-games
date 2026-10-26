@@ -295,37 +295,103 @@ test('lava stays shut to everything but his feet: no block, no enemy, no knockba
   assert.equal(state.hp, hp);
 });
 
-test('lava opens no new ground: the floor reached over lava is the floor reached without it, so nothing ever needs a step on it', () => {
+test('the rope\'s pull carries him over lava without a burn, and never lands him on it', () => {
+  const { VL, state } = cellar();
+  // A post at (7,1): the pull runs up over the lava at (7,4) and (7,3) to (7,2).
+  state.room.entities.push({ type: 'grapplePost', x: 7, y: 1, solid: true });
+  assert.ok(VL.tileInfo('lair', VL.tileAt('lair', '-1,0', 7, 3)).lava && !VL.tileInfo('lair', VL.tileAt('lair', '-1,0', 7, 2)).lava);
+  const hp = state.hp;
+  let overLava = 0;
+  assert.ok(VL.throwRope(state));
+  for (let i = 0; i < 180 && (state.player.rope || i < 2); i += 1) {
+    VL.updateWorld(state, VL.actions({}), 1 / 60);
+    const { tx, ty } = VL.heroTile(state);
+    if (VL.tileInfo('lair', VL.tileAt('lair', '-1,0', tx, ty)).lava) overLava += 1;
+  }
+  assert.ok(overLava > 0, 'he crossed the lava');
+  assert.deepEqual(tileNow(VL, state), [7, 2]);
+  assert.equal(state.hp, hp, 'no burn in the air');
+  // A post with lava in front of it sends the hook back: lava is solid to it.
+  const { VL: V2, state: s2 } = cellar();
+  Object.assign(s2.player, V2.tileCenter(7, 6), { facing: 'up' });
+  s2.room.entities.push({ type: 'grapplePost', x: 7, y: 2, solid: true });
+  V2.throwRope(s2);
+  for (let i = 0; i < 120 && s2.player.rope; i += 1) V2.updateWorld(s2, V2.actions({}), 1 / 60);
+  assert.deepEqual(tileNow(V2, s2), [7, 6], 'no pull onto (7,3)');
+});
+
+test('lava opens no new ground: no lava tile joins two stretches of floor that a gate (bars, a locked door, a push block) or a wall keeps apart', () => {
   const { VL } = loadGame();
   const { cols, rows } = VL.TUNING;
-  const reach = (overLava) => {
-    const seen = new Set();
-    const queue = [['0,0', 7, 9]];
-    while (queue.length) {
-      const [key, tx, ty] = queue.shift();
-      const id = `${key}|${tx},${ty}`;
-      if (seen.has(id)) continue;
-      const info = VL.tileInfo('lair', VL.tileAt('lair', key, tx, ty));
-      if (info.solid && !(overLava && info.lava)) continue;
-      seen.add(id);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const x = tx + dx;
-        const y = ty + dy;
-        if (x >= 0 && y >= 0 && x < cols && y < rows) queue.push([key, x, y]);
-        else {
-          const next = VL.neighborKey(key, dx, dy);
-          if (VL.screenExists('lair', next)) queue.push([next, (x + cols) % cols, (y + rows) % rows]);
+  const screens = Object.keys(VL.AREAS.lair.screens);
+  // Every gate counts as a wall in both runs, so a detour over lava around
+  // one shows up as two floor stretches the lava joins.
+  const gates = new Set();
+  for (const key of screens) {
+    for (const e of VL.getScreen('lair', key).entities) {
+      if (['shutter', 'lockedDoor', 'pushBlock'].includes(e.type) || e.solid || VL.ENTITIES[e.type]?.solid) gates.add(`${key}|${e.x},${e.y}`);
+    }
+  }
+  const lava = (key, x, y) => Boolean(VL.tileInfo('lair', VL.tileAt('lair', key, x, y)).lava);
+  const open = (key, x, y, overLava, walls) => {
+    if (walls.has(`${key}|${x},${y}`)) return false;
+    const info = VL.tileInfo('lair', VL.tileAt('lair', key, x, y));
+    return !info.solid || (overLava && Boolean(info.lava));
+  };
+  // Labels every open tile with its stretch of floor, across screen edges.
+  const stretches = (overLava, walls) => {
+    const label = new Map();
+    let n = 0;
+    for (const key of screens) {
+      for (let ty = 0; ty < rows; ty += 1) {
+        for (let tx = 0; tx < cols; tx += 1) {
+          if (label.has(`${key}|${tx},${ty}`) || !open(key, tx, ty, overLava, walls)) continue;
+          n += 1;
+          const queue = [[key, tx, ty]];
+          label.set(`${key}|${tx},${ty}`, n);
+          while (queue.length) {
+            const [k, cx, cy] = queue.shift();
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+              let [nk, x, y] = [k, cx + dx, cy + dy];
+              if (x < 0 || y < 0 || x >= cols || y >= rows) {
+                nk = VL.neighborKey(k, dx, dy);
+                if (!VL.screenExists('lair', nk)) continue;
+                [x, y] = [(x + cols) % cols, (y + rows) % rows];
+              }
+              const id = `${nk}|${x},${y}`;
+              if (label.has(id) || !open(nk, x, y, overLava, walls)) continue;
+              label.set(id, n);
+              queue.push([nk, x, y]);
+            }
+          }
         }
       }
     }
-    return [...seen].filter((id) => {
+    return label;
+  };
+  const lavaJoins = (walls) => {
+    const dry = stretches(false, walls);
+    const wet = stretches(true, walls);
+    const joined = new Map();
+    for (const [id, wetLabel] of wet) {
       const [key, xy] = id.split('|');
       const [x, y] = xy.split(',').map(Number);
-      return !VL.tileInfo('lair', VL.tileAt('lair', key, x, y)).lava;
-    }).sort();
+      if (lava(key, x, y)) continue;
+      if (!joined.has(wetLabel)) joined.set(wetLabel, new Set());
+      joined.get(wetLabel).add(dry.get(id));
+    }
+    return { dry, merged: [...joined.values()].filter((set) => set.size > 1).map((set) => [...set].join('+')) };
   };
-  assert.deepEqual(reach(true), reach(false));
-  assert.ok(reach(false).length > 500);
+  const { dry, merged } = lavaJoins(gates);
+  assert.deepEqual(merged, [], 'a lava step joins floor that is apart without it');
+  assert.ok(dry.size > 500, 'the floor was read');
+  assert.ok(gates.size >= 10, 'the gates were read');
+  // The check has teeth: bars down the cellar's column 8, with only its
+  // lava (8,3) and (8,4) left open, cut the west half off but for the lava.
+  assert.ok(lava('-1,0', 8, 3) && lava('-1,0', 8, 4));
+  const barred = new Set(gates);
+  for (const y of [1, 2, 5, 6, 7, 8, 9]) barred.add(`-1,0|8,${y}`);
+  assert.notDeepEqual(lavaJoins(barred).merged, [], 'a detour over lava round a gate is caught');
 });
 
 // ---------- 5. the Dragon wants the metal sword; thorny guards at the cave mouth ----------
@@ -752,3 +818,136 @@ test('the purple fire and the fan\'s glow are drawn in their own colours, none a
   }
   assert.ok(VL.ART.SPRITES['fx-fire-wild-0'] && VL.ART.SPRITES['fx-fire-wild-1']);
 });
+
+// ---------- the boss doors check what the fight wants on every entry ----------
+
+// In the room below a boss door, at its foot, with the boss key, a sword and
+// `shells` broken shells; no other enemies about.
+function atBossDoor(area, { shells = 0, sword = 'woodSword', opened = false, beaten = false } = {}) {
+  const { VL } = loadGame();
+  const state = VL.createGame();
+  state.items[sword] = true;
+  state.items.slingshot = true;
+  state.items.mirrorShield = true;
+  state.hands = { mainHand: sword, offHand: 'slingshot' };
+  state.inventory.brokenShells = shells;
+  const d = VL.dungeonState(state, area);
+  d.bossKey = true;
+  if (opened) d.doors[area === 'lighthouse' ? 'd3BossDoor' : 'd4BossDoor'] = true;
+  d.boss = beaten;
+  VL.place(state, { area, screen: '0,-2', tx: 7, ty: 1, facing: 'up' });
+  state.room.entities = state.room.entities.filter((e) => !VL.isEnemy(e));
+  state.popups.queue.length = 0;
+  const door = () => state.room.entities.find((e) => e.type === 'lockedDoor' && e.kind === 'boss');
+  const tryDoor = () => hold(VL, state, ['up'], 1);
+  return { VL, state, d, door, tryDoor };
+}
+
+test('the Lighthouse boss door wants enough broken shells for the fight, from the tuning, with margin over a perfect fight', () => {
+  const { VL } = loadGame();
+  const least = VL.TUNING.lensCrabShellsAtDoor;
+  assert.equal(least, 12);
+  assert.ok(least >= 2 * VL.TUNING.lensCrabRounds, 'two eyes a round, every round');
+  const door = VL.getScreen('lighthouse', '0,-2').entities.find((e) => e.id === 'd3BossDoor');
+  assert.deepEqual(plain(door.wants.has), { brokenShells: least });
+  assert.ok(VL.LOCKS.d3BossDoor.needs.includes('brokenShells'), 'the table knows');
+  assert.equal(VL.RESOURCE_CAPS?.brokenShells, undefined, 'no cap, so the count is always reachable');
+  const note = VL.LIGHTHOUSE_SHELL_WORDS;
+  assert.match(note, /12 broken shells/);
+  assert.deepEqual(plain(VL.ART.missingGlyphs(note, 'small')), []);
+  assert.ok(VL.ART.measureText(note, 'small') <= VL.TUNING.width - 8, 'fits on one line');
+  assert.deepEqual([...VL.dungeonProblems()], []);
+  VL.LOCKS.d3BossDoor.needs = VL.LOCKS.d3BossDoor.needs.filter((need) => need !== 'brokenShells');
+  assert.ok(VL.dungeonProblems().some((p) => p.includes('d3BossDoor wants brokenShells')), 'the lint sees a lock that forgot the shells');
+});
+
+test('with one shell too few the Lighthouse boss door stays shut and asks for shells; with enough he walks in', () => {
+  const few = atBossDoor('lighthouse', { shells: VL_LEAST() - 1 });
+  few.tryDoor();
+  assert.equal(few.state.player.screen, '0,-2', 'not in');
+  assert.ok(!few.d.doors.d3BossDoor);
+  assert.equal(few.state.dungeonNote?.text, few.VL.LIGHTHOUSE_SHELL_WORDS);
+  const enough = atBossDoor('lighthouse', { shells: VL_LEAST() });
+  enough.tryDoor();
+  assert.ok(enough.d.doors.d3BossDoor);
+  enough.tryDoor();
+  assert.equal(enough.state.player.screen, '0,-3', 'in with the Lens Crab');
+});
+
+test('a sword still comes first: no sword and no shells says the sword words', () => {
+  const t = atBossDoor('lighthouse', { shells: 0, sword: 'slingshot' });
+  delete t.state.items.woodSword;
+  t.state.hands = { mainHand: 'slingshot', offHand: null };
+  t.tryDoor();
+  assert.equal(t.state.dungeonNote?.text, t.VL.LIGHTHOUSE_SWORD_WORDS);
+});
+
+test('opened before, the crab unbeaten, too few shells now (he fainted inside and came back short): shut again, and no way round it for the planner', () => {
+  const t = atBossDoor('lighthouse', { shells: VL_LEAST() - 1, opened: true });
+  assert.ok(t.door().solid && !t.door().open, 'shut on entry');
+  const { isWalkable } = require('./playthrough');
+  assert.equal(isWalkable(t.VL, 'lighthouse', '0,-2', 7, 0, t.state), false);
+  t.tryDoor();
+  assert.equal(t.state.player.screen, '0,-2');
+  assert.equal(t.state.dungeonNote?.text, t.VL.LIGHTHOUSE_SHELL_WORDS);
+  assert.ok(t.d.doors.d3BossDoor, 'the saved door is kept: only the visit shuts it');
+  t.state.inventory.brokenShells = VL_LEAST();
+  t.tryDoor();
+  assert.equal(t.state.player.screen, '0,-3', 'enough again: in');
+});
+
+test('shells spent in the room below an open boss door shut it again (never on him); the crab beaten, it is open with none', () => {
+  const t = atBossDoor('lighthouse', { shells: VL_LEAST(), opened: true });
+  Object.assign(t.state.player, t.VL.tileCenter(7, 4));
+  hold(t.VL, t.state, [], 0.1);
+  assert.ok(t.door().open);
+  t.state.inventory.brokenShells -= 1;
+  hold(t.VL, t.state, [], 0.1);
+  assert.ok(t.door().solid && !t.door().open, 'shut once he is short');
+  const beaten = atBossDoor('lighthouse', { shells: 0, opened: true, beaten: true });
+  assert.ok(beaten.door().open && !beaten.door().solid);
+  beaten.tryDoor();
+  assert.equal(beaten.state.player.screen, '0,-3');
+});
+
+test('once inside the lamp room nothing changes: the shells he spends there shut nothing on him', () => {
+  const t = atBossDoor('lighthouse', { shells: VL_LEAST() });
+  t.tryDoor();
+  t.tryDoor();
+  assert.equal(t.state.player.screen, '0,-3');
+  t.state.inventory.brokenShells = 0;
+  hold(t.VL, t.state, [], 0.5);
+  assert.equal(t.state.player.screen, '0,-3');
+  assert.ok(!t.state.room.entities.some((e) => e.type === 'lockedDoor'), 'no door in the boss room to shut');
+});
+
+test('the Lair door, opened before with the metal sword, the Dragon unbeaten, only a wood sword now: shut, with the sword words', () => {
+  const t = atBossDoor('lair', { sword: 'woodSword', opened: true });
+  assert.ok(t.door().solid && !t.door().open);
+  t.tryDoor();
+  assert.equal(t.state.player.screen, '0,-2');
+  assert.equal(t.state.dungeonNote?.text, t.VL.LAIR_SWORD_WORDS);
+  const metal = atBossDoor('lair', { sword: 'metalSword', opened: true });
+  metal.tryDoor();
+  assert.equal(metal.state.player.screen, '0,-3');
+});
+
+test('an old save (the W19 fixture) with the Lair door already open, the Dragon unbeaten and only wood: stopped at the door, not shut in', () => {
+  const { VL } = loadGame();
+  const save = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W19.json'), 'utf8'));
+  save.dungeons.lair.boss = false;
+  assert.ok(save.dungeons.lair.doors.d4BossDoor, 'the fixture opened it long ago');
+  const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: JSON.stringify(save) }));
+  const state = VL.loadSlot(storage, 0);
+  assert.deepEqual([VL.hasItem(state, 'woodSword'), VL.hasItem(state, 'metalSword')], [true, false]);
+  VL.place(state, { area: 'lair', screen: '0,-2', tx: 7, ty: 1, facing: 'up' });
+  state.room.entities = state.room.entities.filter((e) => !VL.isEnemy(e));
+  state.popups.queue.length = 0;
+  hold(VL, state, ['up'], 1);
+  assert.equal(state.player.screen, '0,-2');
+  assert.equal(state.dungeonNote?.text, VL.LAIR_SWORD_WORDS);
+});
+
+function VL_LEAST() {
+  return loadGame().VL.TUNING.lensCrabShellsAtDoor;
+}

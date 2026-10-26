@@ -44,11 +44,13 @@
   VL.defineHeroFooting('lava', (state, info) => Boolean(info.lava));
   VL.addFaintLine('lava', 'The lava was much too hot to walk on!');
   // Each step onto a lava tile burns once; standing still on it is safe.
+  // In the air he is never burned: a chicken flight, or the rope's pull to a
+  // post (which never lands him on lava, since lava is solid to the hook).
   VL.defineSystem('lavaBurns', {
     order: 12,
     update(state) {
       const player = state.player;
-      if (state.hp <= 0 || player.flight || state.transition) return;
+      if (state.hp <= 0 || player.flight || player.rope?.phase === 'pull' || state.transition) return;
       const { tx, ty } = VL.heroTile(state);
       const room = state.room;
       const here = `${room.area}:${room.screen}:${tx},${ty}`;

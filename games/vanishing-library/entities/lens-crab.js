@@ -14,6 +14,9 @@
     // Per round: 2 wood hits or 1 metal, well inside the daze.
     lensCrabRoundLife: 2,
     lensCrabRounds: 3,
+    // The boss door wants this many broken shells on every entry:
+    // a perfect fight is 2 eyes x 3 rounds = 6, and misses cost more.
+    lensCrabShellsAtDoor: 12,
     lensCrabSpeed: 30,
     lensCrabSpeedUp: 1.25,
     lensCrabGlintEvery: 2.6,

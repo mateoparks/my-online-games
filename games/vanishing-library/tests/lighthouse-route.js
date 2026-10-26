@@ -236,13 +236,14 @@ const route = {
     pickUp(drive, at('1,-2', 14, 5), 'up', (state) => VL.spotFound(state, 'd3BossKey'));
   },
   d3BossDoor(drive) {
+    // The door wants enough broken shells for the fight, on every entry.
+    if (drive.state.inventory.brokenShells < drive.VL.TUNING.lensCrabShellsAtDoor) beachcomb(drive, drive.VL.TUNING.lensCrabShellsAtDoor);
     walk(drive, at('0,-2', 7, 1));
     drive.until(() => d3(drive).doors.d3BossDoor, 1, ['up']);
   },
   d3Boss(drive) {
     equipSlingshot(drive);
-    // The boss room can't be left before the win: enough for every round.
-    if (drive.state.inventory.brokenShells < 12) beachcomb(drive, 12);
+    // The boss door let him in with enough for every round (d3BossDoor).
     fightLensCrab(drive);
     drive.reload();
     assert.ok(drive.VL.bossBeaten(drive.state, AREA), 'the win survives a reload');

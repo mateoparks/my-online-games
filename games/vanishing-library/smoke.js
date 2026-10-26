@@ -3136,9 +3136,10 @@ async function main() {
         // Dragon's hoard, the strongest slide in the game, before the fight
         // (the mound) and after it (the books strewn over the floor).
         const intoHoard = (spilled) => (app, g) => {
-          g.items.woodSword = true;
+          // The door wants the metal sword on every entry while the Dragon stands.
+          g.items.metalSword = true;
           g.items.mirrorShield = true;
-          g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' };
+          g.hands = { mainHand: 'metalSword', offHand: 'mirrorShield' };
           g.dungeons.lair.doors.d4BossDoor = true;
           if (spilled) {
             g.dungeons.lair.boss = true;

@@ -1936,7 +1936,10 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
   crystal's bars), and the stairwell's target lifts the bars up to the
   gallery (door B, the boss door). Key A can't be wasted: door B lies past
   the stairwell's target. The workshop's crystal lifts the bars on the boss
-  key.
+  key. The boss door also wants a sword and
+  `TUNING.lensCrabShellsAtDoor` (12) broken shells on every entry until the
+  crab is beaten (`VL.LIGHTHOUSE_SHELL_WORDS`), since the lamp room has no
+  shells of its own and its gate shuts behind him.
 - **The Lens Crab** (`lensCrab`, `rooted`, `size: 'big'`): it scuttles along
   the top of the lamp room after the hero (`scuttle`), and every
   `lensCrabGlintEvery` the lens glints (`glint`) and throws a bolt of light
@@ -1962,7 +1965,8 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
 - **Locks:** claims `lighthouseEntered` (a visit to the entrance) with the
   planned rule, and `slingshot` (`needs` adds `d3DoorA`) and `d3Boss` (adds
   `d3BossDoor`) with `replan`; adds `d3KeyA`, `d3DoorA`, `d3KeyB`, `d3DoorB`,
-  `d3BossKey` and `d3BossDoor`; its broken shells come from the beaches
+  `d3BossKey` and `d3BossDoor` (needs `brokenShells` too, as the door's
+  `wants` says); its broken shells come from the beaches
   (`beachBrokenShells`). Ids are `d3…` (and `heartD3`, `oreLighthouse`,
   `pageLighthouse`).
 - **Sounds:** events `crabEye`, `crabDazed`, `lensGlint`, `lensBolt`
@@ -2033,8 +2037,11 @@ the boss door, the Dragon.
   step onto a lava tile takes `TUNING.lavaDamage` (half a heart), standing
   still on it is safe, and there is no timer (system `lavaBurns`, faint line
   `lava`). To everything else it is still a solid pit: blocks, enemies,
-  knockback and chickens stay off it, fire crosses it. It opens no new
-  ground (a test compares what is reached with and without it), and the
+  knockback and chickens stay off it, fire crosses it. A chicken flight or
+  the rope's pull never burns him (`lavaBurns` skips both; the hook can't
+  land him on lava, which is solid to it). It opens no new ground (a test
+  labels the floor's stretches with every gate as a wall and checks no
+  lava step joins two), and the
   playthrough's planner never walks on a tile that `hurts`.
 - **Fire** (`VL.spawnFire(state, { cx, cy, vx, vy, owner })`, entity
   `dragonFire`): flies straight over floors, pits and lava; walls and solid
@@ -2097,7 +2104,8 @@ the boss door, the Dragon.
   `mirrorShield` (replan: behind door A), `d4Boss` (replan: behind the boss
   door, the metal sword; the hoard's books), and one per key and door:
   `d4KeyA`, `d4DoorA`, `d4KeyB`, `d4DoorB`, `d4BossKey`, `d4BossDoor` (the
-  metal sword, as the door's `wants` says).
+  metal sword, as the door's `wants` says, checked on every entry: an old
+  save with the door open and only a wood sword is stopped at it).
 
 ## The finale (W20)
 
@@ -2301,10 +2309,17 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   on the two sides of one edge, and one lock per door id (the game spends a
   key per id, the solver one per lock).
   `VL.openLockedDoor(state, door)` returns `'opened'`, `'open'` or `'locked'`.
-  A door with `wants: { items: [...], note }` also stays shut, saying `note`,
-  until the hero holds one of `items` (the Lighthouse's boss door wants a
-  sword, so a swordless kid is never shut in with the Lens Crab); the lint
-  checks its lock needs the same items.
+  A door with `wants: { items: [...], note, has, hasNote }` also stays shut,
+  saying `note`, until the hero holds one of `items`, and saying `hasNote`
+  until he carries at least `has` of each counted thing (`{ brokenShells: 12 }`).
+  The Lighthouse's boss door wants a sword and `TUNING.lensCrabShellsAtDoor`
+  broken shells, so a kid is never shut in with the Lens Crab unable to win;
+  the Lair's wants the metal sword. The want is checked **on every entry
+  while the boss is unbeaten**, opened before or not (`VL.doorWantsBar`): an
+  opened door comes back shut on a visit he is short, and shuts again (never
+  on him) if he spends what it wants in the room below. Once he is through,
+  nothing changes; once the boss is beaten it is always open. The lint
+  checks its lock needs the same items and counted things.
 - **Push blocks:** `{ type: 'pushBlock', x, y, once = true }` slides a tile
   after the hero leans on it for `TUNING.blockPushSeconds`, once per visit
   (Zelda's rule; `once: false` for a free block), never onto a wall, another
@@ -2398,7 +2413,8 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   its own `{ bossBeaten: true }` shutter is refused at load: delete it.
   Since he is shut in until the boss falls or he faints, a boss must be
   able to make him faint, or the boss door's lock should need the weapon
-  (the sample's boss *lock* needs a sword, its door does not).
+  (the sample's boss *lock* needs a sword, its door does not); a boss door
+  with `wants` keeps him out until he has it, on every entry.
   `VL.bossBeaten(state, id)`.
 - **Entering and leaving:** ordinary `door` entities link the overworld and
   the dungeon both ways (fill W8's door spot from the dungeon's file). The
