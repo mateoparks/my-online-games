@@ -19,7 +19,7 @@ function face(drive, dir) {
 
 const handHolding = (drive, id) => drive.VL.HANDS.find((hand) => drive.VL.heldItem(drive.state, hand) === id);
 
-// A broken shell or a heap note on the way may stop a walk with its popup:
+// A broken shell on the way may stop a walk with its popup:
 // read it and go on.
 function walk(drive, target) {
   for (let tries = 0; tries < 6; tries += 1) {
@@ -67,12 +67,21 @@ function shoot(drive, dir) {
   drive.until((state) => !state.room.entities.some((e) => e.type === 'slingPellet'), 2);
 }
 
-// Tops up from a heap: stand on `from`, face `dir`, S.
-function scoop(drive, from, dir) {
-  walk(drive, from);
-  face(drive, dir);
-  drive.press('interact');
-  assert.ok(drive.state.inventory.brokenShells >= drive.VL.TUNING.shellHeapFill, 'the heap filled his pockets');
+// Broken shells picked up along the home beaches, where each comes back
+// once he has left its screen, until he holds `least` (W35: the Lighthouse
+// has no heaps). The next walk takes him back inside.
+const BEACHES = ['1,1', '0,1'];
+function beachcomb(drive, least) {
+  const { VL } = drive;
+  for (let round = 0; round < 30 && drive.state.inventory.brokenShells < least; round += 1) {
+    const screen = BEACHES[round % BEACHES.length];
+    for (const shell of VL.getScreen('overworld', screen).entities.filter((e) => e.type === 'shell' && !e.whole)) {
+      if (drive.state.inventory.brokenShells >= least) break;
+      walk(drive, { area: 'overworld', screen, tx: shell.x, ty: shell.y });
+      drive.closePopups();
+    }
+  }
+  assert.ok(drive.state.inventory.brokenShells >= least, `${least} broken shells from the beaches (${drive.state.inventory.brokenShells})`);
 }
 
 // The shockwave took the sword: bare-hand pulls on the home bushes until
@@ -149,6 +158,7 @@ const route = {
   lighthouseEntered(drive) {
     drive.closePopups();
     ensureSword(drive);
+    beachcomb(drive, 16);
     walk(drive, { area: 'overworld', screen: '-1,1', tx: 7, ty: 5 });
     drive.until((state) => state.player.area === AREA && settled(state), 2, ['up']);
     drive.closePopups();
@@ -178,7 +188,7 @@ const route = {
   d3KeyB(drive) {
     const { VL } = drive;
     equipSlingshot(drive);
-    if (drive.state.inventory.brokenShells < 3) scoop(drive, at('1,-1', 2, 7), 'down');
+    if (drive.state.inventory.brokenShells < 3) beachcomb(drive, 6);
     if (!d3(drive).switches.d3TargetStore) {
       walk(drive, at('1,-1', 12, 4));
       shoot(drive, 'up');
@@ -198,7 +208,7 @@ const route = {
   d3DoorB(drive) {
     equipSlingshot(drive);
     if (!d3(drive).switches.d3TargetStair) {
-      if (drive.state.inventory.brokenShells < 1) scoop(drive, at('0,0', 12, 7), 'down');
+      if (drive.state.inventory.brokenShells < 1) beachcomb(drive, 4);
       walk(drive, at('0,-1', 2, 4));
       shoot(drive, 'up');
       assert.ok(d3(drive).switches.d3TargetStair, 'the shot hit the stairwell\'s target');
@@ -211,7 +221,7 @@ const route = {
     const { VL } = drive;
     equipSlingshot(drive);
     if (!d3(drive).map) pickUp(drive, at('-1,-2', 6, 2), 'right', () => d3(drive).map);
-    if (drive.state.inventory.brokenShells < 1) scoop(drive, at('0,-2', 2, 8), 'down');
+    if (drive.state.inventory.brokenShells < 1) beachcomb(drive, 4);
     if (!d3(drive).switches.d3CrystalWorkshop) {
       walk(drive, at('1,-2', 5, 2));
       face(drive, 'left');
@@ -231,7 +241,8 @@ const route = {
   },
   d3Boss(drive) {
     equipSlingshot(drive);
-    scoop(drive, at('0,-2', 2, 8), 'down');
+    // The boss room can't be left before the win: enough for every round.
+    if (drive.state.inventory.brokenShells < 12) beachcomb(drive, 12);
     fightLensCrab(drive);
     drive.reload();
     assert.ok(drive.VL.bossBeaten(drive.state, AREA), 'the win survives a reload');
@@ -297,10 +308,7 @@ function fightLensCrab(drive) {
       drive.hold([dx < 0 ? 'left' : 'right'], 1 / 30);
       continue;
     }
-    if (drive.state.inventory.brokenShells < 1) {
-      scoop(drive, at('0,-3', 2, 8), 'down');
-      continue;
-    }
+    assert.ok(drive.state.inventory.brokenShells > 0, 'shells enough for the fight');
     shoot(drive, 'up');
   }
   if (!VL.bossBeaten(drive.state, AREA)) drive.until((state) => VL.bossBeaten(state, AREA), 3);
@@ -310,4 +318,4 @@ function fightLensCrab(drive) {
 
 const ROUTE = Object.keys(route);
 
-module.exports = { route, ROUTE, at, face, shoot, scoop, equipSlingshot, ensureSword, walk };
+module.exports = { route, ROUTE, at, face, shoot, beachcomb, equipSlingshot, ensureSword, walk };

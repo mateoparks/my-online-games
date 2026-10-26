@@ -93,7 +93,6 @@ VL.FILES = {
     'entities/copyable.js',
     'entities/grapple-post.js',
     'entities/thornback.js',
-    'entities/shell-heap.js',
     'entities/glow-lamp.js',
     'entities/shell-target.js',
     'entities/beam.js',

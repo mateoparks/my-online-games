@@ -84,11 +84,10 @@
 
   // ---------- the rooms ----------
 
-  const heap = (x, y) => ({ type: 'shellHeap', x, y });
   const lamp = (id, x, y) => ({ type: 'glowLamp', id, x, y });
 
   VL.addScreens(DUNGEON, {
-    // The entrance: the statue, the door out, a heap of broken shells.
+    // The entrance: the statue, the door out.
     '0,0': {
       tiles: [
         '#######_########',
@@ -107,7 +106,6 @@
         { type: 'door', x: 7, y: 10, to: { area: 'overworld', screen: '-1,1', tx: 7, ty: 5, facing: 'down' } },
         { type: 'saveStatue', x: 3, y: 2 },
         { type: 'sign', x: 10, y: 2, title: 'The Lighthouse', text: 'The keeper\'s old lamps still line the dark rooms. Hold your Glowstone up to one (S) and it will burn again.' },
-        heap(12, 8),
       ],
     },
     // The cellar: a dark floor, one narrow way between the pits, key A at its end.
@@ -176,7 +174,6 @@
         { type: 'bigChest', id: 'd3SlingChest', x: 5, y: 2, item: 'slingshot' },
         { type: 'shellTarget', id: 'd3TargetStore', x: 12, y: 1 },
         { type: 'shutter', id: 'd3ShutterStore', x: 7, y: 10, open: { switch: 'd3TargetStore' } },
-        heap(2, 8),
       ],
     },
     // The cistern: the beam from the lamp shaft, a mirror on the floor and
@@ -202,7 +199,6 @@
         { type: 'beamCrystal', id: 'd3CrystalCistern', x: 3, y: 8 },
         { type: 'shutter', id: 'd3ShutterKeyB', x: 14, y: 7, open: { switch: 'd3CrystalCistern' } },
         { type: 'smallKey', id: 'd3KeyB', x: 14, y: 9, lock: 'd3KeyB' },
-        heap(12, 1),
         { type: 'bat', x: 5, y: 5 },
       ],
     },
@@ -227,7 +223,6 @@
         { type: 'sign', x: 5, y: 1, title: 'Carved in the stone', text: 'A crab as big as a cart took the great lens for its shell! Nobody has climbed to the lamp since.' },
         lamp('d3LampGalleryA', 2, 2),
         lamp('d3LampGalleryB', 13, 2),
-        heap(2, 9),
         { type: 'slime', x: 11, y: 8 },
         { type: 'bat', x: 4, y: 6 },
       ],
@@ -282,7 +277,7 @@
         { type: 'bat', x: 8, y: 3 },
       ],
     },
-    // The lamp room at the top: the Lens Crab, and heaps so the shells never run out.
+    // The lamp room at the top: the Lens Crab.
     '0,-3': {
       tiles: [
         '################',
@@ -299,8 +294,6 @@
       ],
       entities: [
         { type: 'lensCrab', x: 7, y: 3 },
-        heap(2, 9),
-        heap(13, 9),
       ],
     },
   });
@@ -353,10 +346,6 @@
   const keys = `smallKey:${DUNGEON}`;
 
   VL.defineLock('lighthouseEntered', { ...VL.LOCKS.lighthouseEntered, place: { area: DUNGEON, screen: '0,0' }, reached: (state) => Boolean(state.visited[`${DUNGEON}:0,0`]) });
-  VL.defineLock('lighthouseShells', {
-    needs: ['lighthouseEntered'], gives: ['brokenShells'], renewable: true, optional: true, doc,
-    reached: (state) => Boolean(state.flags.lighthouseShells),
-  });
   VL.defineLock('d3KeyA', { type: 'item', needs: ['lighthouseEntered'], supplies: { [keys]: 1 }, doc, reached: found('d3KeyA') });
   VL.defineLock('d3DoorA', { needs: ['lighthouseEntered'], consumes: { [keys]: 1 }, doc, reached: door('d3DoorA') });
   VL.defineLock('slingshot', {

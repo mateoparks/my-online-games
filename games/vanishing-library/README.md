@@ -1833,7 +1833,8 @@ as ammo (hit far switches, stun enemies)"). Tests: `tests/lighthouse.test.js`.
   (`{ type: 'slingPellet', gx, gy, dx, dy }`, play state, drawn at its pixel
   `gx, gy`) flies over pits, water, chasms and low tiles and stops at walls,
   solid things and the screen's edge. With no broken shells it fires nothing
-  and says where to find some (a heap in a dungeon, the beaches outside).
+  and says where to find some (the beaches; W35 took the Lighthouse's heaps
+  away, as broken shells pile up from the beaches and digging anyway).
   The HUD writes the broken shells left in the slingshot's slot.
 - **What a shot meets:** an entity whose type has **`onShot(state, entity,
   pellet)`** answers it (a `shellTarget` is thrown, a `beamMirror` turns), a
@@ -1847,11 +1848,6 @@ as ammo (hit far switches, stun enemies)"). Tests: `tests/lighthouse.test.js`.
   lever, so a shutter opens on `{ switch: id }`. S only describes it, and
   neither the sword nor the rope's hook throws it, so what it opens stays
   behind the Slingshot.
-- **Shell heaps:** `{ type: 'shellHeap', x, y }` (solid): S tops the broken
-  shells up to `TUNING.shellHeapFill` (15), as often as he likes
-  (`VL.scoopShells`, flag `lighthouseShells`), so a kid never runs dry in a
-  dungeon. The Lighthouse has one in the entrance, the store room, the
-  cistern, the gallery and two in the boss room.
 - **Sounds:** events `slingFire`, `slingTink`, `slingHit`, `slingStun`,
   `slingEmpty` (`bump`).
 
@@ -1867,7 +1863,7 @@ the game, 6: "The Glowstone lets you enter", "dark floors").
   (`VL.hasItem(state, 'glowstone')`, W16's worn item), a hand's breadth
   without (`VL.glowRadius`).
 - **Never a guessing game:** past the light, keys, switches, targets,
-  mirrors, lamps, chests, locked doors, closed bars and heaps glint
+  mirrors, lamps, chests, locked doors and closed bars glint
   (`VL.DARK_GLINTS`, or `glintsInDark: true` on an entity type), a
   creature shows two red eyes, and anything `glowsInDark` (the beam's
   source, a lit crystal, a shell in flight) is drawn over the dark. The beam
@@ -1955,8 +1951,8 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
 - **Locks:** claims `lighthouseEntered` (a visit to the entrance) with the
   planned rule, and `slingshot` (`needs` adds `d3DoorA`) and `d3Boss` (adds
   `d3BossDoor`) with `replan`; adds `d3KeyA`, `d3DoorA`, `d3KeyB`, `d3DoorB`,
-  `d3BossKey`, `d3BossDoor` and `lighthouseShells` (the heaps, renewable
-  broken shells). Ids are `d3…` (and `heartD3`, `oreLighthouse`,
+  `d3BossKey` and `d3BossDoor`; its broken shells come from the beaches
+  (`beachBrokenShells`). Ids are `d3…` (and `heartD3`, `oreLighthouse`,
   `pageLighthouse`).
 - **Sounds:** events `crabEye`, `crabDazed`, `lensGlint`, `lensBolt`
   (`slingFire`), `crabTink` (`slingTink`).

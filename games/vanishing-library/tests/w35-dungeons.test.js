@@ -198,3 +198,32 @@ test('the dragon hint lives in A Child\'s Book of Dragons: the mirror and the me
   assert.match(recalled.say, /dragon book/);
   assert.equal(VL.ART.popupLayout({ title: VL.POPUPS.dragonsRead.title, text: VL.POPUPS.dragonsRead.text }).overflow, false, 'its popup fits');
 });
+
+// ---------- 3. no shell heaps in the Lighthouse ----------
+
+test('the Lighthouse has no shell heaps; broken shells come only from the beaches (and digging), which the solver knows', () => {
+  const { VL } = loadGame();
+  const heaps = Object.values(VL.AREAS).flatMap((a) => Object.values(a.screens)).flatMap((s) => s.entities).filter((e) => /heap/i.test(e.type));
+  assert.deepEqual(heaps, []);
+  assert.equal(VL.ENTITIES.shellHeap, undefined);
+  assert.equal(VL.LOCKS.lighthouseShells, undefined);
+  const sources = Object.entries(VL.LOCKS).filter(([, lock]) => lock.renewable && [].concat(lock.gives || []).includes('brokenShells')).map(([id]) => id);
+  assert.deepEqual(sources, ['beachBrokenShells']);
+  assert.deepEqual([...VL.LOCKS.beachBrokenShells.needs], ['beach'], 'only the beach: no tool, never lost');
+  assert.ok(VL.LOCKS.d3Boss.needs.includes('brokenShells'));
+  assert.deepEqual([...VL.solveProgression().problems], []);
+  assert.doesNotMatch(VL.OUT_OF_SHELLS.dungeon, /heap/i);
+  assert.ok(VL.ART.measureText(VL.OUT_OF_SHELLS.dungeon, 'small') <= VL.TUNING.width - 8);
+});
+
+test('every beach broken shell comes back on the next visit, so a kid can always gather more', () => {
+  const { VL } = loadGame();
+  const state = playState(VL, { area: 'overworld', screen: '1,1', tx: 3, ty: 7, facing: 'down' });
+  state.popups.seen.brokenShell = true;
+  hold(VL, state, ['down'], 0.4);
+  assert.equal(state.inventory.brokenShells, 1);
+  VL.place(state, { area: 'overworld', screen: '0,1', tx: 7, ty: 5 });
+  VL.place(state, { area: 'overworld', screen: '1,1', tx: 3, ty: 7, facing: 'down' });
+  hold(VL, state, ['down'], 0.4);
+  assert.equal(state.inventory.brokenShells, 2);
+});
