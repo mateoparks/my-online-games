@@ -574,3 +574,26 @@ test('the hit tint is a pale pink, not a saturated red (the flash guard\'s red c
     assert.ok(r / (r + g + b) < 0.8, `${name} ${hex}`);
   }
 });
+
+// ---------- carried forward (W20 re-review 2, M9): the standoff's wall flip ----------
+
+test('a puppet on the wall side of a hero who stands by that wall picks a spot on his open side, never against the wall on top of him', () => {
+  for (const wall of ['left', 'right']) {
+    const { VL, state } = inHall();
+    hold(VL, state, [], 0.1);
+    const b = VL.MARIONETTE_BOUNDS;
+    const { min } = VL.MARIONETTE_STANDOFF;
+    const m = state.room.entities.find((e) => e.type === 'marionette' && !e.fallen);
+    const toward = wall === 'left' ? -1 : 1;
+    state.player.x = wall === 'left' ? b.left + 4 : b.right - 4;
+    m.cx = state.player.x + toward * 3;
+    m.cy = state.player.y;
+    m.target = null;
+    m.mode = 'drift';
+    m.jerk = 0;
+    VL.ENEMIES.marionette.think(state, m, 1 / 60);
+    const side = Math.sign(m.target.x - state.player.x);
+    assert.equal(side, -toward, `${wall} wall: it goes round to his open side (target ${m.target.x.toFixed(0)}, hero ${state.player.x})`);
+    assert.ok(Math.abs(m.target.x - state.player.x) >= min - 1e-9, 'at least the standoff away');
+  }
+});
