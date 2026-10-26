@@ -2050,8 +2050,11 @@ the boss door, the Dragon.
   `TUNING.dragonRoundLife` of **metal** sword damage ends the round (a sword
   in `TUNING.toughSwords`; `onHit` gets the weapon; wood and throws
   clink). Three rounds, each quicker (`dragonSpeedUp`); the third ends in
-  a puff of smoke (`defeated`, then gone). Nothing about it blinks (its hp is refilled and `hurt` cleared
-  on every hit; a hit shakes it), and the flash guard samples the fight.
+  a puff of smoke (`defeated`, then gone). Nothing about it blinks (its hp
+  is refilled and `hurt` cleared on every hit; a hit shakes it), and the
+  flash guard samples the fight. A hit that counts (W35) tints it pale pink
+  for `dragonHitTintSeconds` (0.4 s, sprite `enemy-dragon-hit`, one change
+  each way, not a saturated red) and plays `dragonOuch` (event `dragonHurt`).
 - **The hoard spills** (`onDefeat`): the `lairHoard` decor turns from a
   mound behind the Dragon into books strewn over the floor (and stays so),
   and he carries three of them home (`VL.HOARD_BOOKS`, found with
