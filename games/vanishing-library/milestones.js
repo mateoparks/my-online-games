@@ -62,7 +62,7 @@
   // ---------- books, pages and the library ----------
 
   lock('hiddenBooks', { type: 'item', needs: ['town', 'library'], supplies: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Hidden books', by: 'W8' });
-  lock('bookHerbalist', { type: 'item', needs: ['woods', 'library'], gives: ['herbalistRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Herbalist\'s Notes', by: 'W8' });
+  lock('bookHerbalist', { type: 'item', needs: ['woodsPaths', 'library'], gives: ['herbalistRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Herbalist\'s Notes', by: 'W8' });
   lock('bookTideTables', { type: 'item', needs: ['shipwreck', 'library'], gives: ['tideTablesRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Tide Tables', by: 'W8' });
   lock('bookSmithsLedger', { type: 'item', needs: ['lakeIsland', 'library'], gives: ['smithsLedgerRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Smith\'s Ledger', by: 'W8' });
   lock('bookPrimer', { type: 'item', needs: ['eastRoad', 'library'], gives: ['primerOnShelf'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: Cartographer\'s Primer', by: 'W8' });
@@ -97,7 +97,8 @@
   // ---------- the Woods and Dungeon 2: the Hollow Oak ----------
 
   lock('woodsMapCopy', { type: 'item', needs: ['woodsMural', 'paper', 'ink'], doc: '§ Paper and ink: Copying', by: 'W12' });
-  lock('oreWoods', { type: 'item', needs: ['woods'], supplies: { ore: 1 }, doc: '§ Tools: two tiers, Ore is scarce (3)', by: 'W8' });
+  // W34: the Woods' paths are open without the map; only the Oak's clearing needs it.
+  lock('oreWoods', { type: 'item', needs: ['woodsPaths'], supplies: { ore: 1 }, doc: '§ Tools: two tiers, Ore is scarce (3)', by: 'W8' });
   lock('hollowOakEntered', { type: 'place', needs: ['woods'], doc: '§ The path through the game, 3', by: 'W15' });
   lock('grapplingRope', { type: 'item', needs: ['hollowOakEntered'], doc: '§ The path through the game, 3', by: 'W15' });
   // W30: the Hollow Oak's thorny spitters and the key under its grass.

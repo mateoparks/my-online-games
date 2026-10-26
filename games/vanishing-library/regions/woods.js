@@ -1,6 +1,6 @@
 // The Whispering Woods: a maze of look-alike screens north of the east road,
 // with the Hollow Oak (Dungeon 2) at its heart. VL.WOODS_ROUTE is the one way
-// through, for W15's copied-map mechanic; the wrong exits loop back.
+// through, which the copied map shows; the wrong exits loop back.
 (() => {
   const { rect } = VL.ART;
 
@@ -340,8 +340,13 @@
 
   VL.defineRegion('woods', {
     screens: ['5,-1', '6,-1', '7,-1', '5,-2', '6,-2', '7,-2', '4,-2', '4,-1', '6,-3', '7,0', '6,0'],
-    place: 'woods',
-    softGate: 'woodsMapCopy',
+    place: 'woodsPaths',
+  });
+  // W34: the maze's paths are open to all from the east road; its heart, the
+  // Oak's clearing past the gate tree (systems/woods-map.js), is `woods`.
+  VL.defineLock('woodsPaths', {
+    type: 'place', needs: ['eastRoad'], doc: '§ The world: Whispering Woods',
+    reached: (state) => VL.regionVisited(state, 'woods'),
   });
   // Walking into the maze is not the place; reaching its heart is.
   VL.defineLock('woods', {

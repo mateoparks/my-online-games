@@ -787,8 +787,10 @@ thrown over the pits onto the switch (`w14-lift.png`, `w14-throw.png`,
 boulder (`w14-boulder.png`) and the Bookworm up, hit and beaten
 (`w14-boss.png`, `w14-boss-hit.png`, `w14-reward-popup.png`,
 `w14-reward.png`). Then W15's Woods and Hollow Oak with real keys: a step
-deeper into the Woods without the map turning back (`w15-woods-lost.png`),
-the same step with it (`w15-woods-map.png`, its popup and a blazed tree),
+deeper into the Woods without the map leading on (`w15-woods-no-map.png`),
+the pass below the Oak shut by trees (`w15-woods-pass-shut.png`), the same
+step with the map (`w15-woods-map.png`, its popup; `w15-woods-edge-map.png`,
+no marks),
 the copy's "you are here" (`w15-woods-copy.png`), every room
 (`w15-room-<x>_<y>.png`), the rope from the big chest
 (`w15-rope-popup.png`), the hook out and the pull across the vault's pits
@@ -914,21 +916,21 @@ node run.
 | `town` (`town.js`) | library, mill, square, smithy, harbour, Scriptorium grounds, riverside | `town` | nothing |
 | `lake` (`lake.js`) | shore, open water + island | `lake` | town; the island needs `rafting` |
 | `canyon`, `eastRoad` (`east-road.js`) | the boulder canyon, the road | `eastRoad` | boulders `O`, `gate: 'liftingGloves'` |
-| `woods` (`woods.js`) | 6-screen route (`WOOD`, Hollow Oak at 7,-2) and 5 wrong-turn screens (`wood`) | `woods` | `softGate: 'woodsMapCopy'`: without the copy every step deeper turns back (W15, see [The Whispering Woods](#the-whispering-woods-w15)) |
+| `woods` (`woods.js`) | 6-screen route (`WOOD`, Hollow Oak at 7,-2) and 5 wrong-turn screens (`wood`) | `woodsPaths` (W34) | the east road; the Oak's clearing (`woods`) is behind the gate tree `J`, `gate: 'woodsMapCopy'` (see [The Whispering Woods](#the-whispering-woods-w15)) |
 | `cliffs` (`cliffs.js`) | cliff road, lighthouse, cliff base | `cliffs` | town |
 | `highlands` (`highlands.js`) | 5 shelves up to the lair | `highlands` (W19) | hidden path `h`, `gate: 'climbersAlmanac'` (opened for good, see [The highlands](#the-highlands-w19)), then 4-tile chasms |
 | `shipwreck` (`beach.js`) | the wreck offshore | `shipwreck` (W17) | `rafting` |
 
-- **Regions:** `VL.defineRegion(id, { screens, place, softGate })` tags
+- **Regions:** `VL.defineRegion(id, { screens, place })` tags
   screens; `VL.regionOf(area, key)` and `VL.regionVisited(state, id)` read
   them. A place lock W8 claims is reached on entering its region (the
-  Woods: on reaching the Hollow Oak clearing, 7,-2).
+  Woods' `woodsPaths`; their heart, `woods`, on reaching the Hollow Oak
+  clearing, 7,-2).
 - **The Woods maze:** `VL.WOODS_ROUTE` lists the route screens in order.
   `VL.WOODS_WRONG_EXITS` lists the three wrong exits (`{ from, side, back }`):
   each leads into one or two look-alike screens that wind back to `back`, a
-  route screen no further in than `from`. They are plain loops; without the
-  copied map no step between two Woods screens is taken at all (W15's edge
-  rule enforces the `softGate`).
+  route screen no further in than `from`. They are plain loops, with the
+  copied map or without it (W34).
 - **Gate tiles** carry `gate: '<key>'` and stay solid until the item that
   owns the key makes them passable (W14 lifts boulders for good with
   `VL.saveTile`, see Lifting; W19 opens the hidden path). Rocks (`rock: true`) are liftable with the gloves and bushes are
@@ -1550,27 +1552,24 @@ through to the Bookworm, two canyon boulders lifted).
 The gate on W8's maze (design: The world, "You need the copied map to get
 through"), in `systems/woods-map.js`. Tests: `tests/woods-gate.test.js`.
 
-- **Without the copied map** (`woodsMapCopy`, the region's `softGate`) the
-  edge of the Woods (5,-1) is open to all, but **every step from one Woods
-  screen into another turns the hero back** to `VL.WOODS_ENTRY` (5,-1, by the
-  road, facing out), with the slide he walked into. The first time a popup
-  (`woodsLost`) says why and points at the Scriptorium's mural; after that a
-  short message (`VL.WOODS_TURNED_TEXT`) and a whisper. Nothing is ever lost,
-  so it is a nudge, never a grind.
-- **With the map** the paths are true: the route leads to the Hollow Oak and
-  the wrong turns still wind back (`VL.WOODS_WRONG_EXITS`). The first Woods
-  screen says so (`woodsWithMap`), each route screen but the last shows the
-  scribes' blue mark (`woodsBlaze`, added as the room is built) on the tree
-  beside its way on (`VL.woodsBlaze(key)`), and the copy (E, or its hand
-  key) blinks where the hero stands (`VL.woodsMapHere`).
+- **Without the copied map** (`woodsMapCopy`) the Woods are open to explore
+  (W34, Matthew's fourth playtest: the old turn-back to the edge and its
+  `woodsLost` popup are gone): every screen but the Hollow Oak's clearing
+  can be walked to, and the Woods' ore and books lie on the open paths
+  (lock `woodsPaths`, needs the east road). The librarian's hint still
+  points at the Scriptorium's mural.
+- **With the map** the first Woods screen says so (`woodsWithMap`: the copy
+  shows the way, open it from E) and the copy blinks where the hero stands
+  (`VL.woodsMapHere`). The scribes' blue marks on the trees are gone (W34:
+  looking at the map is enough). The wrong turns still wind back
+  (`VL.WOODS_WRONG_EXITS`).
 - **The trees before the Oak (W29):** the pass from 7,-1 up to the Hollow
-  Oak's clearing is closed by trees, one of them the gate tile `J`
+  Oak's clearing is a whole row of trees, one of them the gate tile `J`
   (`gate: 'woodsMapCopy'`, at `VL.WOODS_GATE_TREE`). Once the copy is owned
   it becomes a dirt path for good (`VL.saveTile` with an explicit screen),
   checked as each room is built and every step, so an old save that copied
-  the map finds it open as it loads. The turn-back rule above still keeps a
-  hero without the copy from reaching 7,-1 at all; the trees are the same
-  lock shown on the map, and on the drawn map the path appears with the
+  the map finds it open as it loads. This is the Woods' only lock (like the
+  highlands' hidden path), and on the drawn map the path appears with the
   copy. `VL.saveTile(state, tx, ty, ch, { area, screen })` saves a tile on
   any screen.
 - **Edge rules** (`engine.js`): `VL.defineEdgeRule(id, (state, area, from,
@@ -1578,13 +1577,12 @@ through"), in `systems/woods-map.js`. Tests: `tests/woods-gate.test.js`.
   `systems/movement.js` follows it and pushes `{ type: 'edgeTurned', rule,
   from, to }`; a chicken flight stops short of such an edge
   (`systems/chickens.js`), and the playthrough's `findPath` never crosses
-  one. `VL.edgeTurn(state, area, from, to)` asks. W8's overworld test models
-  the soft gate the same way (its edge open, no step within it).
+  one. `VL.edgeTurn(state, area, from, to)` asks. No rule is defined since
+  W34 took out the Woods' turn-back; the hook stays for a later gate.
 - **Pathfinder fix:** `findPath` asks `passable(state, entity, area)` with the
   entity's own area, so a route planned from the overworld into a dungeon
   reads that dungeon's shutters and doors (`VL.dungeonCondition(state, cond,
   { dungeon })`).
-- **Sounds:** `woodsWhisper` (event `woodsWhisper`).
 
 ## The Grappling Rope (W15)
 

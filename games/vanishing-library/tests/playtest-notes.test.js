@@ -143,7 +143,7 @@ test('the six titled books wait behind later progress, each where it is useful',
   const { VL } = loadGame();
   const behind = {
     bookPrimer: 'liftingGloves', // the east road, as D1's mortar brings ink for a map
-    bookHerbalist: 'woodsMapCopy', // in the Woods, after D1
+    bookHerbalist: 'liftingGloves', // in the Woods, after D1 (no map needed since W34)
     bookChickenAlmanac: 'woodsMapCopy', // at the heart of the Woods, long before the highlands
     bookSmithsLedger: 'shockwave', // the lake island, when gear must be forged again
     bookTideTables: 'shockwave', // the shipwreck, when shells must be dug again

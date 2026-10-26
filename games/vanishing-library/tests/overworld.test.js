@@ -9,7 +9,7 @@ const FLIGHT_KEYS = ['chickenFlightShort', 'chickenFlightLong'];
 const HOWS = ['door', 'trunk', 'bush', 'rock', 'buried', 'pickup', 'chicken', 'stage', 'trapdoor'];
 
 // Keys that open tiles or regions, read from the map: gate tiles, rocks
-// (gloves), deep water (the raft), soft gates and chicken flight.
+// (gloves), deep water (the raft) and chicken flight.
 function gateKeys(VL) {
   const keys = new Set(FLIGHT_KEYS);
   for (const info of Object.values(VL.TILESETS.base)) {
@@ -17,7 +17,6 @@ function gateKeys(VL) {
     if (info.rock) keys.add('liftingGloves');
     if (info.water) keys.add('rafting');
   }
-  for (const region of Object.values(VL.REGIONS)) if (region.softGate) keys.add(region.softGate);
   return [...keys];
 }
 
@@ -58,16 +57,8 @@ function moves(VL, keys, { blocked = [], launch = null, flight: maxFlight = Infi
   const passable = (t) => Boolean(t) && !closed.has(t.key) && (
     !t.info.solid || t.info.cuttable || (t.info.gate && have.has(t.info.gate))
     || (t.info.rock && have.has('liftingGloves')) || (t.info.water && have.has('rafting')));
-  // A soft gate (the Woods' map, W15) lets anyone onto the region's edge
-  // and turns back every step from one of its screens to another.
-  const entering = (from, to) => {
-    const region = VL.regionOf(AREA, to.key);
-    const gate = region && VL.REGIONS[region].softGate;
-    return !gate || from.key === to.key || VL.regionOf(AREA, from.key) !== region || have.has(gate);
-  };
   const longest = Math.min(maxFlight, Math.max(0, ...Object.entries(FLIGHT).filter(([key]) => have.has(key)).map(([, n]) => n)));
   return (gx, gy) => {
-    const here = at(gx, gy);
     const flight = !launch || launch.has(`${gx},${gy}`) ? longest : 0;
     const out = [];
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -75,7 +66,7 @@ function moves(VL, keys, { blocked = [], launch = null, flight: maxFlight = Infi
         const next = at(gx + dx * n, gy + dy * n);
         if (!next) break;
         if (passable(next)) {
-          if (entering(here, next)) out.push([gx + dx * n, gy + dy * n]);
+          out.push([gx + dx * n, gy + dy * n]);
           break;
         }
         if (!next.info.flyOver || n > flight) break;
@@ -242,10 +233,7 @@ test('each region opens with exactly the keys and places its lock needs', () => 
   const VL = shared;
   const problems = [];
   for (const region of Object.values(VL.REGIONS)) {
-    // A soft-gated region's place is its heart (the Woods: the Hollow Oak's
-    // clearing); its edge is open to all.
-    const heart = region.softGate && VL.LOCKS[region.place]?.place;
-    const inRegion = (r) => (heart ? r.screen(heart.screen) : region.screens.some((key) => r.screen(key)));
+    const inRegion = (r) => region.screens.some((key) => r.screen(key));
     if (!region.place) {
       if (!inRegion(reach(VL, GATES))) problems.push(`${region.id} is out of reach`);
       continue;
@@ -266,7 +254,7 @@ test('the gates hold: boulders, the hidden path, the lake island, the chasms, th
   assert.ok(!noRaft.has('3,-3', 7, 4), 'the island is more than a long flight from every shore');
   assert.ok(!noRaft.screen('5,2'), 'the wreck too');
   const noMap = reach(VL, GATES.filter((key) => key !== 'woodsMapCopy'));
-  assert.deepEqual([...VL.REGIONS.woods.screens.filter((key) => noMap.screen(key))], ['5,-1'], 'without the copied map, only the edge of the Woods');
+  assert.deepEqual([...VL.REGIONS.woods.screens.filter((key) => !noMap.screen(key))], ['7,-2'], 'without the copied map, all the Woods but the Oak\'s clearing (W34)');
 });
 
 // ---------- spots ----------
@@ -428,7 +416,7 @@ test('the Woods: one route from the east road to the Hollow Oak, and a dead end 
       const next = at(gx + dx, gy + dy);
       const id = `${gx + dx},${gy + dy}`;
       // With the copied map, as the route is walked (its tree opens, W29).
-      const open = !next?.info.solid || next.info.gate === VL.REGIONS.woods.softGate;
+      const open = !next?.info.solid || next.info.gate === 'woodsMapCopy';
       if (!next || !open || !woods.has(next.key) || prev.has(id)) continue;
       prev.set(id, `${gx},${gy}`);
       queue.push([gx + dx, gy + dy]);
@@ -541,7 +529,7 @@ test('with the gates opened, the hero walks through the Woods maze and up to the
 
 test('README documents the overworld map, regions and spots', () => {
   const readme = read('README.md');
-  for (const word of ['## Overworld map', 'VL.defineRegion', 'VL.fillSpot', 'VL.markFound', 'VL.defineDecor', 'softGate', 'gate:']) {
+  for (const word of ['## Overworld map', 'VL.defineRegion', 'VL.fillSpot', 'VL.markFound', 'VL.defineDecor', 'gate:']) {
     assert.ok(readme.includes(word), `README mentions ${word}`);
   }
 });

@@ -145,3 +145,20 @@ test('a dungeon map closes with X, M or Esc, and its footer says X: BACK', () =>
     assert.equal(app.sceneId, 'play', `${key} closes the dungeon map`);
   }
 });
+
+// ---------- the Woods without the map ----------
+
+test('the progression table: the Woods\' paths need only the east road; the ore, the Herbalist and the Woods book lie on them; the Oak\'s clearing still needs the copy', () => {
+  const { VL } = loadGame();
+  assert.deepEqual(plain(VL.LOCKS.woodsPaths.needs), ['eastRoad']);
+  assert.equal(VL.LOCKS.woodsPaths.type, 'place');
+  for (const id of ['oreWoods', 'bookHerbalist', 'bookWoods']) {
+    assert.ok(VL.LOCKS[id].needs.includes('woodsPaths') && !VL.LOCKS[id].needs.includes('woods'), id);
+  }
+  assert.deepEqual(plain(VL.LOCKS.woods.needs), ['eastRoad', 'woodsMapCopy']);
+  const state = VL.newGame();
+  assert.equal(VL.LOCKS.woodsPaths.reached(state), false);
+  VL.place(state, ow('6,-1', 10, 3));
+  assert.equal(VL.LOCKS.woodsPaths.reached(state), true);
+  assert.deepEqual([...VL.solveProgression().problems], []);
+});

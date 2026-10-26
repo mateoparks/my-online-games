@@ -19,7 +19,7 @@
     bookCliffRoad: book(['cliffs']),
     bookLighthouse: book(['cliffs']),
     bookEastRoad: book(['eastRoad']),
-    bookWoods: book(['woods']),
+    bookWoods: book(['woodsPaths']),
     bookHighlands: book(['highlands', 'liftingGloves']),
     bookMeadowRock: book(['start', 'liftingGloves']),
   });

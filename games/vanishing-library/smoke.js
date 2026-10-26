@@ -1483,8 +1483,9 @@ async function main() {
     }
 
     // W15, the Whispering Woods and the Hollow Oak with real keys: a step
-    // deeper into the Woods without the copied map turning back, the same
-    // step with it (its popup, a blazed tree), the copy's "you are here",
+    // deeper into the Woods without the copied map leading on (W34), the
+    // pass below the Oak all trees, the same step with the map (its popup,
+    // no marks), the copy's "you are here",
     // every room, the rope from the big chest, the hook out and the pull
     // over the vault's pits, key B dragged off its island, and the
     // Thornback: up, flipped by the hook, hit and beaten. Saved as w15-*.png.
@@ -1529,11 +1530,16 @@ async function main() {
       const ow = (screen, tx, ty, facing = 'up') => ({ area: 'overworld', screen, tx, ty, facing });
 
       await oakGame(ow('5,-1', 3, 1), '');
-      await holdArrowUntil('Up', "VL.app.sceneId === 'popup'");
+      await holdArrowUntil('Up', "g.player.screen === '5,-2' && !g.transition");
       await sleep(200);
-      await shot('w15-woods-lost');
-      const lost = await see("[g.player.screen, VL.heroTile(g).ty, VL.currentPopup(g) && VL.currentPopup(g).id]");
-      if (lost.join() !== '5,-1,9,woodsLost') oakProblems.push(`a step deeper without the map: screen, row, popup = ${lost}`);
+      await shot('w15-woods-no-map');
+      const lost = await see("[g.player.screen, VL.app.sceneId]");
+      if (lost.join() !== '5,-2,play') oakProblems.push(`a step deeper without the map: screen, scene = ${lost}`);
+      await evaluate(`VL.place(VL.app.game, ${JSON.stringify(ow('7,-1', 7, 3))})`);
+      await holdArrowUntil('Up', 'false', 600);
+      await shot('w15-woods-pass-shut');
+      const shut = await see("[g.player.screen, VL.heroTile(g).ty, VL.tileAt('overworld', '7,-1', 7, 2)]");
+      if (shut.join() !== '7,-1,3,J') oakProblems.push(`the pass below the Oak without the map: screen, row, tile = ${shut}`);
 
       await oakGame(ow('5,-1', 3, 1), "g.items.woodsMapCopy = true; g.popups.seen.woodsWithMap = false;");
       await holdArrowUntil('Up', "VL.app.sceneId === 'popup'");
@@ -1545,8 +1551,8 @@ async function main() {
       await tapKey('KeyS');
       await evaluate(`VL.place(VL.app.game, ${JSON.stringify(ow('5,-1', 3, 2))})`);
       await sleep(250);
-      await shot('w15-woods-blaze');
-      if (!(await see("g.room.entities.some((e) => e.type === 'woodsBlaze')"))) oakProblems.push('no blazed tree on the Woods edge with the map');
+      await shot('w15-woods-edge-map');
+      if (await see("g.room.entities.some((e) => /blaze/i.test(e.type))")) oakProblems.push('a scribes\' mark on the Woods edge (W34 took them out)');
       await evaluate(`(() => { VL.place(VL.app.game, ${JSON.stringify(ow('6,-2', 7, 5))}); VL.app.setScene('copyView', { id: 'woodsMapCopy' }); })()`);
       await sleep(400);
       await shot('w15-woods-copy');
