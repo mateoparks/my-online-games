@@ -2893,9 +2893,15 @@ async function main() {
       if (await waitFor("g.room.entities.some((e) => e.type === 'dragon' && e.tint > 0)", 1000)) await shot('w35-dragon-hit-tint');
       else w35Problems.push('the metal sword\'s hit showed no tint');
 
+      // The third round's fan: the middle ball orange, the two beside it purple.
+      await stage({ area: 'lair', screen: '0,-3', tx: 7, ty: 6, facing: 'up' }, "Object.assign(g.items, { mirrorShield: true, metalSword: true }); g.hands = { mainHand: 'metalSword', offHand: 'mirrorShield' }; g.dungeons.lair.doors.d4BossDoor = true;");
+      await evaluate("(() => { const g = VL.app.game; const d = g.room.entities.find((e) => e.type === 'dragon'); Object.assign(d, { arriving: 0, rounds: 1, mode: 'perch', timer: 0 }); g.player.invuln = 99; })()");
+      if (await waitFor("g.room.entities.filter((e) => e.type === 'dragonFire' && e.wild && e.age > 0.25).length === 2", 6000)) await shot('w35-dragon-fan');
+      else w35Problems.push('no fan in the third round');
+
       w35Problems.push(...errors);
       if (w35Problems.length) failures += 1;
-      console.log(`${w35Problems.length ? 'FAIL' : 'ok  '} playtest notes 4 (dungeons): seed over the roots, Gran's hint, no heaps, thorny slime, lava, the Lair's guards, the Dragon's tint, ${path.join(outDir, 'w35-*.png')}`);
+      console.log(`${w35Problems.length ? 'FAIL' : 'ok  '} playtest notes 4 (dungeons): seed over the roots, Gran's hint, no heaps, thorny slime, lava, the Lair's guards, the Dragon's tint and its fan, ${path.join(outDir, 'w35-*.png')}`);
       for (const problem of w35Problems) console.log(`     ${problem}`);
     }
 

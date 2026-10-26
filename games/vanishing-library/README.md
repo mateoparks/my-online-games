@@ -867,7 +867,14 @@ title, then a kind show and the packed library (`w20-kind-show.png`,
 hero puppet, which fades (`w33-hero-over-puppet.png`), Esc in the ending's
 first fade-in, the ending with nothing in the HUD strip
 (`w33-ending-no-hud.png`), and the slingshot's ammo count inside its slot
-(`w33-ammo-in-slot.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
+(`w33-ammo-in-slot.png`). Then W35's dungeon notes, with real keys: a seed
+over the Hollow Oak's roots (`w35-seed-over-roots.png`), Gran Ottie's hint
+after a faint (`w35-gran-hint.png`), the Lighthouse with no heaps and a
+thorny slime, a step onto lava (`w35-lava.png`), the Lair's guards (a wood
+sword's "Clink!", the metal sword beats them, the cave opens), the hoard
+with no twinkle, the dazed Dragon untouched by wood and tinted by metal
+(`w35-dragon-hit-tint.png`), and the third round's fan (`w35-dragon-fan.png`).
+Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
 the beam, the Lens Crab's rounds, the Dragon's rounds, its fire through a
 metal shield, a stone head's fire bounced home, the slides up through the boss
 door into the Dragon's hoard (before and after the fight), down the trapdoor,
