@@ -453,6 +453,16 @@ test('the Big Shell Purse holds 50 whole shells (the first one 15), and its word
   VL.addResource(state, 'shells', 400);
   hold(VL, state, [], 0.05);
   assert.equal(state.inventory.shells, 50);
+  // The big purse has its own words: no talk of the small one or of finding a bigger one.
+  assert.ok(state.popups.queue.includes('bigPurseFull') || state.popups.seen.bigPurseFull);
+  assert.doesNotMatch(VL.POPUPS.bigPurseFull.text, /\b15\b|librarian|bigger/);
+  const fresh = playState(VL, ow('1,1', 8, 5));
+  fresh.popups.seen.controls = true;
+  fresh.items.shellPurse = true;
+  VL.addResource(fresh, 'shells', 60);
+  hold(VL, fresh, [], 0.05);
+  assert.ok(fresh.popups.queue.includes('bigPurseFull') || fresh.popups.seen.bigPurseFull);
+  assert.ok(!fresh.popups.queue.includes('purseFull') && !fresh.popups.seen.purseFull, 'never the small purse\'s words');
 });
 
 test('an old save holding more than 50 shells in the Big Shell Purse keeps them; nothing more goes in until he spends below 50', () => {

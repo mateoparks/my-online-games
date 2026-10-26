@@ -184,10 +184,18 @@
     title: 'Your purse is full!',
     text: `It only holds ${VL.TUNING.shellCap} whole shells. The librarian might know where to find a bigger one.`,
   });
+  // Not "holds 50": an old save can hold more than that until it spends.
+  VL.definePopup('bigPurseFull', {
+    title: 'Your Big Shell Purse is full!',
+    text: 'Not one more shell will fit. Spend a few at the shops to make room!',
+  });
   VL.shellCap = (state) => (VL.hasItem(state, 'shellPurse') ? VL.TUNING.shellCapPurse : VL.TUNING.shellCap);
-  // VL.addResource stops a gain here (W34; a system trimmed it before) and
-  // the popup says why, once.
-  VL.RESOURCE_CAPS.shells = { most: VL.shellCap, full: 'Your purse is full!', over: (state) => VL.showPopup(state, 'purseFull') };
+  // VL.addResource stops a gain here and the popup says why, once.
+  VL.RESOURCE_CAPS.shells = {
+    most: VL.shellCap,
+    full: 'Your purse is full!',
+    over: (state) => VL.showPopup(state, VL.hasItem(state, 'shellPurse') ? 'bigPurseFull' : 'purseFull'),
+  };
 
   // ---------- the thief ----------
 
