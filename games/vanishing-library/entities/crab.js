@@ -6,7 +6,7 @@
 // and beating all eleven fills the purse and the hearts, once. README "Crabs".
 (() => {
   VL.tune({
-    enemyCrab: { hp: 2, damage: 1, speed: 26, chargeSpeed: 46, sense: 56 },
+    enemyCrab: { hp: 2, damage: 1, speed: 26, chargeSpeed: 31, sense: 56 },
     crabsAngryAfter: 10,
     // Under the hero's 47 px/s, so he can always walk away from one.
     angryCrabSpeed: 34,

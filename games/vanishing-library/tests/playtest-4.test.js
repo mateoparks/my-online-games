@@ -16,11 +16,11 @@ test('the hero walks at about 2/3 of the W30 pace, and the Swiftfoot Boots keep 
   assert.ok(Math.abs(VL.heroSpeed(state) - w30Boots) < 1, `boots ${VL.heroSpeed(state)}`);
 });
 
-test('what chases the hero slowed with him, so a bat, a slime or a paper wad is still as easy to dodge as before', () => {
+test('what chases the hero slowed with him, so a bat, a slime, a paper wad or a charging crab is still as easy to dodge as before', () => {
   const { VL } = loadGame();
   const T = VL.TUNING;
   const ratio = T.heroSpeed / 70;
-  for (const [name, now, w30] of [['bat', T.enemyBat.speed, 44], ['slime hop', T.enemySlime.hopSpeed, 46], ['paper wad', T.bookwormSpitSpeed, 64]]) {
+  for (const [name, now, w30] of [['bat', T.enemyBat.speed, 44], ['slime hop', T.enemySlime.hopSpeed, 46], ['paper wad', T.bookwormSpitSpeed, 64], ['crab charge', T.enemyCrab.chargeSpeed, 46]]) {
     assert.ok(Math.abs(now / w30 - ratio) < 0.03, `${name}: ${now}`);
   }
 });
