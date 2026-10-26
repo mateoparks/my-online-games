@@ -57,7 +57,7 @@
     icon: 'sword-metal',
     sword: true,
     about: 'Hits twice as hard as wood.',
-    popup: { title: 'You got a Metal Sword!', text: 'It hits twice as hard as the wood one. Press Space to swing it.' },
+    popup: { title: 'You got a Metal Sword!', text: 'It hits twice as hard as the wood one. Press E to equip it.' },
     use(state, hand) {
       VL.swing(state, 'metalSword', hand);
     },

@@ -205,3 +205,15 @@ test('each dungeon\'s map brings its own "A dungeon map!" popup, so it shows in 
   // An old save that saw the first one (id dungeonMap) still sees the others.
   assert.equal(VL.DUNGEON_MAP_POPUPS.scriptorium, 'dungeonMap');
 });
+
+// ---------- the metal sword's popup ----------
+
+test('the metal sword\'s popup says it hits twice as hard and to equip it with E, not to swing it with Space', () => {
+  const { VL } = loadGame();
+  const { title, text } = VL.ITEMS.metalSword.popup;
+  assert.match(text, /twice as hard/);
+  assert.match(text, /\bE\b.*equip/);
+  assert.doesNotMatch(text, /Space|swing/);
+  assert.equal(VL.ART.popupLayout({ title, text }).overflow, false);
+  assert.deepEqual([...VL.ART.missingGlyphs(`${title}${text}`, 'normal')], []);
+});
