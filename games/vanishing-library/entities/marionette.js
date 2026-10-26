@@ -21,9 +21,14 @@
   });
   const T = VL.TUNING;
   VL.MARIONETTE_NOTE = 'Clonk! It\'s only painted wood. Cut the strings that hold it up!';
-  // Where the puppets dance (their centres): heads clear of her gallery,
-  // feet off the bottom wall, room to stand beside them at the walls.
-  VL.MARIONETTE_BOUNDS = { left: 56, right: 200, top: 78, bottom: 130 };
+  // Where the puppets dance (their centres): heads clear of her gallery, low
+  // enough to come level with him on the bottom row (where he walks in), room
+  // to stand beside them at the walls.
+  VL.MARIONETTE_BOUNDS = { left: 56, right: 200, top: 78, bottom: 152 };
+  // How far to his side a puppet hovers (centre to his feet, in x): far
+  // enough that its strings are out of his reach, so he has to step in to cut
+  // one (standing still and mashing doesn't win), near enough to step in fast.
+  VL.MARIONETTE_STANDOFF = { min: 52, max: 96 };
   // Giant: drawn at twice the size of the art below.
   const SCALE = 2;
 
@@ -174,10 +179,15 @@
 
   function pickTarget(state, m) {
     const b = VL.MARIONETTE_BOUNDS;
-    const hero = VL.heroCentre(state);
+    const { min, max } = VL.MARIONETTE_STANDOFF;
+    const px = state.player.x;
+    // Its own side of him (so it never drifts across his blade), unless the
+    // wall leaves no room there.
+    let side = Math.sign(m.cx - px) || 1;
+    if (px + side * min < b.left || px + side * min > b.right) side = -side;
     m.target = {
-      x: VL.clamp(hero.x + (VL.random(m) - 0.5) * 120, b.left, b.right),
-      // Its chest level with him, so standing beside it puts the blade by its hands.
+      x: VL.clamp(px + side * (min + VL.random(m) * (max - min)), b.left, b.right),
+      // Its chest level with him, so stepping in beside it puts the blade by its hands.
       y: VL.clamp(state.player.y + 4 + (VL.random(m) - 0.5) * 20, b.top, b.bottom),
     };
   }
@@ -331,7 +341,12 @@
         for (const m of VL.puppetsUp(state)) {
           if (m.stringSwing === swing) continue;
           const bottom = VL.stringBottom(m) + VL.STRING_SLACK.y;
-          const hits = m.strings.filter((s) => !s.cut && Math.abs(m.cx + s.dx - box.x) * 2 < box.w + 2 * VL.STRING_SLACK.x && box.y - box.h / 2 < bottom);
+          const through = m.strings.filter((s) => Math.abs(m.cx + s.dx - box.x) * 2 < box.w + 2 * VL.STRING_SLACK.x && box.y - box.h / 2 < bottom);
+          if (!through.length) continue;
+          // A swing through where a cut string hung catches the one left (the
+          // puppet sags towards that side), so a kid who keeps to one side wins.
+          const whole = m.strings.filter((s) => !s.cut);
+          const hits = through.some((s) => !s.cut) ? through.filter((s) => !s.cut) : whole;
           if (!hits.length) continue;
           const string = hits.sort((a, b) => Math.abs(m.cx + a.dx - state.player.x) - Math.abs(m.cx + b.dx - state.player.x))[0];
           string.cut = true;

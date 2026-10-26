@@ -295,6 +295,7 @@
     if (!away) return;
     if (room.area === 'overworld' && room.screen === VL.FINALE.square) {
       room.entities = room.entities.filter((e) => !(e.type === 'npc' && e.id === 'librarianWife'));
+      for (const e of room.entities) if (e.type === 'decor' && e.art === 'puppetBooth') e.empty = true;
       return;
     }
     if (room.area !== AREA) return;

@@ -881,7 +881,8 @@ with either or both states at R / (R + G + B) of 0.8 or more). WCAG 2.1 and 2.2
 replaced it with a CIE 1976 UCS chromaticity change over 0.2; that test isn't
 added, since every real scene scores 0% on the red check. A control run with the steady layers
 off must fail the first two, and a red-and-black strobe over 6% of the
-canvas the red one. It runs for 360 s at most (about twice its run time). A
+canvas the red one. It runs for 360 s at most (about 1.45 times its run time
+of about 250 s alone). A
 test file that runs no tests, and an `async` test function, both fail the
 node run.
 
@@ -2090,7 +2091,7 @@ through the credits and Continue.
   `librarianFinale`) stands in each room below (`VL.FINALE.librarianAt`), and
   he is in his library as always. Mrs. Fenwick is off her stage from the
   Dragon's fall until she is forgiven (S at the stage: "The stage is
-  empty"); in the hall she works the puppets from the gallery (decor
+  empty", and the booth decor gets `empty`, so no little puppets bob in it); in the hall she works the puppets from the gallery (decor
   `wsPuppeteer`) and comes down to the floor in the pause after the last one
   falls (`VL.wifeComesDown`, beside the hero; on later visits she is there
   already; talk `wifeFinale`).
@@ -2099,14 +2100,19 @@ through the credits and Continue.
   after the hero, wind up (a steady shake) and attack: the hero puppet lunges,
   the dragon puffs paper fire, the librarian throws books (both small, so a
   shield blocks them), half a heart each. They hover with their chests level
-  with him. The sword only clonks (hp refilled,
+  with him (down to the bottom row, where he walks in), each on its own side
+  of him and `VL.MARIONETTE_STANDOFF` away, so their strings are out of his
+  reach until he steps in: standing still and mashing doesn't win. The sword
+  only clonks (hp refilled,
   no hurt blink; after a swing that cut nothing, `VL.MARIONETTE_NOTE` once a
   visit). Each hangs from two strings (`VL.PUPPET_SHAPES`): a sword swing
   whose box crosses a string above its hand, or within `VL.STRING_SLACK` of it
   (the hand and wrist, and a little either side), cuts it, one string per
   puppet a swing, the nearest. So a swing from anywhere beside a puppet, his
   feet between its shoulders and its belt, cuts the string on that side
-  (`VL.STRING_REACH` is the middle of that window). A cut puppet jerks up out of reach (harmless for
+  (`VL.STRING_REACH` is the middle of that window). Once one string is cut, a
+  swing through where it hung cuts the other, so a kid who always comes at a
+  puppet from the same side still wins. A cut puppet jerks up out of reach (harmless for
   `marionetteJerkSeconds`) and sags slower; with both cut it drops into a heap.
   All three down sets `marionettes` (counted against the map's three, so a
   room the playthrough cleared of enemies never counts). Later visits show the

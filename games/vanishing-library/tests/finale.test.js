@@ -62,6 +62,38 @@ test('the trapdoor stays shut until the Dragon is beaten, then the square shows 
   assert.equal(VL.currentPopup(drive.state).text, VL.FINALE_WORDS.emptyStage);
 });
 
+// The palette colours a decor painter fills with.
+function coloursPainted(VL, entity) {
+  const used = new Set();
+  const target = { fillStyle: '', fillRect() { used.add(target.fillStyle); } };
+  const ctx = new Proxy(target, { get: (o, p) => (p in o ? o[p] : () => {}) });
+  for (const t of [0, 0.5, 1]) VL.DECOR[entity.art](ctx, 0, 0, t, entity);
+  return used;
+}
+const booth = (drive) => drive.state.room.entities.find((e) => e.type === 'decor' && e.art === 'puppetBooth');
+
+test('while she is away the booth in the square stands empty: no little puppets bobbing in it', () => {
+  const puppetColours = (VL) => ['leaf', 'tunic'].map((name) => VL.ART.color(name));
+  const square = (t) => {
+    t.VL.place(t.drive.state, { area: 'overworld', screen: t.VL.FINALE.square, tx: 3, ty: 5, facing: 'up' });
+    t.drive.update();
+    const { room } = t.drive.state;
+    assert.ok(booth(t.drive), `the booth in ${room.area} ${room.screen}`);
+    return coloursPainted(t.VL, booth(t.drive));
+  };
+  const before = fromSave({ edit: (save) => { delete save.dungeons.lair.boss; } });
+  for (const c of puppetColours(before.VL)) assert.ok(square(before).has(c), 'her puppets are in the booth before the Dragon');
+  for (const beat of [null, 'trapdoorOpen', 'marionettes', 'finale:shown']) {
+    const t = fromSave(beat ? { edit: withBeats(beat) } : {});
+    const used = square(t);
+    for (const c of puppetColours(t.VL)) assert.ok(!used.has(c), `no puppets in the booth (${beat ?? 'the Dragon beaten'})`);
+    assert.equal(npcs(t.drive, 'librarianWife').length, 0);
+    t.VL.render(fakeContext(), t.app, 1);
+  }
+  const after = fromSave({ name: 'save-v1-W20.json' });
+  for (const c of puppetColours(after.VL)) assert.ok(square(after).has(c), 'back with her once forgiven (the world after the ending)');
+});
+
 test('walking onto the open trapdoor climbs down to the workshop, and the ladder leads back up beside it', () => {
   const { VL, drive } = fromSave({ edit: withBeats('trapdoorOpen') });
   drive.walkTo({ area: 'overworld', screen: '2,0', tx: 3, ty: 4 });
@@ -326,6 +358,103 @@ function kidSwingsAt(puppet) {
   assert.ok(m.strings.some((s) => s.cut), `${puppet}: no string cut after ${swings} swings`);
   assert.ok(swings <= 4, `${puppet}: ${swings} swings`);
 }
+
+// A kid over the whole fight: walks roughly to `side` of the nearest puppet
+// still up (-1 its left, 1 its right, 'near' whichever is nearer) and level
+// with it (or, kept on row `row`, walks only sideways and waits for it to come
+// level), faces it, swings, and waits half a second. Returns the swings it
+// took to win (or Infinity).
+function kidFight({ side, row, seconds = 60 }) {
+  const t = hall();
+  const { VL, drive } = t;
+  const s = drive.state;
+  if (row !== undefined) s.player.y = VL.tileCenter(7, row).y;
+  let swings = 0;
+  for (let frame = 0; frame < 60 * seconds && !s.flags.marionettes; frame += 1) {
+    s.player.invuln = 99;
+    s.hp = Math.max(s.hp, 3);
+    if (drive.app.sceneId !== 'play') {
+      drive.closePopups();
+      continue;
+    }
+    const p = s.player;
+    const m = VL.puppetsUp(s).sort((a, b) => Math.hypot(a.cx - p.x, a.cy - p.y) - Math.hypot(b.cx - p.x, b.cy - p.y))[0];
+    const k = side === 'near' ? (p.x < m.cx ? -1 : 1) : side;
+    const dx = m.cx + k * 32 - p.x;
+    const dy = m.cy - p.y;
+    if (Math.abs(dx) > 6 || Math.abs(dy) > (row === undefined ? 6 : BESIDE.feet[1])) {
+      const held = [];
+      if (Math.abs(dx) > 3) held.push(dx > 0 ? 'right' : 'left');
+      if (Math.abs(dy) > 3 && row === undefined) held.push(dy > 0 ? 'down' : 'up');
+      drive.update(VL.actions({ held }));
+      continue;
+    }
+    drive.update(VL.actions({ held: [k < 0 ? 'right' : 'left'] }));
+    drive.press('mainHand');
+    swings += 1;
+    drive.hold([], 0.5);
+  }
+  return s.flags.marionettes ? swings : Infinity;
+}
+
+test('a kid who always comes at the puppets from the same side still wins, in a few swings', () => {
+  for (const side of [-1, 1, 'near']) {
+    const swings = kidFight({ side });
+    assert.ok(swings <= 12, `from ${side}: ${swings} swings`);
+  }
+});
+
+test('a swing through where a cut string hung cuts the one left, from that side again', () => {
+  const t = hall();
+  const { drive } = t;
+  for (const m of puppets(drive)) {
+    swingAt(t, m, -1);
+    m.jerk = 0;
+    swingAt(t, m, -1);
+    assert.deepEqual(plain(m.strings.map((s) => s.cut)), [true, true], m.puppet);
+    assert.equal(m.fallen, true);
+  }
+  assert.equal(drive.state.flags.marionettes, true);
+});
+
+test('on the bottom rows, where he walks in, a swing beside a puppet cuts its string as anywhere else', () => {
+  // The kid never steps up off the row: the puppets come down level with him.
+  for (const row of [8, 9]) {
+    const swings = kidFight({ side: 'near', row });
+    assert.ok(swings <= 12, `row ${row}: ${swings} swings`);
+  }
+  const t = hall();
+  const { VL, drive } = t;
+  t.freeze();
+  const m = puppets(drive).find((p) => p.puppet === 'hero');
+  const feet = VL.tileCenter(7, 9).y;
+  m.cy = VL.MARIONETTE_BOUNDS.bottom;
+  m.arriving = 0;
+  drive.state.player.invuln = 99;
+  Object.assign(drive.state.player, { x: m.cx - 32, y: feet, facing: 'right' });
+  drive.press('mainHand');
+  drive.hold([], 0.35);
+  assert.deepEqual(plain(m.strings.map((s) => s.cut)), [true, false], 'standing on row 9, the puppet as low as it comes');
+});
+
+test('standing still and mashing never wins: held in place anywhere in the hall, a minute of swings', () => {
+  for (const [x, y, facing] of [[40, 100, 'right'], [128, 100, 'left'], [128, 130, 'right'], [216, 120, 'left'], [128, 156, 'right'], [60, 156, 'right']]) {
+    const t = hall();
+    const { VL, drive } = t;
+    const s = drive.state;
+    for (let frame = 0; frame < 60 * 60 && !s.flags.marionettes; frame += 1) {
+      if (drive.app.sceneId !== 'play') {
+        drive.closePopups();
+        continue;
+      }
+      s.hp = Math.max(s.hp, 6);
+      Object.assign(s.player, { x, y, facing });
+      if (frame % 15 === 0) drive.press('mainHand');
+      drive.update(VL.actions({ held: [] }));
+    }
+    assert.ok(!s.flags.marionettes, `won by mashing at ${x},${y} facing ${facing}`);
+  }
+});
 
 // ---------- the confession, the forgiveness ----------
 
