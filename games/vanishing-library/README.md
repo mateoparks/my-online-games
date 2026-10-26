@@ -1345,9 +1345,11 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   (`bookLairA`, by the lair's door: "Adventures in learning! Or maybe just
   adventures. Who knows?"), and spread the rest, ids unchanged so old saves'
   found flags still match: two in the Woods (5,-1 and the wrong turn 6,0),
-  `bookHighlands` under a rock at the cliff base (-1,0), two in the lake
-  island's shallows (off the sand, so its eleven digging spots stay), four
-  below the wreck's deck (hold, bilge, cabin). That makes 19 books before
+  `bookHighlands` under a rock at the cliff base (-1,0), two below the
+  wreck's deck (bilge, cabin), and four in the Lighthouse, a room apiece
+  (entrance, stairwell, store room, cistern: on the way to the binding, so a
+  kid who skips the optional lake island still finds them). No screen holds
+  more than two books (`tests/playtest-4.test.js`). That makes 19 books before
   the shockwave (the 10-book heart there, the purse after), 29 before the
   binding (the purse at 20 well before its 40 shells) and 35 in all. A later item (W18's Lighthouse,
   W19's lair) may add more the same way: a spot, a lock supplying

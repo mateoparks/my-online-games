@@ -316,15 +316,24 @@ const regionOfSpot = (VL, id) => {
   return spot.area;
 };
 
-test('only two books lie in the highlands: A Child\'s Book of Dragons and Ashton Co-op; the rest are spread out (the Woods and the shipwreck have a few more)', () => {
+// The ids the W30 highlands books kept when W34 moved them down.
+const FROM_THE_HIGHLANDS = ['bookHighShelfA', 'bookHighShelfB', 'bookHighScree', 'bookHighGapA', 'bookHighGapB', 'bookHighPathA', 'bookHighPathB', 'bookHighlands', 'bookLairB'];
+
+test('only two books lie in the highlands: A Child\'s Book of Dragons and Ashton Co-op; the rest are spread out, a couple on the shipwreck and a couple in the Woods, never piled on one screen', () => {
   const { VL } = loadGame();
   const by = {};
-  for (const id of bookLocks(VL)) (by[regionOfSpot(VL, id)] ||= []).push(id);
+  const onScreen = {};
+  for (const id of bookLocks(VL)) {
+    (by[regionOfSpot(VL, id)] ||= []).push(id);
+    (onScreen[`${VL.SPOTS[id].area} ${VL.SPOTS[id].screen}`] ||= []).push(id);
+  }
   assert.deepEqual(by.highlands.sort(), ['bookDragons', 'bookLairA']);
-  assert.ok(by.woods.length >= 5, `woods: ${by.woods}`);
-  assert.ok(by.shipwreck.length + (by.wreck || []).length >= 5, `shipwreck: ${by.shipwreck} / ${by.wreck}`);
-  // No other place holds more than the shipwreck.
-  for (const [region, ids] of Object.entries(by)) assert.ok(ids.length <= 6, `${region}: ${ids}`);
+  const moved = (ids = []) => ids.filter((id) => FROM_THE_HIGHLANDS.includes(id));
+  assert.equal(moved([...by.shipwreck, ...(by.wreck || [])]).length, 2, `shipwreck: ${by.shipwreck} / ${by.wreck}`);
+  assert.equal(moved(by.woods).length, 2, `woods: ${by.woods}`);
+  for (const [screen, ids] of Object.entries(onScreen)) assert.ok(ids.length <= 2, `${screen}: ${ids}`);
+  for (const [region, ids] of Object.entries(by)) assert.ok(ids.length <= 5, `${region}: ${ids}`);
+  assert.ok(by.shipwreck.length + (by.wreck || []).length <= 4, `shipwreck: ${by.shipwreck} / ${by.wreck}`);
 });
 
 test('the Chicken Keeper\'s Almanac is on the shipwreck\'s deck now, and the Captain\'s Logbook took its trunk by the Hollow Oak; the librarian\'s hint follows it', () => {

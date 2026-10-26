@@ -164,9 +164,6 @@
         { type: 'lockedDoor', id: 'wreckDoor', kind: 'small', x: 15, y: 5, lock: 'wreckDoor' },
         { type: 'crab', x: 3, y: 4 },
         { type: 'crab', x: 12, y: 7 },
-        // W34: books down from the highlands (ids kept for old saves).
-        trunk('bookHighScree', 14, 3),
-        trunk('bookLairB', 1, 9),
       ],
     },
     // The bilge: seawater across the hold. A post on each side, so the way

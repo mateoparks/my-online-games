@@ -86,6 +86,8 @@
 
   const heap = (x, y) => ({ type: 'shellHeap', x, y });
   const lamp = (id, x, y) => ({ type: 'glowLamp', id, x, y });
+  // Books down from the highlands (ids kept for old saves).
+  const trunk = (id, x, y) => ({ type: 'spot', id, x, y, how: 'trunk', by: 'W11', lock: id });
 
   VL.addScreens(DUNGEON, {
     // The entrance: the statue, the door out, a heap of broken shells.
@@ -104,6 +106,7 @@
         '#######m########',
       ],
       entities: [
+        trunk('bookHighPathB', 13, 8),
         { type: 'door', x: 7, y: 10, to: { area: 'overworld', screen: '-1,1', tx: 7, ty: 5, facing: 'down' } },
         { type: 'saveStatue', x: 3, y: 2 },
         { type: 'sign', x: 10, y: 2, title: 'The Lighthouse', text: 'The keeper\'s old lamps still line the dark rooms. Hold your Glowstone up to one (S) and it will burn again.' },
@@ -149,6 +152,7 @@
         '#######_########',
       ],
       entities: [
+        trunk('bookHighScree', 14, 9),
         { type: 'shellTarget', id: 'd3TargetStair', x: 2, y: 1 },
         { type: 'shutter', id: 'd3ShutterStair', x: 7, y: 0, open: { switch: 'd3TargetStair' } },
         { type: 'lockedDoor', id: 'd3DoorA', kind: 'small', x: 15, y: 5, lock: 'd3DoorA' },
@@ -172,6 +176,7 @@
         '#######_########',
       ],
       entities: [
+        trunk('bookLairB', 2, 9),
         { type: 'lockedDoor', id: 'd3DoorA', kind: 'small', x: 0, y: 5, lock: 'd3DoorA' },
         { type: 'bigChest', id: 'd3SlingChest', x: 5, y: 2, item: 'slingshot' },
         { type: 'shellTarget', id: 'd3TargetStore', x: 12, y: 1 },
@@ -196,6 +201,7 @@
         '################',
       ],
       entities: [
+        trunk('bookHighPathA', 2, 5),
         { type: 'beamSource', x: 1, y: 2, dir: 'right' },
         { type: 'beamMirror', x: 10, y: 2, turn: '/' },
         { type: 'beamMirror', x: 10, y: 8, turn: '\\' },

@@ -127,7 +127,7 @@ function chickenAlmanacBook(drive) {
 // so books from trunks along the way, nearest places first, until there
 // are enough to hand in.
 const PURSE_TRUNKS = ['bookPrimer', 'bookHighShelfB', 'bookHerbalist', 'bookWoods', 'bookWreckDeck', 'bookHighShelfA', 'bookLighthouse',
-  'bookLakeIsland', 'bookHighPathA', 'bookHighPathB', 'bookHighScree', 'bookLairB', 'bookHighGapB'];
+  'bookHighPathB', 'bookHighScree', 'bookLairB', 'bookHighPathA', 'bookLakeIsland', 'bookHighGapB'];
 function booksForThePurse(drive) {
   const { VL } = drive;
   const { shellPurse } = VL.TUNING.libraryRewards;

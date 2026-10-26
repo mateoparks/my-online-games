@@ -32,8 +32,12 @@
   late(['highlands'], ['bookLairA']);
   late(['woodsPaths'], ['bookHighShelfA', 'bookHighShelfB']);
   late(['woods'], ['bookWreckDeck']);
-  late(['lakeIsland'], ['bookLakeIsland', 'bookHighPathA', 'bookHighPathB']);
-  late(['shipwreck'], ['bookHighScree', 'bookLairB']);
+  late(['lakeIsland'], ['bookLakeIsland']);
+  // In the Lighthouse, a room apiece: on the way to the binding, so a kid
+  // who skips the lake island still finds them before the purse is needed.
+  late(['lighthouseEntered'], ['bookHighPathB', 'bookHighScree']);
+  late(['d3DoorA'], ['bookLairB']);
+  late(['slingshot'], ['bookHighPathA']);
   late(['shipwreck', 'grapplingRope'], ['bookHighGapA']);
   late(['shipwreck', 'wreckDoor'], ['bookHighGapB']);
   for (const id of ['hiddenBookSealed', 'bookHerbalist', 'bookTideTables', 'bookSmithsLedger', 'bookPrimer', 'bookDragons', 'bookChickenAlmanac']) {
