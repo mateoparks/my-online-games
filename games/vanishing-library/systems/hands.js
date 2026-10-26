@@ -206,6 +206,7 @@
 
   // The HUD shows whole shells and what each hand holds.
   VL.ART.hudSource('shells', (state) => state.inventory?.shells ?? 0);
+  VL.ART.hudSource('brokenShells', (state) => state.inventory?.brokenShells ?? 0);
   VL.ART.hudSource('mainHand', (state) => VL.ITEMS[VL.heldItem(state, 'mainHand')]?.icon || null);
   VL.ART.hudSource('offHand', (state) => VL.ITEMS[VL.heldItem(state, 'offHand')]?.icon || null);
 })();

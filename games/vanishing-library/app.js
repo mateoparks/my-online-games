@@ -95,6 +95,9 @@ VL.createApp = function createApp({ storage } = {}) {
       }
       game.dirty = !ok;
       app.saveFailed = !ok;
+      // A save point's note says "saved" only once it is.
+      const note = game.dungeonNote;
+      if (note?.saving) note.text = ok ? note.saving.saved : note.saving.failed;
       return ok;
     },
     quit() {

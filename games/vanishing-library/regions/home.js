@@ -129,6 +129,7 @@ VL.addScreens('overworld', {
 
 // The hut's lantern: where a finished dungeon hands its save point on to.
 VL.HOME_SAVE = { area: 'hut', screen: '0,0', tx: 2, ty: 2, facing: 'down' };
+VL.nameWakePlace(VL.HOME_SAVE, 'at home');
 
 VL.addScreens('hut', {
   '0,0': {

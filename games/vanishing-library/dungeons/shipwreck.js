@@ -221,6 +221,7 @@
   // harbour, so no Continue or faint starts below deck out at sea (as a
   // beaten dungeon's warp does, README "The boss room").
   VL.WRECK_HOME = { area: 'overworld', screen: '2,1', tx: 8, ty: 7, facing: 'down' };
+  VL.nameWakePlace(VL.WRECK_HOME, 'by the harbour');
   VL.moveSavePoint((state, point) => (point.area === AREA && VL.spotFound(state, 'pageShipwreck') ? VL.WRECK_HOME : null));
 
   VL.defineDungeon('wreck', {
