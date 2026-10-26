@@ -73,7 +73,7 @@
     'I read this to my wife when we were young. She never did like the ending.',
     'Dragons breathe fire, but here\'s a funny thing: they can\'t stand their own flames! Bounce them back, and whoosh!',
     'Something shiny might do the trick. A mirror, perhaps? And while it\'s dazed, only good strong metal will scratch its scales.',
-  ], popupOnRead('dragonsRead', { title: 'A Child\'s Book of Dragons', text: 'Dragons can\'t stand their own fire. Something shiny might bounce it back. Only metal scratches their scales.' }));
+  ], popupOnRead('dragonsRead', { title: 'A Child\'s Book of Dragons', text: 'Dragons can\'t stand their own fire. Something shiny might bounce it back. Only metal can hurt one.' }));
   titled('bookChickenAlmanac', 'The Chicken Keeper\'s Almanac', 'goldLight', 'reading-chicken', [
     'Oh, I love this one! Chickens are much stronger than they look.',
     'It says a good chicken has been known to carry a person clear across a gap! Stand next to one and press F.',

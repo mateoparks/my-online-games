@@ -15,7 +15,7 @@
 (() => {
   const { rect } = VL.ART;
   const DUNGEON = 'lair';
-  const SWORD_WORDS = 'A great rumbling snore comes from up there! Better bring a sword.';
+  const SWORD_WORDS = 'A great snore comes from up there! Better bring a metal sword.';
 
   // ---------- tiles ----------
 
@@ -221,7 +221,7 @@
         '#######_########',
       ],
       entities: [
-        { type: 'lockedDoor', id: 'd4BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd4BossDoor', oneWay: true, wants: { items: ['woodSword', 'metalSword'], note: SWORD_WORDS } },
+        { type: 'lockedDoor', id: 'd4BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd4BossDoor', oneWay: true, wants: { items: ['metalSword'], note: SWORD_WORDS } },
         { type: 'lockedDoor', id: 'd4DoorB', kind: 'small', x: 15, y: 5, lock: 'd4DoorB' },
         { type: 'bat', x: 10, y: 4 },
         { type: 'bat', x: 4, y: 6 },
@@ -367,9 +367,37 @@
 
   // ---------- the way in ----------
 
+  // Two thorny guards hold the cave mouth until the metal sword beats them,
+  // for good, so he learns what the Dragon needs before its gate shuts.
+  VL.LAIR_GUARDS = { screen: '-1,-5', at: [[6, 6], [8, 6]] };
+  VL.LAIR_GUARD_WORDS = 'Two thorny guards stand in the cave mouth, and they won\'t let you by!';
   VL.fillSpot('lairDoor', {
     type: 'door',
+    shutUntil: 'lairGuards',
+    locked: VL.LAIR_GUARD_WORDS,
     to: { area: DUNGEON, screen: '0,0', tx: 7, ty: 9, facing: 'up' },
+  });
+  const atLairMouth = (room) => room.area === 'overworld' && room.screen === VL.LAIR_GUARDS.screen;
+  VL.onRoomBuilt((state) => {
+    const room = state.room;
+    if (!atLairMouth(room)) return;
+    // A save from before the guards that already beat the Dragon finds the way clear.
+    if (!state.flags.lairGuards && VL.bossBeaten(state, DUNGEON)) state.flags.lairGuards = true;
+    if (state.flags.lairGuards) return;
+    room.lairGuards = VL.LAIR_GUARDS.at.map(([x, y]) => Object.assign(VL.spawnEnemy(state, 'spitter', x, y), { tough: true, guard: true }));
+  });
+  // Only guards really beaten (hp run out) count, so a room the playthrough
+  // cleared of enemies never opens the door.
+  VL.defineSystem('lairGuards', {
+    order: 32,
+    update(state) {
+      const room = state.room;
+      if (!atLairMouth(room) || state.flags.lairGuards || !room.lairGuards?.every((g) => g.hp <= 0)) return;
+      state.flags.lairGuards = true;
+      VL.earned(state);
+      const door = room.entities.find((e) => e.type === 'door' && e.shutUntil === 'lairGuards');
+      if (door) door.solid = false;
+    },
   });
 
   VL.LAIR_SWORD_WORDS = SWORD_WORDS;
@@ -407,9 +435,15 @@
   const door = (id) => (state) => Boolean(state.dungeons[DUNGEON]?.doors[id]);
   const found = (id) => (state) => VL.spotFound(state, id);
   const keys = `smallKey:${DUNGEON}`;
-  const anySword = ['woodSword', 'metalSword'];
 
-  VL.defineLock('dragonsLairEntered', { ...VL.LOCKS.dragonsLairEntered, place: { area: DUNGEON, screen: '0,0' }, reached: (state) => Boolean(state.visited[`${DUNGEON}:0,0`]) });
+  VL.defineLock('lairGuards', { type: 'flag', needs: ['highlands', 'metalSword'], doc, reached: (state) => Boolean(state.flags.lairGuards) });
+  VL.defineLock('dragonsLairEntered', {
+    ...VL.LOCKS.dragonsLairEntered,
+    needs: ['highlands', 'lairGuards'],
+    replan: 'thorny guards that only the metal sword beats hold the cave mouth (W35)',
+    place: { area: DUNGEON, screen: '0,0' },
+    reached: (state) => Boolean(state.visited[`${DUNGEON}:0,0`]),
+  });
   VL.defineLock('d4KeyA', { type: 'item', needs: ['dragonsLairEntered'], supplies: { [keys]: 1 }, doc, reached: found('d4KeyA') });
   VL.defineLock('d4DoorA', { needs: ['dragonsLairEntered'], consumes: { [keys]: 1 }, doc, reached: door('d4DoorA') });
   VL.defineLock('mirrorShield', {
@@ -422,12 +456,12 @@
   VL.defineLock('d4KeyB', { type: 'item', needs: ['mirrorShield'], supplies: { [keys]: 1 }, doc, reached: found('d4KeyB') });
   VL.defineLock('d4DoorB', { needs: ['mirrorShield'], consumes: { [keys]: 1 }, doc, reached: door('d4DoorB') });
   VL.defineLock('d4BossKey', { type: 'item', needs: ['d4DoorB'], gives: [`bossKey:${DUNGEON}`], doc, reached: found('d4BossKey') });
-  VL.defineLock('d4BossDoor', { needs: ['mirrorShield', `bossKey:${DUNGEON}`, anySword], doc, reached: door('d4BossDoor') });
+  VL.defineLock('d4BossDoor', { needs: ['mirrorShield', `bossKey:${DUNGEON}`, 'metalSword'], doc, reached: door('d4BossDoor') });
   VL.defineLock('d4Boss', {
     ...VL.LOCKS.d4Boss,
-    needs: ['dragonsLairEntered', 'mirrorShield', anySword, 'd4BossDoor'],
+    needs: ['dragonsLairEntered', 'mirrorShield', 'metalSword', 'd4BossDoor'],
     supplies: { books: VL.HOARD_BOOKS.length },
-    replan: 'the boss room lies behind the boss door, and its hoard spills a bundle of books (as the Bookworm\'s)',
+    replan: 'the boss room lies behind the boss door, its scales take only the metal sword (W35), and its hoard spills a bundle of books (as the Bookworm\'s)',
     reached: (state) => VL.bossBeaten(state, DUNGEON),
   });
 })();

@@ -189,14 +189,15 @@
       state.events.push({ type: 'dragonTink' });
       return true;
     },
-    // Its hp is refilled on every hit; only a hit while it is dazed takes
-    // `life`. `hurt` is cleared so the framework's hurt blink never shows.
-    onHit(state, dragon) {
+    // Its hp is refilled on every hit; only a metal sword (TUNING.toughSwords)
+    // while it is dazed takes `life`. `hurt` is cleared so the framework's
+    // hurt blink never shows.
+    onHit(state, dragon, weapon) {
       const damage = VL.ENEMIES.dragon.hp - dragon.hp;
       dragon.hp = VL.ENEMIES.dragon.hp;
       dragon.hurt = 0;
       dragon.shake = 0.25;
-      if (dragon.mode !== 'dazed') {
+      if (dragon.mode !== 'dazed' || !VL.TUNING.toughSwords.includes(weapon)) {
         state.events.push({ type: 'dragonTink' });
         return;
       }

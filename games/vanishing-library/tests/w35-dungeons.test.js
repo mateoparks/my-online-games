@@ -327,3 +327,150 @@ test('lava opens no new ground: the floor reached over lava is the floor reached
   assert.deepEqual(reach(true), reach(false));
   assert.ok(reach(false).length > 500);
 });
+
+// ---------- 5. the Dragon wants the metal sword; thorny guards at the cave mouth ----------
+
+const fs = require('node:fs');
+const path = require('node:path');
+const { memoryStorage } = require('./harness');
+
+function dazedDragon(sword) {
+  const { VL, state } = inBossRoom('lair');
+  VL.dungeonState(state, 'lair').doors.d4BossDoor = true;
+  state.items[sword] = true;
+  state.items.mirrorShield = true;
+  state.hands = { mainHand: sword, offHand: 'mirrorShield' };
+  hold(VL, state, [], 0.1);
+  const dragon = state.room.entities.find((e) => e.type === 'dragon');
+  dragon.arriving = 0;
+  VL.ENEMIES.dragon.onFire(state, dragon, { owner: dragon });
+  assert.equal(dragon.mode, 'dazed');
+  return { VL, state, dragon };
+}
+
+test('the wood sword never hurts the Dragon, not even dazed, and says nothing; the metal sword does', () => {
+  {
+    const { VL, state, dragon } = dazedDragon('woodSword');
+    for (let i = 0; i < 6; i += 1) {
+      dragon.hurt = 0;
+      VL.hitEnemy(state, dragon, VL.TUNING.swordDamage.woodSword, VL.heroCentre(state), 'woodSword');
+    }
+    assert.deepEqual([dragon.life, dragon.rounds, dragon.mode], [VL.TUNING.dragonRoundLife, VL.TUNING.dragonRounds, 'dazed']);
+    assert.equal(state.message, null, 'no popup');
+    assert.equal(state.dungeonNote, null, 'no note');
+    VL.hitEnemy(state, dragon, VL.TUNING.liftThrowDamage, VL.heroCentre(state));
+    assert.equal(dragon.life, VL.TUNING.dragonRoundLife, 'nor a thrown pot');
+  }
+  {
+    const { VL, state, dragon } = dazedDragon('metalSword');
+    VL.hitEnemy(state, dragon, VL.TUNING.swordDamage.metalSword, VL.heroCentre(state), 'metalSword');
+    assert.equal(dragon.rounds, VL.TUNING.dragonRounds - 1, 'one metal hit ends the round');
+  }
+});
+
+function lairMouth({ sword = 'metalSword', flags = {} } = {}) {
+  const { VL } = loadGame();
+  const state = VL.createGame();
+  Object.assign(state.flags, flags);
+  state.items[sword] = true;
+  state.hands = { mainHand: sword, offHand: null };
+  VL.place(state, { area: 'overworld', screen: '-1,-5', tx: 7, ty: 8, facing: 'up' });
+  state.popups.queue.length = 0;
+  const guards = () => state.room.entities.filter((e) => e.guard);
+  const door = () => state.room.entities.find((e) => e.type === 'door' && e.shutUntil === 'lairGuards');
+  return { VL, state, guards, door };
+}
+
+test('two thorny guards hold the cave mouth: the door stays shut and says so while they stand', () => {
+  const { VL, state, guards, door } = lairMouth();
+  assert.deepEqual(plain(guards().map((g) => [g.type, g.x, g.y, g.tough])), [['spitter', 6, 6, true], ['spitter', 8, 6, true]]);
+  assert.ok(door().solid);
+  const { findPath } = require('./playthrough');
+  const from = { area: 'overworld', screen: '-1,-5', tx: 7, ty: 8 };
+  assert.equal(findPath(VL, from, { area: 'lair', screen: '0,0', tx: 7, ty: 9 }, state), null, 'the planner sees it shut');
+  state.player.invuln = 99;
+  Object.assign(state.player, VL.tileCenter(7, 5));
+  hold(VL, state, ['up'], 0.5);
+  assert.equal(state.player.area, 'overworld', 'not in');
+  assert.equal(state.message?.text, VL.LAIR_GUARD_WORDS);
+  assert.deepEqual([...VL.ART.missingGlyphs(VL.LAIR_GUARD_WORDS)], []);
+});
+
+test('a wood sword only clinks off the guards (with W30\'s "Clink!" word); the metal sword beats them for good and the door opens', () => {
+  {
+    const { VL, state, guards } = lairMouth({ sword: 'woodSword' });
+    hold(VL, state, [], 0.6);
+    VL.hitEnemy(state, guards()[0], 1, VL.heroCentre(state), 'woodSword');
+    assert.equal(guards()[0].hp, VL.ENEMIES.spitter.hp);
+    assert.equal(state.message?.title, 'Clink!');
+  }
+  const { VL, state, guards, door } = lairMouth();
+  hold(VL, state, [], 0.6);
+  for (const g of guards()) VL.hitEnemy(state, g, VL.TUNING.swordDamage.metalSword, VL.heroCentre(state), 'metalSword');
+  hold(VL, state, [], 0.1);
+  assert.equal(state.flags.lairGuards, true);
+  assert.ok(state.dirty, 'saved');
+  assert.equal(door().solid, false);
+  assert.ok(VL.LOCKS.lairGuards.reached(state));
+  VL.place(state, { area: 'overworld', screen: '-1,-5', tx: 7, ty: 8, facing: 'up' });
+  assert.deepEqual(plain(guards()), [], 'gone for good');
+  assert.equal(door().solid, false);
+});
+
+test('guards cleared without a fight (as the playthrough clears enemies) never open the door', () => {
+  const { VL, state, door } = lairMouth();
+  state.room.entities = state.room.entities.filter((e) => !VL.isEnemy(e));
+  hold(VL, state, [], 0.5);
+  assert.equal(state.flags.lairGuards, undefined);
+  assert.ok(door().solid);
+});
+
+test('the guards are out of line with the doorstep, so a hero who stands there is never shot', () => {
+  const { VL, state } = lairMouth();
+  Object.assign(state.player, VL.tileCenter(7, 5));
+  const hp = state.hp;
+  hold(VL, state, [], 12);
+  assert.equal(state.hp, hp);
+});
+
+test('the table: the guards need the metal sword, the Lair needs the guards, the Dragon and its door need the metal sword, and the whole path solves with the sword forged again after the shockwave', () => {
+  const { VL } = loadGame();
+  assert.deepEqual([...VL.LOCKS.lairGuards.needs], ['highlands', 'metalSword']);
+  assert.deepEqual([...VL.LOCKS.dragonsLairEntered.needs], ['highlands', 'lairGuards']);
+  assert.ok(VL.LOCKS.d4BossDoor.needs.includes('metalSword'));
+  assert.ok(VL.LOCKS.d4Boss.needs.includes('metalSword'));
+  assert.ok(VL.LOCKS.shockwave.loses.includes('metalSword'), 'the shockwave takes it, so it must be forged again');
+  const lair = VL.getScreen('lair', '0,-2').entities.find((e) => e.id === 'd4BossDoor');
+  assert.deepEqual([...lair.wants.items], ['metalSword']);
+  const report = VL.solveProgression();
+  assert.deepEqual([...report.problems], []);
+});
+
+test('an old save standing in the Lair with only a wood sword: the Dragon can\'t be hurt, but the way out, an ore lump and the smith\'s metal sword are all there', () => {
+  const { VL } = loadGame();
+  const save = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W19.json'), 'utf8'));
+  save.dungeons.lair.boss = false;
+  save.savePoint = { area: 'lair', screen: '0,0', tx: 3, ty: 2, facing: 'down' };
+  const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: JSON.stringify(save) }));
+  const state = VL.loadSlot(storage, 0);
+  VL.respawn(state);
+  assert.deepEqual([state.player.area, VL.hasItem(state, 'woodSword'), VL.hasItem(state, 'metalSword')], ['lair', true, false]);
+  assert.ok(state.inventory.ore >= 1, 'ore for the smith');
+  // Out through the door, past the guards (who only spit), and the smith sells the sword.
+  VL.place(state, VL.DUNGEONS.lair.entrance);
+  assert.equal(state.room.entities.filter((e) => e.guard).length, 2);
+  assert.equal(state.flags.lairGuards, undefined);
+  const offer = VL.shopOffers(state, VL.SHOPS.smithy).find((o) => /^metalSword/.test(o.id));
+  assert.ok(offer, 'the smith forges a metal sword');
+  assert.ok(offer.cost.ore <= state.inventory.ore && offer.cost.shells <= VL.shellCap(state));
+});
+
+test('the W19 fixture (the Dragon beaten before the guards existed) finds the cave mouth clear', () => {
+  const { VL } = loadGame();
+  const text = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W19.json'), 'utf8');
+  const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: text }));
+  const state = VL.loadSlot(storage, 0);
+  VL.place(state, { area: 'overworld', screen: '-1,-5', tx: 7, ty: 8, facing: 'up' });
+  assert.deepEqual(plain(state.room.entities.filter((e) => e.guard)), []);
+  assert.equal(state.flags.lairGuards, true);
+});

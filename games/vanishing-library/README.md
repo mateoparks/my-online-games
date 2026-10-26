@@ -517,7 +517,8 @@ holds the heart containers.
   (`VL.graceAfterPopup`), since the world froze mid-attack under it.
 - **Enemies:** `VL.defineEnemy(type, { tuning, body: { w, h }, size, flies,
   rooted, faint, drops?, setup(state, e), think(state, e, dt), harmful(e),
-  onHit, onTouch, draw(ctx, e, cx, cy, t) })` also defines the entity type,
+  onHit(state, e, weapon), onTouch, draw(ctx, e, cx, cy, t) })` also defines
+  the entity type,
   so a region places one with `{ type: 'crab', x, y }` (tiles). `tuning`
   names a `VL.TUNING` entry whose `hp` and `damage` are read live. A live
   enemy keeps its body centre in pixels (`e.cx`, `e.cy`); move it with
@@ -2004,7 +2005,7 @@ lair's doorstep, -1,-5, and Continue starts at the hut: W31).
 
 ```
                        hoard (0,-3): the Dragon
-                            | boss door (oneWay, wants a sword)
+                            | boss door (oneWay, wants the metal sword)
   ledge (-1,-2) ------ great cave (0,-2) --door B-- forge (1,-2)
   spout -> key B, map       | bars (the hall's spout)   block, spout -> boss key
   shield room (-1,-1) --door A-- hall (0,-1)
@@ -2041,10 +2042,11 @@ the boss door, the Dragon.
   shot, the rope and S do not. Each sits in a wall or across lava.
 - **The Dragon** (`dragon`, `rooted`, `size: 'big'`): paces the back of the
   hoard after the hero, draws breath (`inhale`, its chest glowing) and
-  breathes a ball at him. The sword clinks off (`VL.DRAGON_SWORD_NOTE`);
+  breathes a ball at him. The sword clinks off, saying nothing (W35);
   its own ball bounced home dazes it (`onFire`), and then
-  `TUNING.dragonRoundLife` of sword damage ends the round. Three rounds, each
-  quicker (`dragonSpeedUp`); the third ends in a puff of smoke (`defeated`,
+  `TUNING.dragonRoundLife` of **metal** sword damage ends the round (a sword
+  in `TUNING.toughSwords`; `onHit` gets the weapon; wood and throws
+  clink). Three rounds, each quicker (`dragonSpeedUp`); the third ends in a puff of smoke (`defeated`,
   then gone). Nothing about it blinks (its hp is refilled and `hurt` cleared
   on every hit; a hit shakes it), and the flash guard samples the fight.
 - **The hoard spills** (`onDefeat`): the `lairHoard` decor turns from a
@@ -2053,10 +2055,22 @@ the boss door, the Dragon.
   `VL.markFound`, held up, `VL.HOARD_WORDS`). `d4Boss` therefore supplies
   `books: 3` (replan), like the Bookworm's bundle. The heart waits where the
   Dragon began; W30's boss gate and the warp work as in every dungeon.
-- **Locks:** `dragonsLairEntered` (place lair 0,0), `mirrorShield` (replan:
-  behind door A), `d4Boss` (replan: behind the boss door; the hoard's books),
-  and one per key and door: `d4KeyA`, `d4DoorA`, `d4KeyB`, `d4DoorB`,
-  `d4BossKey`, `d4BossDoor` (any sword, as the door's `wants` says).
+- **The guards (W35):** two thorny spitters (`tough`, `guard`, at
+  `VL.LAIR_GUARDS.at`) stand by the cave mouth on overworld -1,-5 until the
+  metal sword beats them, which sets the flag `lairGuards` for good. The
+  cave door (`lairDoor`, `shutUntil: 'lairGuards'`, a `door` option) is shut
+  until then and says `VL.LAIR_GUARD_WORDS`; a wood sword clinks with W30's
+  "Clink!" word, so he learns what the Dragon needs before its gate shuts.
+  Only guards whose hp ran out count, so a room the playthrough cleared never
+  opens it. They stand out of line with the doorstep. A save that beat the
+  Dragon first gets the flag on its next visit. The playthrough forges the
+  metal sword again before the climb (the shockwave took it).
+- **Locks:** `lairGuards` (flag: highlands and the metal sword),
+  `dragonsLairEntered` (place lair 0,0; replan: behind the guards),
+  `mirrorShield` (replan: behind door A), `d4Boss` (replan: behind the boss
+  door, the metal sword; the hoard's books), and one per key and door:
+  `d4KeyA`, `d4DoorA`, `d4KeyB`, `d4DoorB`, `d4BossKey`, `d4BossDoor` (the
+  metal sword, as the door's `wants` says).
 
 ## The finale (W20)
 

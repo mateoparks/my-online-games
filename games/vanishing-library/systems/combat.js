@@ -387,7 +387,7 @@
       return true;
     }
     knockEnemy(state, enemy, from);
-    VL.ENEMIES[enemy.type].onHit?.(state, enemy);
+    VL.ENEMIES[enemy.type].onHit?.(state, enemy, weapon);
     return true;
   };
 
