@@ -1,7 +1,7 @@
 // The metal shovel and the metal sword, earned for real before the Hollow
 // Oak (W30: its moss room's key is dug with the metal shovel and its tangle's
 // thorny spitters fall only to the metal sword). Berries picked and sold for
-// ten shells, the shallows ore picked up, the shovel forged, the meadow's
+// ten shells, the shallows ore picked up, wood cut, the shovel forged, the meadow's
 // buried shells dug up with it, then the sword forged with the Scriptorium's
 // ore. Every press is a real key.
 const assert = require('node:assert/strict');
@@ -97,7 +97,11 @@ function metalGear(drive) {
       drive.until((state) => VL.spotFound(state, 'oreShallows'), 2, ['down']);
       drive.closePopups();
     }
-    earnShells(drive, VL.TUNING.prices.metalGear.shells);
+    // W34: the shovel takes wood as well as shells.
+    const { wood, shells } = VL.TUNING.prices.metalShovel;
+    // Required here, not at the top: the W17 steps require this file.
+    if (drive.state.inventory.wood < wood) require('./steps/w17.steps').gatherWood(drive, wood);
+    earnShells(drive, shells);
     buy(drive, 'blacksmith', ['metalShovel']);
     assert.ok(VL.hasItem(drive.state, 'metalShovel'), 'the metal shovel is forged');
   }

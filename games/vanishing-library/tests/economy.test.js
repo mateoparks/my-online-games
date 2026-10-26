@@ -80,6 +80,8 @@ test('one price table in VL.TUNING holds every price, starting from the design d
     shopShovel: { shells: 15 },
     metalGear: { ore: 1, shells: 10 },
     metalGearLedger: { ore: 1, shells: 6 },
+    metalShovel: { wood: 3, ore: 1, shells: 10 },
+    metalShovelLedger: { wood: 3, ore: 1, shells: 6 },
     binding: { shells: 15 },
     raft: { wood: 4 },
     oarShells: { shells: 8 },
@@ -93,8 +95,8 @@ test('one price table in VL.TUNING holds every price, starting from the design d
     mill: { millTrade: p.millTrade, paper: p.paper },
     smithy: {
       woodSword: p.woodSword, woodShield: p.woodShield, woodShovel: p.woodShovel,
-      metalSword: p.metalGear, metalShield: p.metalGear, metalShovel: p.metalGear,
-      metalSwordLedger: p.metalGearLedger, metalShieldLedger: p.metalGearLedger, metalShovelLedger: p.metalGearLedger,
+      metalSword: p.metalGear, metalShield: p.metalGear, metalShovel: p.metalShovel,
+      metalSwordLedger: p.metalGearLedger, metalShieldLedger: p.metalGearLedger, metalShovelLedger: p.metalShovelLedger,
       oar: p.oarWood,
     },
     bookbinder: { bindPages: p.binding },
@@ -332,6 +334,8 @@ test('the smith forges metal gear from 1 ore and 10 shells each; no ore, no forg
   // W3 known limit: the smith re-forges only gear that was lost, never a second one.
   assert.equal(VL.buyOffer(game, sword).reason, 'soldOut');
   assert.equal(game.inventory.ore, 1);
+  // W34: the shovel takes 3 wood as well.
+  give(VL, game, { wood: 3 });
   assert.equal(VL.buyOffer(game, offer(VL, 'smithy', 'metalShovel')).ok, true);
   assert.equal(VL.hasItem(game, 'metalShovel'), true);
   assert.deepEqual([game.inventory.ore, game.inventory.shells], [0, 10]);

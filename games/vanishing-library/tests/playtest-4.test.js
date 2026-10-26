@@ -24,3 +24,28 @@ test('what chases the hero slowed with him, so a bat, a slime or a paper wad is 
     assert.ok(Math.abs(now / w30 - ratio) < 0.03, `${name}: ${now}`);
   }
 });
+
+// ---------- the metal shovel takes wood too ----------
+
+const plain = (value) => JSON.parse(JSON.stringify(value));
+const offerIn = (VL, shop, id) => VL.SHOPS[shop].offers.find((o) => o.id === id);
+
+test('the smith forges a metal shovel from 3 wood, 1 ore lump and 10 shells (6 with the Smith\'s Ledger); the sword and shield are unchanged', () => {
+  const { VL } = loadGame();
+  assert.deepEqual(plain(offerIn(VL, 'smithy', 'metalShovel').cost), { wood: 3, ore: 1, shells: 10 });
+  assert.deepEqual(plain(offerIn(VL, 'smithy', 'metalShovelLedger').cost), { wood: 3, ore: 1, shells: 6 });
+  for (const id of ['metalSword', 'metalShield']) assert.deepEqual(plain(offerIn(VL, 'smithy', id).cost), { ore: 1, shells: 10 });
+  const state = playState(VL, ow('3,0', 6, 4));
+  Object.assign(state.inventory, { ore: 1, shells: 10, wood: 2 });
+  assert.deepEqual(plain(VL.buyOffer(state, offerIn(VL, 'smithy', 'metalShovel'))), { ok: false, reason: 'notEnough', kind: 'wood' });
+  state.inventory.wood = 3;
+  assert.equal(VL.buyOffer(state, offerIn(VL, 'smithy', 'metalShovel')).ok, true);
+  assert.deepEqual([state.inventory.wood, state.inventory.ore, state.inventory.shells], [0, 0, 0]);
+  assert.ok(VL.hasItem(state, 'metalShovel'));
+});
+
+test('the progression table knows the metal shovel needs wood, and the solver stays clean', () => {
+  const { VL } = loadGame();
+  assert.ok(VL.LOCKS.metalShovel.needs.includes('wood'));
+  assert.deepEqual([...VL.solveProgression().problems], []);
+});

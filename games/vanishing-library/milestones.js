@@ -55,7 +55,8 @@
   lock('woodShovel', { type: 'item', needs: ['town', ['wood', 'shells']], renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
   lock('metalSword', { type: 'item', needs: ['blacksmith', 'shells'], consumes: { ore: 1 }, renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
   lock('metalShield', { type: 'item', needs: ['blacksmith', 'shells'], consumes: { ore: 1 }, renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
-  lock('metalShovel', { type: 'item', needs: ['blacksmith', 'shells'], consumes: { ore: 1 }, renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
+  // W34: the metal shovel takes wood as well.
+  lock('metalShovel', { type: 'item', needs: ['blacksmith', 'shells', 'wood'], consumes: { ore: 1 }, renewable: true, doc: '§ Tools: two tiers', by: 'W10' });
   lock('buriedSecrets', { needs: ['metalShovel'], optional: true, renewable: true, doc: '§ Tools: two tiers, Shovel', by: 'W10' });
 
   // ---------- books, pages and the library ----------
