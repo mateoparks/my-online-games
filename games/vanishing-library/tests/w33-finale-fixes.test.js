@@ -259,3 +259,31 @@ test('Esc during the fade-out changes nothing, and in the credits it does what S
   drive.press('pause');
   assert.equal(drive.app.sceneId, 'title');
 });
+
+// ---------- 4. no HUD over the ending ----------
+
+test('the HUD (hearts, shells, hands, SAVED) is not drawn anywhere in the ending or the credits; play still draws it', () => {
+  const { VL, app, drive } = fromSave({ edit: withBeats('forgiven') });
+  let huds = 0;
+  const hud = VL.ART.drawHud;
+  VL.ART.drawHud = (...args) => {
+    huds += 1;
+    return hud(...args);
+  };
+  VL.render(recordingContext(), app, 1);
+  assert.equal(huds, 1, 'play draws the HUD');
+  drive.update();
+  assert.equal(app.sceneId, 'ending');
+  huds = 0;
+  const phases = new Set();
+  for (let i = 0; i < 400 && app.sceneId === 'ending'; i += 1) {
+    drive.hold([], 0.1);
+    phases.add(app.ending.phase);
+    const ctx = recordingContext();
+    VL.render(ctx, app, i / 10);
+    assert.ok(!ctx.rects.some((r) => r.y === 0 && r.h === VL.TUNING.hudHeight && r.w === VL.TUNING.width && r.color === VL.ART.color('hud')), `no HUD strip in ${app.ending.phase}`);
+    if (i % 5 === 4) drive.press('interact');
+  }
+  assert.deepEqual([...phases].sort(), ['beats', 'credits', 'fadeIn', 'fadeOut']);
+  assert.equal(huds, 0);
+});

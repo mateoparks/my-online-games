@@ -188,7 +188,7 @@
         return;
       }
       const beat = view.phase === 'beats' ? beatOf(view) : null;
-      VL.drawWorld(ctx, game, t);
+      VL.drawWorld(ctx, game, t, { hud: false });
       if (beat) {
         const text = textOf(view, game);
         // Typed along the final line breaks, so words never jump between lines.
