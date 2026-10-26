@@ -59,16 +59,27 @@
 
   // The ending brings home every book he carries (the hoard's three among
   // them), so none is left to hand in afterwards. `finale:booksHome` marks it
-  // done; a save forgiven before W33 lacks it, so its carried books are still
-  // due (and books found after the ending are ordinary finds again).
+  // done; a save forgiven without it still has its carried books due (and
+  // books found after the ending are ordinary finds again). Each book is
+  // marked `finale:home:<id>`, so the librarian's welcome home can read
+  // their blurbs (regions/library.js).
   VL.booksDueHome = (state) => (flag(state, 'forgiven') && !flag(state, 'finale:booksHome') ? VL.booksCarried(state) : []);
   function bringBooksHome(state) {
     const ids = VL.booksDueHome(state);
     state.library.returned.push(...ids);
+    for (const id of ids) state.flags[`finale:home:${id}`] = true;
     state.flags['finale:booksHome'] = true;
     VL.earned(state);
     return ids;
   }
+  VL.endingBooks = (state) => state.library.returned.filter((id) => flag(state, `finale:home:${id}`));
+
+  // The first talk after the ending: the books it brought home get his words
+  // as a hand-in's would, with any carried since, then the visit's beats.
+  VL.defineGift('welcomeHome', (state) => {
+    state.libraryBlurbs = [...VL.endingBooks(state), ...VL.returnBooks(state)];
+    state.libraryChain = true;
+  });
 
   // She gives back every book she took, and the shelves fill for good.
   VL.defineGift('finaleForgiven', (state) => {

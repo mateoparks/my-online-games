@@ -141,7 +141,7 @@ const HANDED_IN = /Are those\.\.\. books\?/;
 const fenwickSays = (VL, state) => [VL.pickDialogue(state, 'librarian').say].flat().join(' ');
 
 test('forgiveness hands in every book he carries (the hoard\'s three too): nothing is greeted as a new find afterwards, and the card counts them', () => {
-  const { VL, app, storage, drive } = fromSave({ edit: withBeats('finale:shown') });
+  const { VL, storage, drive } = fromSave({ edit: withBeats('finale:shown') });
   const before = drive.state.library.returned.length;
   const carried = VL.booksCarried(drive.state);
   assert.ok(VL.HOARD_BOOKS.every((id) => carried.includes(id)), 'he comes out of the Lair carrying the hoard books');
@@ -152,7 +152,6 @@ test('forgiveness hands in every book he carries (the hoard\'s three too): nothi
   assert.equal(VL.readSlot(storage, 0).summary.books, before + carried.length, 'the FINISHED card counts every book he brought home');
   drive.walkTo({ area: 'library', screen: '0,0', tx: 7, ty: 6 });
   assert.doesNotMatch(fenwickSays(VL, drive.state), HANDED_IN);
-  void app;
 });
 
 test('an old finished save still carrying the hoard books (W20) shows them on its card and hands them in quietly on Continue', () => {
@@ -185,7 +184,7 @@ test('an old save forgiven during the ending but closed before the credits is he
   assert.deepEqual(plain(VL.booksCarried(drive.state)), []);
 });
 
-test('a book found after the ending is a real new find: kept to hand in, and greeted at the library', () => {
+test('a book found after the ending is a real new find: kept to hand in, and handed in at the library (with the welcome home, or greeted as a find after it)', () => {
   const { VL } = loadGame();
   const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: fixtureText('save-v1-W20.json') }));
   const app = VL.createApp({ storage });
@@ -199,7 +198,94 @@ test('a book found after the ending is a real new find: kept to hand in, and gre
   drive.reload();
   drive.hold([], 0.2);
   assert.deepEqual(plain(VL.booksCarried(drive.state)), [unfound], 'still his to hand in');
+  // The welcome home hands it in with the ending's books; after that, a find is greeted as always.
+  assert.match(fenwickSays(VL, drive.state), /Welcome back/);
+  drive.state.flags['finale:welcomedHome'] = true;
   assert.match(fenwickSays(VL, drive.state), HANDED_IN);
+  delete drive.state.flags['finale:welcomedHome'];
+  const talks = talkThroughFenwick(VL, drive);
+  assert.ok(VL.bookReturned(drive.state, unfound), 'handed in at the welcome home');
+  assert.ok(talks.join(' ').includes(VL.BOOKS[unfound].kind === 'generic' ? VL.BOOKS[unfound].blurb : 'books back on the shelves'), talks.join(' | '));
+});
+
+// Talks to Mr. Fenwick at his desk and sits through every beat that follows,
+// as a kid pressing S would. Returns each dialogue's words, in order.
+function talkThroughFenwick(VL, drive) {
+  drive.walkTo({ area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT });
+  drive.hold(['up'], 0.1);
+  drive.press('interact');
+  const talks = [];
+  let seen = null;
+  for (let i = 0; i < 200; i += 1) {
+    if (drive.app.sceneId === 'dialogue' && drive.app.dialogue !== seen) {
+      seen = drive.app.dialogue;
+      talks.push(seen.pages.flat().join(' '));
+    }
+    if (drive.app.sceneId === 'play' && !drive.state.libraryChain && !drive.state.holdUp && !VL.currentPopup(drive.state)) break;
+    drive.hold([], 0.35);
+    if (drive.app.sceneId !== 'play') drive.press('interact');
+  }
+  drive.closePopups();
+  return talks;
+}
+const blurbOf = (VL, id) => `"${VL.BOOKS[id].title}." ${VL.BOOKS[id].blurb}`;
+
+function continueFrom(name) {
+  const { VL } = loadGame();
+  const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: fixtureText(name) }));
+  const app = VL.createApp({ storage });
+  app.startGame(VL.loadSlot(storage, 0), 0);
+  app.setScene('play');
+  const drive = createPlaythrough(VL, { app, milestones: ['ending'] }).drive;
+  drive.hold([], 0.2);
+  return { VL, drive };
+}
+
+for (const [how, start] of [
+  ['after the real ending', () => {
+    const t = fromSave({ edit: withBeats('finale:shown') });
+    route.ending(t.drive);
+    t.drive.reload();
+    t.drive.hold([], 0.2);
+    return t;
+  }],
+  ['in an old finished save healed on Continue (W20)', () => continueFrom('save-v1-W20.json')],
+]) {
+  test(`the first talk ${how}: he welcomes the hero home, reads the blurbs of the books the ending brought home, then gives the reward due`, () => {
+    const { VL, drive } = start();
+    assert.equal(drive.state.finished, true);
+    const hp = drive.state.maxHp;
+    assert.equal(VL.pendingReward(drive.state), 'heartLibrary', 'the hand-in made the 10-book reward due');
+    const talks = talkThroughFenwick(VL, drive);
+    assert.match(talks[0], /Welcome back/);
+    assert.doesNotMatch(talks[0], /where were we/);
+    assert.doesNotMatch(talks.join(' '), HANDED_IN);
+    for (const id of VL.HOARD_BOOKS) assert.ok(talks.join(' ').includes(blurbOf(VL, id)), `${id}'s blurb is read`);
+    assert.ok(talks.some((words) => words.includes('Ten books')), talks.join(' | '));
+    assert.equal(VL.rewardGiven(drive.state, 'heartLibrary'), true, 'the heart is given');
+    assert.equal(drive.state.maxHp, hp + 2);
+    // Said once: the next talk is the usual after-the-ending line.
+    drive.reload();
+    drive.hold([], 0.2);
+    assert.match(fenwickSays(VL, drive.state), /Full to the very top/);
+  });
+}
+
+test('the welcome home is skippable: Esc on it still lets the books\' blurbs and the reward follow, and Esc skips those too', () => {
+  const { VL, drive } = continueFrom('save-v1-W20.json');
+  drive.walkTo({ area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT });
+  drive.hold(['up'], 0.1);
+  drive.press('interact');
+  assert.equal(drive.app.sceneId, 'dialogue');
+  drive.press('pause');
+  assert.equal(drive.state.flags['finale:welcomedHome'], true);
+  drive.hold([], 0.1);
+  assert.equal(drive.app.sceneId, 'dialogue', 'the blurbs come next');
+  assert.ok(drive.app.dialogue.pages.flat().join(' ').includes(VL.BOOKS[VL.HOARD_BOOKS[0]].title));
+  drive.press('pause');
+  drive.hold([], 0.1);
+  assert.equal(drive.app.sceneId, 'dialogue', 'then the reward');
+  assert.match(drive.app.dialogue.pages.flat().join(' '), /Ten books/);
 });
 
 test('the W33 fixture (the finale played from the W19 save with the books brought home) loads FINISHED with nothing reset or left to hand in', () => {
@@ -215,6 +301,8 @@ test('the W33 fixture (the finale played from the W19 save with the books brough
   assert.equal(game.flags['finale:booksHome'], true);
   assert.deepEqual(plain(VL.booksCarried(game)), []);
   assert.ok(VL.HOARD_BOOKS.every((id) => VL.bookReturned(game, id)));
+  assert.deepEqual(plain(VL.endingBooks(game)).sort(), [...VL.HOARD_BOOKS].sort(), 'the books the ending brought home, for the welcome home');
+  assert.ok(!game.flags['finale:welcomedHome'], 'not welcomed home yet');
 });
 
 // ---------- 3. Esc skips the ending wherever it is ----------

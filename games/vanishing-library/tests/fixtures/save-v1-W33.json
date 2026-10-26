@@ -81,6 +81,9 @@
     "finale:showAsked": true,
     "finale:shown": true,
     "forgiven": true,
+    "finale:home:bookHoardRecipes": true,
+    "finale:home:bookHoardLullabies": true,
+    "finale:home:bookHoardMaps": true,
     "finale:booksHome": true
   },
   "visited": {

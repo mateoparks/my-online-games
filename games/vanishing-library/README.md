@@ -2068,7 +2068,7 @@ shows are in `scenes/puppet-show.js`. Tests: `tests/finale.test.js`,
 `tests/fixtures/save-v1-W20.json`, the real finale played from the W19 save
 through the credits and Continue (from before the books came home: it still
 carries the hoard's three), and `tests/fixtures/save-v1-W33.json`, the same
-with them home (`finale:booksHome`). W33's tests: `tests/w33-finale-fixes.test.js`.
+with them home (`finale:booksHome`, `finale:home:<id>`). W33's tests: `tests/w33-finale-fixes.test.js`.
 
 ```
   tunnel (-1,-1) ── hall (0,-1): her gallery, the three marionettes
@@ -2090,7 +2090,12 @@ with them home (`finale:booksHome`). W33's tests: `tests/w33-finale-fixes.test.j
   set). A save forgiven without `finale:booksHome` hands its carried books in
   quietly on the first step after loading (system `finaleBooksHome`), and its
   card already counts them (`VL.booksDueHome`); a book found after the ending
-  is an ordinary find again. The beats after the fight play in the hall; once `forgiven`, the
+  is an ordinary find again. Each book the ending brings home is marked
+  `finale:home:<id>` (`VL.endingBooks`). The first talk with Mr. Fenwick
+  afterwards is his welcome home (gift `welcomeHome`, flag
+  `finale:welcomedHome`): his words about those books, as at a hand-in, with
+  anything carried since, then the visit's beats (a reward the hand-in made
+  due). Esc skips each part. The beats after the fight play in the hall; once `forgiven`, the
   `ending` scene plays wherever he is. Nothing below is a save point and
   nothing shuts behind him, so a reload or a faint at any beat wakes him at
   his last save point (the hut: every dungeon is finished by then) and the
