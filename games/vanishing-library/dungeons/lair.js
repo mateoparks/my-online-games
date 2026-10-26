@@ -153,7 +153,6 @@
         spout('d4SpoutHall', 11, 0, 'down'),
         { type: 'shutter', id: 'd4BarsHall', x: 7, y: 0, open: { switch: 'd4SpoutHall' } },
         { type: 'lockedDoor', id: 'd4DoorA', kind: 'small', x: 0, y: 5, lock: 'd4DoorA' },
-        { type: 'sign', x: 4, y: 1, title: 'Carved in the stone', text: 'Only its own fire can hurt a dragon. A mirror sends fire right back where it came from.' },
         { type: 'bat', x: 4, y: 7 },
       ],
     },
@@ -196,7 +195,6 @@
       entities: [
         { type: 'lockedDoor', id: 'd4BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd4BossDoor', oneWay: true, wants: { items: ['woodSword', 'metalSword'], note: SWORD_WORDS } },
         { type: 'lockedDoor', id: 'd4DoorB', kind: 'small', x: 15, y: 5, lock: 'd4DoorB' },
-        { type: 'sign', x: 5, y: 1, title: 'A child\'s drawing', text: 'A dragon with a book in its mouth, and a little hero holding up a shiny shield. The dragon looks very surprised.' },
         { type: 'bat', x: 10, y: 4 },
         { type: 'bat', x: 4, y: 6 },
       ],

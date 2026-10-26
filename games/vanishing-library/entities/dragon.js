@@ -23,7 +23,6 @@
     dragonDyingSeconds: 1.6,
   });
   const T = VL.TUNING;
-  VL.DRAGON_SWORD_NOTE = 'Its scales are too tough! Bounce its own fire back at it.';
   VL.DRAGON_WORDS = { beaten: 'The Dragon is beaten!' };
 
   // ---------- art ----------
@@ -199,7 +198,6 @@
       dragon.shake = 0.25;
       if (dragon.mode !== 'dazed') {
         state.events.push({ type: 'dragonTink' });
-        state.dungeonNote = { text: VL.DRAGON_SWORD_NOTE, t: 0 };
         return;
       }
       dragon.life -= damage;

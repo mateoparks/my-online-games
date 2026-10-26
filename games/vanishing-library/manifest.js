@@ -55,6 +55,7 @@ VL.FILES = {
     'systems/climbers-almanac.js',
     'systems/fire.js',
     'systems/finale.js',
+    'systems/boss-hints.js',
   ],
 
   entities: [

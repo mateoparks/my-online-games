@@ -617,14 +617,14 @@ function bossRoom() {
 }
 const crabOf = (t) => t.find('lensCrab');
 
-test('the Lens Crab: a sword clinks off the lens and says to shoot its eyes', () => {
+test('the Lens Crab: a sword clinks off the lens (and says nothing, W35)', () => {
   const t = bossRoom();
   const { VL } = t;
   const c = crabOf(t);
   c.arriving = 0;
   VL.hitEnemy(t.game, c, 1, { x: 0, y: 0 }, 'woodSword');
   assert.deepEqual([c.life, c.rounds, c.mode], [VL.TUNING.lensCrabRoundLife, 3, 'scuttle']);
-  assert.equal(t.game.dungeonNote.text, VL.LENS_CRAB_SWORD_NOTE);
+  assert.equal(t.game.dungeonNote, null);
 });
 
 test('the Lens Crab: two shots at its face from below shut both eyes and daze it; the sword then counts; it wakes in time', () => {
@@ -653,7 +653,7 @@ test('the Lens Crab: a shot from above or the side bounces off the lens; one eye
   c.arriving = 0;
   VL.ENEMIES.lensCrab.onShot(t.game, c, { dy: 1, gx: c.cx });
   assert.deepEqual(plain(c.eyes), { left: true, right: true });
-  assert.equal(t.game.dungeonNote.text, VL.LENS_CRAB_BACK_NOTE);
+  assert.equal(t.game.dungeonNote, null);
   VL.ENEMIES.lensCrab.onShot(t.game, c, { dy: -1, gx: c.cx - 5 });
   assert.deepEqual(plain(c.eyes), { left: false, right: true });
   t.game.player.invuln = 99;
@@ -809,7 +809,7 @@ test('every word the Lighthouse says fits its box and its font', () => {
     assert.deepEqual(plain(VL.ART.missingGlyphs(`${box.title || ''} ${box.text}`)), [], box.text);
     assert.ok(!VL.ART.popupLayout(box).overflow, `fits: ${box.text}`);
   }
-  const notes = [VL.LIGHTHOUSE_SWORD_WORDS, VL.LENS_CRAB_SWORD_NOTE, VL.LENS_CRAB_BACK_NOTE, VL.OUT_OF_SHELLS.dungeon, VL.SHELL_HEAP_WORDS.full, VL.SHELL_HEAP_WORDS.scooped(VL.TUNING.shellHeapFill), 'The Lens Crab is beaten!'];
+  const notes = [VL.LIGHTHOUSE_SWORD_WORDS, VL.OUT_OF_SHELLS.dungeon, VL.SHELL_HEAP_WORDS.full, VL.SHELL_HEAP_WORDS.scooped(VL.TUNING.shellHeapFill), 'The Lens Crab is beaten!'];
   for (const note of notes) {
     assert.deepEqual(plain(VL.ART.missingGlyphs(note, 'small')), [], note);
     assert.ok(VL.ART.measureText(note, 'small') <= VL.TUNING.width - 8, note);

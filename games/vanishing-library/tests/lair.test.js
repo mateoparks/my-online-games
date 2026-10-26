@@ -285,14 +285,14 @@ function bossRoom() {
 }
 const dragonOf = (t) => t.find('dragon');
 
-test('the Dragon: the sword clinks off its scales and says to bounce its fire back', () => {
+test('the Dragon: the sword clinks off its scales (and says nothing, W35)', () => {
   const t = bossRoom();
   const { VL } = t;
   const d = dragonOf(t);
   d.arriving = 0;
   VL.hitEnemy(t.game, d, 1, { x: 0, y: 0 }, 'woodSword');
   assert.deepEqual([d.life, d.rounds, d.mode], [VL.TUNING.dragonRoundLife, 3, 'prowl']);
-  assert.equal(t.game.dungeonNote.text, VL.DRAGON_SWORD_NOTE);
+  assert.equal(t.game.dungeonNote, null);
   assert.equal(d.hurt, 0, 'no hurt blink');
 });
 
@@ -446,14 +446,14 @@ test('every word the lair says fits its box and its font', () => {
   const { VL } = loadGame();
   const boxes = [];
   for (const screen of Object.values(VL.AREAS.lair.screens)) for (const e of screen.entities) if (e.type === 'sign') boxes.push({ title: e.title, text: e.text });
-  assert.equal(boxes.length, 3);
+  assert.equal(boxes.length, 1, 'the entrance warning (W35: the mirror signs are gone)');
   boxes.push(VL.POPUPS.mirrorShield, VL.HOARD_WORDS, { text: VL.SPOUT_WORDS });
   for (const id of VL.HOARD_BOOKS) boxes.push({ title: 'You found a book!', text: VL.BOOKS[id].blurb });
   for (const box of boxes) {
     assert.deepEqual(plain(VL.ART.missingGlyphs(`${box.title || ''} ${box.text}`)), [], box.text);
     assert.ok(!VL.ART.popupLayout(box).overflow, `fits: ${box.text}`);
   }
-  for (const note of [VL.LAIR_SWORD_WORDS, VL.DRAGON_SWORD_NOTE, VL.SHIELD_FIRE_NOTE, VL.DRAGON_WORDS.beaten]) {
+  for (const note of [VL.LAIR_SWORD_WORDS, VL.SHIELD_FIRE_NOTE, VL.DRAGON_WORDS.beaten]) {
     assert.deepEqual(plain(VL.ART.missingGlyphs(note, 'small')), [], note);
     assert.ok(VL.ART.measureText(note, 'small') <= VL.TUNING.width - 8, note);
   }

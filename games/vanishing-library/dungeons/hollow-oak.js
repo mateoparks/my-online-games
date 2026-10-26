@@ -230,7 +230,7 @@
         { type: 'lockedDoor', id: 'd2DoorC', kind: 'small', x: 7, y: 10, lock: 'd2DoorC' },
         { type: 'lockedDoor', id: 'd2BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd2BossDoor', oneWay: true },
         { type: 'lockedDoor', id: 'd2DoorA', kind: 'small', x: 15, y: 5, lock: 'd2DoorA' },
-        { type: 'sign', x: 9, y: 1, title: 'Carved in the bark', text: 'Beware the Thornback! Its back is all armour. Pull its plates off, and it\'s just a big beetle.' },
+        { type: 'sign', x: 9, y: 1, title: 'Carved in the bark', text: 'Beware the Thornback! It sleeps at the very top of the Oak, and it does not like to be woken.' },
         { type: 'spitter', x: 12, y: 9 },
         { type: 'slime', x: 4, y: 4 },
       ],

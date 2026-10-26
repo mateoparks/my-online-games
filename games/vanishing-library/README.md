@@ -2166,6 +2166,21 @@ with them home (`finale:booksHome`, `finale:home:<id>`). W33's tests: `tests/w33
   (`dungeonBoss`), `finaleForgiven` (`libraryChime`), and the credits'
   `endingTune`.
 
+## Boss hints (W35)
+
+How to beat a boss is never told up front: no sign, no note on a wrong hit, no
+librarian nudge says it (the clink is the only answer; W30's "Clink!" popup
+for the thorny metal-only spitters stays, since they aren't bosses).
+`systems/boss-hints.js` holds `VL.BOSS_HINTS` (`scriptorium`, `hollowOak`,
+`lighthouse`, `lair`, `marionettes`): where the boss is fought (`at`), when
+it's beaten, and Gran Ottie's words. A faint while `at` holds sets the flag
+`bossFainted:<id>` (`VL.bossFaintFlag`); from then until the boss is beaten
+her first entry is that hint (`VL.bossHintDue`). Her entries come from
+`VL.bossHintEntries(ids)`: the dungeons' in `regions/townsfolk.js`, the
+marionettes' in `dungeons/workshop.js` ahead of the town's Dragon talk. The
+librarian's nudge before the first boss points to her; the Dragon's own hint
+is in A Child's Book of Dragons.
+
 ## Dungeons (W13)
 
 `systems/dungeon.js` is the framework the four dungeons (W14, W15, W18, W19)

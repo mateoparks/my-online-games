@@ -20,7 +20,6 @@
     marionetteFallSeconds: 0.7,
   });
   const T = VL.TUNING;
-  VL.MARIONETTE_NOTE = 'Clonk! It\'s only painted wood. Cut the strings that hold it up!';
   // Where the puppets dance (their centres): heads clear of her gallery, low
   // enough to come level with him on the bottom row (where he walks in), room
   // to stand beside them at the walls.
@@ -240,7 +239,6 @@
       m.hp = T.enemyMarionette.hp;
       m.hurt = 0;
       m.shake = 0.25;
-      m.clonkedBy = state.player.swing;
     },
     think(state, m, dt) {
       m.timer += dt;
@@ -339,7 +337,7 @@
   }
 
   // Each puppet's two strings: the blade through one cuts it (one per puppet a
-  // swing, the nearest). The body only clonks, which says so once a visit.
+  // swing, the nearest). The body only clonks.
   VL.defineSystem('marionetteStrings', {
     order: 31,
     update(state, actions, dt) {
@@ -348,20 +346,8 @@
       if (!all.length) return;
       fadeOverHero(state, all, dt);
       const swing = state.player.swing;
-      // A swing that clonked wood and cut nothing says what to do, once a
-      // visit, when it is over (a string may be reached later in the swing).
-      const last = room.marionetteSwing;
-      if (last && last.swing !== swing) {
-        room.marionetteSwing = null;
-        if (!last.cut && !room.marionetteNoted && all.some((m) => m.clonkedBy === last.swing)) {
-          room.marionetteNoted = true;
-          VL.showMessage(state, { text: VL.MARIONETTE_NOTE });
-        }
-      }
       if (swing && VL.TUNING.swordDamage[swing.item]) {
         const box = VL.swordBox(state.player, swing.facing);
-        if (!room.marionetteSwing) room.marionetteSwing = { swing, cut: false };
-        let cut = false;
         for (const m of VL.puppetsUp(state)) {
           if (m.stringSwing === swing) continue;
           const bottom = VL.stringBottom(m) + VL.STRING_SLACK.y;
@@ -374,7 +360,6 @@
           if (!hits.length) continue;
           const string = hits.sort((a, b) => Math.abs(m.cx + a.dx - state.player.x) - Math.abs(m.cx + b.dx - state.player.x))[0];
           string.cut = true;
-          cut = true;
           m.stringSwing = swing;
           m.jerk = T.marionetteJerkSeconds;
           setMode(m, 'drift');
@@ -385,7 +370,6 @@
             state.events.push({ type: 'puppetDown', puppet: m.puppet });
           }
         }
-        if (cut) room.marionetteSwing.cut = true;
       }
       // All three down (counted against the map, so a room the playthrough
       // cleared of enemies never counts as won).

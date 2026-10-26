@@ -224,7 +224,7 @@
       entities: [
         { type: 'lockedDoor', id: 'd3BossDoor', kind: 'boss', x: 7, y: 0, lock: 'd3BossDoor', oneWay: true, wants: { items: ['woodSword', 'metalSword'], note: SWORD_WORDS } },
         { type: 'lockedDoor', id: 'd3DoorB', kind: 'small', x: 15, y: 5, lock: 'd3DoorB' },
-        { type: 'sign', x: 5, y: 1, title: 'Carved in the stone', text: 'A crab as big as a cart took the great lens for its shell! Shoot its eyes, then strike.' },
+        { type: 'sign', x: 5, y: 1, title: 'Carved in the stone', text: 'A crab as big as a cart took the great lens for its shell! Nobody has climbed to the lamp since.' },
         lamp('d3LampGalleryA', 2, 2),
         lamp('d3LampGalleryB', 13, 2),
         heap(2, 9),

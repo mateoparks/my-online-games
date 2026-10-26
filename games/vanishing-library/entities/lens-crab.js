@@ -25,8 +25,6 @@
     lensCrabDyingSeconds: 1.6,
   });
   const T = VL.TUNING;
-  VL.LENS_CRAB_SWORD_NOTE = 'The lens is too hard! Shoot its eyes first.';
-  VL.LENS_CRAB_BACK_NOTE = 'Its eyes are in front. Shoot from below!';
 
   // ---------- art ----------
 
@@ -210,7 +208,6 @@
       }
       if (!(pellet.dy < 0)) {
         state.events.push({ type: 'crabTink' });
-        state.dungeonNote = { text: VL.LENS_CRAB_BACK_NOTE, t: 0 };
         return true;
       }
       const near = pellet.gx < crab.cx ? 'left' : 'right';
@@ -231,7 +228,6 @@
       if (crab.mode !== 'dazed') {
         crab.hurt = 0;
         state.events.push({ type: 'crabTink' });
-        state.dungeonNote = { text: VL.LENS_CRAB_SWORD_NOTE, t: 0 };
         return;
       }
       crab.life -= damage;
