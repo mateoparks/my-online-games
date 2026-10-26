@@ -651,7 +651,8 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   with `VL.nameWakePlace(place, 'at home')`: `VL.wakeWords(state)` is then
   those words whenever he will not wake at his save point, and the statue,
   the wreck's lantern, the faint screen and the pause hint say so
-  (`VL.savedNote(state)`). `VL.keepSavePoint((state, point) =>
+  (`VL.savePointNote(state, plain)`, whose words `app.save` switches to
+  "Could not save yet" while a write fails). `VL.keepSavePoint((state, point) =>
   true or false)` holds a save point where it is ahead of every move rule
   (the Hollow Oak until the shockwave). Neither changes `savePoint` itself.
   `finished` marks a finished game: the slot shows FINISHED and loads the
@@ -859,9 +860,11 @@ it (a quarter of WCAG's 341x256 px field at scale 4, where the canvas fills
 WCAG's 1024x768 reference screen; stricter than WCAG at scale 3, where a
 quarter of the field is about 4.9%) flips by WCAG's 0.1
 more than 6 times (over 3 flash pairs), or over 2.8% of it has more than 3
-saturated-red flash pairs (WCAG's red flash rule, W32: a change of over 20 in
-(R - G - B) x 320 from linear R, G, B, negatives as 0, with the red side at
-R / (R + G + B) of 0.8 or more). A control run with the steady layers
+saturated-red flash pairs (WCAG 2.0's red flash measure, glossary Note 3, W32: a
+change of over 20 in (R - G - B) x 320 from linear R, G, B, negatives as 0,
+with either or both states at R / (R + G + B) of 0.8 or more). WCAG 2.1 and 2.2
+replaced it with a CIE 1976 UCS chromaticity change over 0.2; that test isn't
+added, since every real scene scores 0% on the red check. A control run with the steady layers
 off must fail the first two, and a red-and-black strobe over 6% of the
 canvas the red one. It runs for 240 s at most (about twice its run time). A
 test file that runs no tests, and an `async` test function, both fail the

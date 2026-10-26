@@ -169,10 +169,16 @@
     return wakeNames.find((named) => samePlace(named.place, place))?.words ?? null;
   };
 
-  // The note a save point shows: null when he simply wakes there.
-  VL.savedNote = function savedNote(state) {
+  // The note a save point shows, in its saved and could-not-save words (the
+  // app shows whichever its write made true, and a retry can still make it
+  // saved). `plain` is { saved, failed } for where he simply wakes there;
+  // without it, that case has no note (null).
+  VL.savePointNote = function savePointNote(state, plain = null) {
     const words = VL.wakeWords(state);
-    return words ? `Your journey is saved. You'll wake up ${words}.` : null;
+    const saving = words
+      ? { saved: `Your journey is saved. You'll wake up ${words}.`, failed: `Could not save yet. You'll wake up ${words}.` }
+      : plain;
+    return saving ? { text: saving.saved, t: 0, saving } : null;
   };
 
   function stateFrom(save) {

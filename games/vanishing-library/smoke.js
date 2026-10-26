@@ -2476,9 +2476,10 @@ async function main() {
     // pairs, so over 6 flips; fails past 2.8% of the canvas: a quarter of
     // WCAG's 341x256 px field at scale 4, where the canvas fills WCAG's
     // 1024x768 reference screen, so stricter than WCAG at scale 3). A third
-    // check is WCAG's red flash rule on the same scenes and bound: a flip is a
-    // change of over 20 in (R - G - B) x 320 (linear R, G, B, below 0 as 0)
-    // whose red side is saturated (R / (R + G + B) at least 0.8). A control
+    // check is WCAG 2.0's saturated-red measure (glossary, flash thresholds,
+    // Note 3) on the same scenes and bound: a flip is a change of over 20 in
+    // (R - G - B) x 320 (linear R, G, B, below 0 as 0) where either or both
+    // states are saturated (R / (R + G + B) at least 0.8). A control
     // run with the steady layers switched off must fail the first two, and a
     // red-and-black strobe over 6% of the canvas the red one, so each is
     // known to see a strobe.
@@ -2548,20 +2549,20 @@ async function main() {
             checks.forEach(({ flipBy, over, red }, k) => {
               // Each cell follows its brightest (rising) or darkest (falling)
               // value since its last flip; a big enough turn the other way flips
-              // it. The red check needs the red side saturated, and has no 0.8 cap.
+              // it. The red check needs either state saturated, and has no 0.8 cap.
               (red ? now.red : now.lum).forEach((l, i) => {
                 const sat = now.saturated[i];
-                const c = cells[k][i] || (cells[k][i] = { dir: 0, hi: l, lo: l, hiSat: sat, flips: [] });
+                const c = cells[k][i] || (cells[k][i] = { dir: 0, hi: l, lo: l, hiSat: sat, loSat: sat, flips: [] });
                 const flip = (dir) => {
                   c.flips.push(s);
-                  Object.assign(c, { dir, hi: l, lo: l, hiSat: sat });
+                  Object.assign(c, { dir, hi: l, lo: l, hiSat: sat, loSat: sat });
                 };
                 if (red) {
-                  if (c.dir >= 0 && c.hi - l > flipBy && c.hiSat) flip(-1);
-                  else if (c.dir <= 0 && l - c.lo > flipBy && sat) flip(1);
+                  if (c.dir >= 0 && c.hi - l > flipBy && (c.hiSat || sat)) flip(-1);
+                  else if (c.dir <= 0 && l - c.lo > flipBy && (c.loSat || sat)) flip(1);
                   else {
                     if (l > c.hi) Object.assign(c, { hi: l, hiSat: sat });
-                    c.lo = Math.min(c.lo, l);
+                    if (l < c.lo) Object.assign(c, { lo: l, loSat: sat });
                   }
                 } else if (c.dir >= 0 && c.hi - l >= flipBy && l < 0.8) flip(-1);
                 else if (c.dir <= 0 && l - c.lo >= flipBy && c.lo < 0.8) flip(1);
@@ -2748,7 +2749,7 @@ async function main() {
       }
       flashProblems.push(...errors);
       if (flashProblems.length) failures += 1;
-      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 2.8% more than 3 flash pairs (WCAG 2.3.1), nor 2.8% more than 3 saturated-red flash pairs (WCAG's red flash rule), in the dark, hurt, beam, boss, Dragon, fire, shockwave, swarm, popup and faint scenes`);
+      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 2.8% more than 3 flash pairs (WCAG 2.3.1), nor 2.8% more than 3 saturated-red flash pairs (WCAG 2.0's red flash measure), in the dark, hurt, beam, boss, Dragon, fire, shockwave, swarm, popup and faint scenes`);
       for (const problem of flashProblems) console.log(`     ${problem}`);
     }
 

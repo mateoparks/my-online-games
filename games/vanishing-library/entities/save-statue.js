@@ -23,11 +23,16 @@
     ],
   });
 
+  const STATUE_WORDS = {
+    saved: 'The statue glows. Your journey is saved.',
+    failed: 'The statue glows. Could not save yet; still trying.',
+  };
+
   VL.defineEntity('saveStatue', {
     onStand(state, statue) {
       VL.touchSavePoint(state, { area: state.player.area, screen: state.player.screen, tx: statue.x, ty: statue.y, facing: 'down' });
       state.events.push({ type: 'statue' });
-      state.dungeonNote = { text: VL.savedNote(state) || 'The statue glows. Your journey is saved.', t: 0 };
+      state.dungeonNote = VL.savePointNote(state, STATUE_WORDS);
     },
     draw(ctx, statue, x, y, t) {
       VL.ART.drawSprite(ctx, 'prop-statue', x + 2, y - 11);

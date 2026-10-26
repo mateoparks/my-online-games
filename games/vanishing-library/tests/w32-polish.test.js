@@ -21,6 +21,15 @@ test('the Mirror Shield goes into the off hand even when it is full; the old ite
   assert.ok(/off hand/.test(popup) && /\bD\b/.test(popup), popup);
 });
 
+test('the Mirror Shield moves a one-handed off-hand item into an empty main hand, not the bag', () => {
+  const { VL } = loadGame();
+  const game = VL.newGame({ name: 'Robin' });
+  game.items.slingshot = true;
+  game.hands = { mainHand: null, offHand: 'slingshot' };
+  VL.giveItem(game, 'mirrorShield');
+  assert.deepEqual(plain(game.hands), { mainHand: 'slingshot', offHand: 'mirrorShield' });
+});
+
 test('the Mirror Shield over a two-handed shovel frees both hands and takes the off hand', () => {
   const { VL } = loadGame();
   const game = VL.newGame({ name: 'Robin' });
@@ -98,6 +107,27 @@ test('the dungeon keys HUD covers nothing in any dungeon room, the hoard spilled
       for (const decor of game.room.entities.filter((e) => e.art === 'lairHoard')) {
         decor.spilled = true;
         under.push(...paintedUnder(VL, game.room, VL.DUNGEON_HUD).map((s) => `${dungeon.area} ${screen} spilled ${s}`));
+      }
+    }
+  }
+  assert.deepEqual(under, []);
+});
+
+test('under the dungeon keys HUD every room has only plain terrain: no door, hole or other tile to find', () => {
+  const { VL } = loadGame();
+  const game = VL.newGame({ name: 'Robin' });
+  const { tile } = VL.TUNING;
+  const box = VL.DUNGEON_HUD;
+  const plain = (info) => !info.door && !info.hole && ['wall', 'floor', 'shelf', 'roots', 'pit', 'rock'].some((kind) => info[kind]);
+  const under = [];
+  for (const dungeon of Object.values(VL.DUNGEONS)) {
+    for (const screen of Object.keys(VL.AREAS[dungeon.area].screens)) {
+      VL.place(game, { area: dungeon.area, screen, tx: 7, ty: 5, facing: 'up' });
+      for (let ty = Math.floor(box.y / tile); ty * tile < box.y + box.h; ty += 1) {
+        for (let tx = Math.floor(box.x / tile); tx * tile < box.x + box.w; tx += 1) {
+          const ch = VL.tileAt(dungeon.area, screen, tx, ty, game.room);
+          if (!plain(VL.tileInfo(dungeon.area, ch))) under.push(`${dungeon.area} ${screen} '${ch}' (${tx},${ty})`);
+        }
       }
     }
   }
@@ -234,6 +264,47 @@ test('the wreck\'s lantern, once the page is found, says he wakes by the harbour
     assert.equal(game.dungeonNote?.text ?? null, page ? 'Your journey is saved. You\'ll wake up by the harbour.' : null);
     assert.equal(VL.wakeWords(game), page ? 'by the harbour' : null);
   }
+});
+
+test('when the save cannot be written, the statue and the lantern never say the journey is saved, and do once a retry works', () => {
+  for (const done of [false, true]) {
+    const { VL } = loadGame();
+    const backing = memoryStorage();
+    const app = VL.createApp({ storage: VL.createStorage(backing) });
+    app.startGame(VL.newGame({ name: 'Robin' }), 0, { fresh: true });
+    app.setScene('play');
+    const game = app.game;
+    game.popups.seen.controls = true;
+    const [screen, statue] = Object.entries(VL.AREAS.scriptorium.screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'saveStatue').map((e) => [key, e]))[0];
+    VL.place(game, { area: 'scriptorium', screen, tx: statue.x, ty: statue.y, facing: 'down' });
+    VL.dungeonState(game, 'scriptorium').boss = true;
+    if (done) VL.markFound(game, VL.DUNGEONS.scriptorium.boss.heart);
+    const setItem = backing.setItem;
+    backing.setItem = () => { throw new Error('full'); };
+    VL.ENTITIES.saveStatue.onStand(game, statue);
+    app.update(VL.noActions(), VL.TUNING.step);
+    assert.ok(app.saveFailed, 'the write failed');
+    const failed = game.dungeonNote.text;
+    assert.ok(!/is saved/i.test(failed) && /could not save/i.test(failed), failed);
+    if (done) assert.ok(/wake up at home/.test(failed), failed);
+    assert.ok(drawnText(VL, app).includes(failed), 'the failed words are what is drawn');
+    backing.setItem = setItem;
+    app.update(VL.noActions(), VL.TUNING.step);
+    assert.ok(!app.saveFailed, 'the retry worked');
+    assert.equal(game.dungeonNote.text, done ? 'Your journey is saved. You\'ll wake up at home.' : 'The statue glows. Your journey is saved.');
+  }
+  const { VL } = loadGame();
+  const backing = memoryStorage();
+  const app = VL.createApp({ storage: VL.createStorage(backing) });
+  app.startGame(VL.newGame({ name: 'Robin' }), 0, { fresh: true });
+  const game = app.game;
+  const [screen, lantern] = Object.entries(VL.AREAS.wreck.screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'savePoint').map((e) => [key, e]))[0];
+  VL.place(game, { area: 'wreck', screen, tx: lantern.x, ty: lantern.y, facing: 'down' });
+  game.flags['found:pageShipwreck'] = true;
+  backing.setItem = () => { throw new Error('full'); };
+  VL.ENTITIES.savePoint.onStand(game, lantern);
+  app.save();
+  assert.equal(game.dungeonNote.text, 'Could not save yet. You\'ll wake up by the harbour.');
 });
 
 test('the hut\'s lantern out in the world shows no note: he wakes right there', () => {
