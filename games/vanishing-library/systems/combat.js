@@ -25,7 +25,8 @@
     enemyKnockbackSpeed: 180,
     enemyKnockbackSeconds: 0.15,
     // One roll per beaten enemy, exclusive bands.
-    enemyDrops: { heart: 0.2, shell: 0.2 },
+    // W34: hearts 70% rarer than the first 0.2 (Matthew: far too frequent).
+    enemyDrops: { heart: 0.06, shell: 0.2 },
   });
 
   const POOF_SECONDS = 0.4;

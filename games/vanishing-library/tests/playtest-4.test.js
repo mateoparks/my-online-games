@@ -162,3 +162,15 @@ test('the progression table: the Woods\' paths need only the east road; the ore,
   assert.equal(VL.LOCKS.woodsPaths.reached(state), true);
   assert.deepEqual([...VL.solveProgression().problems], []);
 });
+
+// ---------- enemy heart drops ----------
+
+test('a beaten enemy drops a heart about 70% less often than before (0.2 -> 0.06); shells drop as often as ever', () => {
+  const { VL } = loadGame();
+  const { heart, shell } = VL.TUNING.enemyDrops;
+  assert.ok(Math.abs(heart - 0.2 * 0.3) < 1e-9, `heart ${heart}`);
+  assert.equal(shell, 0.2);
+  const counts = { heart: 0, shell: 0, null: 0 };
+  for (let i = 0; i < 1000; i += 1) counts[VL.enemyDrop((i + 0.5) / 1000)] += 1;
+  assert.deepEqual(counts, { heart: 60, shell: 200, null: 740 });
+});
