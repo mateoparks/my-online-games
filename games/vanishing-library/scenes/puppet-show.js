@@ -34,7 +34,27 @@
     colors: { y: 'gold', l: 'goldLight', d: 'woodDark' },
     rows: ['...yy...', '..ylyy..', '.yyylyy.', 'yylyyyly', 'yyyyyyyy', 'dddddddd'],
   });
-  const PUPPETS = { hero: 'puppet-hero', ned: 'puppet-ned', dragon: 'puppet-dragon', goose: 'puppet-goose', cat: 'puppet-cat', haystack: 'puppet-haystack' };
+  // W20: the finale's cast.
+  VL.ART.defineSprite('puppet-wife', {
+    colors: { h: 'npcBlonde', H: 'npcBlondeLight', s: 'skin', e: 'ink', t: 'npcRose', T: 'npcRoseDark', w: stick },
+    rows: ['..hH..', '.hhhh.', 'hseseh', '.ssss.', '.tttt.', 'tttttt', 'tTttTt', 'tttttt', '..ww..', '..ww..'],
+  });
+  VL.ART.defineSprite('puppet-librarian', {
+    colors: { h: 'npcSilver', s: 'skin', e: 'ink', g: 'metalDark', t: 'npcNavy', T: 'npcNavyDark', w: stick },
+    rows: ['.hhhh.', 'hhhhhh', 'hgegeg', '.ssss.', 'tttttt', 'tTttTt', '.tttt.', '..ww..', '..ww..'],
+  });
+  VL.ART.defineSprite('puppet-book', {
+    colors: { r: 'heart', w: 'white', d: 'heartLight', s: stick },
+    rows: ['rrrrrr', 'rwwwwr', 'rdwwdr', 'rwwwwr', 'rrrrrr', '..ss..', '..ss..'],
+  });
+  VL.ART.defineSprite('puppet-house', {
+    colors: { r: 'roof', R: 'roofDark', p: 'plaster', d: 'doorway', w: 'water', s: stick },
+    rows: ['...rr...', '..rrrr..', '.rrrrrr.', 'RRRRRRRR', '.pppppp.', '.pwppdp.', '.ppppdp.', '...ss...', '...ss...'],
+  });
+  const PUPPETS = {
+    hero: 'puppet-hero', ned: 'puppet-ned', dragon: 'puppet-dragon', goose: 'puppet-goose', cat: 'puppet-cat', haystack: 'puppet-haystack',
+    wife: 'puppet-wife', librarian: 'puppet-librarian', book: 'puppet-book', house: 'puppet-house',
+  };
 
   // ---------- the shows ----------
 
@@ -91,6 +111,50 @@
     },
   ];
 
+  // Her last show (W20, design: Ending (decided), Confession): the true story,
+  // told on her own stage. The hero puppet is the player's own look here.
+  VL.CONFESSION_SHOW = {
+    title: 'The Puppeteer Who Missed Home',
+    sky: 'showSkyDusk',
+    beats: [
+      { say: 'Once upon a time, a puppeteer lived in a little town by the sea. But it was not her town.', cast: { wife: 0.5 } },
+      { say: 'Her home was far over the hills, and she missed it every single day.', cast: { wife: 0.3, house: 0.75 }, move: { wife: 'shake' } },
+      { say: 'She married a kind librarian. He loved his books and this town, and he would never, ever leave.', cast: { wife: 0.35, librarian: 0.65 }, move: { librarian: 'hop' } },
+      { say: 'So she had a sad, silly idea. If the books were gone, perhaps he would want to leave too.', cast: { wife: 0.4, book: 0.7 } },
+      { say: 'Every night, she carried books up a secret tunnel to a sleepy old dragon, who was glad to keep them.', cast: { wife: 0.25, book: 0.5, dragon: 0.78 }, move: { book: 'run' } },
+      { say: 'But the library only grew sadder, and so did the librarian. And so, at last, did she.', cast: { librarian: 0.4, wife: 0.65 }, move: { librarian: 'shake', wife: 'shake' } },
+      { say: 'Then a brave young hero came along, and brought every book back home.', cast: { hero: 0.35, book: 0.6 }, move: { hero: 'hop' } },
+      { speaker: 'Mrs. Fenwick', say: 'The end.', cast: { wife: 0.5 } },
+    ],
+  };
+
+  // Her kind shows, once she is forgiven: one after the other through a visit.
+  VL.KIND_SHOWS = [
+    {
+      title: 'The Library That Grew',
+      sky: 'showSky',
+      beats: [
+        { say: 'Once upon a time, a little library lost nearly all of its books.', cast: { librarian: 0.5 }, move: { librarian: 'shake' } },
+        { say: 'A brave hero searched high and low, over the sea and up the mountain...', cast: { hero: 0.4 }, move: { hero: 'run' } },
+        { say: '...and the whole town helped carry the books home!', cast: { hero: 0.3, book: 0.5, librarian: 0.7 }, move: { hero: 'hop', book: 'hop' } },
+        { say: 'Then everyone wrote books of their own, and the library was never empty again. The end!', cast: { hero: 0.3, librarian: 0.5, wife: 0.7 }, move: { hero: 'hop', librarian: 'hop', wife: 'hop' } },
+        { speaker: 'Mrs. Fenwick', say: 'Thank you for coming, {name}! You are always welcome at my shows.', cast: { hero: 0.5 } },
+      ],
+    },
+    {
+      title: 'The Dragon Who Learned to Read',
+      sky: 'showSky',
+      mountain: true,
+      beats: [
+        { say: 'Once there was a dragon who kept a great big pile of books.', cast: { dragon: 0.6, book: 0.3 } },
+        { say: 'But dragons can\'t read! So the books just sat there, gathering dust.', cast: { dragon: 0.6 }, move: { dragon: 'shake' } },
+        { say: 'So the dragon gave them all back, and asked the librarian for reading lessons.', cast: { dragon: 0.65, librarian: 0.3 }, move: { librarian: 'hop' } },
+        { say: 'Now he reads one book every Sunday. Very carefully, with no fire at all. The end!', cast: { dragon: 0.5, book: 0.3 }, move: { dragon: 'hop' } },
+        { speaker: 'Mrs. Fenwick', say: 'Do come again soon, {name}!', cast: { dragon: 0.5 } },
+      ],
+    },
+  ];
+
   // ---------- the stage ----------
 
   const WINDOW = { x: 40, y: 34, w: 176, h: 80 };
@@ -112,14 +176,22 @@
 
   function close(app) {
     VL.sfx('menuSelect');
+    // However the show ends (its last beat or Esc), its flags land, like a talk's.
+    VL.endTalk(app.game, app.puppetShow.end);
     app.setScene('play');
   }
 
+  // data: { show: index into VL.PUPPET_SHOWS } | { kind: n } (VL.KIND_SHOWS) | { confession: true }
+  function pickShow(data) {
+    if (data.confession) return VL.CONFESSION_SHOW;
+    if (data.kind !== undefined) return VL.KIND_SHOWS[data.kind % VL.KIND_SHOWS.length];
+    return VL.PUPPET_SHOWS[Math.min(data.show ?? 0, VL.PUPPET_SHOWS.length - 1)];
+  }
+
   VL.defineScene('puppetShow', {
-    // data: { show: index into VL.PUPPET_SHOWS }
-    enter(app, data) {
-      const show = VL.PUPPET_SHOWS[Math.min(data.show ?? 0, VL.PUPPET_SHOWS.length - 1)];
-      app.puppetShow = { show, beat: 0, shown: 0, actors: {} };
+    // data: see pickShow, plus end (for VL.endTalk) when the show closes.
+    enter(app, data = {}) {
+      app.puppetShow = { show: pickShow(data), end: data.end || null, beat: 0, shown: 0, actors: {} };
       aim(app.puppetShow);
       VL.sfx('popup');
     },

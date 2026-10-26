@@ -91,6 +91,7 @@
     const [dx, dy, w, h] = REACH[facing] || REACH.down;
     return { x: player.x + dx, y: player.y + dy, w, h };
   }
+  VL.swordBox = swordBox;
 
   // The side something comes from, seen from the hero's body.
   function sideOf(player, from) {

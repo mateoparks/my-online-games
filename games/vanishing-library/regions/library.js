@@ -139,8 +139,8 @@
     ],
     d4Boss: [{ say: 'Bounce the dragon\'s fire right back at it, then use your sword!' }],
     trapdoorOpen: [{ say: 'Something strange is going on in the square, {name}. My wife hasn\'t been home all day.' }],
-    marionettes: [{ say: 'Whatever is down there, {name}, I\'m coming with you.' }],
-    ending: [{ say: 'Thank you, {name}. For everything.' }],
+    marionettes: [{ say: 'The trapdoor in the square is open, and my wife is nowhere to be found. Whatever is down there, {name}, I\'m coming with you.' }],
+    ending: [{ say: 'My wife is still down under the stage, {name}. Let\'s go back down and hear what she has to say.' }],
   };
 
   const carrying = (state) => VL.booksCarried(state).length > 0;
@@ -174,6 +174,8 @@
     { when: { notFlag: 'met:fenwick' }, say: introduction, set: 'met:fenwick' },
     ...remarks(null, null, {}),
     ...hintEntries,
+    // After the ending (W20): the shelves are full for good.
+    { when: { flag: 'forgiven' }, say: ['Look at these shelves, {name}! Full to the very top, and every book stays put.', 'My wife has started a puppet show about you. Do go and see it!'] },
     { say: 'Every book you bring back makes this old room a little brighter, {name}.' },
   ]);
 

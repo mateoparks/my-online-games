@@ -51,9 +51,10 @@
     game.room?.entities?.find((entity) => entity.type === 'npc' && VL.NPCS[entity.id] && VL.popupText(VL.NPCS[entity.id].name, game) === name) || null;
 
   VL.defineScene('dialogue', {
-    // data: { speaker, pages (from VL.dialoguePages), shop, end (for VL.endTalk) }
+    // data: { speaker, pages (from VL.dialoguePages), shop, end (for VL.endTalk),
+    // speakers? (one per page, for a conversation: VL.conversation) }
     enter(app, data) {
-      app.dialogue = { speaker: data.speaker, pages: data.pages, shop: data.shop || null, end: data.end || null, page: 0, shown: 0 };
+      app.dialogue = { speaker: data.speaker, speakers: data.speakers || null, pages: data.pages, shop: data.shop || null, end: data.end || null, page: 0, shown: 0 };
     },
 
     update(app, actions, dt) {
@@ -99,9 +100,10 @@
         left -= line.length + 1;
       }
       const done = view.shown >= pageText(view).length;
+      const speaker = view.speakers?.[view.page] ?? view.speaker;
       // Placed for the full page, so the box never jumps while it types out.
-      const at = VL.dialogueSide(game, speakerEntity(game, view.speaker), { title: view.speaker, text: Array.from({ length: height }, (_, i) => view.pages[view.page][i] ?? '').join('\n') });
-      VL.ART.drawPopup(ctx, { title: view.speaker, text: lines.join('\n'), at, prompt: done }, t);
+      const at = VL.dialogueSide(game, speakerEntity(game, speaker), { title: speaker, text: Array.from({ length: height }, (_, i) => view.pages[view.page][i] ?? '').join('\n') });
+      VL.ART.drawPopup(ctx, { title: speaker, text: lines.join('\n'), at, prompt: done }, t);
     },
 
     smokeData: (app) => ({

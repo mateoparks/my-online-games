@@ -149,8 +149,8 @@
   });
 
   // The wife's puppet booth over the stage: curtains, a scalloped valance and
-  // two puppets bobbing through a show.
-  VL.defineDecor('puppetBooth', (ctx, x, y, t) => {
+  // two puppets bobbing through a show (none while she is away: `empty`).
+  VL.defineDecor('puppetBooth', (ctx, x, y, t, booth) => {
     rect(ctx, 'outline', x + 1, y - 9, 62, 26);
     rect(ctx, 'woodDark', x + 2, y - 8, 4, 24);
     rect(ctx, 'woodDark', x + 58, y - 8, 4, 24);
@@ -163,6 +163,7 @@
     for (let s = 0; s < 10; s += 1) rect(ctx, 'curtainLight', x + 4 + s * 6, y - 3, 4, 2);
     rect(ctx, 'gold', x + 2, y - 8, 60, 1);
     rect(ctx, 'goldLight', x + 26, y - 7, 12, 3);
+    if (booth?.empty) return;
     const bob = (phase) => (Math.sin(t * 3 + phase) > 0 ? 1 : 0);
     // A little dragon puppet and a little hero puppet, kept friendly.
     const dy = bob(0);

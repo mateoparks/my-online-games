@@ -33,6 +33,13 @@ test('the spot ledger: the spots no item has filled yet, by owner', () => {
   assert.deepEqual([...VL.unplacedFills()], []);
 });
 
+test('W20: the ledger is empty, so every find, door and chicken on the map is filled', () => {
+  const { VL } = loadGame();
+  assert.deepEqual(LEDGER, {});
+  assert.deepEqual([...VL.unfilledSpots()], []);
+  assert.ok(Object.values(VL.SPOTS).every((spot) => spot.filled));
+});
+
 test('every spot is owned by a later item, never W8 itself', () => {
   const { VL } = loadGame();
   for (const spot of Object.values(VL.SPOTS)) {
