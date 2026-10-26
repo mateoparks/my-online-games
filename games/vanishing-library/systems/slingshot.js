@@ -237,7 +237,8 @@
     for (const slot of VL.ART.HUD_LAYOUT.slots) {
       if (VL.heldItem(state, slot.hand) !== 'slingshot') continue;
       const { slotY, slotW, slotH } = VL.ART.HUD_LAYOUT;
-      VL.ART.text(ctx, String(state.inventory.brokenShells), slot.x + slotW - 2, slotY + slotH - 6, { size: 'small', align: 'right', color: 'text', shadow: 'outline' });
+      // Bottom-right inside the frame, its drop shadow included.
+      VL.ART.text(ctx, String(state.inventory.brokenShells), slot.x + slotW - 3, slotY + slotH - 7, { size: 'small', align: 'right', color: 'text', shadow: 'outline' });
     }
   };
 

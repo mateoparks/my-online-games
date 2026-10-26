@@ -287,3 +287,40 @@ test('the HUD (hearts, shells, hands, SAVED) is not drawn anywhere in the ending
   assert.deepEqual([...phases].sort(), ['beats', 'credits', 'fadeIn', 'fadeOut']);
   assert.equal(huds, 0);
 });
+
+// ---------- 6. the slingshot's ammo count sits inside its slot ----------
+
+test('the slingshot\'s ammo count (and its shadow) sits inside the slot\'s frame, in either hand, at one to three digits', () => {
+  const { VL } = loadGame();
+  const layout = VL.ART.HUD_LAYOUT;
+  for (const hand of ['mainHand', 'offHand']) {
+    for (const count of [9, 15, 250]) {
+      const game = VL.newGame({ name: 'Robin' });
+      game.items.slingshot = true;
+      game.hands = { mainHand: null, offHand: null, [hand]: 'slingshot' };
+      game.inventory.brokenShells = count;
+      const ctx = recordingContext();
+      const text = VL.ART.text;
+      VL.ART.text = (c, str, ...rest) => {
+        if (str === String(count) && rest[2]?.size === 'small') ctx.tag = 'ammo';
+        try {
+          return text(c, str, ...rest);
+        } finally {
+          ctx.tag = undefined;
+        }
+      };
+      try {
+        VL.ART.drawHud(ctx, game, 0);
+      } finally {
+        VL.ART.text = text;
+      }
+      const slot = layout.slots.find((s) => s.hand === hand);
+      const ammo = ctx.rects.filter((r) => r.tag === 'ammo');
+      assert.ok(ammo.length > 0, `${hand} ${count} drawn`);
+      for (const r of ammo) {
+        assert.ok(r.x >= slot.x + 1 && r.x + r.w <= slot.x + layout.slotW - 1, `${hand} ${count}: x ${r.x}..${r.x + r.w} clear of the frame`);
+        assert.ok(r.y >= layout.slotY + 1 && r.y + r.h <= layout.slotY + layout.slotH - 1, `${hand} ${count}: y ${r.y}..${r.y + r.h} clear of the frame`);
+      }
+    }
+  }
+});
