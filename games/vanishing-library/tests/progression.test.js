@@ -48,29 +48,33 @@ test('defineLock registers a lock with defaults and rejects an implemented dupli
 
 test('a later item claims a planned lock by defining it with a reached predicate', () => {
   const { VL } = loadGame();
-  assert.equal(VL.LOCKS.workshop.reached, undefined, 'workshop is planned until W20');
-  assert.equal(VL.LOCKS.workshop.by, 'W20');
-  const claimed = VL.defineLock('workshop', {
-    type: 'place', needs: ['trapdoorOpen'],
-    doc: '§ Ending: Confrontation', reached: (state) => Boolean(state.flags.workshop),
+  // Every lock in the game is claimed now (W20 claimed the last), so the test plans its own.
+  VL.defineLock('fixtureVault', { type: 'place', needs: ['fixtureDoor'], doc: '§ Ending: Confrontation', by: 'W99' });
+  assert.equal(VL.LOCKS.fixtureVault.reached, undefined, 'fixtureVault is planned until claimed');
+  assert.equal(VL.LOCKS.fixtureVault.by, 'W99');
+  const claimed = VL.defineLock('fixtureVault', {
+    type: 'place', needs: ['fixtureDoor'],
+    doc: '§ Ending: Confrontation', reached: (state) => Boolean(state.flags.fixtureVault),
   });
-  assert.equal(VL.LOCKS.workshop, claimed);
-  assert.equal(claimed.reached({ flags: { workshop: true } }), true);
-  assert.throws(() => VL.defineLock('workshop', { doc: '§ Controls', reached: () => true }), /already implemented/);
+  assert.equal(VL.LOCKS.fixtureVault, claimed);
+  assert.equal(claimed.reached({ flags: { fixtureVault: true } }), true);
+  assert.throws(() => VL.defineLock('fixtureVault', { doc: '§ Controls', reached: () => true }), /already implemented/);
 });
 
 test('a claim that changes the planned rule must say why (replan), so a loosened gate shows in the diff', () => {
   const { VL } = loadGame();
-  // A lock no item has claimed yet (W19 claimed the highlands this test used to try).
-  const planned = { needs: ['workshop', ['woodSword', 'metalSword']], doc: '§ Ending: Confrontation' };
-  assert.throws(() => VL.defineLock('marionettes', { ...planned, needs: ['workshop'], reached: () => true }), /marionettes is claimed with a different rule than planned \(needs\); say why with replan/);
-  assert.throws(() => VL.defineLock('marionettes', { ...planned, optional: true, gives: ['view'], reached: () => true }), /than planned \(gives, optional\)/);
-  assert.equal(VL.LOCKS.marionettes.reached, undefined, 'a refused claim leaves the plan in place');
+  // Locks of the test's own, planned and unclaimed.
+  VL.defineLock('fixtureVault', { type: 'place', needs: ['fixtureDoor'], doc: '§ Ending: Confrontation', by: 'W99' });
+  const planned = { needs: ['fixtureVault', ['woodSword', 'metalSword']], doc: '§ Ending: Confrontation' };
+  VL.defineLock('fixtureFight', { ...planned, by: 'W99' });
+  assert.throws(() => VL.defineLock('fixtureFight', { ...planned, needs: ['fixtureVault'], reached: () => true }), /fixtureFight is claimed with a different rule than planned \(needs\); say why with replan/);
+  assert.throws(() => VL.defineLock('fixtureFight', { ...planned, optional: true, gives: ['view'], reached: () => true }), /than planned \(gives, optional\)/);
+  assert.equal(VL.LOCKS.fixtureFight.reached, undefined, 'a refused claim leaves the plan in place');
   // Order inside needs (and inside an any-of) does not count as a change.
-  const same = VL.defineLock('marionettes', { ...planned, needs: [['metalSword', 'woodSword'], 'workshop'], reached: () => true });
-  assert.equal(VL.LOCKS.marionettes, same);
-  const loosened = VL.defineLock('workshop', { type: 'place', needs: ['town'], doc: '§ Ending: Confrontation', replan: 'the workshop opens off the square; the trapdoor is scenery', reached: () => true });
-  assert.equal(loosened.replan, 'the workshop opens off the square; the trapdoor is scenery');
+  const same = VL.defineLock('fixtureFight', { ...planned, needs: [['metalSword', 'woodSword'], 'fixtureVault'], reached: () => true });
+  assert.equal(VL.LOCKS.fixtureFight, same);
+  const loosened = VL.defineLock('fixtureVault', { type: 'place', needs: ['town'], doc: '§ Ending: Confrontation', replan: 'the vault opens off the square', reached: () => true });
+  assert.equal(loosened.replan, 'the vault opens off the square');
 });
 
 test('an item splits a planned placeholder into its own locks without editing milestones.js', () => {
@@ -86,7 +90,8 @@ test('an item splits a planned placeholder into its own locks without editing mi
   assert.throws(() => VL.splitLock('nothing', { a: part(1) }), /lock nothing does not exist/);
   // A split can only share out the placeholder's counters: it cannot hand out the placeholder's own
   // keys (that would loosen a gate without a replan) or counters the plan never promised.
-  assert.throws(() => VL.splitLock('trapdoorOpen', { stageRoom: { type: 'place', needs: ['start'], gives: ['trapdoorOpen'], doc: '§ The path through the game, 9', by: 'W20' } }), /trapdoorOpen is not a placeholder \(it supplies no counter\); claim it with defineLock/);
+  VL.defineLock('fixtureHatch', { needs: ['start'], doc: '§ The path through the game, 9', by: 'W99' });
+  assert.throws(() => VL.splitLock('fixtureHatch', { stageRoom: { type: 'place', needs: ['start'], gives: ['fixtureHatch'], doc: '§ The path through the game, 9', by: 'W99' } }), /fixtureHatch is not a placeholder \(it supplies no counter\); claim it with defineLock/);
   assert.throws(() => VL.splitLock('fixtureBooks', { bookA: part(5), bookB: { ...part(5), gives: ['fixtureBooks'] } }), /part bookB gives fixtureBooks, which the placeholder stood for; claim it with defineLock and replan/);
   assert.throws(() => VL.splitLock('fixtureBooks', { bookA: part(5), bookB: { ...part(5), supplies: { books: 5, ore: 1 } } }), /part bookB supplies ore, which fixtureBooks does not/);
   VL.splitLock('fixtureBooks', { bookUnderRock: part(4), bookInTrunk: part(6) });
@@ -113,6 +118,7 @@ test('defineLock insists on a design-doc citation, an owner for planned locks an
 test('every lock cites a section of the design doc and every planned lock names its item', () => {
   const { VL } = loadGame();
   const ids = Object.keys(VL.LOCKS);
+  assert.deepEqual(ids.filter((id) => !VL.LOCKS[id].reached), [], 'every lock is implemented (W20 claimed the last)');
   assert.ok(ids.length >= 60, `${ids.length} locks seeded`);
   for (const lock of Object.values(VL.LOCKS)) {
     assert.ok(DESIGN_SECTIONS.some((section) => lock.doc.startsWith(`§ ${section}`)), `${lock.id} cites a design-doc section: ${lock.doc}`);
@@ -640,9 +646,11 @@ test('playthrough: steps cover a prefix of the milestones and drive the real gam
   assert.ok(drivable.length >= 2 && drivable[0] === 'named' && drivable[1] === 'start', 'steps start at the title');
   const gap = VL.MILESTONES[drivable.length];
   if (gap) assert.equal(VL.LOCKS[gap].reached, undefined, `implemented milestone ${gap} has no playthrough steps`);
+  // W20: the steps cover every milestone, so the real game is played from the title to the credits.
+  assert.deepEqual(drivable, [...VL.MILESTONES], 'the playthrough reaches the ending');
   const drive = play.playTo(drivable.at(-1));
   assert.ok(VL.progress(drive.state).includes(drivable.at(-1)));
-  assert.throws(() => play.playTo(gap), new RegExp(`${gap} is not drivable yet`));
+  assert.equal(drive.state.finished, true, 'the game is finished');
 });
 
 test('playthrough: a step that does not reach its milestone fails, and steps are registered once', () => {
@@ -656,8 +664,9 @@ test('playthrough: a step that does not reach its milestone fails, and steps are
     steps: { start() {}, hutInside: (drive) => drive.walkTo({ area: 'hut', screen: '0,0', tx: 2, ty: 2 }) },
   });
   assert.equal(good.playTo('hutInside').state.player.area, 'hut');
-  const planned = createPlaythrough(VL, { milestones: ['start', 'workshop'], steps: { start() {}, workshop() {} } });
-  assert.throws(() => planned.playTo('workshop'), /workshop is planned/);
+  VL.defineLock('fixtureVault', { type: 'place', needs: ['start'], doc: '§ Ending: Confrontation', by: 'W99' });
+  const planned = createPlaythrough(VL, { milestones: ['start', 'fixtureVault'], steps: { start() {}, fixtureVault() {} } });
+  assert.throws(() => planned.playTo('fixtureVault'), /fixtureVault is planned/);
   const { step } = require('./playthrough');
   assert.throws(() => step('start', () => {}), /steps for milestone start are already registered/);
 });

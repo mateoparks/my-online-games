@@ -54,6 +54,7 @@ VL.FILES = {
     'systems/raft.js',
     'systems/climbers-almanac.js',
     'systems/fire.js',
+    'systems/finale.js',
   ],
 
   entities: [
@@ -98,6 +99,7 @@ VL.FILES = {
     'entities/lens-crab.js',
     'entities/fire-spout.js',
     'entities/dragon.js',
+    'entities/marionette.js',
   ],
 
   regions: [
@@ -121,6 +123,7 @@ VL.FILES = {
     'dungeons/lighthouse.js',
     'dungeons/shipwreck.js',
     'dungeons/lair.js',
+    'dungeons/workshop.js',
   ],
 
   scenes: [
@@ -141,6 +144,7 @@ VL.FILES = {
     'scenes/puppet-show.js',
     'scenes/world-map.js',
     'scenes/shockwave.js',
+    'scenes/finale.js',
   ],
 
   boot: [

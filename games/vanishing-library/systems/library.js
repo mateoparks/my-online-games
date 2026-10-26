@@ -197,6 +197,8 @@
   // Primer goes first.
   VL.applyThefts = function applyThefts(state) {
     const library = lib(state);
+    // Forgiven in the finale (W20), she takes nothing ever again.
+    if (state.flags.forgiven) return [];
     const bosses = BOSSES.filter((id) => reached(state, id)).length;
     let take = Math.max(0, library.trips - library.stolen.trips) * VL.TUNING.libraryTheftPerTrip
       + Math.max(0, bosses - library.stolen.bosses) * VL.TUNING.libraryTheftPerBoss;

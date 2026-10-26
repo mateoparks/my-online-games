@@ -718,7 +718,7 @@ test('Nosy Ned is a meddling young hero, but not the player\'s own hero: his own
   assert.ok(colours('puppet-ned').has('skin'), 'still a young hero, face and all');
 });
 
-test('the trapdoor in front of the stage is there all game and can\'t be opened', () => {
+test('the trapdoor in front of the stage is there all game and can\'t be opened before the finale', () => {
   const t = setup();
   const { VL } = t;
   const spot = VL.SPOTS.trapdoor;
@@ -729,7 +729,7 @@ test('the trapdoor in front of the stage is there all game and can\'t be opened'
   assert.equal(VL.currentPopup(t.game).title, 'Trapdoor');
   assert.ok(VL.currentPopup(t.game).text.includes('shut fast'));
   assert.equal(t.game.player.area, 'overworld', 'it goes nowhere');
-  assert.equal(VL.LOCKS.trapdoorOpen.reached, undefined, 'W20 opens it');
+  assert.equal(VL.LOCKS.trapdoorOpen.reached(t.game), false, 'shut until the finale opens it (W20)');
 });
 
 // ---------- the lost-chicken kid ----------

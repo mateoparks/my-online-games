@@ -118,17 +118,44 @@
       const { tx, ty } = VL.facingTiles(state)[0];
       const info = VL.tileInfo(state.room.area, VL.tileAt(state.room.area, state.room.screen, tx, ty, state.room));
       if (!info.stage) return;
-      VL.requestScene(state, 'puppetShow', { show: VL.wifeStage(state) });
+      const { message, show } = VL.stageShow(state);
+      if (message) VL.showMessage(state, { text: message });
+      else VL.requestScene(state, 'puppetShow', show);
     },
   });
 
-  // Visible all game, opened only in the finale (W20).
+  // Visible all game, open from the finale on (W20): walking onto it climbs
+  // down the ladder into her workshop.
   VL.defineEntity('trapdoor', {
+    // The pathfinder never walks over the open hatch by chance.
+    passable: (state) => !VL.trapdoorIsOpen(state),
+    prepare(state, hatch) {
+      hatch.open = VL.trapdoorIsOpen(state);
+    },
     onInteract(state) {
+      if (VL.trapdoorIsOpen(state)) return;
       const text = VL.wifeStage(state) >= 2
         ? 'Shut fast, with no handle on this side. Mrs. Fenwick calls over: "That\'s just where I keep my spare puppets, dear!"'
         : 'A wooden trapdoor in front of the stage. It\'s shut fast, with no handle on this side.';
       VL.showMessage(state, { title: 'Trapdoor', text });
+    },
+    onStand(state) {
+      if (!VL.trapdoorIsOpen(state)) return;
+      VL.enterScreen(state, VL.FINALE.arrival);
+      state.events.push({ type: 'door', to: VL.FINALE.arrival });
+    },
+    draw(ctx, hatch, x, y) {
+      if (!hatch.open) return;
+      // The lid thrown back, and the top of the ladder in the dark below.
+      rect(ctx, 'outline', x + 2, y + 2, 12, 12);
+      rect(ctx, 'doorway', x + 3, y + 3, 10, 10);
+      rect(ctx, 'woodDark', x + 4, y + 6, 2, 7);
+      rect(ctx, 'woodDark', x + 10, y + 6, 2, 7);
+      rect(ctx, 'wood', x + 6, y + 7, 4, 1);
+      rect(ctx, 'wood', x + 6, y + 10, 4, 1);
+      rect(ctx, 'outline', x + 2, y - 3, 12, 6);
+      rect(ctx, 'wood', x + 3, y - 2, 10, 4);
+      rect(ctx, 'woodLight', x + 3, y - 2, 10, 1);
     },
   });
 
@@ -137,6 +164,8 @@
   // Every book has its own place on the shelves (by the order books are
   // defined), so a returned book always goes back to the same gap.
   VL.SHELF = { count: 3, boards: 3, width: 64, spacing: 5 };
+  const PACKED = 20;
+  const PACKED_COLORS = ['heart', 'tunic', 'gold', 'npcNavy', 'leaf', 'roof', 'berry', 'woodLight'];
   VL.shelfPlace = function shelfPlace(id) {
     const i = Object.keys(VL.BOOKS).indexOf(id);
     const n = Math.floor(i / (VL.SHELF.count * VL.SHELF.boards));
@@ -154,6 +183,10 @@
     prepare(state, shelf) {
       VL.applyThefts(state);
       shelf.books = VL.shelfBooks(state, shelf.shelf);
+      // After the finale every board is packed (0..1, filling board by
+      // board), and the book about the hero stands in the middle (W20).
+      shelf.fill = VL.libraryFull(state) ? 1 : 0;
+      shelf.heroBook = Boolean(state.finished);
       return true;
     },
     draw(ctx, shelf, x, y) {
@@ -173,8 +206,18 @@
           rect(ctx, book.color, bx, by + 5 - tall, 3, tall);
           rect(ctx, 'white', bx + 1, by + 6 - tall, 1, 1);
         }
+        const packed = Math.floor(VL.clamp((shelf.fill || 0) * VL.SHELF.boards - board, 0, 1) * PACKED);
+        for (let i = 0; i < packed; i += 1) {
+          const tall = 3 + Math.floor(VL.ART.hash(i, board, shelf.shelf) * 3);
+          rect(ctx, PACKED_COLORS[Math.floor(VL.ART.hash(board, i, shelf.shelf + 7) * PACKED_COLORS.length)], x + 2 + i * 3, by + 5 - tall, 2, tall);
+        }
         rect(ctx, 'wood', x + 1, by + 5, w - 2, 2);
         rect(ctx, 'woodLight', x + 1, by + 5, w - 2, 1);
+      }
+      if (shelf.heroBook && shelf.shelf === 1) {
+        rect(ctx, 'outline', x + w / 2 - 3, y + 1, 6, 7);
+        rect(ctx, 'gold', x + w / 2 - 2, y + 2, 4, 5);
+        rect(ctx, 'goldLight', x + w / 2 - 2, y + 2, 1, 5);
       }
     },
   });
