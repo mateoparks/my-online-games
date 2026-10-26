@@ -49,3 +49,12 @@ test('the progression table knows the metal shovel needs wood, and the solver st
   assert.ok(VL.LOCKS.metalShovel.needs.includes('wood'));
   assert.deepEqual([...VL.solveProgression().problems], []);
 });
+
+// ---------- the berries popup ----------
+
+test('the first berries popup says how to eat one, and leaves the regrowing for him to find out', () => {
+  const { VL } = loadGame();
+  const { text } = VL.POPUPS.berries;
+  assert.match(text, /heal a heart/);
+  assert.doesNotMatch(text, /grow/i);
+});
