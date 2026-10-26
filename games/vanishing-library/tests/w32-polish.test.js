@@ -245,3 +245,85 @@ test('the hut\'s lantern out in the world shows no note: he wakes right there', 
   assert.equal(game.dungeonNote ?? null, null);
   assert.equal(VL.wakeWords(game), null);
 });
+
+// ---------- 4. broken shells show in the counts ----------
+
+function hudStrings(VL, game) {
+  const strings = [];
+  const sprites = [];
+  const { text, drawSprite } = VL.ART;
+  VL.ART.text = (ctx, str, ...rest) => {
+    strings.push(String(str));
+    return text(ctx, str, ...rest);
+  };
+  VL.ART.drawSprite = (ctx, id, ...rest) => {
+    sprites.push(id);
+    return drawSprite(ctx, id, ...rest);
+  };
+  try {
+    VL.ART.drawHud(fakeDocument().createElement('canvas').getContext('2d'), game, 0);
+  } finally {
+    Object.assign(VL.ART, { text, drawSprite });
+  }
+  return { strings, sprites };
+}
+
+test('the HUD shows broken shells beside the whole ones once he has any, so 000 after the shockwave is not the whole story', () => {
+  const { VL } = loadGame();
+  const game = VL.newGame({ name: 'Robin' });
+  const none = hudStrings(VL, game);
+  assert.ok(!none.sprites.includes('icon-shell-broken'), 'no broken shells, no extra count');
+  game.inventory.brokenShells = 7;
+  const some = hudStrings(VL, game);
+  assert.ok(some.sprites.includes('icon-shell-broken'));
+  assert.ok(some.strings.includes('7'), some.strings.join('|'));
+});
+
+test('the broken-shell count never runs into the whole shells or the hand slots, even at 999', () => {
+  const { VL } = loadGame();
+  const game = VL.newGame({ name: 'Robin' });
+  game.inventory.shells = 250;
+  for (const n of [1, 99, 999]) {
+    game.inventory.brokenShells = n;
+    const ctx = recordingContext();
+    VL.ART.drawHud(ctx, game, 0);
+    const layout = VL.ART.HUD_LAYOUT;
+    const right = layout.brokenX + 10 + VL.ART.measureText(String(n), 'normal');
+    assert.ok(layout.brokenX > layout.shellX + 10 + VL.ART.measureText('250', 'normal'), 'after the whole shells');
+    assert.ok(right < layout.slots[0].x, `${n} ends before the main-hand slot`);
+  }
+});
+
+test('a shop\'s "YOU HAVE" line counts broken shells too when it deals in shells, and still fits its box', () => {
+  const { VL } = loadGame();
+  const app = VL.createApp();
+  app.game = VL.newGame({ name: 'Robin' });
+  Object.assign(app.game.inventory, { shells: 250, brokenShells: 999, wood: 99, ore: 9 });
+  app.setScene('shop', { shop: 'smithy' });
+  const strings = [];
+  const original = VL.ART.text;
+  VL.ART.text = (ctx, str, ...rest) => {
+    strings.push(String(str));
+    return original(ctx, str, ...rest);
+  };
+  try {
+    VL.render(fakeDocument().createElement('canvas').getContext('2d'), app, 0);
+  } finally {
+    VL.ART.text = original;
+  }
+  const line = strings.find((s) => s.startsWith('YOU HAVE'));
+  assert.ok(/250 shells {2}999 broken\b/.test(line), line);
+  assert.ok(VL.ART.measureText(line, 'small') <= 224 - 16, `${line} fits`);
+  app.game.inventory.brokenShells = 0;
+  strings.length = 0;
+  VL.ART.text = (ctx, str, ...rest) => {
+    strings.push(String(str));
+    return original(ctx, str, ...rest);
+  };
+  try {
+    VL.render(fakeDocument().createElement('canvas').getContext('2d'), app, 0);
+  } finally {
+    VL.ART.text = original;
+  }
+  assert.ok(!strings.find((s) => s.startsWith('YOU HAVE')).includes('broken'), 'none, not "0 broken shells"');
+});
