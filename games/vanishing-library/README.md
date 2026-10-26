@@ -2203,6 +2203,9 @@ her first entry is that hint (`VL.bossHintDue`). Her entries come from
 marionettes' in `dungeons/workshop.js` ahead of the town's Dragon talk. The
 librarian's nudge before the first boss points to her; the Dragon's own hint
 is in A Child's Book of Dragons.
+Saved keys: `bossFainted:<id>` and the Lair's `lairGuards`, both in the
+free `flags` map; fixture `tests/fixtures/save-v1-W35.json` (played to the
+Dragon with the sword forged again and the guards beaten, then a faint to it).
 
 ## Dungeons (W13)
 

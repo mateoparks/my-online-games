@@ -597,3 +597,24 @@ test('a puppet on the wall side of a hero who stands by that wall picks a spot o
     assert.ok(Math.abs(m.target.x - state.player.x) >= min - 1e-9, 'at least the standoff away');
   }
 });
+
+// ---------- the W35 fixture ----------
+
+test('the W35 fixture (played to the Dragon with the metal sword forged again and the guards beaten, then a faint to it) loads with nothing reset, and Gran has its hint', () => {
+  const { VL } = loadGame();
+  const text = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W35.json'), 'utf8');
+  const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: text }));
+  const slot = VL.readSlot(storage, 0);
+  assert.equal(slot.status, 'ok');
+  assert.deepEqual(plain(slot.resets || []), []);
+  const game = VL.loadSlot(storage, 0);
+  assert.equal(game.flags['bossFainted:lair'], true);
+  assert.equal(game.flags.lairGuards, true);
+  assert.ok(VL.hasItem(game, 'metalSword') && !VL.bossBeaten(game, 'lair'));
+  VL.respawn(game);
+  assert.deepEqual([game.player.area, game.player.screen], ['lair', '0,0'], 'Continue at the Lair\'s statue');
+  game.flags['met:gran'] = true;
+  assert.equal([].concat(VL.pickDialogue(game, 'gran').say).join(' '), VL.BOSS_HINTS.lair.say.join(' '));
+  VL.place(game, { area: 'overworld', screen: '-1,-5', tx: 7, ty: 8, facing: 'up' });
+  assert.deepEqual(plain(game.room.entities.filter((e) => e.guard)), [], 'the guards stay beaten');
+});
