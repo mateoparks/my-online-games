@@ -336,6 +336,16 @@ test('only two books lie in the highlands: A Child\'s Book of Dragons and Ashton
   assert.ok(by.shipwreck.length + (by.wreck || []).length <= 4, `shipwreck: ${by.shipwreck} / ${by.wreck}`);
 });
 
+test('a book that left the highlands no longer names them: retitled where it sits now, ids kept', () => {
+  const { VL } = loadGame();
+  for (const id of FROM_THE_HIGHLANDS) {
+    const { title, blurb } = VL.BOOKS[id];
+    assert.doesNotMatch(`${title} ${blurb}`, /highland|mountain/i, `${id}: ${title}`);
+  }
+  assert.equal(VL.BOOKS.bookHighShelfA.title, 'A Squirrel\'s Guide to Trees');
+  assert.equal(VL.BOOKS.bookLairB.title, 'Stars Over the Sea');
+});
+
 test('the Chicken Keeper\'s Almanac is on the shipwreck\'s deck now, and the Captain\'s Logbook took its trunk by the Hollow Oak; the librarian\'s hint follows it', () => {
   const { VL } = loadGame();
   assert.deepEqual([VL.SPOTS.bookChickenAlmanac.screen, VL.SPOTS.bookChickenAlmanac.how], ['5,2', 'trunk']);

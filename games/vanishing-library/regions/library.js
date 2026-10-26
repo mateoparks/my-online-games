@@ -16,11 +16,11 @@
   generic('bookWoods', 'Whispers of the Woods', 'leafLight', 'They say the paths in the Woods wander about at night, like sleepy cats.');
   generic('bookScriptoriumRock', 'Neat Letters for Messy Scribes', 'tunic', 'Page one is very neat. By page ninety, the scribe had clearly given up.');
   generic('bookLakeShore', 'Fish I Have Known', 'waterLight', 'Every fish gets its own chapter. Chapter twelve just says "splash".');
-  generic('bookHighlands', 'Songs for Tired Legs', 'roof', 'A songbook from the highlands. Every song is about wanting to sit down.');
+  generic('bookHighlands', 'Songs for Tired Legs', 'roof', 'A songbook for cliff climbers. Every song is about wanting to sit down.');
   generic('bookMeadowRock', 'A Field Guide to Flowers', 'berryLight', 'Pressed flowers between the pages! Somebody loved this book.');
   // W30: the late places' books.
   generic('bookCliffLedge', 'Knots for Nervous Climbers', 'wood', 'Every knot is called "the tight one." The author was clearly very nervous.');
-  generic('bookHighShelfA', 'A Goat\'s Guide to Mountains', 'rockLight', 'Chapter one: jump. Chapter two: jump higher. A goat wrote it, I think.');
+  generic('bookHighShelfA', 'A Squirrel\'s Guide to Trees', 'rockLight', 'Chapter one: climb. Chapter two: climb higher. Chapter three: nuts. A squirrel wrote it, I think.');
   generic('bookHighShelfB', 'Clouds and What They Mean', 'waterLight', 'Fluffy means sunshine. Grey means rain. One shaped like a chicken? Nobody knows.');
   generic('bookHighScree', 'Pebbles of Every Colour', 'rock', 'Two hundred pages about pebbles. Somebody liked pebbles very much.');
   generic('bookHighGapA', 'How to Talk to Gulls', 'sand', 'Step one: say "squawk." Step two: run. That seems to be all the advice there is.');
@@ -29,7 +29,7 @@
   generic('bookHighPathB', 'Snoring Through the Ages', 'tunic', 'A history of snoring. It says dragons snore the loudest of all. Hmm!');
   // W34: Matthew's easter egg, his words.
   generic('bookLairA', 'Ashton Co-op', 'berry', 'Adventures in learning! Or maybe just adventures. Who knows?');
-  generic('bookLairB', 'Stars Over the Highlands', 'gold', 'A map of the night sky. Someone drew a smiling face on the moon.');
+  generic('bookLairB', 'Stars Over the Sea', 'gold', 'The old keeper\'s map of the night sky. Someone drew a smiling face on the moon, and a little hat.');
   generic('bookLakeIsland', 'Island Living for Beginners', 'leaf', 'Lesson one: bring a boat. Lesson two: see above.');
   generic('bookWreckDeck', 'The Captain\'s Logbook', 'water', 'Day one: sailing. Day two: more sailing. Day three: "Oops." The last page is very wet.');
 
