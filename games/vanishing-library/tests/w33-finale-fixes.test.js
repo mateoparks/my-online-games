@@ -216,3 +216,46 @@ test('the W33 fixture (the finale played from the W19 save with the books brough
   assert.deepEqual(plain(VL.booksCarried(game)), []);
   assert.ok(VL.HOARD_BOOKS.every((id) => VL.bookReturned(game, id)));
 });
+
+// ---------- 3. Esc skips the ending wherever it is ----------
+
+const darkness = (VL, view) => {
+  const T = VL.ENDING_TIMES;
+  if (view.phase === 'fadeIn') return 1 - view.t / T.fadeIn;
+  if (view.phase === 'fadeOut') return view.t / T.fadeOut;
+  return view.phase === 'credits' ? 1 : 0;
+};
+
+test('Esc during the first fade-in skips to the credits, fading on from as dark as it was (no flash of the scene)', () => {
+  const { VL, drive } = fromSave({ edit: withBeats('forgiven') });
+  drive.update();
+  assert.equal(drive.app.sceneId, 'ending');
+  drive.hold([], 0.4);
+  assert.equal(drive.app.ending.phase, 'fadeIn');
+  const was = darkness(VL, drive.app.ending);
+  drive.press('pause');
+  assert.equal(drive.app.ending.phase, 'fadeOut', 'Esc is heard in the fade-in');
+  assert.ok(Math.abs(darkness(VL, drive.app.ending) - was) < 0.05, `no jump in the dark: ${was} -> ${darkness(VL, drive.app.ending)}`);
+  drive.hold([], VL.ENDING_TIMES.fadeOut);
+  assert.equal(drive.app.ending.phase, 'credits');
+  assert.equal(drive.state.finished, true);
+});
+
+test('Esc during the fade-out changes nothing, and in the credits it does what S does: to THE END, then the title', () => {
+  const { VL, drive } = fromSave({ edit: withBeats('forgiven') });
+  drive.update();
+  drive.hold([], VL.ENDING_TIMES.fadeIn + 0.1);
+  drive.press('pause');
+  drive.hold([], 0.3);
+  const t = drive.app.ending.t;
+  drive.press('pause');
+  assert.equal(drive.app.ending.phase, 'fadeOut');
+  assert.ok(drive.app.ending.t >= t, 'the fade goes on');
+  drive.hold([], VL.ENDING_TIMES.fadeOut);
+  assert.equal(drive.app.ending.phase, 'credits');
+  drive.press('pause');
+  assert.ok(drive.app.ending.t * VL.ENDING_TIMES.creditsSpeed > 200, 'jumped to THE END');
+  assert.equal(drive.app.sceneId, 'ending');
+  drive.press('pause');
+  assert.equal(drive.app.sceneId, 'title');
+});
