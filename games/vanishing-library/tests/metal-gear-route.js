@@ -75,7 +75,8 @@ function equip(drive, id, hand) {
 function earnShells(drive, least) {
   const { VL } = drive;
   const bush = berryBush(VL);
-  for (let round = 0; round < 12 && drive.state.inventory.shells + drive.state.inventory.berries < least; round += 1) {
+  const rounds = Math.ceil(least / VL.TUNING.berriesPerPick) + 4;
+  for (let round = 0; round < rounds && drive.state.inventory.shells + drive.state.inventory.berries < least; round += 1) {
     drive.walkTo(bush.stand);
     face(drive, bush.facing);
     drive.press('interact');

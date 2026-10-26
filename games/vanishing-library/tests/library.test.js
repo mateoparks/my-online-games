@@ -364,7 +364,7 @@ test('two rewards earned in one trip both come, one after the other', () => {
   assert.ok(VL.rewardGiven(t.game, 'heartLibrary'));
 });
 
-test('the purse holds 15 whole shells; the Big Shell Purse holds 250 (W29)', () => {
+test('the purse holds 15 whole shells; the Big Shell Purse holds 50 (W29; W34, was 250)', () => {
   const t = setup();
   const { VL } = t;
   VL.addResource(t.game, 'shells', 150);
@@ -376,7 +376,7 @@ test('the purse holds 15 whole shells; the Big Shell Purse holds 250 (W29)', () 
   t.game.items.shellPurse = true;
   VL.addResource(t.game, 'shells', 2000);
   t.step();
-  assert.equal(t.game.inventory.shells, 250);
+  assert.equal(t.game.inventory.shells, 50);
 });
 
 test('a full purse turns a trade away before the wood or the berry is paid', () => {

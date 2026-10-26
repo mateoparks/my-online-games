@@ -424,12 +424,12 @@ test('the Herbalist\'s Notes point at the new places', () => {
 
 // ---------- the purses ----------
 
-test('the first purse holds 15 whole shells, the Big Shell Purse 250, and the purse popups say so', () => {
+test('the first purse holds 15 whole shells, the Big Shell Purse 50 (W34, was 250), and the purse popups say so', () => {
   const { VL } = loadGame();
   assert.equal(VL.TUNING.shellCap, 15);
-  assert.equal(VL.TUNING.shellCapPurse, 250);
-  assert.match(VL.ITEMS.shellPurse.about, /\b250\b/);
-  assert.match(VL.ITEMS.shellPurse.popup.text, /\b250\b.*\b15\b/);
+  assert.equal(VL.TUNING.shellCapPurse, 50);
+  assert.match(VL.ITEMS.shellPurse.about, /\b50\b/);
+  assert.match(VL.ITEMS.shellPurse.popup.text, /\b50\b.*\b15\b/);
   assert.match(VL.POPUPS.purseFull.text, /\b15\b/);
   const state = playState(VL, ow('1,1', 8, 5));
   VL.addResource(state, 'shells', 40);
@@ -438,12 +438,13 @@ test('the first purse holds 15 whole shells, the Big Shell Purse 250, and the pu
   state.items.shellPurse = true;
   VL.addResource(state, 'shells', 400);
   hold(VL, state, [], 0.05);
-  assert.equal(state.inventory.shells, 250);
+  assert.equal(state.inventory.shells, 50);
 });
 
-test('everything sold in town costs no more than the first purse holds (so nothing needs the Big Shell Purse)', () => {
+test('everything sold in town costs no more than the first purse holds, but the binding (W34: it needs the Big Shell Purse)', () => {
   const VL = shared;
   const problems = [];
+  const bigPurse = new Set(['bookbinder bindPages', 'price binding']);
   for (const [id, shop] of Object.entries(VL.SHOPS)) {
     for (const offer of shop.offers) {
       if ((offer.cost?.shells || 0) > VL.TUNING.shellCap) problems.push(`${id} ${offer.id} costs ${offer.cost.shells}`);
@@ -452,7 +453,8 @@ test('everything sold in town costs no more than the first purse holds (so nothi
   for (const [id, price] of Object.entries(VL.TUNING.prices)) {
     if ((price.shells || 0) > VL.TUNING.shellCap) problems.push(`price ${id} is ${price.shells}`);
   }
-  assert.deepEqual(problems, []);
+  assert.deepEqual(problems.filter((p) => ![...bigPurse].some((id) => p.startsWith(id))), []);
+  assert.equal(problems.length, 2, problems.join(', '));
 });
 
 

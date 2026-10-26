@@ -1331,11 +1331,17 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   under an older count keeps it and is never given it twice: the W26 save
   that got the purse at 5 gets the heart at 10 and nothing at 20
   (`tests/fixtures/save-v1-W26.json`). The purse raises
-  `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (250); every price in town fits the first purse (a test checks); the
-  `shellPurse` system trims anything over (a drop, a dig) and says who might
-  help; a shop trade at the cap is refused instead ("Your purse is full!",
-  `VL.RESOURCE_CAPS.shells`), so no wood or berry is lost. The boots
-  carry `speed: TUNING.swiftfootSpeed` on their item and `VL.heroSpeed(state)`
+  `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (50 since
+  W34, was 250). Every price in town fits the first purse except the
+  binding (40 shells since W34, so the purse comes first: the
+  `climbersAlmanac` lock needs `shellPurse`, and the librarian's hint for it
+  says so while the purse is missing); a test checks. `VL.addResource` stops
+  a gain at the cap (`VL.RESOURCE_CAPS.shells`, whose `over` shows the
+  `purseFull` popup once: who might help), and a purse already over it (an
+  old save with up to 250) keeps what it holds until spent below 50. A shop
+  trade at the cap is refused instead ("Your purse is full!"), so no wood or
+  berry is lost. The boots carry `speed: TUNING.swiftfootSpeed` (2, so 94
+  px/s against the walk's 47 since W34) on their item and `VL.heroSpeed(state)`
   (`systems/movement.js`) uses the fastest worn item. Worn items never fill a hand.
 - **The thief:** `VL.applyThefts(state)` runs as the hero walks into the
   library (the shelves' `prepare`). Each return trip since the last visit
@@ -2001,8 +2007,10 @@ played route is `tests/highlands-route.js`.
   -1,-3); its planned rule is kept (cliffs, the Almanac, the long flight).
 - **Playthrough:** the `climbersAlmanac` step gathers the last two pages
   (the field by the library, Henrietta carried home to Pip), opens the
-  Chicken Keeper's Almanac's trunk (on the wreck's deck since W34), hands every book in and sits
-  through the readings, sells berries for the binding's 15 shells and binds;
+  Chicken Keeper's Almanac's trunk (on the wreck's deck since W34), opens
+  trunks along the way until 20 books earn the Big Shell Purse (W34), hands
+  every book in and sits through the readings, sells berries for the
+  binding's 40 shells and binds;
   `highlands` climbs the path and flies the ledge's chicken over.
 
 ## The Dragon's Lair (W19)

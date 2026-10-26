@@ -64,7 +64,8 @@
   // anything else is bought.
   VL.offerVerb = (offer) => offer.verb || (offer.gain && 'shells' in offer.gain ? 'Trade' : 'Buy');
 
-  // Resources with a ceiling, from later files: kind -> { most(state), full }.
+  // Resources with a ceiling, from later files: kind -> { most(state), full,
+  // over(state)? }; VL.addResource stops a gain there and calls `over`.
   // A trade that would overflow one is turned away before anything is paid.
   VL.RESOURCE_CAPS = {};
 

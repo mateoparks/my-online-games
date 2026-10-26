@@ -414,3 +414,62 @@ test('the rumoured ore\'s mark gleams on the drawn map', () => {
   }
   assert.ok(sparkles >= 1);
 });
+
+// ---------- the Big Shell Purse holds 50; the binding costs 40 ----------
+
+test('the Big Shell Purse holds 50 whole shells (the first one 15), and its words say so', () => {
+  const { VL } = loadGame();
+  assert.equal(VL.TUNING.shellCap, 15);
+  assert.equal(VL.TUNING.shellCapPurse, 50);
+  assert.match(VL.ITEMS.shellPurse.about, /\b50\b/);
+  assert.match(VL.ITEMS.shellPurse.popup.text, /\b50\b.*\b15\b/);
+  const state = playState(VL, ow('1,1', 8, 5));
+  state.popups.seen.controls = true;
+  VL.addResource(state, 'shells', 40);
+  hold(VL, state, [], 0.05);
+  assert.equal(state.inventory.shells, 15);
+  assert.ok(state.popups.queue.includes('purseFull'));
+  state.items.shellPurse = true;
+  VL.addResource(state, 'shells', 400);
+  hold(VL, state, [], 0.05);
+  assert.equal(state.inventory.shells, 50);
+});
+
+test('an old save holding more than 50 shells in the Big Shell Purse keeps them; nothing more goes in until he spends below 50', () => {
+  const { VL } = loadGame();
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W26.json'), 'utf8'));
+  assert.equal(raw.inventory.shells, 140);
+  const state = VL.restoreGame(raw);
+  VL.place(state, ow('1,1', 8, 5));
+  state.popups.queue.length = 0;
+  hold(VL, state, [], 0.1);
+  assert.equal(state.inventory.shells, 140, 'kept as it loads');
+  VL.addResource(state, 'shells', 1);
+  hold(VL, state, [], 0.05);
+  assert.equal(state.inventory.shells, 140, 'a picked-up shell does not fit');
+  VL.addResource(state, 'shells', -100);
+  VL.addResource(state, 'shells', 30);
+  hold(VL, state, [], 0.05);
+  assert.equal(state.inventory.shells, 50, 'below the cap it fills to 50 again');
+});
+
+test('binding the five pages costs 40 shells, so it needs the Big Shell Purse: the table says so, and the librarian\'s hint says where to get one', () => {
+  const { VL } = loadGame();
+  assert.deepEqual(plain(VL.TUNING.prices.binding), { shells: 40 });
+  assert.equal(offerIn(VL, 'bookbinder', 'bindPages').cost.shells, 40);
+  assert.ok(VL.TUNING.prices.binding.shells > VL.TUNING.shellCap && VL.TUNING.prices.binding.shells <= VL.TUNING.shellCapPurse);
+  assert.ok(VL.LOCKS.climbersAlmanac.needs.includes('shellPurse'));
+  assert.deepEqual([...VL.solveProgression().problems], []);
+  // Without the purse in the table, the binding (and all after it) is out of reach.
+  const without = Object.fromEntries(Object.entries(VL.LOCKS).filter(([id]) => id !== 'shellPurse'));
+  assert.ok(VL.solveProgression(without).problems.some((p) => /climbersAlmanac|unknown key shellPurse/.test(p)));
+  const hints = VL.LIBRARY_HINTS.climbersAlmanac;
+  const purseHint = hints.find((h) => h.when);
+  assert.match(purseHint.say, /purse/);
+  const state = VL.newGame({ name: 'Robin' });
+  assert.equal(Boolean(purseHint.when(state)), true, 'said while he has no Big Shell Purse');
+  state.items.shellPurse = true;
+  assert.equal(Boolean(purseHint.when(state)), false);
+});

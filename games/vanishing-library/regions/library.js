@@ -128,7 +128,10 @@
     lighthouseEntered: [{ say: 'That glowing stone you carry... the old Lighthouse on the cliffs is pitch dark inside. Perhaps it\'s time for a visit.' }],
     slingshot: [{ say: 'The Lighthouse has switches far out of reach. Look high and low in there for a way to hit them.' }],
     d3Boss: [{ say: 'A great crab has taken the Lighthouse lens for its shell! Aim for its eyes, {name}.' }],
-    climbersAlmanac: [{ say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow all over: by the library, by the lake, even into a chicken coop. Little Pip in the harbour might know something!' }],
+    climbersAlmanac: [
+      { when: (state) => !VL.hasItem(state, 'shellPurse'), say: 'Miss Quill charges forty shells to bind a book, and your purse only holds fifteen! Bring me more books, {name}: I have a bigger purse put by for you.' },
+      { say: 'Miss Quill at the bindery binds five loose pages into a book. Pages blow all over: by the library, by the lake, even into a chicken coop. Little Pip in the harbour might know something!' },
+    ],
     highlands: [
       { when: not(read('bookChickenAlmanac')), say: 'The highland gaps are far too wide to jump. The Chicken Keeper\'s Almanac might help. I think it washed up on the old wreck off the beach.' },
       { say: 'The Climber\'s Almanac shows a hidden path at the foot of the cliffs. From there, let the chickens carry you up!' },

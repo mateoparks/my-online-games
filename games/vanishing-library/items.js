@@ -19,7 +19,17 @@
 
   VL.addResource = function addResource(state, kind, amount = 1) {
     if (!VL.RESOURCE_KINDS.includes(kind)) throw new Error(`no resource ${kind}`);
-    state.inventory[kind] = Math.max(0, state.inventory[kind] + amount);
+    const before = state.inventory[kind];
+    let after = Math.max(0, before + amount);
+    // A gain stops at the resource's cap (VL.RESOURCE_CAPS, shop.js). A purse
+    // already over it (a save from before W34 shrank the Big Shell Purse to
+    // 50) keeps what it holds until spent.
+    const cap = amount > 0 ? VL.RESOURCE_CAPS?.[kind] : undefined;
+    if (cap && after > cap.most(state)) {
+      after = Math.max(cap.most(state), before);
+      cap.over?.(state);
+    }
+    state.inventory[kind] = after;
     if (amount < 0) VL.tidyHands(state);
     VL.earned(state);
   };

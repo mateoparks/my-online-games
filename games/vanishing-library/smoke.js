@@ -2251,12 +2251,13 @@ async function main() {
       })()`);
       const lair = (screen, tx, ty, facing = 'up') => ({ area: 'lair', screen, tx, ty, facing });
 
-      // The bindery: five pages found, fifteen shells, S across the counter.
+      // The bindery: five pages found, forty shells in the Big Shell Purse (W34), S across the counter.
       await stage({ area: 'bindery', screen: '0,0', tx: 7, ty: 4, facing: 'up' }, `
         for (const id of ['pageFieldA', 'pageFieldB', 'lostChicken', 'pageLostChicken', 'pageShipwreck', 'pageLighthouse']) VL.markFound(g, id);
         g.dungeons.lighthouse.boss = true;
         g.flags['met:quill'] = true;
-        g.inventory.shells = 15;`);
+        g.items.shellPurse = true;
+        g.inventory.shells = 40;`);
       if ((await see('VL.loosePages(g)')) < 5) w19Problems.push(`only ${await see('VL.loosePages(g)')} pages staged`);
       await tapKey('KeyS');
       await waitFor("VL.app.sceneId === 'dialogue' || VL.app.sceneId === 'shop'");
@@ -2274,7 +2275,7 @@ async function main() {
       }
       await waitFor('VL.app.popupView && VL.app.popupView.t >= 0.35');
       await shot('w19-almanac-popup');
-      if (!(await see("VL.hasItem(g, 'climbersAlmanac') && g.inventory.shells === 0"))) w19Problems.push('no Climber\'s Almanac for fifteen shells');
+      if (!(await see("VL.hasItem(g, 'climbersAlmanac') && g.inventory.shells === 0"))) w19Problems.push('no Climber\'s Almanac for forty shells');
 
       // The hidden path: up from the cliff road, its popup, the climb.
       await stage({ area: 'overworld', screen: '-1,-1', tx: 6, ty: 2, facing: 'up' }, 'g.items.climbersAlmanac = true;');

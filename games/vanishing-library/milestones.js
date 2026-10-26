@@ -133,7 +133,8 @@
 
   // ---------- the highlands and Dungeon 4: the Dragon's Lair ----------
 
-  lock('climbersAlmanac', { type: 'item', needs: ['bindery', 'shells'], count: { pages: 5 }, doc: '§ The path through the game, 7', by: 'W19' });
+  // W34: the binding's 40 shells fit only the Big Shell Purse.
+  lock('climbersAlmanac', { type: 'item', needs: ['bindery', 'shells', 'shellPurse'], count: { pages: 5 }, doc: '§ The path through the game, 7', by: 'W19' });
   lock('highlands', { type: 'place', needs: ['cliffs', 'climbersAlmanac', 'chickenFlightLong'], doc: '§ The path through the game, 7', by: 'W19' });
   lock('dragonsLairEntered', { type: 'place', needs: ['highlands'], doc: '§ The path through the game, 8', by: 'W19' });
   lock('mirrorShield', { type: 'item', needs: ['dragonsLairEntered'], doc: '§ The path through the game, 8', by: 'W19' });

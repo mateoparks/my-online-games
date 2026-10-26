@@ -20,7 +20,8 @@
     wifeStages: [{ books: 3 }, { books: 7, boss: 'd1Boss' }, { books: 12, boss: 'd2Boss' }],
     // Whole shells a purse holds (W29: every price in town fits the first).
     shellCap: 15,
-    shellCapPurse: 250,
+    // W34: 50 (was 250), so the 40-shell binding needs it but no more.
+    shellCapPurse: 50,
     swiftfootSpeed: 2,
   });
 
@@ -184,7 +185,9 @@
     text: `It only holds ${VL.TUNING.shellCap} whole shells. The librarian might know where to find a bigger one.`,
   });
   VL.shellCap = (state) => (VL.hasItem(state, 'shellPurse') ? VL.TUNING.shellCapPurse : VL.TUNING.shellCap);
-  VL.RESOURCE_CAPS.shells = { most: VL.shellCap, full: 'Your purse is full!' };
+  // VL.addResource stops a gain here (W34; a system trimmed it before) and
+  // the popup says why, once.
+  VL.RESOURCE_CAPS.shells = { most: VL.shellCap, full: 'Your purse is full!', over: (state) => VL.showPopup(state, 'purseFull') };
 
   // ---------- the thief ----------
 
@@ -260,19 +263,6 @@
     }
     return marks;
   };
-
-  // ---------- the purse limit ----------
-
-  VL.defineSystem('shellPurse', {
-    order: 95,
-    update(state) {
-      const cap = VL.shellCap(state);
-      if (state.inventory.shells <= cap) return;
-      state.inventory.shells = cap;
-      VL.showPopup(state, 'purseFull');
-      VL.earned(state);
-    },
-  });
 
   // ---------- talking to the librarian ----------
 
