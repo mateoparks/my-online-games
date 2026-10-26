@@ -36,10 +36,11 @@
     draw(ctx, app, t) {
       VL.drawWorld(ctx, app.game, t);
       const note = { size: 'small', align: 'right', color: 'goldLight', shadow: 'outline' };
+      const at = VL.ART.HUD_LAYOUT.note;
       if (app.saveFailed) {
-        if (Math.floor(t * 2) % 2 === 0) VL.ART.text(ctx, 'COULD NOT SAVE', VL.TUNING.width - 4, VL.TUNING.hudHeight + 3, { ...note, color: 'heartLight' });
+        if (Math.floor(t * 2) % 2 === 0) VL.ART.text(ctx, 'COULD NOT\nSAVE', at.right, at.twoLineY, { ...note, color: 'heartLight' });
       } else if (app.savedAt !== null && app.time - app.savedAt < SAVED_FLASH) {
-        VL.ART.text(ctx, 'SAVED', VL.TUNING.width - 4, VL.TUNING.hudHeight + 3, note);
+        VL.ART.text(ctx, 'SAVED', at.right, at.y, note);
       }
     },
   });

@@ -32,6 +32,9 @@
   VL.ART.HUD_LAYOUT = {
     heartX: 5, heartY: 5, heartStep: 9, heartsPerRow: 10,
     shellX: 104, shellY: 5,
+    // The SAVED / COULD NOT SAVE note (scenes/play.js), right-aligned here so
+    // it never covers the play area or the dungeon keys under it.
+    note: { right: 197, y: 5, twoLineY: 1 },
     slots: [
       { hand: 'mainHand', label: '␣', x: 200 },
       { hand: 'offHand', label: 'D', x: 228 },
