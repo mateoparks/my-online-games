@@ -45,10 +45,11 @@
     name: 'Mirror Shield',
     icon: 'shield-mirror',
     prefers: 'offHand',
+    takesHand: 'offHand',
     about: 'Bounces fire back where it came from. Blocks everything a metal shield does.',
     popup: {
       title: 'You got the Mirror Shield!',
-      text: 'Raise it (hold its key) towards a ball of fire and it bounces right back! Put it in a hand with E.',
+      text: 'It\'s in your off hand now. Hold D to raise it towards a ball of fire and it bounces right back! E swaps what you hold.',
     },
     hold(state) {
       state.player.shield = true;

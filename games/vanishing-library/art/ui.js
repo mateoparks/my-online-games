@@ -1,11 +1,11 @@
-// The HUD strip (hearts, whole shells, the main-hand and off-hand slots) and
+// The HUD strip (hearts, whole and broken shells, the main-hand and off-hand slots) and
 // the framed box every popup, dialogue and menu is drawn in.
 (() => {
   const { rect, text } = VL.ART;
 
   // What the HUD shows besides hearts. The file that owns each value (the
   // inventory, the equipment screen) plugs its reader in once.
-  const sources = { shells: () => 0, mainHand: () => null, offHand: () => null };
+  const sources = { shells: () => 0, brokenShells: () => 0, mainHand: () => null, offHand: () => null };
   const plugged = new Set();
 
   VL.ART.hudSource = function hudSource(name, read) {
@@ -24,6 +24,7 @@
     return {
       hearts,
       shells: sources.shells(state),
+      brokenShells: sources.brokenShells(state),
       mainHand: sources.mainHand(state),
       offHand: sources.offHand(state),
     };
@@ -32,6 +33,11 @@
   VL.ART.HUD_LAYOUT = {
     heartX: 5, heartY: 5, heartStep: 9, heartsPerRow: 10,
     shellX: 104, shellY: 5,
+    // Broken shells (slingshot ammo, no good as money) beside the whole ones.
+    brokenX: 135,
+    // The SAVED / COULD NOT SAVE note (scenes/play.js), right-aligned here so
+    // it never covers the play area or the dungeon keys under it.
+    note: { right: 197, y: 5, twoLineY: 1 },
     slots: [
       { hand: 'mainHand', label: '␣', x: 200 },
       { hand: 'offHand', label: 'D', x: 228 },
@@ -77,6 +83,10 @@
     });
     VL.ART.drawSprite(ctx, 'icon-shell', layout.shellX, layout.shellY);
     text(ctx, String(model.shells).padStart(3, '0'), layout.shellX + 10, layout.shellY - 1, { color: 'text' });
+    if (model.brokenShells > 0) {
+      VL.ART.drawSprite(ctx, 'icon-shell-broken', layout.brokenX, layout.shellY);
+      VL.ART.text(ctx, String(model.brokenShells), layout.brokenX + 10, layout.shellY - 1, { color: 'textDim' });
+    }
     for (const slot of layout.slots) drawSlot(ctx, slot, model[slot.hand]);
   };
 

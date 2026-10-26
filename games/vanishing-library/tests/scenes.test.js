@@ -466,7 +466,7 @@ test('a failed write keeps the game dirty, says so on the canvas, retries, and S
   assert.equal(game.dirty, true, 'still dirty after the failed write');
   assert.equal(app.storage.ok, true);
   assert.equal(JSON.parse(backing.getItem('vanishing-library-slot-1')).flags.chest, undefined);
-  assert.ok(drawnText(VL, document, app, app.time).some((s) => /could not save/i.test(s)), 'the play scene says so');
+  assert.ok(drawnText(VL, document, app, app.time).some((s) => /could not\s+save/i.test(s)), 'the play scene says so');
   assert.ok(!drawnText(VL, document, app, app.time).some((s) => /^saved$/i.test(s)), 'no SAVED flash');
   press(VL, app, 'pause');
   assert.ok(drawnText(VL, document, app).some((s) => /could not save/i.test(s)), 'the pause menu says so');

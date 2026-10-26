@@ -2365,6 +2365,107 @@ async function main() {
       for (const problem of w19Problems) console.log(`     ${problem}`);
     }
 
+    // W32, the polish pass, with real keys where there are any: the Mirror
+    // Shield from the big chest with the slingshot in the off hand (it takes
+    // the hand), SAVED in the HUD bar over a dungeon room with its keys, the
+    // spilled hoard clear of the keys readout, broken shells in the HUD and at
+    // the smithy, and a finished Scriptorium's statue and faint naming home.
+    // Saved as w32-*.png.
+    {
+      errors.length = 0;
+      const w32Problems = [];
+      const codes = { KeyS: [83, 's'], ArrowUp: [38, 'ArrowUp'] };
+      const keyEvent = (code) => {
+        const [vk, keyName] = codes[code];
+        return { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+      };
+      const tapKey = async (code) => {
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent(code) });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent(code) });
+        if (!(await settle())) w32Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const stage = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
+        Object.assign(g.flags, { shockwave: true, shockwaveWoke: true });
+        g.items.glowstone = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e) || e.type === 'dragon');
+        document.getElementById('game').focus();
+      })()`);
+      const lair = (screen, tx, ty, facing = 'up') => ({ area: 'lair', screen, tx, ty, facing });
+
+      // The Mirror Shield with the slingshot in the off hand: S at the big chest.
+      await stage(lair('-1,-1', 7, 3), "g.items.woodSword = true; g.items.slingshot = true; g.inventory.brokenShells = 9; g.hands = { mainHand: 'woodSword', offHand: 'slingshot' };");
+      await tapKey('KeyS');
+      await waitFor("VL.app.sceneId === 'popup'", 3000);
+      await shot('w32-mirror-shield-popup');
+      const hands = await see("[VL.heldItem(g, 'mainHand'), VL.heldItem(g, 'offHand'), VL.hasItem(g, 'slingshot')]");
+      if (hands.join() !== 'woodSword,mirrorShield,true') w32Problems.push(`the Mirror Shield over the slingshot: hands and bag = ${hands}`);
+
+      // SAVED in the HUD bar over a dungeon room, with both kinds of key.
+      await stage(lair('0,-3', 7, 8), "g.items.woodSword = true; g.items.mirrorShield = true; g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' }; g.dungeons.lair.doors.d4BossDoor = true; g.dungeons.lair.bossKey = true; g.inventory.shells = 12; g.inventory.brokenShells = 15;");
+      // A staged game has no slot, so the flash is shown as a save would show it.
+      await evaluate('VL.app.savedAt = VL.app.time');
+      await sleep(200);
+      await shot('w32-saved-in-hud');
+
+      // The hoard spilled, the keys readout over it.
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        const decor = g.room.entities.find((e) => e.art === 'lairHoard');
+        decor.spilled = true;
+        g.room.entities = g.room.entities.filter((e) => e.type !== 'dragon');
+        VL.app.savedAt = null;
+      })()`);
+      await sleep(250);
+      await shot('w32-hoard-hud');
+
+      // After the shockwave: no whole shells, but broken ones, in the HUD and at the smithy.
+      await stage({ area: 'blacksmith', screen: '0,0', tx: 7, ty: 6, facing: 'up' }, 'g.inventory.shells = 0; g.inventory.brokenShells = 7; g.inventory.wood = 4;');
+      await sleep(250);
+      await shot('w32-broken-hud');
+      await evaluate("VL.app.setScene('shop', { shop: 'smithy' })");
+      await sleep(250);
+      await shot('w32-smithy-purse');
+
+      // A finished Scriptorium: the statue says he wakes at home, and so does a faint.
+      await stage({ area: 'scriptorium', screen: '1,0', tx: 3, ty: 3, facing: 'up' }, "g.items.woodSword = true; g.hands = { mainHand: 'woodSword', offHand: null }; g.dungeons.scriptorium.boss = true; VL.markFound(g, VL.DUNGEONS.scriptorium.boss.heart);");
+      // Walk up onto the statue's step (3,2).
+      await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent('ArrowUp') });
+      await waitFor("g.dungeonNote && /wake up/.test(g.dungeonNote.text)", 3000);
+      await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent('ArrowUp') });
+      await shot('w32-statue-home');
+      if (!(await see("Boolean(g.dungeonNote && /wake up at home/.test(g.dungeonNote.text))"))) w32Problems.push(`the finished statue said: ${await see('g.dungeonNote && g.dungeonNote.text')}`);
+      await evaluate("VL.faint(VL.app.game, 'crab')");
+      await waitFor("VL.app.sceneId === 'fainted'");
+      await sleep(800);
+      await shot('w32-faint-home');
+      if ((await see("VL.wakeWords(g)")) !== 'at home') w32Problems.push('the faint does not wake him at home');
+
+      w32Problems.push(...errors);
+      if (w32Problems.length) failures += 1;
+      console.log(`${w32Problems.length ? 'FAIL' : 'ok  '} polish pass: the Mirror Shield takes the off hand, SAVED in the HUD bar, the hoard clear of the keys, broken shells counted, a finished statue and faint name home, ${path.join(outDir, 'w32-*.png')}`);
+      for (const problem of w32Problems) console.log(`     ${problem}`);
+    }
+
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
     // app of their own and drawn to an offscreen canvas every 1/60 s. In 16x16
     // cells, a flip is a change in mean relative luminance against the last
@@ -2374,8 +2475,13 @@ async function main() {
     // than 3 times) and WCAG's own numbers (a change of 0.1, more than 3 flash
     // pairs, so over 6 flips; fails past 2.8% of the canvas: a quarter of
     // WCAG's 341x256 px field at scale 4, where the canvas fills WCAG's
-    // 1024x768 reference screen, so stricter than WCAG at scale 3). A control
-    // run with the steady layers switched off must fail both, so each is
+    // 1024x768 reference screen, so stricter than WCAG at scale 3). A third
+    // check is WCAG 2.0's saturated-red measure (glossary, flash thresholds,
+    // Note 3) on the same scenes and bound: a flip is a change of over 20 in
+    // (R - G - B) x 320 (linear R, G, B, below 0 as 0) where either or both
+    // states are saturated (R / (R + G + B) at least 0.8). A control
+    // run with the steady layers switched off must fail the first two, and a
+    // red-and-black strobe over 6% of the canvas the red one, so each is
     // known to see a strobe.
     {
       errors.length = 0;
@@ -2386,6 +2492,7 @@ async function main() {
         const checks = [
           { id: 'broad', flipBy: 0.05, over: 3, bound: 0.25 },
           { id: 'wcag', flipBy: 0.1, over: 6, bound: 0.028 },
+          { id: 'red', red: true, flipBy: 20, over: 6, bound: 0.028 },
         ];
         const cols = width / cell;
         const rows = height / cell;
@@ -2399,19 +2506,30 @@ async function main() {
           const c = i / 255;
           linear.push(c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
         }
-        const luminance = () => {
+        // Per cell: mean relative luminance, and the red measure with whether
+        // the cell is a saturated red.
+        const measure = () => {
           const { data } = ctx.getImageData(0, 0, width, height);
-          const sums = new Float64Array(cols * rows);
+          const [r, gr, b] = [0, 1, 2].map(() => new Float64Array(cols * rows));
           for (let y = 0; y < height; y += 1) {
             for (let x = 0; x < width; x += 1) {
               const i = (y * width + x) * 4;
-              sums[Math.floor(y / cell) * cols + Math.floor(x / cell)] += 0.2126 * linear[data[i]] + 0.7152 * linear[data[i + 1]] + 0.0722 * linear[data[i + 2]];
+              const k = Math.floor(y / cell) * cols + Math.floor(x / cell);
+              r[k] += linear[data[i]];
+              gr[k] += linear[data[i + 1]];
+              b[k] += linear[data[i + 2]];
             }
           }
-          return Array.from(sums, (s) => s / (cell * cell));
+          const n = cell * cell;
+          return {
+            lum: Array.from(r, (_, k) => (0.2126 * r[k] + 0.7152 * gr[k] + 0.0722 * b[k]) / n),
+            red: Array.from(r, (_, k) => Math.max(0, (r[k] - gr[k] - b[k]) / n) * 320),
+            saturated: Array.from(r, (_, k) => r[k] > 0 && r[k] / (r[k] + gr[k] + b[k]) >= 0.8),
+          };
         };
         // reached(app, game) says the scene really showed what it samples.
-        const run = (name, seconds, setup, tick, reached = () => true) => {
+        // paint(ctx, s), for a control, draws over the frame before it is measured.
+        const run = (name, seconds, setup, tick, reached = () => true, paint = null) => {
           const app = VL.createApp();
           app.game = VL.newGame({ name: 'Robin' });
           const g = app.game;
@@ -2426,17 +2544,27 @@ async function main() {
             app.update(actions, step);
             shown = shown || Boolean(reached(app, app.game));
             VL.render(ctx, app, s);
-            const now = luminance();
-            checks.forEach(({ flipBy, over }, k) => {
+            paint?.(ctx, s);
+            const now = measure();
+            checks.forEach(({ flipBy, over, red }, k) => {
               // Each cell follows its brightest (rising) or darkest (falling)
-              // value since its last flip; a big enough turn the other way flips it.
-              now.forEach((l, i) => {
-                const c = cells[k][i] || (cells[k][i] = { dir: 0, hi: l, lo: l, flips: [] });
+              // value since its last flip; a big enough turn the other way flips
+              // it. The red check needs either state saturated, and has no 0.8 cap.
+              (red ? now.red : now.lum).forEach((l, i) => {
+                const sat = now.saturated[i];
+                const c = cells[k][i] || (cells[k][i] = { dir: 0, hi: l, lo: l, hiSat: sat, loSat: sat, flips: [] });
                 const flip = (dir) => {
                   c.flips.push(s);
-                  Object.assign(c, { dir, hi: l, lo: l });
+                  Object.assign(c, { dir, hi: l, lo: l, hiSat: sat, loSat: sat });
                 };
-                if (c.dir >= 0 && c.hi - l >= flipBy && l < 0.8) flip(-1);
+                if (red) {
+                  if (c.dir >= 0 && c.hi - l > flipBy && (c.hiSat || sat)) flip(-1);
+                  else if (c.dir <= 0 && l - c.lo > flipBy && (c.loSat || sat)) flip(1);
+                  else {
+                    if (l > c.hi) Object.assign(c, { hi: l, hiSat: sat });
+                    if (l < c.lo) Object.assign(c, { lo: l, loSat: sat });
+                  }
+                } else if (c.dir >= 0 && c.hi - l >= flipBy && l < 0.8) flip(-1);
                 else if (c.dir <= 0 && l - c.lo >= flipBy && c.lo < 0.8) flip(1);
                 else {
                   c.hi = Math.max(c.hi, l);
@@ -2489,10 +2617,15 @@ async function main() {
         const steady = VL.HERO_LAYERS.filter((layer) => layer.steady);
         for (const layer of steady) layer.steady = false;
         try {
-          results.push({ control: true, ...run('control: the dark cellar, hurt, steady layers off', 3, darkHurt, hurtOften, hurtInDark) });
+          results.push({ control: ['broad', 'wcag'], ...run('control: the dark cellar, hurt, steady layers off', 3, darkHurt, hurtOften, hurtInDark) });
         } finally {
           for (const layer of steady) layer.steady = true;
         }
+        // 12 of the 192 cells (6%) turn pure red and black, 5 times a second.
+        results.push({ control: ['red'], ...run('control: a red-and-black strobe over 6% of the canvas', 3, darkHurt, null, () => true, (c, s) => {
+          c.fillStyle = Math.floor(s * 10) % 2 ? '#000000' : '#ff0000';
+          c.fillRect(cell * 2, cell * 4, cell * 4, cell * 3);
+        }) });
         results.push(run('the dark cellar, hurt over and over', 4, darkHurt, hurtOften, hurtInDark));
         results.push(run('the dark cellar with its bats', 4, (app, g) => {
           arm(g);
@@ -2609,14 +2742,14 @@ async function main() {
         for (const c of r.checks) {
           const pct = Math.round(c.area * 100);
           const label = `${c.id} check (a change of ${c.flipBy}, over ${c.over} flips a second, past ${c.bound * 100}% of the canvas)`;
-          if (r.control && !(c.area > c.bound)) flashProblems.push(`${r.name}: the ${label} did not see the strobe (${pct}%, ${c.flips} flips/s at most)`);
+          if (r.control && r.control.includes(c.id) && !(c.area > c.bound)) flashProblems.push(`${r.name}: the ${label} did not see the strobe (${pct}%, ${c.flips} flips/s at most)`);
           else if (!r.control && c.area > c.bound) flashProblems.push(`${r.name}: fails the ${label}: ${pct}% at ${c.at} s, ${c.flips} flips in a cell`);
         }
         console.log(`     ${r.control ? 'control ' : ''}${r.name}: ${summary.join('; ')}`);
       }
       flashProblems.push(...errors);
       if (flashProblems.length) failures += 1;
-      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 2.8% more than 3 flash pairs (WCAG 2.3.1), in the dark, hurt, beam, boss, Dragon, fire, shockwave, swarm, popup and faint scenes`);
+      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 2.8% more than 3 flash pairs (WCAG 2.3.1), nor 2.8% more than 3 saturated-red flash pairs (WCAG 2.0's red flash measure), in the dark, hurt, beam, boss, Dragon, fire, shockwave, swarm, popup and faint scenes`);
       for (const problem of flashProblems) console.log(`     ${problem}`);
     }
 

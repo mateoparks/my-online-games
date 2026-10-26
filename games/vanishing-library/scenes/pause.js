@@ -77,7 +77,7 @@
         VL.ART.text(ctx, option, centre - 32, y, { color: chosen ? 'goldLight' : 'text' });
       });
       if (VL.PAUSE_OPTIONS[app.pause.cursor] === 'Save & Quit' && app.storage.ok) {
-        VL.ART.text(ctx, 'CONTINUE STARTS AT YOUR LAST SAVE POINT', centre, BOX.y + 48, { size: 'small', align: 'center', color: 'textDim' });
+        VL.ART.text(ctx, `CONTINUE STARTS ${(VL.wakeWords(app.game) || 'at your last save point').toUpperCase()}`, centre, BOX.y + 48, { size: 'small', align: 'center', color: 'textDim' });
       }
       controls(app.game).forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 58 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
       if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'goldLight' });

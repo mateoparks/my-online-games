@@ -229,7 +229,12 @@
     for (const offer of shop.offers) {
       for (const kind of [...Object.keys(offer.cost), ...Object.keys(offer.gain || {})]) if (!kinds.includes(kind)) kinds.push(kind);
     }
-    const line = kinds.map((kind) => `${VL.purse(game, kind)} ${VL.currencyName(kind, VL.purse(game, kind))}`).join('  ');
+    // Broken shells look like money to a kid, so they are counted next to the
+    // whole ones (they spend nowhere).
+    const whole = kinds.indexOf('shells');
+    if (whole >= 0 && !kinds.includes('brokenShells') && VL.purse(game, 'brokenShells') > 0) kinds.splice(whole + 1, 0, 'brokenShells');
+    const name = (kind, n) => (kind === 'brokenShells' && whole >= 0 ? 'broken' : VL.currencyName(kind, n));
+    const line = kinds.map((kind) => `${VL.purse(game, kind)} ${name(kind, VL.purse(game, kind))}`).join('  ');
     VL.ART.text(ctx, `YOU HAVE  ${line}`, BOX.x + 8, y, { size: 'small', color: 'textDim' });
   }
 })();

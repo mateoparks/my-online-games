@@ -278,23 +278,30 @@
   const BOOK_COLORS = ['heart', 'water', 'leaf', 'gold', 'roof', 'tunic', 'berry'];
   // Piles of books (and a few shells) along the back of the hoard room; once
   // the Dragon is beaten they lie spilled across the floor.
+  // A book or shell that would land under the keys readout slides left of it.
+  const clearOfHud = (left, top, w, h) => {
+    const box = VL.DUNGEON_HUD;
+    return top < box.y + box.h && top + h > box.y && left + w > box.x ? box.x - w : left;
+  };
   VL.defineDecor('lairHoard', (ctx, x, y, t, decor) => {
     const spilled = decor.spilled;
     const count = spilled ? 46 : 26;
     for (let i = 0; i < count; i += 1) {
       const h = (n) => VL.ART.hash(i, n, 19);
-      const bx = x + 18 + Math.floor(h(1) * 214);
-      const by = y + (spilled ? 20 + Math.floor(h(2) * 120) : 16 + Math.floor(h(2) * 22));
       const flat = h(3) > 0.5;
       const w = flat ? 7 : 4;
       const hgt = flat ? 3 : 6;
+      const top = spilled ? 20 + Math.floor(h(2) * 120) : 16 + Math.floor(h(2) * 22);
+      const bx = x + clearOfHud(18 + Math.floor(h(1) * 214) - 1, top - 1, w + 2, hgt + 2) + 1;
+      const by = y + top;
       rect(ctx, 'outline', bx - 1, by - 1, w + 2, hgt + 2);
       rect(ctx, BOOK_COLORS[i % BOOK_COLORS.length], bx, by, w, hgt);
       rect(ctx, 'paperWhite', flat ? bx : bx + w - 1, flat ? by + hgt - 1 : by, flat ? w : 1, flat ? 1 : hgt);
     }
     for (let i = 0; i < 9; i += 1) {
-      const sx = x + 24 + Math.floor(VL.ART.hash(i, 5, 23) * 200);
-      const sy = y + 18 + Math.floor(VL.ART.hash(i, 6, 23) * (spilled ? 110 : 20));
+      const top = 18 + Math.floor(VL.ART.hash(i, 6, 23) * (spilled ? 110 : 20));
+      const sx = x + clearOfHud(24 + Math.floor(VL.ART.hash(i, 5, 23) * 200), top, 3, 3);
+      const sy = y + top;
       rect(ctx, 'shell', sx, sy, 3, 2);
       rect(ctx, 'shellDark', sx, sy + 2, 3, 1);
     }

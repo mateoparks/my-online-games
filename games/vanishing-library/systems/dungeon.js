@@ -934,6 +934,10 @@
     },
   });
 
+  // Where the keys readout is drawn, in play-area pixels. Room content stays
+  // out of it (tests/w32-polish.test.js checks every dungeon room).
+  VL.DUNGEON_HUD = { x: VL.TUNING.width - 35, y: 11, w: 35, h: 15 };
+
   // Small keys and the boss key, shown over the play area while in a dungeon.
   VL.defineHeroLayer('dungeonHud', (ctx, state, x, y, t, pass) => {
     // The overlay pass: over the light, and never hidden by the hurt flash.
@@ -941,13 +945,11 @@
     const dungeon = VL.dungeonOf(state);
     if (!dungeon) return;
     const d = VL.dungeonState(state, dungeon.id);
-    // On the second row of the play area: the SAVED note (scenes/play.js)
-    // has the first, and keys are earned right under it.
-    const { width } = VL.TUNING;
-    VL.ART.drawSprite(ctx, 'item-small-key', width - 23, 14);
-    VL.ART.text(ctx, `x${VL.smallKeys(state, dungeon.id)}`, width - 15, 15, { size: 'small', color: 'text', shadow: 'outline' });
-    if (d.bossKey) VL.ART.drawSprite(ctx, 'item-boss-key', width - 34, 12);
-    if (state.dungeonNote) VL.ART.text(ctx, state.dungeonNote.text, width / 2, 4, { size: 'small', align: 'center', color: 'goldLight', shadow: 'outline' });
+    const box = VL.DUNGEON_HUD;
+    VL.ART.drawSprite(ctx, 'item-small-key', box.x + 12, box.y + 3);
+    VL.ART.text(ctx, `x${VL.smallKeys(state, dungeon.id)}`, box.x + 20, box.y + 4, { size: 'small', color: 'text', shadow: 'outline' });
+    if (d.bossKey) VL.ART.drawSprite(ctx, 'item-boss-key', box.x + 1, box.y + 1);
+    if (state.dungeonNote) VL.ART.text(ctx, state.dungeonNote.text, VL.TUNING.width / 2, 4, { size: 'small', align: 'center', color: 'goldLight', shadow: 'outline' });
   });
 
   // ---------- sounds ----------
