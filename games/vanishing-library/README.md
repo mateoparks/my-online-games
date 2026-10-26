@@ -830,17 +830,32 @@ D held until it goes home and the head is choked (`w19-spout-fire.png`,
 `w19-spout-choked.png`), and the Dragon up, drawing breath, its fire
 bounced back (dazed), struck and beaten, the hoard spilled, with the boss
 gate shut until the heart is taken (`w19-boss.png`, `w19-boss-breath.png`,
-`w19-boss-dazed.png`, `w19-boss-beaten.png`, `w19-hoard.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
+`w19-boss-dazed.png`, `w19-boss-beaten.png`, `w19-hoard.png`). Then W20's
+finale with real keys: the square after the Dragon (`w20-trapdoor-popup.png`,
+`w20-trapdoor-open.png`), onto the hatch and down, Mr. Fenwick following
+(`w20-follow.png`, `w20-workshop.png`), the tunnel (`w20-tunnel.png`), the
+hall (`w20-confront.png`, `w20-marionettes.png`), Space through a string and
+the last string cut (`w20-string-cut.png`, `w20-puppets-down.png`), her words,
+her last show, the apology (`w20-she-speaks.png`, `w20-confession.png`,
+`w20-confession-dragon.png`, `w20-apology.png`), the ending beat by beat
+(`w20-ending-fill.png`, `w20-ending-thanks.png`, `w20-ending-cheer.png`,
+`w20-ending-book.png`, `w20-ending-promise.png`, `w20-ending-town-books.png`),
+the credits and THE END (`w20-credits.png`, `w20-the-end.png`) back to the
+title, then a kind show and the packed library (`w20-kind-show.png`,
+`w20-library-full.png`). Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
 the beam, the Lens Crab's rounds, the Dragon's rounds, its fire through a
-metal shield, a stone head's fire bounced home, the shockwave, the chicken
-swarm, popups and a faint are each stepped by hand and drawn offscreen at 60 fps, in 16 px
+metal shield, a stone head's fire bounced home, the slides up through the boss
+door into the Dragon's hoard (before and after the fight), down the trapdoor,
+the marionettes (strings cut, puppets falling, hurt over and over), her
+confession show, the ending (fades, shelves filling, the cheer, the credits),
+the shockwave, the chicken swarm, popups and a faint are each stepped by hand and drawn offscreen at 60 fps, in 16 px
 cells. It fails when, within any one second, over a quarter of the canvas
 flips brightness (0.05 relative luminance) more than 3 times, or over 2.8% of
 it (a quarter of WCAG's 341x256 px field at scale 4, where the canvas fills
 WCAG's 1024x768 reference screen; stricter than WCAG at scale 3, where a
 quarter of the field is about 4.9%) flips by WCAG's 0.1
 more than 6 times (over 3 flash pairs). A control run with the steady layers
-off must fail both. It runs for 240 s at most (about twice its run time). A
+off must fail both. It runs for 360 s at most (about twice its run time with W20, which takes it to about 3 minutes alone). A
 test file that runs no tests, and an `async` test function, both fail the
 node run.
 
@@ -2007,6 +2022,89 @@ the boss door, the Dragon.
   behind door A), `d4Boss` (replan: behind the boss door; the hoard's books),
   and one per key and door: `d4KeyA`, `d4DoorA`, `d4KeyB`, `d4DoorB`,
   `d4BossKey`, `d4BossDoor` (any sword, as the door's `wants` says).
+
+## The finale (W20)
+
+The path through the game, 9, and "Ending (decided)" in the design doc.
+Files: `systems/finale.js` (the beats, the trapdoor opening, the claims),
+`dungeons/workshop.js` (the rooms below, who stands where, every word said
+there, the townsfolk's lines after the Dragon and after the ending),
+`entities/marionette.js` (the three puppets and their strings),
+`scenes/finale.js` (the ending and the credits); her last show and her kind
+shows are in `scenes/puppet-show.js`. Tests: `tests/finale.test.js`,
+`tests/finale-route.js`, `tests/steps/w20.steps.js`. Fixture:
+`tests/fixtures/save-v1-W20.json`, the real finale played from the W19 save
+through the credits and Continue.
+
+```
+  tunnel (-1,-1) ── hall (0,-1): her gallery, the three marionettes
+  rockfall              │
+                    workshop (0,0): the ladder up to the square (2,0)
+```
+
+- **The beats** are saved flags, set as each one ends (`VL.FINALE_BEATS`):
+  `trapdoorOpen` (the first step in the square once `d4Boss` is reached:
+  popup, the hatch drawn open, her stage empty), `finale:followed` (Mr.
+  Fenwick's words as the hero reaches the workshop), `finale:confronted`
+  (hers from the gallery; the puppets hang still until then), `marionettes`
+  (all three down), `finale:showAsked`, `finale:shown` (her last show,
+  `VL.CONFESSION_SHOW`; Esc ends it with its flag), `forgiven` (her apology
+  and his forgiveness; every book she took comes back: `library.gone`
+  empties). The beats after the fight play in the hall; once `forgiven`, the
+  `ending` scene plays wherever he is. Nothing below is a save point and
+  nothing shuts behind him, so a reload or a faint at any beat wakes him at
+  his last save point (the hut: every dungeon is finished by then) and the
+  next beat plays when he walks back down. `tests/finale.test.js` reloads
+  after every beat and plays on to the credits.
+- **Down and up:** the `trapdoor` entity (W11's, `entities/library-finds.js`)
+  takes him down to `VL.FINALE.arrival` when he walks onto it once open, and
+  is not `passable` to the pathfinder then; a `door` on the ladder (7,9)
+  brings him back beside it. Mr. Fenwick follows him down: from the open
+  trapdoor until she is forgiven, an `npc` `librarian` (talk
+  `librarianFinale`) stands in each room below (`VL.FINALE.librarianAt`), and
+  he is in his library as always. Mrs. Fenwick is off her stage from the
+  Dragon's fall until she is forgiven (S at the stage: "The stage is
+  empty"); in the hall she works the puppets from the gallery (decor
+  `wsPuppeteer`) and, once they are down, stands on the floor (talk
+  `wifeFinale`).
+- **The marionettes** (`{ type: 'marionette', puppet: 'dragon' | 'hero' |
+  'librarian' }`, flying, `rooted`, drawn at twice the art's size): they drift
+  after the hero, wind up (a steady shake) and attack: the hero puppet lunges,
+  the dragon puffs paper fire, the librarian throws books (both small, so a
+  shield blocks them), half a heart each. The sword only clonks (hp refilled,
+  no hurt blink; after a swing that cut nothing, `VL.MARIONETTE_NOTE` once a
+  visit). Each hangs from two strings (`VL.PUPPET_SHAPES`): a sword swing
+  whose box crosses a string above its hand cuts it, one string per puppet a
+  swing, the nearest (stand `VL.STRING_REACH` to its side, level with its
+  chest, and swing at it). A cut puppet jerks up out of reach (harmless for
+  `marionetteJerkSeconds`) and sags slower; with both cut it drops into a heap.
+  All three down sets `marionettes` (counted against the map's three, so a
+  room the playthrough cleared of enemies never counts). Later visits show the
+  heaps. A playthrough step that fights sets `drive.fight` before entering the
+  hall.
+- **After the ending** (`VL.libraryFull`, i.e. `forgiven`): the thief takes
+  nothing (`VL.applyThefts` returns at once), every shelf is packed
+  (`shelf.fill` 1) and, once `finished`, the gold book about the hero stands
+  in the middle; her stage plays `VL.KIND_SHOWS` in turn (`VL.stageShow`);
+  she, the librarian and four townsfolk have new lines, and the townsfolk have
+  lines between the Dragon and the ending too.
+- **The ending** (`scenes/finale.js`): the library staged with the town in it
+  (`VL.ENDING_BEATS`: the shelves filling, Gran's three cheers, the cheer,
+  Miss Quill's "The Adventures of {name}", the promise to visit her home town,
+  the town writing its own books), a fade, then `VL.CREDITS` rolling (S jumps
+  to THE END; S again goes to the title). `finished` is set and saved as the
+  credits begin. Esc during the beats skips to the credits.
+- **Continue after the credits:** the slot shows FINISHED; Continue wakes him
+  at his last save point before the finale (the hut) in the world after the
+  ending (everything earned is kept, as always); the ending never plays again.
+- **Locks:** `trapdoorOpen`, `workshop` (place workshop 0,0), `marionettes`,
+  `ending` (`state.finished`), all with the planned rules. The playthrough
+  plays from the title to the credits; `tests/progression.test.js` checks that
+  its steps cover every milestone and every lock in the table is claimed.
+- **Sounds:** `trapdoorOpened` (`trapdoorCreak`), `stringCut`
+  (`stringSnap`), `puppetDown` (`puppetClatter`), `marionettesBeaten`
+  (`dungeonBoss`), `finaleForgiven` (`libraryChime`), and the credits'
+  `endingTune`.
 
 ## Dungeons (W13)
 

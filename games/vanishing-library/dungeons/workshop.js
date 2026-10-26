@@ -258,9 +258,9 @@
         '#######__#######',
       ],
       entities: [
-        { type: 'marionette', puppet: 'dragon', x: 4, y: 5 },
-        { type: 'marionette', puppet: 'hero', x: 8, y: 4 },
-        { type: 'marionette', puppet: 'librarian', x: 11, y: 5 },
+        { type: 'marionette', puppet: 'dragon', x: 3, y: 5 },
+        { type: 'marionette', puppet: 'hero', x: 8, y: 5 },
+        { type: 'marionette', puppet: 'librarian', x: 12, y: 5 },
       ],
     },
     // The tunnel to the dragon, blocked by a rockfall.

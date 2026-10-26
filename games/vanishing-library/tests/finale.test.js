@@ -142,12 +142,12 @@ function VL_place(t, where) {
 }
 // Puts the hero beside a puppet's string, facing it, and swings once.
 function swingAt(t, m, side) {
-  const { drive } = t;
+  const { VL, drive } = t;
   t.freeze();
   m.arriving = 0;
   m.jerk = 0;
   drive.state.player.invuln = 99;
-  Object.assign(drive.state.player, { x: m.cx + side * 18, y: m.cy + 5, facing: side < 0 ? 'right' : 'left' });
+  Object.assign(drive.state.player, { x: m.cx + side * VL.STRING_REACH.dx, y: m.cy + VL.STRING_REACH.dy, facing: side < 0 ? 'right' : 'left' });
   drive.press('mainHand');
   drive.hold([], 0.35);
 }
@@ -160,7 +160,7 @@ test('the sword only clonks off a puppet (it says so once, and nothing blinks); 
   m.arriving = 0;
   // Straight at its body from below: no string in reach.
   drive.state.player.invuln = 99;
-  Object.assign(drive.state.player, { x: m.cx, y: m.cy + 30, facing: 'up' });
+  Object.assign(drive.state.player, { x: m.cx, y: m.cy + 40, facing: 'up' });
   drive.press('mainHand');
   drive.until(() => drive.app.sceneId === 'popup', 1);
   assert.equal(VL.currentPopup(drive.state).text, VL.MARIONETTE_NOTE);
@@ -221,7 +221,7 @@ test('the puppets hurt him; a faint wakes him at the hut with everything kept an
   drive.state.player.invuln = 0;
   drive.state.hp = 1;
   for (const p of puppets(drive)) Object.assign(p, { arriving: 0, jerk: 0, calm: 0, mode: 'drift' });
-  Object.assign(drive.state.player, { x: m.cx, y: m.cy + 5 });
+  Object.assign(drive.state.player, { x: m.cx, y: m.cy + 10 });
   drive.update();
   assert.equal(drive.app.sceneId, 'fainted');
   drive.hold([], 0.8);

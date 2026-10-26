@@ -27,7 +27,7 @@ const sizes = [
 ];
 const walkMs = 300;
 const slideMs = 700; // ~13 px to the edge, then the 350 ms slide
-const timeoutMs = 240000;
+const timeoutMs = 360000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -2365,6 +2365,199 @@ async function main() {
       for (const problem of w19Problems) console.log(`     ${problem}`);
     }
 
+    // W20, the finale with real keys: the square after the Dragon (the
+    // trapdoor's popup, the hatch open, the stage empty), walking onto it and
+    // down the ladder (Mr. Fenwick follows), the workshop and the tunnel, the
+    // hall (her words from the gallery, the three marionettes), Space through
+    // a string and the last string cut (all three down), her coming down,
+    // the confession show, the apology and forgiveness, the ending (shelves
+    // filling, the town's cheer, the book about the hero, the promise), the
+    // credits, THE END and the title; then her kind show and the full
+    // library. Saved as w20-*.png.
+    {
+      errors.length = 0;
+      const w20Problems = [];
+      const codes = { KeyS: [83, 's'], Space: [32, ' '], Escape: [27, 'Escape'] };
+      const keyEvent = (code) => {
+        const [vk, keyName] = codes[code];
+        return { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+      };
+      const tapKey = async (code) => {
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent(code) });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent(code) });
+        if (!(await settle())) w20Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      // S through a scene a page at a time, `upTo` pages at most.
+      const pressThrough = async (scene, upTo = 30) => {
+        for (let i = 0; i < upTo && (await see('VL.app.sceneId')) === scene; i += 1) {
+          await sleep(350);
+          await tapKey('KeyS');
+        }
+      };
+      // After the Dragon: the sword and the Mirror Shield in hand, the lair
+      // finished; `flags` are the finale's beats already played.
+      const stage = (where, flags = [], setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
+        Object.assign(g.flags, { shockwave: true, shockwaveWoke: true, chickenAlmanacRead: true });
+        for (const id of ${JSON.stringify(flags)}) g.flags[id] = true;
+        Object.assign(g.items, { glowstone: true, woodSword: true, mirrorShield: true, swiftfootBoots: true });
+        g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' };
+        g.dungeons.lair.boss = true;
+        VL.markFound(g, 'heartD4');
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+      const BELOW = ['trapdoorOpen', 'finale:followed'];
+
+      // The square after the Dragon.
+      await stage({ area: 'overworld', screen: '2,0', tx: 5, ty: 5, facing: 'up' });
+      if (!(await waitFor("VL.app.sceneId === 'popup' && VL.currentPopup(g).id === 'trapdoorOpen'"))) w20Problems.push(`no trapdoor popup: ${await see('VL.app.sceneId')}`);
+      await sleep(400);
+      await shot('w20-trapdoor-popup');
+      await tapKey('KeyS');
+      await sleep(300);
+      await shot('w20-trapdoor-open');
+      const square = await see("[g.flags.trapdoorOpen, g.room.entities.some((e) => e.type === 'npc' && e.id === 'librarianWife'), g.room.entities.find((e) => e.type === 'trapdoor').open]");
+      if (square.join() !== 'true,false,true') w20Problems.push(`open, wife at the stage, hatch drawn open = ${square}`);
+
+      // Onto the hatch and down the ladder; Mr. Fenwick follows.
+      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(3, 4), { facing: 'up' }); })()");
+      await holdArrowUntil('Up', "g.player.area === 'workshop'", 2000);
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'"))) w20Problems.push(`no talk on arrival below: ${await see('[g.player.area, VL.app.sceneId]')}`);
+      await sleep(900);
+      await shot('w20-follow');
+      await pressThrough('dialogue');
+      await sleep(300);
+      await shot('w20-workshop');
+      if (!(await see("g.flags['finale:followed'] && g.room.entities.some((e) => e.type === 'npc' && e.id === 'librarian')"))) w20Problems.push('Mr. Fenwick did not follow him down');
+
+      await stage({ area: 'workshop', screen: '-1,-1', tx: 12, ty: 5, facing: 'left' }, BELOW);
+      await sleep(300);
+      await shot('w20-tunnel');
+
+      // The hall: her words from the gallery, then the dance.
+      await stage({ area: 'workshop', screen: '0,-1', tx: 7, ty: 9, facing: 'up' }, BELOW);
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'"))) w20Problems.push('no confrontation in the hall');
+      await sleep(1200);
+      await shot('w20-confront');
+      await pressThrough('dialogue');
+      await sleep(1200);
+      await shot('w20-marionettes');
+      // Held still for the shot: the hero beside the hero puppet's left string, Space.
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        window.__marionetteThink = VL.ENEMIES.marionette.think;
+        VL.ENEMIES.marionette.think = () => {};
+        const m = g.room.entities.find((e) => e.type === 'marionette' && e.puppet === 'hero');
+        Object.assign(m, { cx: 128, cy: 96, arriving: 0, jerk: 0 });
+        Object.assign(g.player, { x: 100, y: 94, facing: 'right', invuln: 99 });
+      })()`);
+      await tapKey('Space');
+      await sleep(250);
+      await shot('w20-string-cut');
+      if (!(await see("g.room.entities.find((e) => e.puppet === 'hero').strings[0].cut"))) w20Problems.push('Space through the string did not cut it');
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        for (const m of g.room.entities.filter((e) => e.type === 'marionette')) {
+          for (const s of m.strings) s.cut = true;
+          if (m.puppet !== 'librarian') Object.assign(m, { fallen: true, fell: 9 });
+        }
+        const m = g.room.entities.find((e) => e.puppet === 'librarian');
+        m.strings[1].cut = false;
+        Object.assign(m, { cx: 150, cy: 96, jerk: 0 });
+        Object.assign(g.player, { x: 178, y: 94, facing: 'left' });
+      })()`);
+      await sleep(300);
+      await tapKey('Space');
+      if (!(await waitFor('g.flags.marionettes', 1500))) w20Problems.push('the last string cut did not win the fight');
+      await sleep(900);
+      await shot('w20-puppets-down');
+      await evaluate('VL.ENEMIES.marionette.think = window.__marionetteThink');
+
+      // She comes down, her last show, the apology and his forgiveness.
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'", 3000))) w20Problems.push('she did not come down');
+      await sleep(1200);
+      await shot('w20-she-speaks');
+      await pressThrough('dialogue');
+      if (!(await waitFor("VL.app.sceneId === 'puppetShow'"))) w20Problems.push('no confession show');
+      await sleep(1500);
+      await shot('w20-confession');
+      for (let i = 0; i < 8; i += 1) {
+        await sleep(300);
+        await tapKey('KeyS');
+      }
+      await sleep(1200);
+      await shot('w20-confession-dragon');
+      await pressThrough('puppetShow');
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'"))) w20Problems.push('no apology after the show');
+      await sleep(1500);
+      await shot('w20-apology');
+      await pressThrough('dialogue', 40);
+      if (!(await see("g.flags.forgiven && g.library.gone.length === 0"))) w20Problems.push('not forgiven, or books still gone');
+
+      // The ending, beat by beat, then the credits.
+      if (!(await waitFor("VL.app.sceneId === 'ending'", 2000))) w20Problems.push(`no ending: ${await see('VL.app.sceneId')}`);
+      await sleep(1600);
+      await shot('w20-ending-fill');
+      const beatShots = { 2: 'w20-ending-thanks', 3: 'w20-ending-cheer', 4: 'w20-ending-book', 6: 'w20-ending-promise', 8: 'w20-ending-town-books' };
+      for (let i = 0; i < 40 && (await see('VL.app.ending.phase')) === 'beats'; i += 1) {
+        const beat = await see('VL.app.ending.beat');
+        if (beatShots[beat]) {
+          await sleep(1800);
+          await shot(beatShots[beat]);
+          delete beatShots[beat];
+        }
+        await sleep(300);
+        await tapKey('KeyS');
+      }
+      if (Object.keys(beatShots).length) w20Problems.push(`ending beats not seen: ${Object.keys(beatShots)}`);
+      if (!(await waitFor("VL.app.ending.phase === 'credits'", 3000))) w20Problems.push('no credits');
+      if (!(await see('g.finished'))) w20Problems.push('not finished as the credits roll');
+      await sleep(3000);
+      await shot('w20-credits');
+      await tapKey('KeyS');
+      await sleep(600);
+      await shot('w20-the-end');
+      await tapKey('KeyS');
+      if (!(await waitFor("VL.app.sceneId === 'title'"))) w20Problems.push(`not back at the title: ${await see('VL.app.sceneId')}`);
+
+      // After the ending: her kind show, and the packed shelves with the hero's book.
+      await stage({ area: 'overworld', screen: '2,0', tx: 4, ty: 3, facing: 'up' }, [...BELOW, 'finale:confronted', 'marionettes', 'finale:showAsked', 'finale:shown', 'forgiven'], 'g.finished = true;');
+      await sleep(300);
+      await tapKey('KeyS');
+      if (!(await waitFor("VL.app.sceneId === 'puppetShow'"))) w20Problems.push('no kind show at the stage');
+      await sleep(1500);
+      await shot('w20-kind-show');
+      await tapKey('Escape');
+      await stage({ area: 'library', screen: '0,0', tx: 7, ty: 6, facing: 'up' }, [...BELOW, 'finale:confronted', 'marionettes', 'finale:showAsked', 'finale:shown', 'forgiven'], 'g.finished = true;');
+      await sleep(400);
+      await shot('w20-library-full');
+      if (!(await see("g.room.entities.filter((e) => e.type === 'libraryShelf').every((s) => s.fill === 1 && s.heroBook)"))) w20Problems.push('the shelves are not packed after the ending');
+
+      w20Problems.push(...errors);
+      if (w20Problems.length) failures += 1;
+      console.log(`${w20Problems.length ? 'FAIL' : 'ok  '} finale: the trapdoor open, down to the workshop, the tunnel, the hall and its marionettes, strings cut, her show, forgiveness, the ending, the credits, a kind show, the full library, ${path.join(outDir, 'w20-*.png')}`);
+      for (const problem of w20Problems) console.log(`     ${problem}`);
+    }
+
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
     // app of their own and drawn to an offscreen canvas every 1/60 s. In 16x16
     // cells, a flip is a change in mean relative luminance against the last
@@ -2559,6 +2752,60 @@ async function main() {
           VL.place(g, { area: 'lair', screen: '0,-1', tx: 11, ty: 4, facing: 'up' });
           g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
         }, () => VL.actions({ held: ['offHand'] }), (app, g) => g.dungeons.lair.switches.d4SpoutHall));
+        // W20 (and W19 QA's note): walking up through the boss door into the
+        // Dragon's hoard, the strongest slide in the game, before the fight
+        // (the mound) and after it (the books strewn over the floor).
+        const intoHoard = (spilled) => (app, g) => {
+          g.items.woodSword = true;
+          g.items.mirrorShield = true;
+          g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' };
+          g.dungeons.lair.doors.d4BossDoor = true;
+          if (spilled) {
+            g.dungeons.lair.boss = true;
+            VL.markFound(g, 'heartD4');
+          }
+          VL.place(g, { area: 'lair', screen: '0,-2', tx: 7, ty: 2, facing: 'up' });
+          g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+          g.popups.queue.length = 0;
+        };
+        const sawHoardSlide = (app, g) => g.transition && g.player.screen === '0,-3';
+        results.push(run("the boss-room entry: the slide up into the Dragon's hoard", 3, intoHoard(false), () => VL.actions({ held: ['up'] }), sawHoardSlide));
+        results.push(run('the boss-room entry after the Dragon: the slide over the spilled hoard', 3, intoHoard(true), () => VL.actions({ held: ['up'] }), sawHoardSlide));
+        // W20's finale: down the trapdoor, the marionettes (strings cut, puppets
+        // falling, hurt over and over), her shows and the ending with its fades
+        // and credits.
+        const finaleFlags = (g, ids) => {
+          Object.assign(g.items, { woodSword: true, mirrorShield: true });
+          g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' };
+          g.dungeons.lair.boss = true;
+          VL.markFound(g, 'heartD4');
+          for (const id of ids) g.flags[id] = true;
+          g.popups.queue.length = 0;
+        };
+        results.push(run('down the trapdoor into the workshop', 2, (app, g) => {
+          finaleFlags(g, ['trapdoorOpen', 'finale:followed']);
+          VL.place(g, { area: 'overworld', screen: '2,0', tx: 3, ty: 4, facing: 'up' });
+        }, () => VL.actions({ held: ['up'] }), (app, g) => g.player.area === 'workshop'));
+        results.push(run('the marionettes: strings cut, puppets falling, hurt over and over', 10, (app, g) => {
+          finaleFlags(g, ['trapdoorOpen', 'finale:followed', 'finale:confronted']);
+          VL.place(g, { area: 'workshop', screen: '0,-1', tx: 7, ty: 9, facing: 'up' });
+        }, (app, g, s) => {
+          hurtOften(app, g);
+          const frame = Math.round(s * 60);
+          const m = VL.puppetsUp(g).find((p) => !(p.jerk > 0));
+          if (app.sceneId !== 'play' || !m || frame % 45 !== 0) return VL.actions({ pressed: app.sceneId === 'popup' && frame % 30 === 0 ? ['interact'] : [] });
+          const side = m.strings[0].cut ? 1 : -1;
+          Object.assign(g.player, { x: m.cx + side * VL.STRING_REACH.dx, y: m.cy + VL.STRING_REACH.dy, facing: side < 0 ? 'right' : 'left' });
+          return VL.actions({ pressed: ['mainHand'] });
+        }, (app, g) => g.flags.marionettes));
+        results.push(run('her confession show, beat by beat', 8, (app, g) => {
+          finaleFlags(g, ['trapdoorOpen', 'finale:followed', 'finale:confronted', 'marionettes', 'finale:showAsked']);
+          app.setScene('puppetShow', { confession: true });
+        }, (app, g, s) => VL.actions({ pressed: Math.round(s * 60) % 50 === 0 ? ['interact'] : [] }), (app) => app.sceneId === 'puppetShow' && app.puppetShow.beat >= 4));
+        results.push(run('the ending: fades, the shelves filling, the cheer, the credits', 40, (app, g) => {
+          finaleFlags(g, ['trapdoorOpen', 'finale:followed', 'finale:confronted', 'marionettes', 'finale:showAsked', 'finale:shown', 'forgiven']);
+          app.setScene('ending');
+        }, (app, g, s) => VL.actions({ pressed: app.sceneId === 'ending' && app.ending.phase === 'beats' && Math.round(s * 60) % 150 === 0 ? ['interact'] : [] }), (app) => app.sceneId === 'ending' && app.ending.phase === 'credits'));
         results.push(run('the shockwave: rumble, white flash, story, waking', 12, (app) => {
           app.setScene('shockwave', { from: 'rumble' });
         }, (app, g, s) => VL.actions({ pressed: s > 4 && Math.round(s * 60) % 30 === 0 ? ['interact'] : [] }), (app) => app.sceneId === 'play'));
@@ -2616,7 +2863,7 @@ async function main() {
       }
       flashProblems.push(...errors);
       if (flashProblems.length) failures += 1;
-      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 2.8% more than 3 flash pairs (WCAG 2.3.1), in the dark, hurt, beam, boss, Dragon, fire, shockwave, swarm, popup and faint scenes`);
+      console.log(`${flashProblems.length ? 'FAIL' : 'ok  '} flash guard: no quarter of the canvas flips more than 3 times a second, nor 2.8% more than 3 flash pairs (WCAG 2.3.1), in the dark, hurt, beam, boss, Dragon, fire, boss-room slide, finale, shockwave, swarm, popup and faint scenes`);
       for (const problem of flashProblems) console.log(`     ${problem}`);
     }
 

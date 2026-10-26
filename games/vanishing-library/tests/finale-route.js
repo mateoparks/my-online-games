@@ -70,7 +70,7 @@ function fightMarionettes(drive) {
     }
     const string = m.strings.find((s) => !s.cut && (s.dx < 0) === (player.x < m.cx)) || m.strings.find((s) => !s.cut);
     const side = string.dx < 0 ? -1 : 1;
-    const target = { x: VL.clamp(m.cx + side * 18, 22, 234), y: VL.clamp(m.cy + 5, 60, 150) };
+    const target = { x: VL.clamp(m.cx + side * VL.STRING_REACH.dx, 22, 234), y: VL.clamp(m.cy + VL.STRING_REACH.dy, 60, 150) };
     const dx = target.x - player.x;
     const dy = target.y - player.y;
     const held = [];

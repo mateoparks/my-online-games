@@ -21,15 +21,20 @@
   });
   const T = VL.TUNING;
   VL.MARIONETTE_NOTE = 'Clonk! It\'s only painted wood. Cut the strings that hold it up!';
-  // Where the puppets dance: clear of her gallery, the walls and Mr. Fenwick's corner.
-  VL.MARIONETTE_BOUNDS = { left: 36, right: 220, top: 62, bottom: 124 };
+  // Where the puppets dance (their centres): heads clear of her gallery,
+  // feet off the bottom wall, room to stand beside them at the walls.
+  VL.MARIONETTE_BOUNDS = { left: 56, right: 200, top: 78, bottom: 130 };
+  // Giant: drawn at twice the size of the art below.
+  const SCALE = 2;
 
-  // { body: hit box, hands: the strings' x offsets, reach: hands' height above the centre }
+  // In room pixels: hands are the strings' x offsets, reach the hands' height above the centre.
   VL.PUPPET_SHAPES = {
-    dragon: { body: { w: 22, h: 16 }, hands: [-11, 11], reach: 6 },
-    hero: { body: { w: 14, h: 22 }, hands: [-9, 9], reach: 8 },
-    librarian: { body: { w: 14, h: 22 }, hands: [-9, 9], reach: 8 },
+    dragon: { hands: [-22, 22], reach: 12 },
+    hero: { hands: [-18, 18], reach: 16 },
+    librarian: { hands: [-18, 18], reach: 16 },
   };
+  // Where the hero stands to cut a string: this far to its side, level with its chest.
+  VL.STRING_REACH = { dx: 28, dy: -2 };
 
   const shape = (m) => VL.PUPPET_SHAPES[m.puppet];
   VL.stringBottom = (m) => m.cy - shape(m).reach;
@@ -89,7 +94,7 @@
     if (m.puppet === 'hero') rect(ctx, 'hilt', bx - 1, y + 2, 2, 1);
     else rect(ctx, 'white', bx - 1, y - 4, 2, 3);
     // Arms up to the strings; a cut one hangs.
-    const hands = shape(m).hands.map((dx, i) => (m.strings[i].cut ? { x: bx + dx * 0.6, y: y + 4 } : { x: x + dx - 1, y: y - shape(m).reach - 1 }));
+    const hands = shape(m).hands.map((dx, i) => (m.strings[i].cut ? { x: bx + (dx / SCALE) * 0.6, y: y + 4 } : { x: x + dx / SCALE - 1, y: y - shape(m).reach / SCALE - 1 }));
     arm(ctx, { x: bx - 7, y: y - 3 }, hands[0], look.top);
     arm(ctx, { x: bx + 5, y: y - 3 }, hands[1], look.top);
     if (m.puppet === 'librarian') part(ctx, 'heart', hands[1].x - 1, hands[1].y - 3, 4, 3);
@@ -195,7 +200,7 @@
 
   VL.defineEnemy('marionette', {
     tuning: 'enemyMarionette',
-    body: { w: 14, h: 22 },
+    body: { w: 28, h: 40 },
     flies: true,
     rooted: true,
     faint: 'The giant puppets were just too much this time.',
@@ -270,21 +275,29 @@
     draw(ctx, m, x, y, t) {
       const top = y - m.cy;
       if (m.fallen && m.fell >= T.marionetteFallSeconds) {
-        drawHeap(ctx, m, x, y);
+        ctx.save();
+        ctx.translate(x, y + 12);
+        ctx.scale(SCALE, SCALE);
+        drawHeap(ctx, m, 0, 0);
+        ctx.restore();
         return;
       }
-      const fallen = m.fallen ? (m.fell / T.marionetteFallSeconds) * 14 : 0;
-      const shake = Math.round(Math.sin(t * 40) * (m.shake > 0 ? 1.5 : 0) + (m.mode === 'windup' ? Math.sin(t * 30) : 0));
+      const fallen = m.fallen ? (m.fell / T.marionetteFallSeconds) * 24 : 0;
+      const shake = Math.round(Math.sin(t * 40) * (m.shake > 0 ? 2 : 0) + (m.mode === 'windup' ? Math.sin(t * 30) * 2 : 0));
       const px = x + shake;
       const py = Math.round(y + fallen);
-      VL.ART.drawShadow(ctx, x, y + 22, m.puppet === 'dragon' ? 20 : 14);
+      VL.ART.drawShadow(ctx, x, y + 26, m.puppet === 'dragon' ? 40 : 28);
       // The strings, straight up into the rafters.
       for (const s of m.strings) {
         if (s.cut) continue;
         rect(ctx, 'puppetString', px + s.dx, top, 1, Math.max(0, py - shape(m).reach - top));
       }
-      if (m.puppet === 'dragon') drawDragon(ctx, m, px, py, t);
-      else drawPerson(ctx, m, px, py, t);
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(SCALE, SCALE);
+      if (m.puppet === 'dragon') drawDragon(ctx, m, 0, 0, t);
+      else drawPerson(ctx, m, 0, 0, t);
+      ctx.restore();
     },
   });
 
