@@ -574,8 +574,9 @@ holds the heart containers.
   (`reveal: 'dug'`, spot `how: 'buried'`): it is hidden until the metal
   shovel digs exactly its tile (X), then comes up into the hole like the
   Hollow Oak's moss key and is taken by stepping on it, once. Its lock needs
-  `metalShovel` and stays optional. Since W38 a ring of the fields' plain
-  flowers (`,`) round its bare square, against the trees, is the only clue.
+  `metalShovel` and stays optional. It lies in a nook of bushes against the
+  trees (W38 tried flowers there; W41 put W34's bushes back): the bush in
+  front is cut to step in, and the nook is the only clue.
 - **Sounds:** events `enemyHit` (`hit`), `heroHurt` (`hurt`), `blocked`
   (`clank`), `enemyDefeated` (`poof`), `spit`, `squawk` and `heartContainer`
   (`fanfare`).
@@ -940,7 +941,7 @@ over the river, a long flight crosses the last highland chasm and its screen
 edge, a flight off the pier splashes down, and five sword hits bring the
 swarm (`w7-lift.png`, `w7-throw.png`, `w7-flight-short.png`,
 `w7-flight-long-edge.png`, `w7-splash.png`, `w7-swarm.png`). Then W12's
-paper and ink with real keys: Space grinding a berry with the mortar
+paper and ink with real keys: Space grinding berries with the mortar
 (`w12-mortar.png`), S copying a mural (`w12-mural.png`, `w12-copy.png`,
 `w12-copy-view.png`), M with no map (`w12-map-none.png`), M asking to draw
 (`w12-map-ask.png`), the map inking in and drawn with the Herbalist's marks
@@ -1054,6 +1055,12 @@ with a note (`w40-refused.png`), D refused as the off hand's key, Q taken
 (`w40-controls-chosen.png`), the pause list naming Q (`w40-pause-keys.png`),
 Q swinging and Space not, the sword's popup saying Q
 (`w40-popup-custom-key.png`) and the equipment view (`w40-equipment.png`).
+Then W41's overworld notes: the buried heart's nook of bushes
+(`w41-heart-bushes.png`), Space grinding five berries into an ink
+(`w41-mortar-five.png`) and refusing four (`w41-mortar-short.png`), and the
+middle shelves' one chicken lifted with S (`w41-middle-hen.png`), carried
+north over the screen edge with Up (`w41-hen-carried.png`) and flown over the
+second chasm with F (`w41-hen-flown.png`).
 Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
 the beam, the Lens Crab's rounds, the Dragon's rounds, its fire through a
 metal shield, a stone head's fire bounced home, the slides up through the boss
@@ -1152,9 +1159,12 @@ node run.
   returned, after `spotFound`).
 - **Chickens:** every flight needs a chicken where it starts, so a chicken
   spot sits on the launch side of every flight the map needs, the way back
-  included (`chickenLair` east of the last chasm). W7 keeps a chicken at
-  each spot (it respawns there if carried off or lost), so nowhere becomes
-  one-way.
+  included (`chickenLair` east of the last chasm), or within walking
+  distance of it: the highlands' middle shelves (-1,-3, -2,-3, -2,-4) have
+  one chicken between their two chasms (`chickenHighlands` on -2,-3, W41),
+  carried to whichever chasm he wants (`tests/w41-overworld.test.js`). W7
+  keeps a chicken at each spot (it respawns there if carried off or lost),
+  so nowhere becomes one-way.
 - **Flight contract (for W7):** a flight's length is the width of the gap
   it clears, not the distance moved. A long flight (`chickenFlightLong`, 4)
   clears a 4-tile gap and lands 5 tiles from take-off; a short one
@@ -1632,8 +1642,11 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
   map. A `VL.place` outside a step (a load, a respawn, a test) earns nothing.
 - **Ink:** the `mortarPestle` item (W14's Bookworm gives it with
   `VL.giveItem`) is a hand tool: its key, or S on the equipment screen,
-  grinds one berry into `TUNING.inkPerBerry` ink (`VL.makeInk`), one grind
-  per `TUNING.grindSeconds`, drawn with the hero. No berries: a message.
+  grinds `TUNING.berriesPerInk` berries (5 since W41: one ink draws a whole
+  map) into one ink (`VL.makeInk`), one grind per `TUNING.grindSeconds`,
+  drawn with the hero. Fewer berries: a message naming how many it takes.
+  A bush gives `berriesPerPick` (2) and regrows once he has been away, so an
+  ink is three picks; the store's berries make it 15 shells.
   `flags.madeInk` marks the source, like W10's paper.
 - **Copying:** `{ type: 'copyable', x, y, copy, look: 'mural' | 'tablet', text? }`
   is solid; S at it runs `VL.copyFrom(state, entity)`: with
@@ -2279,9 +2292,9 @@ played route is `tests/highlands-route.js`.
   see the path. The first time he stands on the cliff base with it open, the
   `hiddenPathFound` popup says so.
 - **The chasms:** W7's chickens do the rest. A chicken waits at each spot
-  on every visit (`chickenLedge`, `chickenHighlands`, `chickenGap`,
-  `chickenLair`); F next to one with the Chicken Keeper's Almanac read flies
-  the four-tile gap (`chickenFlightLong` from `VL.TUNING`), crossing the
+  on every visit (`chickenLedge` below the first chasm, `chickenHighlands`
+  on the middle shelves and `chickenLair` beyond the second); F next to
+  one with the Chicken Keeper's Almanac read flies the four-tile gap (`chickenFlightLong` from `VL.TUNING`), crossing the
   screen edge mid-air, and he lands still carrying it. Without the Almanac
   read the flight falls short and flaps him back, unhurt. The tests fly every
   highland chasm both ways from the real spots.

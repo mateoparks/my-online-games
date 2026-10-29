@@ -4,7 +4,8 @@
 // world map of every screen visited. README "Paper and ink (W12)".
 (() => {
   VL.tune({
-    inkPerBerry: 1,
+    // W41: a single ink draws a whole map, so it takes a handful of berries.
+    berriesPerInk: 5,
     grindSeconds: 0.45,
     copyCost: { paper: 1, ink: 1 },
     mapCost: { paper: 1, ink: 1 },
@@ -110,10 +111,10 @@
   VL.defineItem('mortarPestle', {
     name: 'Mortar & Pestle',
     icon: 'mortar',
-    about: 'Grinds a berry into ink.',
+    about: `Grinds ${VL.TUNING.berriesPerInk} berries into ink.`,
     popup: {
       title: 'You got the Mortar & Pestle!',
-      text: 'Hold it in a hand and press its key to grind a berry into ink. Paper and ink can copy a picture.',
+      text: `Hold it in a hand and press its key to grind ${VL.TUNING.berriesPerInk} berries into ink. Paper and ink can copy a picture.`,
     },
     use(state) {
       VL.makeInk(state);
@@ -127,13 +128,14 @@
   // would only show back in the world, and the grinding shown with the hero.
   VL.makeInk = function makeInk(state, { quiet = false } = {}) {
     if (state.player.grind && !quiet) return false;
-    if (state.inventory.berries <= 0) {
-      if (!quiet) VL.showMessage(state, { text: 'You need berries to make ink.' });
+    const need = VL.TUNING.berriesPerInk;
+    if (state.inventory.berries < need) {
+      if (!quiet) VL.showMessage(state, { text: `You need ${need} berries to make ink.` });
       return false;
     }
     state.flags.madeInk = true;
-    state.inventory.berries -= 1;
-    VL.addResource(state, 'ink', VL.TUNING.inkPerBerry);
+    state.inventory.berries -= need;
+    VL.addResource(state, 'ink', 1);
     VL.tidyHands(state);
     if (!quiet) {
       state.player.grind = { t: 0 };

@@ -2,8 +2,8 @@
 // Scriptorium with the librarian's key, through it to the Lifting Gloves,
 // then on to the Bookworm (tests/scriptorium-route.js has each lock's play).
 // Also W12's woodsMapCopy, since its mural hangs in the Scriptorium: berries
-// picked, two sold for shells, paper bought, a berry ground into ink and the
-// mural copied, all with real keys.
+// picked, three sold for shells, paper bought, five ground into ink (W41) and
+// the mural copied, all with real keys.
 const { route, at } = require('../scriptorium-route');
 
 const run = (...ids) => (drive) => {
@@ -80,10 +80,13 @@ module.exports = (step) => {
     const { VL } = drive;
     drive.closePopups();
     const bush = berryBush(VL);
-    pickBerries(drive, bush);
-    // Berries regrow once the hero has been away.
-    drive.walkTo({ area: 'hut', screen: '0,0', tx: 7, ty: 8 });
-    pickBerries(drive, bush);
+    const want = 3 + VL.TUNING.berriesPerInk;
+    for (let pick = 0; drive.state.inventory.berries < want; pick += 1) {
+      if (pick > 6) throw new Error('woodsMapCopy: the bush never gave enough berries');
+      // Berries regrow once the hero has been away.
+      if (pick) drive.walkTo({ area: 'hut', screen: '0,0', tx: 7, ty: 8 });
+      pickBerries(drive, bush);
+    }
     // W36: the store's paper costs 3 shells.
     buy(drive, 'shop', ['sellBerry', 'sellBerry', 'sellBerry', 'paper']);
     if (drive.state.inventory.paper < 1) throw new Error('woodsMapCopy: no paper bought');

@@ -1123,8 +1123,13 @@ async function main() {
       const short = await flown(1200);
       if (short.join() !== 'false,3,-2,11,4') henProblems.push(`the short flight over the river ended at ${short}`);
 
-      await henGame({ area: 'overworld', screen: '-2,-4', tx: 12, ty: 4, facing: 'right' }, 'g.flags.chickenAlmanacRead = true;');
-      await henInFront();
+      // W41: no chicken lives by this chasm; the middle shelves' one is brought.
+      await henGame({ area: 'overworld', screen: '-2,-3', tx: 7, ty: 5 }, 'g.flags.chickenAlmanacRead = true;');
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        VL.liftChicken(g, g.room.entities.find((e) => e.spot === 'chickenHighlands'));
+        VL.place(g, { area: 'overworld', screen: '-2,-4', tx: 12, ty: 4, facing: 'right' });
+      })()`);
       await tap('KeyF');
       await sleep(820);
       await snap('w7-flight-long-edge');
@@ -1308,7 +1313,7 @@ async function main() {
       for (const problem of libProblems) console.log(`     ${problem}`);
     }
 
-    // W12, paper and ink with real keys: Space grinding a berry with the
+    // W12, paper and ink with real keys: Space grinding berries with the
     // mortar, S copying a mural, M with no map, M asking, the map inking in
     // and drawn with the Herbalist's marks, and a new screen on it after,
     // saved as w12-*.png. A block of its own, so its names never clash.
@@ -1341,7 +1346,7 @@ async function main() {
       })()`);
       const field = { area: 'overworld', screen: '1,1', tx: 4, ty: 6, facing: 'up' };
 
-      await inkGame(field, "VL.giveItem(g, 'mortarPestle'); VL.addResource(g, 'berries', 3);");
+      await inkGame(field, "VL.giveItem(g, 'mortarPestle'); VL.addResource(g, 'berries', 2 + VL.TUNING.berriesPerInk);");
       await tapKey('Space');
       await sleep(150);
       await picture('w12-mortar');
@@ -3405,8 +3410,7 @@ async function main() {
     // W38, Matthew's fifth playtest notes (world, combat, Easter eggs): the
     // rope reels a slime in (half a heart, stars over it), a hooked hen's egg
     // on his face (the arrows reversed), holes in the road and the Woods
-    // floor, the buried heart's ring of flowers, the Lighthouse map in the
-    // cellar, the wreck's five shells, and the home fields quiet after the
+    // floor, the Lighthouse map in the cellar, the wreck's five shells, and the home fields quiet after the
     // shockwave even with a sword. Saved as w38-*.png.
     {
       errors.length = 0;
@@ -3507,11 +3511,6 @@ async function main() {
       await shot('w38-moss-hole');
       if ((await see('VL.tileAt("overworld", "5,-1", 5, 7, g.room)')) !== '~') w38Problems.push('X did not dig the Woods floor');
 
-      // The buried heart's ring of flowers.
-      await stage(ow('5,0', 11, 8, 'right'));
-      await settle();
-      await shot('w38-heart-flowers');
-
       // The Lighthouse map, in the cellar on the way to key A; M shows every room.
       await stage({ area: 'lighthouse', screen: '-1,0', tx: 9, ty: 2, facing: 'left' }, 'g.items.glowstone = true;');
       await settle();
@@ -3541,7 +3540,7 @@ async function main() {
 
       w38Problems.push(...errors);
       if (w38Problems.length) failures += 1;
-      console.log(`${w38Problems.length ? 'FAIL' : 'ok  '} fifth playtest: the rope reels a slime in, egg on his face and on a long-haired girl's (every facing, holding up, the line by name), holes in the road and the Woods, the heart's flowers, the Lighthouse map in the cellar, the wreck's five shells, quiet fields after the shockwave, ${path.join(outDir, 'w38-*.png')}`);
+      console.log(`${w38Problems.length ? 'FAIL' : 'ok  '} fifth playtest: the rope reels a slime in, egg on his face and on a long-haired girl's (every facing, holding up, the line by name), holes in the road and the Woods, the Lighthouse map in the cellar, the wreck's five shells, quiet fields after the shockwave, ${path.join(outDir, 'w38-*.png')}`);
       for (const problem of w38Problems) console.log(`     ${problem}`);
     }
 
@@ -3632,6 +3631,94 @@ async function main() {
       if (w40Problems.length) failures += 1;
       console.log(`${w40Problems.length ? 'FAIL' : 'ok  '} hand keys: Esc → Controls, S and D refused with a note, Q taken and saved, the pause list, Q swings and Space does not, a popup and the equipment view naming the chosen keys, ${path.join(outDir, 'w40-*.png')}`);
       for (const problem of w40Problems) console.log(`     ${problem}`);
+    }
+
+    // W41, Matthew's sixth playtest notes (overworld): the buried heart's nook
+    // of bushes (w41-heart-bushes), the mortar grinding five berries with
+    // Space (w41-mortar-five) and refusing four (w41-mortar-short), and the
+    // middle shelves' one chicken lifted with S (w41-middle-hen), carried
+    // north over the screen edge with Up (w41-hen-carried) and flown over the
+    // second chasm with F (w41-hen-flown).
+    {
+      errors.length = 0;
+      const w41Problems = [];
+      const codes = { KeyS: [83, 's'], KeyF: [70, 'f'], Space: [32, ' '] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) w41Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const BOY = { outfit: 'green', hair: 'short', gender: 'boy' };
+      const stage = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin', look: ${JSON.stringify(BOY)} }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'hiddenPathFound']) g.popups.seen[id] = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+      const ow = (screen, tx, ty, facing = 'up') => ({ area: 'overworld', screen, tx, ty, facing });
+
+      await stage(ow('5,0', 11, 8, 'right'));
+      await settle();
+      await shot('w41-heart-bushes');
+      const nook = await see("[12, 13, 14].map((x) => VL.tileAt('overworld', '5,0', 13, x - 5, g.room)).join('') + VL.tileAt('overworld', '5,0', 14, 7, g.room) + VL.tileAt('overworld', '5,0', 14, 9, g.room)");
+      if (nook !== 'BBBBB') w41Problems.push(`the heart's nook: ${nook}`);
+
+      await stage(ow('1,1', 4, 6), "VL.giveItem(g, 'mortarPestle'); g.holdUp = null; g.hands = { mainHand: 'mortarPestle', offHand: null }; VL.addResource(g, 'berries', 9);");
+      await settle();
+      await tapKey('Space');
+      await sleep(150);
+      await shot('w41-mortar-five');
+      const ground = await see('[g.inventory.berries, g.inventory.ink]');
+      if (ground.join() !== '4,1') w41Problems.push(`Space with the mortar left berries and ink at ${ground}`);
+      await sleep(600);
+      await tapKey('Space');
+      await sleep(250);
+      await shot('w41-mortar-short');
+      const short = await see("[g.inventory.berries, g.inventory.ink, (VL.currentPopup(g) || {}).text || '']");
+      if (short[0] !== 4 || short[1] !== 1 || !/5 berries/.test(short[2])) w41Problems.push(`four berries: ${JSON.stringify(short)}`);
+
+      await stage(ow('-2,-3', 6, 5, 'right'), 'g.flags.chickenAlmanacRead = true; g.items.climbersAlmanac = true;');
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        const hen = g.room.entities.find((e) => e.spot === 'chickenHighlands');
+        Object.assign(hen, { px: g.player.x + 12, py: g.player.y, x: 7, y: 5, mode: 'idle', idle: 30 });
+      })()`);
+      await settle();
+      await tapKey('KeyS');
+      await sleep(300);
+      await shot('w41-middle-hen');
+      if ((await see("g.player.carrying && g.player.carrying.spot")) !== 'chickenHighlands') w41Problems.push('S did not lift the middle shelves\' chicken');
+      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(5, 2), { facing: 'up' }); })()");
+      await holdArrowUntil('Up', "g.player.screen === '-2,-4' && !g.transition", 3000);
+      await sleep(150);
+      await shot('w41-hen-carried');
+      const carried = await see("[g.player.screen, g.player.carrying && g.player.carrying.spot]");
+      if (carried.join() !== '-2,-4,chickenHighlands') w41Problems.push(`carried north: ${carried}`);
+      await evaluate("(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(12, 4), { facing: 'right' }); })()");
+      await tapKey('KeyF');
+      await sleep(820);
+      await shot('w41-hen-flown');
+      for (let i = 0; i < 40 && (await see('Boolean(g.player.flight || g.transition)')); i += 1) await sleep(50);
+      const flown = await see("[g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty, g.player.carrying && g.player.carrying.spot]");
+      if (flown.join() !== '-1,-4,1,4,chickenHighlands') w41Problems.push(`the flight over the second chasm ended at ${flown}`);
+
+      w41Problems.push(...errors);
+      if (w41Problems.length) failures += 1;
+      console.log(`${w41Problems.length ? 'FAIL' : 'ok  '} sixth playtest (overworld): the heart's nook of bushes, five berries to an ink, the middle shelves' one chicken carried north and flown over the second chasm, ${path.join(outDir, 'w41-*.png')}`);
+      for (const problem of w41Problems) console.log(`     ${problem}`);
     }
 
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
