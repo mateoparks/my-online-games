@@ -42,7 +42,7 @@
         'A great flash lit up the sky over the Woods. The miller and I found you at the edge of the trees, fast asleep and holding that glowing stone.',
         'I\'m afraid the blast scattered your sword and shield, your shovel and your map. Your wood, paper, berries and ink blew away, and your shells cracked into little pieces.',
         'But your books, your rope and everything you found in the dungeons are safe. And so are you, which matters most of all!',
-        'Here, take some wood from my woodpile. The flash sent the slimes into hiding, so the fields by your hut are quiet for now.',
+        'Here, take some wood from my woodpile. The flash sent the slimes by your hut into hiding, so those fields will be quiet for a good while.',
       ],
       set: 'gave:helperWood',
       give: { helperWood: VL.TUNING.helperWood },

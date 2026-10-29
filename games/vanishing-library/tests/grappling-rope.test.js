@@ -214,24 +214,32 @@ test('the rope, its hook and the post draw', () => {
 // can't walk to is tried with the real hook from every walkable tile in line
 // within reach: none may come back. A later item that places one in reach
 // trips this and decides (README "The Grappling Rope").
-test('on the overworld the hook never fetches a pickup the hero cannot walk to yet', () => {
+const FETCHES = ['drop', 'shell', 'ore', 'smallKey', 'bossKey', 'dungeonMap', 'heartContainer'];
+
+function loadW15(addScreens) {
+  const { memoryStorage } = require('./harness');
   const fs = require('node:fs');
   const path = require('node:path');
-  const { memoryStorage } = require('./harness');
-  const { isWalkable } = require('./playthrough');
   const { VL } = loadGame();
+  if (addScreens) addScreens(VL);
   const text = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W15.json'), 'utf8');
   const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: text }));
   const app = VL.createApp({ storage });
   app.startGame(VL.loadSlot(storage, 0), 0);
   app.setScene('play');
-  const game = app.game;
-  assert.ok(VL.hasItem(game, 'grapplingRope'));
-  const AREA = 'overworld';
+  assert.ok(VL.hasItem(app.game, 'grapplingRope'));
+  return { VL, app, game: app.game };
+}
+
+// Walks the area from `starts`, then hooks every pickup he can't walk to from
+// every walkable tile in line within reach. Returns the pickups it was thrown
+// at, and the ones it took from where they stand.
+function hookSweep({ VL, app, game }, area, starts) {
+  const { isWalkable } = require('./playthrough');
   const { cols, rows } = VL.TUNING;
   const key = (screen, tx, ty) => `${screen} ${tx},${ty}`;
   const seen = new Set();
-  const queue = [VL.START, VL.WOODS_ENTRY].map((p) => [p.screen, p.tx, p.ty]);
+  const queue = starts.map((p) => [p.screen, p.tx, p.ty]);
   for (const [s, x, y] of queue) seen.add(key(s, x, y));
   while (queue.length) {
     const [s, x, y] = queue.shift();
@@ -239,38 +247,77 @@ test('on the overworld the hook never fetches a pickup the hero cannot walk to y
       let [ns, nx, ny] = [s, x + dx, y + dy];
       if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) {
         ns = VL.neighborKey(s, dx, dy);
-        if (!VL.screenExists(AREA, ns) || VL.edgeTurn(game, AREA, s, ns)) continue;
+        if (!VL.screenExists(area, ns) || VL.edgeTurn(game, area, s, ns)) continue;
         nx -= dx * cols;
         ny -= dy * rows;
       }
-      if (seen.has(key(ns, nx, ny)) || !isWalkable(VL, AREA, ns, nx, ny, game)) continue;
+      if (seen.has(key(ns, nx, ny)) || !isWalkable(VL, area, ns, nx, ny, game)) continue;
       seen.add(key(ns, nx, ny));
       queue.push([ns, nx, ny]);
     }
   }
-  assert.ok(seen.size > 1000, `${seen.size} tiles on foot`);
-  const FETCHES = ['drop', 'shell', 'ore', 'smallKey', 'bossKey', 'dungeonMap', 'heartContainer'];
   const DIRS = { right: [1, 0], left: [-1, 0], down: [0, 1], up: [0, -1] };
-  let tried = 0;
-  for (const screen of Object.keys(VL.AREAS[AREA].screens)) {
-    for (const thing of VL.getScreen(AREA, screen).entities) {
+  const hooked = new Set();
+  const fetched = [];
+  for (const screen of Object.keys(VL.AREAS[area].screens)) {
+    for (const thing of VL.getScreen(area, screen).entities) {
       if (!FETCHES.includes(thing.type) || thing.hidden) continue;
       if ([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has(key(screen, thing.x + dx, thing.y + dy)))) continue;
       for (const [dir, [dx, dy]] of Object.entries(DIRS)) {
         for (let d = 2; d <= VL.TUNING.ropeTiles + 1; d += 1) {
           const [tx, ty] = [thing.x - dx * d, thing.y - dy * d];
           if (!seen.has(key(screen, tx, ty))) continue;
-          tried += 1;
-          VL.place(game, { area: AREA, screen, tx, ty, facing: dir });
+          hooked.add(thing.id ?? thing.spot);
+          VL.place(game, { area, screen, tx, ty, facing: dir });
           game.popups.queue.length = 0;
           game.hands = { mainHand: 'grapplingRope', offHand: null };
           app.update(VL.actions({ pressed: ['mainHand'] }), STEP);
           for (let s = 0; s < 3 && game.player.rope; s += STEP) app.update(VL.noActions(), STEP);
           const there = game.room.entities.find((e) => e.type === thing.type && (e.id ?? e.spot) === (thing.id ?? thing.spot));
-          assert.ok(there && there.x === thing.x && there.y === thing.y, `${thing.type} ${thing.id || thing.spot || ''} at ${key(screen, thing.x, thing.y)} stays put when hooked from (${tx},${ty}) facing ${dir}`);
+          if (!(there && there.x === thing.x && there.y === thing.y)) {
+            fetched.push(`${thing.type} ${thing.id || thing.spot || ''} at ${key(screen, thing.x, thing.y)} from (${tx},${ty}) facing ${dir}`);
+          }
         }
       }
     }
   }
-  assert.ok(tried > 0, 'heartFieldA, behind its boulders, is tried with the real hook');
+  return { hooked, fetched, seen: seen.size };
+}
+
+test('on the overworld the hook never fetches a pickup the hero cannot walk to yet', () => {
+  const world = loadW15();
+  const { VL } = world;
+  const { fetched, seen } = hookSweep(world, 'overworld', [VL.START, VL.WOODS_ENTRY]);
+  assert.ok(seen > 1000, `${seen} tiles on foot`);
+  // Since W38 the buried heart's corner is open (a ring of flowers), so no
+  // overworld pickup is out of reach on foot today; the next test keeps the
+  // sweep honest with two that are.
+  assert.deepEqual(fetched, []);
+});
+
+test('the sweep is live: a shell walled in by trees stays put, and one ringed by water is caught coming back', () => {
+  const world = loadW15((VL) => VL.addScreens('hookSweep', {
+    '0,0': {
+      tiles: [
+        'TTTTTTTTTTTTTTTT',
+        'TTTTTTTTTTWWWTTT',
+        'TTTT.TTTTTW.WTTT',
+        'TTTTTTTTTTWWWTTT',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'T..............T',
+        'TTTTTTTTTTTTTTTT',
+      ],
+      entities: [
+        { type: 'shell', whole: true, id: 'sweepTrees', x: 4, y: 2 },
+        { type: 'shell', whole: true, id: 'sweepWater', x: 11, y: 2 },
+      ],
+    },
+  }));
+  const { hooked, fetched } = hookSweep(world, 'hookSweep', [{ screen: '0,0', tx: 7, ty: 7 }]);
+  assert.deepEqual([...hooked].sort(), ['sweepTrees', 'sweepWater'], 'the real hook is thrown at both');
+  assert.ok(fetched.length > 0 && fetched.every((f) => f.includes('sweepWater')), fetched.join('; ') || 'nothing fetched');
 });

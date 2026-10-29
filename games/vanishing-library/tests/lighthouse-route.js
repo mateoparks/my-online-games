@@ -167,6 +167,7 @@ const route = {
   },
   // Along the cellar's dark floor to key A.
   d3KeyA(drive) {
+    if (!d3(drive).map) pickUp(drive, at('-1,0', 9, 2), 'left', () => d3(drive).map);
     pickUp(drive, at('-1,0', 2, 3), 'up', (state) => drive.VL.spotFound(state, 'd3KeyA'));
   },
   d3DoorA(drive) {
@@ -216,11 +217,10 @@ const route = {
     walk(drive, at('0,-2', 14, 5));
     drive.until(() => d3(drive).doors.d3DoorB, 1, ['right']);
   },
-  // The map from the dark stair, then the workshop's three mirrors.
+  // The workshop's three mirrors.
   d3BossKey(drive) {
     const { VL } = drive;
     equipSlingshot(drive);
-    if (!d3(drive).map) pickUp(drive, at('-1,-2', 6, 2), 'right', () => d3(drive).map);
     if (drive.state.inventory.brokenShells < 1) beachcomb(drive, 4);
     if (!d3(drive).switches.d3CrystalWorkshop) {
       walk(drive, at('1,-2', 5, 2));
