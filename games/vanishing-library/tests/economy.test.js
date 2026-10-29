@@ -71,6 +71,7 @@ test('one price table in VL.TUNING holds every price, starting from the design d
   const p = VL.TUNING.prices;
   assert.deepEqual(plain(p), {
     paper: { shells: 2 },
+    storePaper: { shells: 3 },
     buyBerry: { shells: 3 },
     sellBerry: { berries: 1 },
     millTrade: { wood: 5 },
@@ -91,7 +92,7 @@ test('one price table in VL.TUNING holds every price, starting from the design d
   assert.equal(VL.TUNING.digChanceTideTables, 0.3);
   // Every offer's cost is the table's entry, so retuning one line retunes the counter.
   const costOf = {
-    store: { paper: p.paper, buyBerry: p.buyBerry, sellBerry: p.sellBerry, woodShovel: p.shopShovel, oar: p.oarShells },
+    store: { paper: p.storePaper, buyBerry: p.buyBerry, sellBerry: p.sellBerry, woodShovel: p.shopShovel, oar: p.oarShells },
     mill: { millTrade: p.millTrade, paper: p.paper },
     smithy: {
       woodSword: p.woodSword, woodShield: p.woodShield, woodShovel: p.woodShovel,
@@ -217,13 +218,13 @@ test('the store: paper, berries bought and sold, and a wood shovel for shells', 
   // A full first purse (15 whole shells since W29).
   give(VL, game, { shells: 15, berries: 1 });
   assert.equal(VL.buyOffer(game, offer(VL, 'store', 'paper')).ok, true);
-  assert.deepEqual([game.inventory.paper, game.inventory.shells], [1, 13]);
+  assert.deepEqual([game.inventory.paper, game.inventory.shells], [1, 12], 'W36: 3 shells at the store');
   assert.equal(VL.buyOffer(game, offer(VL, 'store', 'buyBerry')).ok, true);
-  assert.deepEqual([game.inventory.berries, game.inventory.shells], [2, 10]);
+  assert.deepEqual([game.inventory.berries, game.inventory.shells], [2, 9]);
   assert.equal(VL.LOCKS.buyBerries.reached(game), true);
   assert.equal(VL.buyOffer(game, offer(VL, 'store', 'sellBerry')).ok, true);
-  assert.deepEqual([game.inventory.berries, game.inventory.shells], [1, 11]);
-  give(VL, game, { shells: 4 });
+  assert.deepEqual([game.inventory.berries, game.inventory.shells], [1, 10]);
+  give(VL, game, { shells: 5 });
   assert.equal(VL.buyOffer(game, offer(VL, 'store', 'woodShovel')).ok, true);
   assert.equal(VL.hasItem(game, 'woodShovel'), true);
   assert.equal(game.inventory.shells, 0);

@@ -17,7 +17,7 @@ module.exports = (step) => {
     drive.press('interact');
     // Through the talk, the returned books' words and the reading.
     for (let i = 0; i < 60; i += 1) {
-      const idle = drive.app.sceneId === 'play' && !drive.state.libraryChain && !VL.currentPopup(drive.state);
+      const idle = drive.app.sceneId === 'play' && !drive.state.libraryChain && !drive.state.libraryOffer && !VL.currentPopup(drive.state);
       if (idle) break;
       drive.hold([], 0.35);
       if (drive.app.sceneId !== 'play') drive.press('interact');

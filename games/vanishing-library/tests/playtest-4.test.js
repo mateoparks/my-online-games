@@ -367,13 +367,13 @@ test('Ashton Co-op: a book near the end, and the librarian says "Adventures in l
   assert.deepEqual([...VL.ART.missingGlyphs(`"${book.title}." ${book.blurb}`, 'normal')], []);
 });
 
-test('the book margins: the 10-book heart before the shockwave, the purse after it but well before the binding needs it, and the boots in reach', () => {
+test('the book margins: the 12-book boots before the shockwave (W36), the purse after it but well before the binding needs it, and the 30-book heart in reach', () => {
   const { VL } = loadGame();
   const result = VL.solveProgression();
   assert.deepEqual([...result.problems], []);
   const before = result.stages[0];
-  assert.ok(before.counts.books >= 10 + 3 && before.counts.books < 20, `before the shockwave: ${before.counts.books}`);
-  assert.ok(before.reached.includes('heartLibrary') && !before.reached.includes('shellPurse'));
+  assert.ok(before.counts.books >= 12 + 3 && before.counts.books < 20, `before the shockwave: ${before.counts.books}`);
+  assert.ok(before.reached.includes('swiftfootBoots') && !before.reached.includes('shellPurse'));
   // Every book a kid can find before the binding (nothing behind the Climber's Almanac or the highlands).
   const after = (id, key) => {
     const needs = VL.LOCKS[id].needs.flat();

@@ -1108,8 +1108,8 @@ async function main() {
       await sTo('play');
       if ((await look('g.library.noticed')) !== 2) libProblems.push('the vanished books were not noticed');
 
-      // Nine books on the shelves and the Almanac makes ten: the heart (W30's 10/20/30).
-      await libGame(atDesk, `${returnAll(['bookRiverside', 'bookCliffRoad', 'bookWoods', 'bookEastRoad', 'bookLighthouse', 'bookMeadowRock', 'bookLakeShore', 'bookScriptoriumRock', 'bookBeachBuried'])} VL.markFound(g, 'bookChickenAlmanac');`);
+      // Eleven books on the shelves and the Almanac makes twelve: the boots (W36's 12/20/30).
+      await libGame(atDesk, `${returnAll(['bookRiverside', 'bookCliffRoad', 'bookWoods', 'bookEastRoad', 'bookLighthouse', 'bookMeadowRock', 'bookLakeShore', 'bookScriptoriumRock', 'bookBeachBuried', 'bookHighlands', 'bookCliffLedge'])} VL.markFound(g, 'bookChickenAlmanac');`);
       const heldUp = async (name) => {
         for (let i = 0; i < 40 && !(await look('Boolean(g.holdUp) && VL.app.sceneId === "play"')); i += 1) {
           if ((await evaluate('VL.app.sceneId')) !== 'play') await tapS();
@@ -1128,15 +1128,15 @@ async function main() {
       await sleep(300);
       await picture('w11-reading-popup');
       if (!(await look('g.flags.chickenAlmanacRead'))) libProblems.push('the Almanac reading did not switch the long flight on');
-      if (!(await sTo('dialogue'))) libProblems.push('ten books did not bring the reward talk');
+      if (!(await sTo('dialogue'))) libProblems.push('twelve books did not bring the reward talk');
       await sleep(1600);
       await picture('w11-reward');
       const rewardHeld = await heldUp('w28-reward-hold-up');
-      if (String(rewardHeld) !== 'pickup-heart-container') libProblems.push(`the ten-book reward was held up as ${rewardHeld}`);
+      if (String(rewardHeld) !== 'item-swiftfoot') libProblems.push(`the twelve-book reward was held up as ${rewardHeld}`);
       if (!(await sTo('popup'))) libProblems.push('the reward talk did not end in its popup');
       await sleep(300);
       await picture('w11-reward-popup');
-      if (!(await look("VL.rewardGiven(g, 'heartLibrary') && g.maxHp === VL.TUNING.startMaxHp + VL.TUNING.heartContainerHp"))) libProblems.push('ten books did not give the heart container');
+      if (!(await look("VL.rewardGiven(g, 'swiftfootBoots') && VL.hasItem(g, 'swiftfootBoots') && g.maxHp === VL.TUNING.startMaxHp"))) libProblems.push('twelve books did not give the Swiftfoot Boots');
 
       // The stage-3 show also needs Dungeons 1 and 2 beaten; this new game has beaten neither, so their locks stand in for the show.
       await evaluate("VL.smokeBossLocks = ['d1Boss', 'd2Boss'].map((id) => [id, VL.LOCKS[id].reached]); VL.LOCKS.d1Boss.reached = VL.LOCKS.d2Boss.reached = () => true;");
@@ -3031,6 +3031,92 @@ async function main() {
       if (w34Problems.length) failures += 1;
       console.log(`${w34Problems.length ? 'FAIL' : 'ok  '} fourth playtest: X closes the equipment and the map, the buried heart dug up, out of the hold holding Up, the Ledger's ore on the map, an angry crab, the island's eleven crabs, ${path.join(outDir, 'w34-*.png')}`);
       for (const problem of w34Problems) console.log(`     ${problem}`);
+    }
+
+    // W36, Matthew's fifth playtest notes (menus and library): X leaves a
+    // shop, the equipment view counts books and pages and shows the
+    // Scriptorium key, and the librarian offers a book on the shelves again,
+    // read in the reading scene. Saved as w36-*.png.
+    {
+      errors.length = 0;
+      const w36Problems = [];
+      const codes = { KeyX: [88, 'x'], KeyE: [69, 'e'], KeyS: [83, 's'], ArrowDown: [40, 'ArrowDown'] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) w36Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const stage = (where, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap', 'digKey', 'woodsWithMap', 'firstBook']) g.popups.seen[id] = true;
+        g.items.woodSword = true;
+        g.hands = { mainHand: 'woodSword', offHand: null };
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+
+      // A shop closed with X.
+      await stage({ area: 'overworld', screen: '1,1', tx: 8, ty: 4, facing: 'up' }, 'g.inventory.shells = 9;');
+      await settle();
+      await evaluate("VL.app.setScene('shop', { shop: 'store' })");
+      await sleep(250);
+      await shot('w36-store-paper-3');
+      await tapKey('KeyX');
+      await sleep(150);
+      if ((await see('VL.app.sceneId')) !== 'play') w36Problems.push(`X did not leave the shop: ${await see('VL.app.sceneId')}`);
+
+      // The equipment view: books to return, pages of five, the Scriptorium key, wrapped words.
+      await stage({ area: 'overworld', screen: '1,1', tx: 8, ty: 4, facing: 'up' }, "g.items.scriptoriumKey = true; g.items.glowstone = true; VL.markFound(g, 'bookRiverside'); VL.markFound(g, 'bookWoods'); VL.markFound(g, 'pageFieldA');");
+      await settle();
+      await tapKey('KeyE');
+      await evaluate("(() => { const app = VL.app; app.equipment.cursor = VL.equipmentItems(app.game).findIndex((i) => i.id === 'scriptoriumKey'); })()");
+      await sleep(250);
+      await shot('w36-equipment-key-books-pages');
+      await evaluate("(() => { const app = VL.app; app.equipment.cursor = VL.equipmentItems(app.game).findIndex((i) => i.id === 'glowstone'); })()");
+      await sleep(150);
+      await shot('w36-equipment-wrapped');
+      await tapKey('KeyX');
+
+      // The librarian's shelf after his talk, and a book read again.
+      await stage({ area: 'library', screen: '0,0', tx: 7, ty: 5, facing: 'up' }, "g.flags['met:fenwick'] = true; for (const id of ['bookRiverside', 'bookHerbalist', 'bookCliffRoad']) VL.markFound(g, id); VL.returnBooks(g); VL.finishReading(g, 'bookHerbalist');");
+      await settle();
+      await tapKey('KeyS');
+      for (let i = 0; i < 20 && (await see('VL.app.sceneId')) === 'dialogue'; i += 1) {
+        await sleep(400);
+        await tapKey('KeyS');
+      }
+      await sleep(300);
+      if ((await see('VL.app.sceneId')) !== 'libraryShelf') w36Problems.push(`no shelf after his talk: ${await see('VL.app.sceneId')}`);
+      await shot('w36-library-shelf');
+      await tapKey('ArrowDown');
+      await tapKey('ArrowDown');
+      await tapKey('KeyS');
+      await sleep(1500);
+      if ((await see('VL.app.sceneId')) !== 'reading' || !(await see('VL.app.reading.again'))) w36Problems.push(`no reading again: ${await see('VL.app.sceneId')}`);
+      await shot('w36-library-read-again');
+      for (let i = 0; i < 10 && (await see('VL.app.sceneId')) === 'reading'; i += 1) {
+        await tapKey('KeyS');
+        await sleep(300);
+      }
+      if ((await see('VL.app.sceneId')) !== 'play') w36Problems.push(`not back in play after the reading: ${await see('VL.app.sceneId')}`);
+
+      w36Problems.push(...errors);
+      if (w36Problems.length) failures += 1;
+      console.log(`${w36Problems.length ? 'FAIL' : 'ok  '} fifth playtest (menus, library): X leaves a shop, books and pages in the equipment view, the Scriptorium key, the librarian's shelf and a book read again, ${path.join(outDir, 'w36-*.png')}`);
+      for (const problem of w36Problems) console.log(`     ${problem}`);
     }
 
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an

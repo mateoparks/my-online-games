@@ -15,7 +15,7 @@ Keyboard only for now (laptop or desktop).
 | Space | Use the item in your main hand (a sword, the slingshot, ...) |
 | D | Use the item in your off hand (a shield, ...) |
 | E | Equipment: choose what goes in each hand |
-| X | Dig with your shovel, whatever your hands hold (once you have a shovel); closes the equipment view and the maps (E, M and Esc do too) |
+| X | Dig with your shovel, whatever your hands hold (once you have a shovel); closes the equipment view and the maps (E, M and Esc do too), a shop and the librarian's shelf (Esc does too) |
 | M | The map, once you have one (the world map, or a dungeon's map) |
 | N | Sound on or off |
 | Esc | Pause, or Save & Quit |
@@ -454,9 +454,16 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   state; `VL.tickHoldUp` is the play scene's clock, and a test that drives
   the app waits it out before closing popups.
 - **Equipment screen (`'equipment'`, E):** arrows choose, Space or D puts the
-  item in that hand, S uses it (eats a berry), E or Esc goes back. The grid
+  item in that hand, S uses it (eats a berry), X, E or Esc goes back. The grid
   shows 4×2 items and scrolls a row at a time (arrows at its side show more
-  above or below), so any number of items fits.
+  above or below), so any number of items fits. The chosen item's `about`
+  wraps to `VL.EQUIPMENT_ABOUT_LINES` (2) lines 200px wide (W36); a longer one
+  scrolls: Down reads on a line and Up back before either moves the cursor,
+  with arrows beside the text (`VL.equipmentAboutCues`). A test keeps every
+  shipped item within the two lines, so today the arrows only ever move the
+  cursor. Under the resources, W36 adds the books found but not handed in
+  (`VL.booksCarried`) and the pages found of five (`VL.loosePages` /
+  `VL.pagesToBind`).
 - **Drawing with the hero:** `VL.defineHeroLayer(id, (ctx, state, x, y, t,
   pass) => {})` draws with the hero, once behind (`pass === 'behind'`), once
   in front (`'front'`) and once more after the light (`'overlay'`, outside
@@ -1190,7 +1197,9 @@ spots. Tests: `tests/chickens.test.js`.
 `shop.js` (core) holds the rules and `scenes/shop.js` the on-canvas counter:
 a list of offers with their prices, a cursor (up/down, wrapping onto Leave),
 S/Space/Enter to pick, a Yes/No question, and "Not enough shells!" (the price
-flashes) when the purse is short. Esc backs out of the question, then leaves.
+flashes) when the purse is short. Esc or X (W36, as on the equipment view
+and the maps; a small X sits on the Leave row) backs out of the question,
+then leaves.
 
 ```js
 VL.defineShop('store', {
@@ -1231,7 +1240,8 @@ VL.openShop(state, 'store');   // from an entity; or `shop: 'store'` on a dialog
 digging, and `regions/buildings.js` the four buildings, their keepers and
 shops. Fixture: `tests/fixtures/save-v1-W10.json`.
 
-- **One price table:** `VL.TUNING.prices` (paper, berries bought and sold, the
+- **One price table:** `VL.TUNING.prices` (paper: 2 shells at the mill and,
+  since W36, `storePaper` 3 at the General Store; berries bought and sold, the
   mill's 5 wood → 1 shell, wood gear, the shop's shovel, metal gear with and
   without the Smith's Ledger, binding, and W17's raft and the oar for shells
   or wood). Offers point at its entries, so
@@ -1358,16 +1368,19 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   (entrance, stairwell, store room, cistern: on the way to the binding, so a
   kid who skips the optional lake island still finds them). No screen holds
   more than two books (`tests/playtest-4.test.js`). That makes 19 books before
-  the shockwave (the 10-book heart there, the purse after), 29 before the
-  binding (the purse at 20 well before its 40 shells) and 35 in all. A later item (W18's Lighthouse,
+  the shockwave (the 12-book boots there, the purse after), 29 before the
+  binding (the purse at 20 well before its 40 shells) and 35 in all (the
+  heart at 30). A later item (W18's Lighthouse,
   W19's lair) may add more the same way: a spot, a lock supplying
   `books: 1`, a `defineBook`.
-- **Rewards:** `TUNING.libraryRewards` (10 a heart container, 20 the Big
-  Shell Purse, 30 the Swiftfoot Boots; W30, was 5/10/15), books returned
-  ever, each given once by id (`reward:<id>`), so a save that got a reward
-  under an older count keeps it and is never given it twice: the W26 save
-  that got the purse at 5 gets the heart at 10 and nothing at 20
-  (`tests/fixtures/save-v1-W26.json`). The purse raises
+- **Rewards:** `TUNING.libraryRewards` (12 the Swiftfoot Boots, 20 the Big
+  Shell Purse, 30 a heart container; W36, was 10 heart / 20 purse / 30
+  boots, and 5/10/15 before W30), books returned ever, given in count order,
+  each once by id (`reward:<id>`), so a save that got a reward under an
+  older count keeps it and is never given it twice: a save that got the
+  heart at 10 gets the boots on its next visit once it has 12 and no second
+  heart at 30; the W26 save that got the purse at 5 gets the boots at 12,
+  nothing at 20 and the heart at 30 (`tests/fixtures/save-v1-W26.json`). The purse raises
   `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (50 since
   W34, was 250). Every price in town fits the first purse except the
   binding (40 shells since W34, so the purse comes first: the
@@ -1420,6 +1433,18 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   and sealed: returned; titled: read), `scriptoriumKey`, `shellPurse`,
   `heartLibrary`, `swiftfootBoots`, `lostChicken`, `pageLostChicken`,
   `primerTaken`. All keep the planned rules.
+- **Reading one again (W36):** the game knows what is on the shelves:
+  `VL.booksOnShelf` is `library.returned` less `library.gone`. After any talk
+  with him (a `talk` event for `librarian`, then `state.libraryOffer`, play
+  state) and once his beats are done, the `librarianShelf` system opens the
+  `libraryShelf` scene when `VL.rereadable(state)` (on the shelf, and an
+  untitled book or one already read) is not empty: "No, thank you" first,
+  then the books (`VL.shelfRows`), up/down, S/Space/Enter, X or Esc back. A
+  pick opens `reading` with `{ book, again: true }`, which reads
+  `VL.rereadWords(book)` (`reread`, else `reading`, else the blurb) and skips
+  `VL.finishReading`, so nothing is given or changed. The sealed Register has
+  its own `reread` so it never hands over the key again. A vanished book is
+  not offered.
 - **Sounds:** `booksReturned` and a finished reading play `libraryChime`.
 
 ## Paper and ink (W12)

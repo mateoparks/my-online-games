@@ -2,14 +2,15 @@
 // library; People). Books are found out in the world (VL.markFound with the
 // book's id), carried until the hero talks to the librarian, then returned
 // for good. The librarian reads each titled book once and its effect switches
-// on; rewards come at 10, 20 and 30 books returned ever (W30); the shelves empty
+// on; rewards come at 12, 20 and 30 books returned ever (W36); the shelves empty
 // again on story events, never on real time. README "Library".
 (() => {
   VL.tune({
     // Rewards for books returned ever (design: Rewards for books returned),
     // in order. Each is given once, by id, so a save that got one under an
-    // older count is never given it again (W26's swap, W30's 10/20/30).
-    libraryRewards: { heartLibrary: 10, shellPurse: 20, swiftfootBoots: 30 },
+    // older count is never given it again (W26's swap, W30's 10/20/30,
+    // W36's boots first).
+    libraryRewards: { swiftfootBoots: 12, shellPurse: 20, heartLibrary: 30 },
     // Books the thief takes the next time the hero visits after a return trip
     // or a dungeon boss.
     libraryTheftPerTrip: 1,
@@ -133,9 +134,10 @@
     swiftfootBoots: (state) => wear(state, 'swiftfootBoots'),
   };
   VL.rewardGiven = (state, id) => Boolean(state.flags[`reward:${id}`]);
+  const rewardsInOrder = () => Object.entries(VL.TUNING.libraryRewards).sort((a, b) => a[1] - b[1]);
   VL.pendingReward = function pendingReward(state) {
     const returned = VL.booksReturned(state);
-    return Object.entries(VL.TUNING.libraryRewards).find(([id, least]) => returned >= least && !VL.rewardGiven(state, id))?.[0] || null;
+    return rewardsInOrder().find(([id, least]) => returned >= least && !VL.rewardGiven(state, id))?.[0] || null;
   };
   VL.giveLibraryReward = function giveLibraryReward(state, id) {
     if (VL.rewardGiven(state, id) || VL.booksReturned(state) < VL.TUNING.libraryRewards[id]) return false;
@@ -144,7 +146,7 @@
     VL.earned(state);
     return true;
   };
-  VL.nextRewardAt = (state) => Object.entries(VL.TUNING.libraryRewards)
+  VL.nextRewardAt = (state) => rewardsInOrder()
     .find(([id, least]) => least > VL.booksReturned(state) && !VL.rewardGiven(state, id))?.[1] ?? null;
 
   const BOOT_ROWS = ['..gg.....', '.gggg....', '.gGgg....', '.gggg....', '.ggggggg.', 'gggggGggg', 'ddddddddd'];
@@ -153,9 +155,28 @@
     colors: { p: 'roof', P: 'roofLight', d: 'roofDark', g: 'gold' },
     rows: ['..g.g..', '..ggg..', '.pPppp.', 'pPppppp', 'ppppppp', 'pppgppp', '.ddddd.'],
   });
+  // W36: an old library key, not a dungeon one: aged bronze with green
+  // verdigris, a three-lobed bow round the Register's red wax seal, a collar
+  // and a long shank.
+  VL.ART.addColors({ keyBronze: '#b8793a', keyBronzeLight: '#e8b46e', keyBronzeDark: '#6f4220', keyVerdigris: '#5fae9a' });
   VL.ART.defineSprite('item-scriptorium-key', {
-    colors: { g: 'gold', l: 'goldLight', d: 'woodDark' },
-    rows: ['.lgg.', 'g...g', 'g...g', '.ggg.', '..g..', '..gg.', '..g..', '..gg.'],
+    colors: { l: 'keyBronzeLight', b: 'keyBronze', d: 'keyBronzeDark', r: 'heart', k: 'heartLight', v: 'keyVerdigris' },
+    rows: [
+      '.lb.lb.',
+      'lbblbbd',
+      'lbrkrbd',
+      '.brrrd.',
+      'lbbrbbd',
+      '.bd.bd.',
+      '..ldd..',
+      '.lbbbd.',
+      '...bd..',
+      '...bv..',
+      '...bd..',
+      '...bddd',
+      '...bv.v',
+      '...bddd',
+    ],
   });
 
   VL.defineItem('shellPurse', {
@@ -346,9 +367,9 @@
   };
 
   VL.REWARD_SPEECH = {
-    heartLibrary: ['Ten books, {name}! You deserve something for all that searching.', 'I found this tucked behind the oldest shelf. I think it wants to be yours, {name}.'],
+    swiftfootBoots: ['Twelve books, {name}! You must have run all over the island to find them.', 'These are Swiftfoot Boots. I ran messages for the old scribes in them, long ago. They\'ll put a spring in your step!'],
     shellPurse: ['Twenty books! The library hasn\'t been this full in years.', 'This was my grandmother\'s shell purse. It holds a great many shells. Take it, please!'],
-    swiftfootBoots: ['Thirty books! I can hardly believe it.', 'These are Swiftfoot Boots. I ran messages for the old scribes in them, long ago. They\'ll put a spring in your step!'],
+    heartLibrary: ['Thirty books! I can hardly believe it, {name}.', 'I found this tucked behind the oldest shelf. I think it wants to be yours.'],
   };
 
   // In the library, plays the next beat as soon as nothing else is showing.
@@ -373,6 +394,32 @@
           end: { give: { libraryReward: beat.id } },
         });
       }
+    },
+  });
+
+  // ---------- reading one again (W36) ----------
+
+  // On the shelves now and heard before: untitled books read their blurb,
+  // titled and sealed ones their pages (`reread` when the first reading's
+  // words would hand something over again).
+  VL.rereadable = (state) => VL.booksOnShelf(state).filter((id) => VL.BOOKS[id] && (!isReadable(id) || VL.bookRead(state, id)));
+  VL.rereadWords = (book) => [].concat(book.reread || book.reading || book.blurb);
+
+  // After any talk with him, once his beats are done: the libraryShelf scene,
+  // when there is a book to offer. Play state, so a reload never asks.
+  VL.extendGame('libraryOffer', () => ({ libraryOffer: false }), { transient: true });
+  VL.defineSystem('librarianShelf', {
+    order: 98,
+    update(state) {
+      if (state.events.some((event) => event.type === 'talk' && event.npc === 'librarian')) state.libraryOffer = true;
+      if (!state.libraryOffer) return;
+      if (state.room.area !== 'library') {
+        state.libraryOffer = false;
+        return;
+      }
+      if (state.libraryChain || state.sceneRequest || state.holdUp || state.transition || VL.currentPopup(state)) return;
+      state.libraryOffer = false;
+      if (VL.rereadable(state).length) VL.requestScene(state, 'libraryShelf');
     },
   });
 

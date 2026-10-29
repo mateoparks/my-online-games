@@ -8,6 +8,8 @@
     // Offers point at these objects, so retuning a line retunes the counter.
     prices: {
       paper: { shells: 2 },
+      // W36: the mill makes it, so the store sells it dearer.
+      storePaper: { shells: 3 },
       buyBerry: { shells: 3 },
       sellBerry: { berries: 1 },
       millTrade: { wood: 5 },

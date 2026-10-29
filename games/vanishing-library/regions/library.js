@@ -44,6 +44,10 @@
       'Take it, {name}. If anyone can find out where our books are going, it\'s you.',
     ],
     read: (state) => VL.giveScriptoriumKey(state),
+    reread: [
+      'The Scriptorium Register! Every scribe who ever worked there signed their name in it.',
+      'This is where the key was tucked, {name}. Keep it safe: it\'s the only one there is.',
+    ],
   });
 
   const titled = (id, title, color, icon, reading, effect) => VL.defineBook(id, { kind: 'titled', title, color, icon, reading, read: effect });

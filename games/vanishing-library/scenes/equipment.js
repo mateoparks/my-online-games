@@ -1,6 +1,8 @@
 // The equipment screen (E): everything the hero carries over the paused
 // world. Arrows choose an item, Space puts it in the main hand and D in the
-// off hand, S uses it (eats a berry), E or Esc goes back (design: Controls).
+// off hand, S uses it (eats a berry), X, E or Esc goes back (design: Controls).
+// The chosen item's description wraps; one longer than its lines scrolls
+// with Down and Up before they move the cursor (W36).
 (() => {
   VL.ART.addColors({ equipShade: '#1b1b2490' });
   const BOX = { x: 16, y: 22, w: 224, h: 152 };
@@ -17,6 +19,15 @@
   ];
 
   const items = (app) => VL.equipmentItems(app.game);
+  const ABOUT = { w: 200, lineHeight: 10 };
+  VL.EQUIPMENT_ABOUT_LINES = 2;
+
+  VL.equipmentAboutLines = (game, item) => (item ? VL.ART.wrapText(VL.popupText(item.about, game), ABOUT.w) : []);
+  VL.equipmentAboutCues = (app) => {
+    const lines = VL.equipmentAboutLines(app.game, items(app)[app.equipment.cursor]);
+    const top = app.equipment.about;
+    return { up: top > 0, down: top + VL.EQUIPMENT_ABOUT_LINES < lines.length };
+  };
 
   // The keys that use an item: both for a two-handed one held in both hands.
   VL.handMarks = (game, id) => VL.HANDS.filter((hand) => VL.heldItem(game, hand) === id)
@@ -48,7 +59,7 @@
 
   VL.defineScene('equipment', {
     enter(app) {
-      app.equipment = { cursor: 0, top: 0 };
+      app.equipment = { cursor: 0, top: 0, about: 0 };
       VL.sfx('menuSelect');
     },
 
@@ -64,12 +75,18 @@
       }
       const list = items(app);
       const before = view.cursor;
+      const cues = VL.equipmentAboutCues(app);
+      if (pressed.down && cues.down) view.about += 1;
+      else if (pressed.up && cues.up) view.about -= 1;
+      else {
+        if (pressed.down) view.cursor += GRID.cols;
+        if (pressed.up) view.cursor -= GRID.cols;
+      }
       if (pressed.right) view.cursor += 1;
       if (pressed.left) view.cursor -= 1;
-      if (pressed.down) view.cursor += GRID.cols;
-      if (pressed.up) view.cursor -= GRID.cols;
       view.cursor = VL.clamp(view.cursor, 0, Math.max(0, list.length - 1));
-      if (view.cursor !== before) VL.sfx('menuMove');
+      if (view.cursor !== before) view.about = 0;
+      if (view.cursor !== before || (pressed.down && cues.down) || (pressed.up && cues.up)) VL.sfx('menuMove');
       scrollTo(view, list.length);
       const item = list[view.cursor];
       if (!item) return;
@@ -87,6 +104,7 @@
       }
       view.cursor = VL.clamp(view.cursor, 0, Math.max(0, items(app).length - 1));
       scrollTo(view, items(app).length);
+      view.about = VL.clamp(view.about, 0, Math.max(0, VL.equipmentAboutLines(game, items(app)[view.cursor]).length - VL.EQUIPMENT_ABOUT_LINES));
     },
 
     draw(ctx, app, t) {
@@ -128,16 +146,33 @@
       const infoY = GRID.y + 2 * (GRID.h + GRID.gap) + 2;
       if (item) {
         VL.ART.text(ctx, item.name, GRID.x, infoY, { color: 'goldLight' });
-        VL.ART.text(ctx, item.about, GRID.x, infoY + 11, { color: 'text' });
+        const lines = VL.equipmentAboutLines(game, item);
+        const top = app.equipment.about;
+        lines.slice(top, top + VL.EQUIPMENT_ABOUT_LINES).forEach((line, i) => {
+          VL.ART.text(ctx, line, GRID.x, infoY + 10 + i * ABOUT.lineHeight, { color: 'text' });
+        });
+        const cues = VL.equipmentAboutCues(app);
+        const cueX = GRID.x + ABOUT.w + 3;
+        if (cues.up) arrow(ctx, cueX, infoY + 11, true);
+        if (cues.down) arrow(ctx, cueX, infoY + 10 + VL.EQUIPMENT_ABOUT_LINES * ABOUT.lineHeight - 6, false);
       } else {
         VL.ART.text(ctx, 'Nothing yet. Look around!', GRID.x, infoY, { color: 'textDim' });
       }
+      const resourcesY = infoY + 11 + VL.EQUIPMENT_ABOUT_LINES * ABOUT.lineHeight + 2;
       RESOURCES.forEach(({ kind, icon }, i) => {
         const x = GRID.x + i * 28;
-        const y = infoY + 28;
-        centred(ctx, icon, x + 4, y + 3);
-        VL.ART.text(ctx, String(game.inventory[kind]).padStart(2, '0'), x + 10, y, { color: 'text' });
+        centred(ctx, icon, x + 4, resourcesY + 3);
+        VL.ART.text(ctx, String(game.inventory[kind]).padStart(2, '0'), x + 10, resourcesY, { color: 'text' });
       });
+      // W36: books found but not yet handed in, and the bindery's pages.
+      const countsY = resourcesY + 12;
+      const carried = VL.booksCarried(game).length;
+      const books = `${carried} ${carried === 1 ? 'book' : 'books'} to return`;
+      centred(ctx, 'pickup-book', GRID.x + 4, countsY + 3);
+      VL.ART.text(ctx, books, GRID.x + 12, countsY, { color: 'text' });
+      const pagesX = GRID.x + 12 + VL.ART.measureText(books) + 14;
+      centred(ctx, 'pickup-page', pagesX + 4, countsY + 3);
+      VL.ART.text(ctx, `${VL.loosePages(game)}/${VL.pagesToBind()} pages`, pagesX + 11, countsY, { color: 'text' });
       const hint = list.length > GRID.cols ? '←→↑↓ CHOOSE   ␣/D: HOLD   S: USE   X: BACK' : list.length ? '←→ CHOOSE   ␣/D: HOLD   S: USE   X: BACK' : 'X: BACK';
       VL.ART.text(ctx, hint, BOX.x + BOX.w / 2, BOX.y + BOX.h - 11, { size: 'small', align: 'center', color: 'textDim' });
     },

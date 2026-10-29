@@ -145,6 +145,7 @@ VL.FILES = {
     'scenes/world-map.js',
     'scenes/shockwave.js',
     'scenes/finale.js',
+    'scenes/library-shelf.js',
   ],
 
   boot: [

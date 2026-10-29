@@ -347,7 +347,7 @@
     title: 'General Store',
     greeting: 'Have a look around, {name}.',
     offers: [
-      { id: 'paper', name: 'Paper', icon: 'item-paper', cost: prices.paper, gain: { paper: 1 }, give: flagOnce('boughtPaper'), about: 'For maps and copies. Ink not included!' },
+      { id: 'paper', name: 'Paper', icon: 'item-paper', cost: prices.storePaper, gain: { paper: 1 }, give: flagOnce('boughtPaper'), about: 'For maps and copies. Ink not included!' },
       { id: 'buyBerry', name: 'Berry', icon: 'item-berry', cost: prices.buyBerry, gain: { berries: 1 }, give: flagOnce('boughtBerries'), about: 'Fresh from the bush. Eat one to heal a heart.' },
       { id: 'sellBerry', name: 'Sell a berry', icon: 'item-berry', cost: prices.sellBerry, gain: { shells: 1 }, about: 'Mabel pays a whole shell for each berry.' },
       {
