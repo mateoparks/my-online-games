@@ -111,12 +111,24 @@ const route = {
     go(drive, at('2,0', 14, 5));
     drive.until(() => d1(drive).doors.d1DoorB, 1, ['right']);
   },
+  // Two throws (W42): over the desks at the first switch, which lifts the
+  // niche's gate, then through the gate over its desk at the second.
   d1BossKey(drive) {
-    go(drive, at('3,0', 13, 5));
-    lift(drive, 'right');
-    drive.walkTo(at('3,0', 12, 4));
-    toss(drive, 'up');
-    assert.equal(d1(drive).switches.d1SwitchDesk, true, 'a pot thrown over the desks throws the switch');
+    if (!d1(drive).switches.d1SwitchDesk) {
+      go(drive, at('3,0', 13, 5));
+      lift(drive, 'right');
+      drive.walkTo(at('3,0', 12, 4));
+      toss(drive, 'up');
+      assert.equal(d1(drive).switches.d1SwitchDesk, true, 'a pot thrown over the desks throws the first switch');
+    }
+    if (!d1(drive).switches.d1SwitchNiche) {
+      go(drive, at('3,0', 13, 5));
+      drive.until((state) => state.room.entities.some((e) => e.type === 'pot' && e.x === 14 && e.y === 5), 6);
+      lift(drive, 'right');
+      drive.walkTo(at('3,0', 12, 5));
+      toss(drive, 'down');
+      assert.equal(d1(drive).switches.d1SwitchNiche, true, 'a pot thrown through the gate throws the second switch');
+    }
     pickUp(drive, at('3,0', 3, 5), 'down', (state) => drive.VL.spotFound(state, 'd1BossKey'));
   },
   d1BossDoor(drive) {

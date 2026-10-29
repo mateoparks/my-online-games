@@ -21,6 +21,7 @@ function toTheLair(drive) {
   const screen = state.player.screen;
   if (state.player.area !== 'overworld' || !['-1,-3', '-2,-3', '-2,-4', '-1,-4', '-1,-5'].includes(screen)) climb.highlands(drive);
   if (['-1,-3', '-2,-3', '-2,-4'].includes(drive.state.player.screen)) {
+    if (!drive.VL.hasItem(drive.state, 'mirrorShield')) stockBerries(drive, berriesForTheShield(drive.state) + 2);
     walk(drive, ow('-2,-4', 12, 4));
     flyFrom(drive, ow('-2,-4', 12, 4), 'chickenGap', 'right');
     assert.equal(drive.state.player.screen, '-1,-4', 'over the second chasm');
@@ -137,6 +138,63 @@ function beatTheGuards(drive) {
   drive.fight = false;
 }
 
+
+// The shield room (W42) is lava but for the square inside door A and the
+// chest in the far corner: the route crosses along the top, 16 burns there
+// and 15 back, eating a berry whenever the next step could faint him.
+const SHIELD_THERE = [[14, 4], [14, 3], [14, 2], [14, 1], ...[13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2].map((x) => [x, 1])];
+const SHIELD_BACK = [...[3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((x) => [x, 1]), [14, 2], [14, 3], [14, 4], [14, 5]];
+const SHIELD_BURNS = SHIELD_THERE.length + SHIELD_BACK.length - 1;
+function berriesForTheShield(state) {
+  return Math.max(0, Math.ceil((SHIELD_BURNS + 1 - state.maxHp) / 2));
+}
+
+// Picks the first highland shelf's berry bush until he carries `least`,
+// stepping off the screen and back for it to grow again.
+function stockBerries(drive, least) {
+  const { VL } = drive;
+  for (let round = 0; round < 20 && drive.state.inventory.berries < least; round += 1) {
+    walk(drive, ow('-1,-3', 10, 3));
+    face(drive, 'right');
+    const before = drive.state.inventory.berries;
+    drive.press('interact');
+    drive.closePopups();
+    if (drive.state.inventory.berries > before || drive.state.inventory.berries < least) {
+      walk(drive, ow('-2,-3', 13, 4));
+      walk(drive, ow('-1,-3', 1, 4));
+    }
+  }
+  assert.ok(drive.state.inventory.berries >= least, `${least} berries for the shield room (${drive.state.inventory.berries})`);
+  VL.tidyHands(drive.state);
+}
+
+// Eats from the equipment screen (E, the cursor to the berries, S) up to full.
+function eatUp(drive) {
+  const { VL } = drive;
+  drive.press('equipment');
+  const index = VL.equipmentItems(drive.state).findIndex((item) => item.id === 'berry');
+  assert.ok(index >= 0, 'berries on the equipment screen');
+  while (drive.app.equipment.cursor % 4 < index % 4) drive.press('right');
+  while (drive.app.equipment.cursor % 4 > index % 4) drive.press('left');
+  while (drive.app.equipment.cursor < index) drive.press('down');
+  while (drive.state.hp < drive.state.maxHp - 1 && drive.state.inventory.berries > 0) drive.press('interact');
+  drive.press('equipment');
+}
+
+function crossLava(drive, path) {
+  const { VL } = drive;
+  for (const [tx, ty] of path) {
+    if (drive.state.hp <= VL.TUNING.lavaDamage) eatUp(drive);
+    const here = VL.heroTile(drive.state);
+    const dir = tx > here.tx ? 'right' : tx < here.tx ? 'left' : ty > here.ty ? 'down' : 'up';
+    const c = VL.tileCenter(tx, ty);
+    drive.until((state) => {
+      const now = VL.heroTile(state);
+      return now.tx === tx && now.ty === ty && Math.abs(state.player.x - c.x) < 2 && Math.abs(state.player.y - c.y) < 2;
+    }, 1.5, [dir]);
+  }
+}
+
 const route = {
   dragonsLairEntered(drive) {
     drive.closePopups();
@@ -163,12 +221,17 @@ const route = {
   },
   mirrorShield(drive) {
     const { VL } = drive;
-    walk(drive, at('-1,-1', 7, 3));
-    face(drive, 'up');
+    walk(drive, at('-1,-1', 14, 5));
+    crossLava(drive, SHIELD_THERE);
+    face(drive, 'left');
     drive.press('interact');
-    drive.reload();
-    assert.ok(VL.hasItem(drive.state, 'mirrorShield'), 'the Mirror Shield survives a reload before its popup closes');
+    assert.ok(VL.hasItem(drive.state, 'mirrorShield'), 'the Mirror Shield from the chest across the lava');
+    assert.equal(VL.readSlot(drive.app.storage, drive.app.slot).save.items.mirrorShield, true, 'saved before its popup closes');
     drive.closePopups();
+    crossLava(drive, SHIELD_BACK);
+    assert.equal(drive.app.sceneId, 'play', 'back across on berries');
+    drive.reload();
+    assert.ok(VL.hasItem(drive.state, 'mirrorShield'), 'the Mirror Shield survives a reload');
     equipShield(drive);
     equipSword(drive);
   },
@@ -293,4 +356,4 @@ function fightDragon(drive) {
 
 const ROUTE = Object.keys(route);
 
-module.exports = { route, ROUTE, at, toTheLair, sendFireHome, fightDragon, equipShield, equipSword, forgeMetalSword, beatTheGuards };
+module.exports = { route, ROUTE, at, stockBerries, crossLava, toTheLair, sendFireHome, fightDragon, equipShield, equipSword, forgeMetalSword, beatTheGuards };

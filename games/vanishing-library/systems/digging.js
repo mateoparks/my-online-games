@@ -143,6 +143,21 @@
     return null;
   };
 
+  const DUG_REVEALS = ['dug', 'dugAll'];
+
+  // `reveal: 'dugAll'` (W42): hidden under a patch of the tile it is placed
+  // on, it comes up in whichever tile of the patch is dug last in one visit.
+  function patchFinished(state, hidden, dugChar) {
+    const room = state.room;
+    const patch = VL.getScreen(room.area, room.screen).tiles[hidden.y][hidden.x];
+    if (dugChar !== patch) return false;
+    const { cols, rows } = VL.TUNING;
+    for (let ty = 0; ty < rows; ty += 1) {
+      for (let tx = 0; tx < cols; tx += 1) if (VL.tileAt(room.area, room.screen, tx, ty, room) === patch) return false;
+    }
+    return true;
+  }
+
   // 'sand', 'dirt', 'path' or 'moss' when the shovel can dig the tile, else null.
   function groundAt(state, tx, ty, shovel) {
     const { cols, rows } = VL.TUNING;
@@ -150,7 +165,7 @@
     const room = state.room;
     const info = VL.tileInfo(room.area, VL.tileAt(room.area, room.screen, tx, ty, room));
     if (info.solid || info.hole) return null;
-    if (room.entities.some((e) => e.x === tx && e.y === ty && e.type !== 'buried' && !(e.hidden && e.reveal === 'dug'))) return null;
+    if (room.entities.some((e) => e.x === tx && e.y === ty && e.type !== 'buried' && !(e.hidden && DUG_REVEALS.includes(e.reveal)))) return null;
     if (info.sand) return 'sand';
     if (!VL.ITEMS[shovel]?.digsDirt) return null;
     if (info.grass) return 'dirt';
@@ -171,8 +186,15 @@
       state.events.push({ type: 'digBlocked' });
       return 'blocked';
     }
+    const dugChar = VL.tileAt(state.room.area, state.room.screen, tx, ty, state.room);
     VL.setRoomTile(state, tx, ty, VL.DIG_HOLES[ground]);
     state.events.push({ type: 'dig', tx, ty, ground });
+    const underPatch = state.room.entities.find((e) => e.hidden && e.reveal === 'dugAll');
+    if (underPatch && patchFinished(state, underPatch, dugChar)) {
+      Object.assign(underPatch, { x: tx, y: ty, hidden: false });
+      state.events.push({ type: 'revealed', id: underPatch.id });
+      return 'find';
+    }
     // A dungeon key buried under the grass (W30) comes up into the hole.
     const dug = state.room.entities.find((e) => e.hidden && e.reveal === 'dug' && e.x === tx && e.y === ty);
     if (dug) {

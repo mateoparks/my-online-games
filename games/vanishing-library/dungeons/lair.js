@@ -9,7 +9,7 @@
 //   ledge (-1,-2) ────── great cave (0,-2) ─door B─ forge (1,-2)
 //   spout → key B, map       │ bars (spout)         block, spout → boss key
 //   shield room (-1,-1) ─door A─ hall (0,-1)
-//   the Mirror Shield            │
+//   lava, the Mirror Shield      │
 //   cellar (-1,0) ─────── entrance (0,0)
 //   block on plate → key A   statue, door out to overworld -1,-5
 (() => {
@@ -186,25 +186,26 @@
         { type: 'bat', x: 4, y: 7 },
       ],
     },
-    // The shield room: the Mirror Shield in the big chest.
+    // The shield room (W42): lava from wall to wall but for the square
+    // inside door A and the far corner's big chest, too far to cross there
+    // and back on even a full set of hearts; berries eaten on the way do it.
     '-1,-1': {
       tiles: [
         '################',
-        '#______________#',
-        '#______________#',
-        '#_____#__#_____#',
-        '#______________#',
-        '#_______________',
-        '#______________#',
-        '#_____#__#_____#',
-        '#______________#',
-        '#______________#',
+        '#_~~~~~~~~~~~~~#',
+        '#~~~~~~~~~~~~~~#',
+        '#~~~~~~~~~~~~~~#',
+        '#~~~~~~~~~~~~~~#',
+        '#~~~~~~~~~~~~~__',
+        '#~~~~~~~~~~~~~~#',
+        '#~~~~~~~~~~~~~~#',
+        '#~~~~~~~~~~~~~~#',
+        '#~~~~~~~~~~~~~~#',
         '################',
       ],
       entities: [
         { type: 'lockedDoor', id: 'd4DoorA', kind: 'small', x: 15, y: 5, lock: 'd4DoorA' },
-        { type: 'bigChest', id: 'd4ShieldChest', x: 7, y: 2, item: 'mirrorShield' },
-        { type: 'slime', x: 3, y: 8 },
+        { type: 'bigChest', id: 'd4ShieldChest', x: 1, y: 1, item: 'mirrorShield' },
       ],
     },
     // The great cave: the boss door north, door B east, the ledge west.
