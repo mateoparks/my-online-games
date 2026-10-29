@@ -220,7 +220,8 @@ test('the metal sword\'s popup says it hits twice as hard and to equip it with E
 
 // ---------- the east road's heart container, buried ----------
 
-// It lies in a nook of bushes; the one in front is cut for this visit.
+// It lies in the corner by the trees (a ring of flowers since W38); the tile
+// in front is cleared for this visit.
 function roadHeart(VL, shovel) {
   const state = playState(VL, ow('5,0', 12, 8, 'right'));
   state.room.entities = state.room.entities.filter((e) => !VL.isEnemy(e));

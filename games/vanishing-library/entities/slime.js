@@ -27,6 +27,8 @@
   }
 
   VL.defineEnemy('slime', {
+    // Light enough for the rope to pull in (systems/grappling-rope.js).
+    light: true,
     tuning: 'enemySlime',
     body: { w: 12, h: 8 },
     faint: 'You were out-wobbled by a slime.',

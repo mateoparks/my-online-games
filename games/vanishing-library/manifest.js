@@ -56,6 +56,7 @@ VL.FILES = {
     'systems/fire.js',
     'systems/finale.js',
     'systems/boss-hints.js',
+    'systems/egg-on-face.js',
   ],
 
   entities: [

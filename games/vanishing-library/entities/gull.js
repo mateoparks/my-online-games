@@ -36,6 +36,13 @@
   }
 
   VL.defineEnemy('gull', {
+    // Light enough for the rope to pull in (systems/grappling-rope.js): down
+    // it comes, then climbs back home once it comes to.
+    light: true,
+    onPulled(state, gull) {
+      gull.mode = 'rise';
+      gull.alt = Math.min(gull.alt ?? HIGH, 4);
+    },
     tuning: 'enemyGull',
     flies: true,
     size: 'big',

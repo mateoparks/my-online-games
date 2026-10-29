@@ -331,7 +331,7 @@ test('the climb is short: Gran\'s wood and one more piece make a wood sword', ()
   assert.match(VL.POPUPS.helperWood.text, new RegExp(`${VL.TUNING.prices.woodSword.wood} wood`));
 });
 
-test('the home corner is quiet while he has no sword after the shockwave; the slimes and crabs come back with a sword', () => {
+test('the home corner is quiet after the shockwave; the slimes and crabs come back once the Lighthouse is entered (W38)', () => {
   const { VL } = loadGame();
   const game = VL.newGame();
   const enemiesOn = (screen) => {
@@ -342,7 +342,7 @@ test('the home corner is quiet while he has no sword after the shockwave; the sl
   assert.ok(before['1,0'] >= 2 && before['0,1'] >= 1, 'slimes in the fields and a crab on the beach');
   VL.applyShockwave(game);
   for (const screen of VL.SHOCKWAVE_QUIET) assert.equal(enemiesOn(screen), 0, `${screen} is quiet`);
-  game.items.woodSword = true;
+  game.visited['lighthouse:0,0'] = true;
   for (const screen of VL.SHOCKWAVE_QUIET) assert.equal(enemiesOn(screen), before[screen], `${screen} is back to normal`);
 });
 

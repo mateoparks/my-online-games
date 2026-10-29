@@ -3033,6 +3033,123 @@ async function main() {
       for (const problem of w34Problems) console.log(`     ${problem}`);
     }
 
+    // W38, Matthew's fifth playtest notes (world, combat, Easter eggs): the
+    // rope reels a slime in (half a heart, stars over it), a hooked hen's egg
+    // on his face (the arrows reversed), holes in the road and the Woods
+    // floor, the buried heart's ring of flowers, the Lighthouse map in the
+    // cellar, the wreck's five shells, and the home fields quiet after the
+    // shockwave even with a sword. Saved as w38-*.png.
+    {
+      errors.length = 0;
+      const w38Problems = [];
+      const codes = { KeyX: [88, 'x'], KeyM: [77, 'm'], KeyS: [83, 's'], Space: [32, ' '] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) w38Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const stage = (where, setup = '', keepEnemies = false) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap', 'dungeonMapLighthouse', 'digKey', 'woodsWithMap', 'grapplingRope']) g.popups.seen[id] = true;
+        g.items.woodSword = true;
+        g.hands = { mainHand: 'woodSword', offHand: null };
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        if (!${keepEnemies}) g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+      const ow = (screen, tx, ty, facing = 'up') => ({ area: 'overworld', screen, tx, ty, facing });
+      const roped = "g.items.grapplingRope = true; g.hands = { mainHand: 'grapplingRope', offHand: 'woodSword' };";
+
+      // Space throws the rope at a slime: reeled in, stunned, half a heart.
+      await stage(ow('1,0', 7, 8), roped);
+      await evaluate("(() => { const g = VL.app.game; const e = VL.spawnEnemy(g, 'slime', 7, 4); e.arriving = 0; })()");
+      await settle();
+      const hpBefore = await see('g.hp');
+      await tapKey('Space');
+      await sleep(450);
+      await shot('w38-rope-pull');
+      const pulled = await see("(() => { const e = g.room.entities.find((x) => x.type === 'slime'); return e && [g.hp, e.stunned > 0, Math.round(g.player.y - 5 - e.cy)]; })()");
+      if (!pulled || pulled[0] !== hpBefore - 1 || !pulled[1] || pulled[2] < 10 || pulled[2] > 18) w38Problems.push(`the rope pull: ${JSON.stringify(pulled)} (hp before ${hpBefore})`);
+
+      // Space at a hen: egg on his face, and Up walks him down.
+      await stage(ow('1,0', 7, 8), roped);
+      await evaluate("(() => { const g = VL.app.game; const hen = { type: 'chicken', x: 7, y: 4 }; VL.setUpChicken(g, hen); g.room.entities.push(hen); })()");
+      await settle();
+      await tapKey('Space');
+      await sleep(600);
+      if (!(await see('VL.eggOnFace(g)'))) w38Problems.push('no egg on his face');
+      await shot('w38-egg-on-face');
+      const y0 = await see('g.player.y');
+      await holdArrowUntil('Up', 'false', 400);
+      if (!((await see('g.player.y')) > y0)) w38Problems.push('with egg on his face, Up did not walk him down');
+      await evaluate("VL.app.game.player.facing = 'left'");
+      await sleep(100);
+      await shot('w38-egg-on-face-left');
+
+      // X with the metal shovel: a hole in the road, a hole in the Woods floor.
+      await stage(ow('1,1', 8, 5, 'right'), 'g.items.metalShovel = true;');
+      await settle();
+      await tapKey('KeyX');
+      await sleep(400);
+      await shot('w38-path-hole');
+      if ((await see('VL.tileAt("overworld", "1,1", 9, 5, g.room)')) !== '=') w38Problems.push('X did not dig the road');
+      await stage(ow('5,-1', 4, 8, 'right'), 'g.items.metalShovel = true;');
+      await settle();
+      await tapKey('KeyX');
+      await sleep(400);
+      await shot('w38-moss-hole');
+      if ((await see('VL.tileAt("overworld", "5,-1", 5, 8, g.room)')) !== '~') w38Problems.push('X did not dig the Woods floor');
+
+      // The buried heart's ring of flowers.
+      await stage(ow('5,0', 11, 8, 'right'));
+      await settle();
+      await shot('w38-heart-flowers');
+
+      // The Lighthouse map, in the cellar on the way to key A; M shows every room.
+      await stage({ area: 'lighthouse', screen: '-1,0', tx: 9, ty: 2, facing: 'left' }, 'g.items.glowstone = true;');
+      await settle();
+      await holdArrowUntil('Left', "VL.dungeonState(g, 'lighthouse').map", 1500);
+      if (!(await see("VL.dungeonState(g, 'lighthouse').map"))) w38Problems.push('no Lighthouse map in the cellar');
+      for (let i = 0; i < 6 && (await see('VL.app.sceneId')) !== 'play'; i += 1) await tapKey('KeyS');
+      await tapKey('KeyM');
+      await sleep(300);
+      await shot('w38-lighthouse-map');
+      if ((await see('VL.app.sceneId')) !== 'dungeonMap') w38Problems.push(`M opened ${await see('VL.app.sceneId')}`);
+
+      // The wreck's chest: five whole shells, and it says so.
+      await stage({ area: 'wreck', screen: '1,0', tx: 7, ty: 3, facing: 'up' });
+      await settle();
+      await tapKey('KeyS');
+      await sleep(1500);
+      await shot('w38-wreck-shells');
+      if ((await see('g.inventory.shells')) !== 5) w38Problems.push(`the wreck's chest gave ${await see('g.inventory.shells')} shells`);
+
+      // After the shockwave the fields by the hut stay quiet, sword or not.
+      await stage(ow('1,1', 6, 4), 'VL.applyShockwave(g); g.flags.shockwaveWoke = true; g.flags["gave:helperWood"] = true; g.items.woodSword = true; g.hands = { mainHand: "woodSword", offHand: null };', true);
+      await settle();
+      await holdArrowUntil('Up', "g.player.screen === '1,0' && !g.transition", 3000);
+      await shot('w38-quiet-fields');
+      const quiet = await see("[g.player.screen, g.room.entities.filter((e) => VL.isEnemy(e)).length]");
+      if (quiet.join() !== '1,0,0') w38Problems.push(`north of the hut after the shockwave: ${quiet}`);
+
+      w38Problems.push(...errors);
+      if (w38Problems.length) failures += 1;
+      console.log(`${w38Problems.length ? 'FAIL' : 'ok  '} fifth playtest: the rope reels a slime in, egg on his face, holes in the road and the Woods, the heart's flowers, the Lighthouse map in the cellar, the wreck's five shells, quiet fields after the shockwave, ${path.join(outDir, 'w38-*.png')}`);
+      for (const problem of w38Problems) console.log(`     ${problem}`);
+    }
+
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
     // app of their own and drawn to an offscreen canvas every 1/60 s. In 16x16
     // cells, a flip is a change in mean relative luminance against the last

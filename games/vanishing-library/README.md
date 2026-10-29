@@ -429,8 +429,10 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   its foot) collects it. `entities/ore.js` fills the `oreShallows` and
   `oreWoods` spots with `VL.fillSpot`. One-time finds are saved as
   `state.flags['found:<id>']` (`VL.markFound`/`VL.spotFound`). A `chest` (`{ type: 'chest', id, contents: [{ item } |
-  { resource, amount }] }`) and a `sign` (`{ type: 'sign', text, title }`) are
-  solid and answer S.
+  { resource, amount }], found?: { title, text } }`) and a `sign` (`{ type: 'sign', text, title }`) are
+  solid and answer S. A chest shows `found` once opened (the wreck's "Five
+  whole shells!"), and stays shut, saying why, while capped shells in it
+  would not all fit in the purse (W38).
 - **Popups:** `VL.definePopup(id, { title, text })` (`{name}` is the hero's
   name) and `VL.showPopup(state, id)` queue a once-only explanation; the play
   scene opens the `popup` scene over the paused world, and closing it marks it
@@ -562,7 +564,8 @@ holds the heart containers.
   (`reveal: 'dug'`, spot `how: 'buried'`): it is hidden until the metal
   shovel digs exactly its tile (X), then comes up into the hole like the
   Hollow Oak's moss key and is taken by stepping on it, once. Its lock needs
-  `metalShovel` and stays optional.
+  `metalShovel` and stays optional. Since W38 a ring of the fields' plain
+  flowers (`,`) round its bare square, against the trees, is the only clue.
 - **Sounds:** events `enemyHit` (`hit`), `heroHurt` (`hurt`), `blocked`
   (`clank`), `enemyDefeated` (`poof`), `spit`, `squawk` and `heartContainer`
   (`fanfare`).
@@ -598,7 +601,7 @@ Saved field `crabs: { killed, angry, feast }` (fixture
   `TUNING.angryCrabSpeed` (34, under his 47, so he can always walk away),
   backing off while calm. `moveEnemy` keeps it on its own screen. The usual
   arrival grace still holds, and the shockwave's quiet home screens still
-  have no enemies for a sword-less hero.
+  have no enemies until the Lighthouse.
 - **The island's eleven:** `VL.islandDigTiles()` is the lake island's sand
   (3,-3) but the trunks' tiles: eleven (the ore's counts once picked up).
   Digging all eleven in one visit spawns a crab (`egg: true`) on each hole,
@@ -1263,8 +1266,12 @@ shops. Fixture: `tests/fixtures/save-v1-W10.json`.
   and Esc lists X from then on (`VL.pauseControls`).
 - **Digging:** `VL.dig(state, shovel)` digs the tile ahead and returns
   `'blocked'`, `'find'`, `'secret'`, `'shell'`, `'brokenShell'` or `'empty'` (false while a dig is
-  under way). Sand takes any shovel, grass only the metal one (`digsDirt`).
-  A hole is the visit's tile (`VL.DIG_HOLES`, `@` sand, `*` grass, through
+  under way). Sand takes any shovel; grass, the road (`path`) and the Woods
+  floor (`moss`) only the metal one (`digsDirt`, W38 for the last two, which
+  hide what grass does). A hole keeps its ground's flag and is never solid,
+  so a dug doorstep or gate path still reads and walks as path; gates,
+  doors and bridges are none of those grounds and refuse the shovel.
+  A hole is the visit's tile (`VL.DIG_HOLES`, `@` sand, `*` grass, `=` path, `~` moss, through
   `VL.setRoomTile`), so it is gone on the next visit; **W14**, which owns saved
   per-visit tile overrides, decides whether holes should persist. One roll
   per dig (`VL.digFind`, the seeded `VL.random`): a whole shell pops out as
@@ -1658,6 +1665,19 @@ across gaps, yank things"); posts are `entities/grapple-post.js`. Tests:
   enemy is stunned (`calm` for `ropeStunSeconds`, no damage) unless its
   definition has `onHook(state, enemy)` returning true (the Thornback);
   anything else solid, or a wall, sends it back.
+- **Light enemies are reeled in (W38):** an enemy whose definition says
+  `light: true` (slime, bat, gull, beach crab) is dragged back with the rope
+  (`phase: 'reel'`, under the arrival hold so it thinks nothing and is
+  harmless) to stand `ropePullGap` px before the hero's middle, in the
+  sword's reach, then stunned (`VL.stunEnemy`, `ropeStunSeconds`, the
+  slingshot's stars) and calm a little longer. Arriving costs him
+  `ropePullDamage` half hearts as a `sure` hit (`VL.hurtHero` past the
+  shield and the invulnerability, `knock: false`). `VL.moveEnemy` moves it,
+  so a walker stops at a wall or water, stunned there, and then he is not
+  hurt. An optional `onPulled(state, enemy)` settles it (the gull drops low,
+  then climbs home).
+- **A chicken** the hook reaches (standing on the ground) sends back an egg
+  for his face (`VL.ropeHitsChicken`, `VL.splatEgg`; see Egg on his face).
 - **Posts come in pairs:** put one on each side of a gap so the way back is
   never cut off (the Hollow Oak's test checks every crossing has a way back).
   On the overworld the rope works wherever a post is placed (none yet).
@@ -1670,6 +1690,25 @@ across gaps, yank things"); posts are `entities/grapple-post.js`. Tests:
 - **Saved:** the item only. A faint, a door or a new screen ends a throw.
 - **Sounds:** events `ropeThrow`, `ropeClink`, `ropeHooked` (`ropeHook`),
   `ropeStun`, `ropeLand` (`step`).
+
+## Egg on his face (W38)
+
+Matthew's Easter egg, in `systems/egg-on-face.js`. The rope's hook at a hen
+brings back an egg that splats on the hero's face (`state.room.egg`, so it
+lasts the visit: an edge, a door, a warp, a faint or a reload clears it, and
+it is never saved). The hen is not hurt and no swarm comes.
+
+- **Back to front:** the action filter `eggOnFace` swaps up and down, left
+  and right, and the two hands, so Space uses the off hand and D the main
+  hand. `VL.defineActionFilter(id, filter)` (`engine.js`) sits between the
+  input and every system (`VL.filterActions`); a filter returns a copy and
+  never touches key handling, so touch controls get the same trick.
+- **Everyone says so:** `VL.overrideTalk(rule)` (`talk.js`) lets a rule say
+  something instead of a person's own lines; while egged every NPC,
+  shopkeepers and the librarian too, says only `VL.EGG_WORDS` ("Looks like
+  you have some egg on your face, {name}.") with no shop, gift or hand-in.
+- **Drawn over him** (hero layer `eggOnFace`, `fx-egg-face-<facing>`), never
+  in the hero's sprites, so any outfit wears it. Sound: `eggSplat`.
 
 ## The Hollow Oak (W15)
 
@@ -1791,8 +1830,10 @@ Fixture: `tests/fixtures/save-v1-W16.json` (after the shockwave and the gift).
   entry gives `{ helperWood: TUNING.helperWood }`: a gift kind that adds the
   wood, holds it up and queues the `helperWood` popup. Afterwards she is back
   at her well, nudging a swordless hero to the smithy.
-- **The climb back:** while he owns no sword after the shockwave, the home
-  corner (`VL.SHOCKWAVE_QUIET`: 0,0, 1,0, 0,1, 1,1) has no enemies. A pull
+- **The climb back:** after the shockwave the home corner
+  (`VL.SHOCKWAVE_QUIET`: 0,0, 1,0, 0,1, 1,1) has no enemies until the
+  Lighthouse is first entered (`VL.shockwaveQuiet`, W38; before, a sword
+  brought them back), which is what Gran's "quiet for a good while" says. A pull
   that faints the hero keeps what the bush dropped (`VL.onFaint`), anywhere.
 - **Locks claimed:** `shockwave` and `helperWood`, with the planned rules.
 - **Sounds:** `shockRumble`, `shockFlash`, `shockWake` (played by the scene).
@@ -1961,12 +2002,19 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
                        lamp room (0,-3): the Lens Crab
                             | boss door (oneWay)
   map stair (-1,-2) -- gallery (0,-2) --door B-- workshop (1,-2): 3 mirrors -> crystal -> boss key
-  dark floor, map           | bars (stair target)
+  dark floor, shell chest   | bars (stair target)
                        stairwell (0,-1) --door A-- store (1,-1): the Slingshot
                             |                         | bars (store target)
   cellar (-1,0) ----- entrance (0,0)              cistern (1,0): 2 mirrors -> crystal -> key B
-  dark floor, key A   statue, door out
+  dark floor, map, key A   statue, door out
 ```
+
+- **The map (W38):** `d3Map` lies on the cellar's dark floor, on the way to
+  key A, so it is found early as in the Scriptorium and the Hollow Oak; at
+  the top of the map stair it came when only the workshop and the lamp room
+  were left, and the map hardly showed a room he had not seen. The map
+  stair keeps a chest of five broken shells (`d3ShellChest`) for the
+  slingshot.
 
 - **The way in:** W8's `lighthouseDoor` spot on the headland (-1,1) is a
   `door` with `needs: 'glowstone'`: without the Glowstone it is solid and

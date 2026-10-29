@@ -2,8 +2,10 @@
 // tiers). A shovel takes both hands; Space or D digs the tile ahead. Sand
 // gives a whole shell 20% of the time (30% once the Tide Tables are read)
 // and a broken one 50%; the metal shovel also digs grass, where a few
-// secrets lie buried. A dug hole lasts for the visit (VL.setRoomTile), like
-// a cut bush.
+// secrets lie buried, and (W38) roads and the Whispering Woods floor, which
+// hide what grass does. A dug hole lasts for the visit (VL.setRoomTile), like
+// a cut bush, and keeps its ground's flag, so nothing that reads the ground
+// (or walks on it) sees anything but a path or a forest floor with a hole.
 (() => {
   VL.tune({
     digSeconds: 0.3,
@@ -17,10 +19,12 @@
 
   // ---------- holes ----------
 
-  VL.DIG_HOLES = { sand: '@', dirt: '*' };
+  VL.DIG_HOLES = { sand: '@', dirt: '*', path: '=', moss: '~' };
   VL.extendTileset('base', {
     '@': { sand: true, hole: true, art: 'holeSand' },
     '*': { grass: true, hole: true, art: 'holeDirt' },
+    '=': { path: true, hole: true, art: 'holePath' },
+    '~': { moss: true, hole: true, art: 'holeMoss' },
   });
 
   // A scooped pit: a rim of turned earth, a darker floor, shade under the far lip.
@@ -46,6 +50,20 @@
     ground(ctx, cell, t) {
       VL.ART.TILE_STYLES.grass.ground(ctx, cell, t);
       drawHole(ctx, cell, 'pathDark', 'woodDark');
+    },
+  });
+
+  VL.ART.defineTileStyle('holePath', {
+    ground(ctx, cell, t) {
+      VL.ART.TILE_STYLES.path.ground(ctx, cell, t);
+      drawHole(ctx, cell, 'pathDark', 'woodDark');
+    },
+  });
+  // The forest floor's own style lives with the Woods (regions/woods.js).
+  VL.ART.defineTileStyle('holeMoss', {
+    ground(ctx, cell, t) {
+      VL.ART.TILE_STYLES.moss.ground(ctx, cell, t);
+      drawHole(ctx, cell, 'woodsFloorDark', 'woodDark');
     },
   });
 
@@ -79,8 +97,8 @@
     icon: 'shovel-metal',
     twoHanded: true,
     digsDirt: true,
-    about: 'Digs sand and hard ground too.',
-    popup: { title: 'You got a Metal Shovel!', text: 'It digs grass as well as sand. Who knows what lies buried out in the fields?' },
+    about: 'Digs sand, grass, paths and the forest floor.',
+    popup: { title: 'You got a Metal Shovel!', text: 'It digs grass, paths and the forest floor as well as sand. Who knows what lies buried out there?' },
     use(state, hand) {
       VL.dig(state, 'metalShovel', hand);
     },
@@ -125,7 +143,7 @@
     return null;
   };
 
-  // 'sand' or 'dirt' when the shovel can dig the tile, else null.
+  // 'sand', 'dirt', 'path' or 'moss' when the shovel can dig the tile, else null.
   function groundAt(state, tx, ty, shovel) {
     const { cols, rows } = VL.TUNING;
     if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) return null;
@@ -134,7 +152,10 @@
     if (info.solid || info.hole) return null;
     if (room.entities.some((e) => e.x === tx && e.y === ty && e.type !== 'buried' && !(e.hidden && e.reveal === 'dug'))) return null;
     if (info.sand) return 'sand';
-    if (info.grass && VL.ITEMS[shovel]?.digsDirt) return 'dirt';
+    if (!VL.ITEMS[shovel]?.digsDirt) return null;
+    if (info.grass) return 'dirt';
+    if (info.path) return 'path';
+    if (info.moss) return 'moss';
     return null;
   }
 

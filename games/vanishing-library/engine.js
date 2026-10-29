@@ -80,8 +80,20 @@ VL.updateWorld = function updateWorld(state, actions, dt) {
     if (transition.t >= transition.duration) state.transition = null;
     return;
   }
-  for (const system of VL.SYSTEMS) system.update(state, actions, dt);
+  const filtered = VL.filterActions(state, actions);
+  for (const system of VL.SYSTEMS) system.update(state, filtered, dt);
 };
+
+// Filters between the input and the world: `filter(state, actions)` returns
+// the actions the systems see (a copy when it changes them, never the input
+// itself), so a trick that remaps the controls (egg on his face, W38) never
+// touches key handling and works the same for touch controls later.
+VL.ACTION_FILTERS = [];
+VL.defineActionFilter = function defineActionFilter(id, filter) {
+  if (VL.ACTION_FILTERS.some((other) => other.id === id)) throw new Error(`action filter ${id} is already defined`);
+  VL.ACTION_FILTERS.push({ id, filter });
+};
+VL.filterActions = (state, actions) => VL.ACTION_FILTERS.reduce((current, { filter }) => filter(state, current), actions);
 
 // A screen edge can lead somewhere other than the neighbour (the Whispering
 // Woods without their map, W15): `turn(state, area, from, to)` returns the

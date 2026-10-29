@@ -8,9 +8,11 @@
 
   VL.SHOCKWAVE_WAKE = { area: 'hut', screen: '0,0', tx: 6, ty: 5, facing: 'right' };
   VL.SHOCKWAVE_HELPER = { type: 'npc', id: 'gran', x: 8, y: 5, facing: 'left', wander: 0 };
-  // The home corner a swordless hero climbs back in: its enemies keep away
-  // until he has a sword again (README).
+  // The home corner the hero climbs back in: the flash sent its enemies into
+  // hiding, and they stay hidden until the Lighthouse is entered (W38: a
+  // sword is no longer the sign, so Gran's "a good while" holds). README.
   VL.SHOCKWAVE_QUIET = ['0,0', '1,0', '0,1', '1,1'];
+  VL.shockwaveQuiet = (state) => Boolean(state.flags.shockwave) && !state.visited['lighthouse:0,0'];
 
   VL.ART.addColors({ glowstone: '#ffe27a', glowstoneLight: '#fffbe0', glowstoneDark: '#e0a83a' });
   VL.ART.defineSprite('item-glowstone', {
@@ -31,8 +33,6 @@
     title: 'Two pieces of wood!',
     text: 'A gift from Gran Ottie. Brannock the smith makes a sword from 3 wood. Pull a bush or two for one more!',
   });
-
-  const SWORDS = ['woodSword', 'metalSword'];
 
   // The Thornback's fall knocks him out in the Oak: until then the finished
   // Hollow Oak keeps its own save point (systems/dungeon.js would send it home).
@@ -124,7 +124,7 @@
     if (!state.flags.shockwave) return;
     const here = (where) => room.area === where.area && room.screen === where.screen;
     if (here(VL.SHOCKWAVE_WAKE) && !state.flags['gave:helperWood']) room.entities.push({ ...VL.SHOCKWAVE_HELPER, helper: true });
-    if (room.area === 'overworld' && VL.SHOCKWAVE_QUIET.includes(room.screen) && !SWORDS.some((id) => VL.hasItem(state, id))) {
+    if (room.area === 'overworld' && VL.SHOCKWAVE_QUIET.includes(room.screen) && VL.shockwaveQuiet(state)) {
       room.entities = room.entities.filter((e) => !VL.isEnemy(e));
     }
   });

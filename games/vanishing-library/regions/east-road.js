@@ -55,7 +55,8 @@
         { type: 'slime', x: 13, y: 8 },
       ],
     },
-    // The road ends at the dark edge of the Woods.
+    // The road ends at the dark edge of the Woods. In the corner by the trees,
+    // a ring of flowers round one bare square: the buried heart (W38's clue).
     '5,0': {
       tiles: [
         'TTTTTT..TTTTTTTT',
@@ -65,9 +66,9 @@
         'T..,...P.......T',
         'PPPPPPPP....,..T',
         '....PP.........T',
-        'T.....B......BBT',
-        'T..,.........B.T',
-        'T.........,..BBT',
+        'T.....B......,,T',
+        'T..,.........,.T',
+        'T.........,..,,T',
         'TTTTTTTTTTTTTTTT',
       ],
       entities: [

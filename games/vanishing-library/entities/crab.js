@@ -50,6 +50,8 @@
   }
 
   VL.defineEnemy('crab', {
+    // Light enough for the rope to pull in (systems/grappling-rope.js).
+    light: true,
     tuning: 'enemyCrab',
     body: { w: 12, h: 8 },
     faint: 'A beach crab got the better of you.',

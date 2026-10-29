@@ -266,14 +266,16 @@
     player.knockback = { vx: ux * speed, vy: uy * speed, t: seconds, room: state.room };
   }
 
-  // `hit` = { damage, size, from: { x, y }, cause }. Returns 'blocked',
-  // 'hurt' or 'ignored' (already fainted, or still invulnerable).
+  // `hit` = { damage, size, from: { x, y }, cause, sure?, knock? }. Returns
+  // 'blocked', 'hurt' or 'ignored' (already fainted, or still invulnerable).
+  // A `sure` hit (the price of a rope pull) gets past the shield and the
+  // invulnerability; `knock: false` leaves the hero where he stands.
   VL.hurtHero = function hurtHero(state, hit) {
     const player = state.player;
     // Carried by a chicken (systems/chickens.js), the hero is out of reach.
-    if (state.hp <= 0 || player.invuln > 0 || player.flight) return 'ignored';
+    if (state.hp <= 0 || (player.invuln > 0 && !hit.sure) || player.flight) return 'ignored';
     const shield = player.shieldItem;
-    if (shield && (VL.TUNING.shieldBlocks[shield] || []).includes(hit.size || 'small') && sideOf(player, hit.from) === player.facing) {
+    if (shield && !hit.sure && (VL.TUNING.shieldBlocks[shield] || []).includes(hit.size || 'small') && sideOf(player, hit.from) === player.facing) {
       knockHero(state, hit.from, VL.TUNING.blockShoveSeconds);
       player.blockedAt = state.time;
       state.events.push({ type: 'blocked', cause: hit.cause });
@@ -282,7 +284,7 @@
     state.hp = Math.max(0, state.hp - hit.damage);
     player.invuln = VL.TUNING.invulnSeconds;
     player.flash = VL.TUNING.invulnSeconds;
-    knockHero(state, hit.from, VL.TUNING.knockbackSeconds);
+    if (hit.knock !== false) knockHero(state, hit.from, VL.TUNING.knockbackSeconds);
     state.events.push({ type: 'heroHurt', cause: hit.cause, damage: hit.damage });
     if (state.hp <= 0) {
       settleHero(player);

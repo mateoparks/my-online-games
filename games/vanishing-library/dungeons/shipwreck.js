@@ -210,7 +210,7 @@
         { type: 'lockedDoor', id: 'wreckDoor', kind: 'small', x: 0, y: 5, lock: 'wreckDoor' },
         { type: 'decor', art: 'wreckDesk', x: 1, y: 1 },
         { type: 'page', id: 'pageShipwreck', x: 11, y: 3 },
-        { type: 'chest', id: 'wreckShellChest', x: 7, y: 2, contents: [{ resource: 'shells', amount: 5 }] },
+        { type: 'chest', id: 'wreckShellChest', x: 7, y: 2, contents: [{ resource: 'shells', amount: 5 }], found: { title: 'Five whole shells!', text: 'The captain\'s savings, still dry after all these years.' } },
         trunk('bookHighGapB', 14, 2),
       ],
     },

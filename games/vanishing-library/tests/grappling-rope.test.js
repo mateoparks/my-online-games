@@ -272,5 +272,6 @@ test('on the overworld the hook never fetches a pickup the hero cannot walk to y
       }
     }
   }
-  assert.ok(tried > 0, 'heartFieldA, behind its boulders, is tried with the real hook');
+  // Since W38 the buried heart's corner is open (a ring of flowers), so no
+  // overworld pickup is out of reach on foot today; the loop guards new ones.
 });

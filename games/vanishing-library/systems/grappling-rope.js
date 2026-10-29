@@ -2,9 +2,11 @@
 // grappling hook (pull across gaps, yank things)"), the Hollow Oak's item.
 // Its key throws the hook straight ahead over pits, water and low things: a
 // post (`hookable`) pulls the hero across to the tile in front of it, a
-// pickup is dragged back to him, a switch is thrown, an enemy is stunned (or
-// answers `onHook`), and anything else solid sends it back. README "The
-// Grappling Rope (W15)".
+// pickup is dragged back to him, a switch is thrown, a light enemy (W38) is
+// reeled in to stand stunned before him at the cost of half a heart, any
+// other enemy is stunned where it is (or answers `onHook`), a chicken sends
+// back an egg, and anything else solid sends it back. README "The Grappling
+// Rope (W15)".
 (() => {
   VL.tune({
     ropeTiles: 6,
@@ -12,6 +14,10 @@
     ropeReturnSpeed: 420,
     ropePullSpeed: 210,
     ropeStunSeconds: 1.5,
+    // A light enemy reeled in stands this far before the hero's middle, in
+    // the sword's reach and clear of his body.
+    ropePullGap: 14,
+    ropePullDamage: 1,
   });
   const T = VL.TUNING;
   const DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
@@ -88,6 +94,10 @@
       const alt = e.alt || 0;
       if (Math.abs(tip.x - e.cx) * 2 >= body.w + 4 || Math.abs(tip.y - (e.cy - alt / 2)) * 2 >= body.h + alt + 4) continue;
       const def = VL.ENEMIES[e.type];
+      if (def.light && !def.onHook) {
+        reelIn(state, rope, e, def);
+        return true;
+      }
       if (!def.onHook?.(state, e)) {
         e.calm = Math.max(e.calm || 0, T.ropeStunSeconds);
         e.hurt = Math.max(e.hurt || 0, 0.2);
@@ -97,6 +107,50 @@
       return true;
     }
     return false;
+  }
+
+  // The hook bites a light enemy: it is dragged back with the rope, harmless
+  // and thinking nothing, until it stands before the hero or is stopped.
+  function reelIn(state, rope, enemy, def) {
+    rope.phase = 'reel';
+    rope.enemy = enemy;
+    enemy.knock = null;
+    // The arrival hold (README "Combat"): it thinks nothing and is harmless.
+    enemy.arriving = Infinity;
+    def.onPulled?.(state, enemy);
+    state.events.push({ type: 'ropeHooked' });
+  }
+
+  function endReel(state, rope, arrived) {
+    const enemy = rope.enemy;
+    state.player.rope = null;
+    if (!state.room.entities.includes(enemy) || enemy.hp <= 0) return;
+    enemy.arriving = 0;
+    VL.stunEnemy(state, enemy, T.ropeStunSeconds);
+    // A moment more before it may hurt him, standing right beside him.
+    enemy.calm = Math.max(enemy.calm || 0, T.ropeStunSeconds + 0.6);
+    if (!arrived) return;
+    VL.hurtHero(state, { damage: T.ropePullDamage, size: VL.ENEMIES[enemy.type].size, from: { x: enemy.cx, y: enemy.cy }, cause: enemy.type, sure: true, knock: false });
+  }
+
+  function reel(state, rope, dt) {
+    const { player } = state;
+    const enemy = rope.enemy;
+    if (!state.room.entities.includes(enemy) || enemy.hp <= 0) {
+      player.rope = null;
+      return;
+    }
+    const to = { x: player.x + rope.dx * T.ropePullGap, y: player.y - 5 + rope.dy * T.ropePullGap };
+    const dx = to.x - enemy.cx;
+    const dy = to.y - enemy.cy;
+    const dist = Math.hypot(dx, dy);
+    const step = Math.min(dist, T.ropeReturnSpeed * dt);
+    const before = [enemy.cx, enemy.cy];
+    // moveEnemy keeps a walker out of walls and water and every body on screen.
+    if (dist > 1e-6) VL.moveEnemy(state, enemy, (dx / dist) * step, (dy / dist) * step);
+    rope.len = Math.max(0, (enemy.cx - player.x) * rope.dx + (enemy.cy - (player.y - BODY)) * rope.dy);
+    if (Math.hypot(to.x - enemy.cx, to.y - enemy.cy) < 0.5) endReel(state, rope, true);
+    else if (Math.hypot(enemy.cx - before[0], enemy.cy - before[1]) < 1e-3) endReel(state, rope, false);
   }
 
   // What the hook meets on a tile it reaches. Returns true when it stops.
@@ -173,6 +227,11 @@
         rope.len += step;
         const tip = VL.ropeTip(state);
         if (hitEnemy(state, rope, tip)) break;
+        if (VL.ropeHitsChicken?.(state, tip)) {
+          rope.egg = true;
+          back(state, rope, 'ropeHooked');
+          break;
+        }
         const { tx, ty } = VL.tileOf(tip.x, tip.y);
         const here = VL.heroTile(state);
         const key = `${tx},${ty}`;
@@ -192,7 +251,10 @@
       if (rope.len <= 0) {
         player.rope = null;
         fetched(state, rope);
+        if (rope.egg) VL.splatEgg(state);
       }
+    } else if (rope.phase === 'reel') {
+      reel(state, rope, dt);
     } else if (rope.phase === 'pull') {
       // Over the pits, out of harm's way, straight to the post.
       player.knockback = null;
@@ -247,6 +309,7 @@
     const hx = Math.round(ox + rope.dx * len);
     const hy = Math.round(oy + rope.dy * len);
     VL.ART.drawSprite(ctx, 'fx-rope-hook', hx - 2, hy - 2);
+    if (rope.egg) VL.ART.drawSprite(ctx, 'fx-egg', hx - 2, hy + 1);
   });
 
   // ---------- sounds ----------
