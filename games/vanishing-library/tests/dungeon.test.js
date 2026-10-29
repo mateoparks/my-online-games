@@ -1244,7 +1244,7 @@ test('the W13 fixture is a played state: keys derived, nothing stored for them',
 
 test('README documents the dungeon framework and how to build a dungeon', () => {
   const readme = read('README.md');
-  for (const phrase of ['## Dungeons', 'VL.defineDungeon', 'lockedDoor', 'pushBlock', 'pressurePlate', 'shutter', 'saveStatue', 'smallKey:', 'VL.saveTile', 'dungeonMap', 'How to build a dungeon', 'tests/sample-dungeon.js', 'VL.dungeonLockProblems', 'VL.dungeonBlockProblems', 'VL.dungeonDoorProblems', 'VL.dungeonProblems', 'oneWay', 'weighsPlate', "weight: 'block'", 'defeated', 'VL.smallKeys', 'keysGiven', "{ smallKey: '<dungeon>' }", 'warpHold', "'overlay'", 'can reach no exit without a push', 'the far room really is reached through them alone']) {
+  for (const phrase of ['## Dungeons', 'VL.defineDungeon', 'lockedDoor', 'pushBlock', 'pressurePlate', 'shutter', 'VL.SAVE_LANTERNS', 'smallKey:', 'VL.saveTile', 'dungeonMap', 'How to build a dungeon', 'tests/sample-dungeon.js', 'VL.dungeonLockProblems', 'VL.dungeonBlockProblems', 'VL.dungeonDoorProblems', 'VL.dungeonProblems', 'oneWay', 'weighsPlate', "weight: 'block'", 'defeated', 'VL.smallKeys', 'keysGiven', "{ smallKey: '<dungeon>' }", 'warpHold', "'overlay'", 'can reach no exit without a push', 'the far room really is reached through them alone']) {
     assert.ok(readme.includes(phrase), `README mentions ${phrase}`);
   }
 });

@@ -12,7 +12,7 @@
     woods: { area: 'overworld', screen: '7,-1', tx: 10, ty: 5, facing: 'down', dungeon: 'hollowOak' },
     lighthouse: { area: 'overworld', screen: '-1,1', tx: 5, ty: 5, facing: 'down', dungeon: 'lighthouse' },
     wreck: { area: 'wreck', screen: '0,0', tx: 7, ty: 3, facing: 'down', dungeon: 'wreck' },
-    lair: { area: 'overworld', screen: '-1,-5', tx: 11, ty: 8, facing: 'down', dungeon: 'lair' },
+    lair: { area: 'overworld', screen: '-1,-5', tx: 10, ty: 5, facing: 'down', dungeon: 'lair' },
   };
 
   for (const id of ['library', 'scriptorium', 'woods', 'lighthouse', 'lair']) {

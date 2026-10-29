@@ -1,0 +1,119 @@
+{
+  "v": 2,
+  "name": "Robin",
+  "rngState": 3663131627,
+  "maxHp": 6,
+  "flags": {
+    "found:hutChest": true
+  },
+  "visited": {
+    "overworld:1,1": true,
+    "overworld:1,0": true
+  },
+  "savePoint": {
+    "area": "overworld",
+    "screen": "1,0",
+    "tx": 5,
+    "ty": 6,
+    "facing": "left"
+  },
+  "finished": false,
+  "inventory": {
+    "wood": 2,
+    "shells": 3,
+    "brokenShells": 0,
+    "berries": 0,
+    "ore": 0,
+    "paper": 0,
+    "ink": 0
+  },
+  "items": {
+    "woodSword": true,
+    "woodShield": true
+  },
+  "hands": {
+    "mainHand": "woodSword",
+    "offHand": "woodShield"
+  },
+  "popups": {
+    "seen": {
+      "controls": true
+    },
+    "queue": []
+  },
+  "dungeons": {
+    "scriptorium": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "hollowOak": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "lighthouse": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "wreck": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "lair": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    }
+  },
+  "tileChanges": {},
+  "library": {
+    "returned": [],
+    "read": [],
+    "gone": [],
+    "trips": 0,
+    "lastTripAt": 0,
+    "stolen": {
+      "trips": 0,
+      "bosses": 0
+    },
+    "noticed": 0
+  },
+  "look": {
+    "outfit": "blue",
+    "hair": "short",
+    "gender": "girl"
+  },
+  "handKeys": {
+    "mainHand": "Space",
+    "offHand": "KeyD"
+  },
+  "crabs": {
+    "killed": 0,
+    "angry": false,
+    "feast": false
+  },
+  "afterThornbackDone": []
+}

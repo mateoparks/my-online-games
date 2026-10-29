@@ -244,7 +244,7 @@
 
   VL.standsFirm = function standsFirm(state, place) {
     if (!place || !VL.screenExists(place.area, place.screen)) return false;
-    const info = VL.tileInfo(place.area, VL.savedTile?.(state, place.area, place.screen, place.tx, place.ty) ?? VL.tileAt(place.area, place.screen, place.tx, place.ty));
+    const info = VL.tileInfo(place.area, (state && VL.savedTile?.(state, place.area, place.screen, place.tx, place.ty)) ?? VL.tileAt(place.area, place.screen, place.tx, place.ty));
     if (info.solid || info.hurts || info.pit) return false;
     return !VL.getScreen(place.area, place.screen).entities.some((e) => e.x === place.tx && e.y === place.ty && (e.solid || VL.ENTITIES[e.type]?.solid));
   };

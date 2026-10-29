@@ -378,13 +378,13 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   and a hand naming one counts as empty. Renaming or removing a popup or item
   is safe; keep that true for any id list you save.
 - **Resources:** `VL.addResource(state, 'wood', 1)` (a negative amount
-  spends; it never goes below 0) earns, so the game saves, and empties a hand
+  spends; it never goes below 0) and empties a hand
   holding what ran out (`VL.tidyHands`).
 - **Items:** `VL.defineItem(id, { name, icon, about, popup, use(state, hand),
   hold(state, hand), count(state), sword, prefers })` from the item's own file;
   `icon` names the `item-<icon>` sprite the HUD and the equipment screen draw.
   `VL.giveItem(state, id)` owns it, puts it in an empty hand (the main hand
-  first; `prefers: 'offHand'` for a shield), queues its popup and earns. An
+  first; `prefers: 'offHand'` for a shield) and queues its popup. An
   item with `takesHand: 'offHand'` (the Mirror Shield, which its boss needs)
   goes into that hand the first time it is given even when the hand is full;
   the old item stays owned, in the equipment list.
@@ -567,7 +567,7 @@ holds the heart containers.
   and the town have none.
 - **Heart containers:** `VL.giveHeartContainer(state, id?)` adds
   `TUNING.heartContainerHp` (one heart) to `maxHp`, fills every heart, marks
-  `id` found, shows its popup the first time only, plays `fanfare` and earns.
+  `id` found, shows its popup the first time only and plays `fanfare`.
   W6 fills the `heartFieldA` (east road, among the bushes) and `heartFieldB`
   (cliff ledge) spots; bosses (W13+) call it directly. No new saved field:
   `maxHp` and the found flags were already saved. **W34 buried `heartFieldA`**
@@ -808,36 +808,67 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   be removed.
 - **What is saved:** every field of the game state except
   `VL.TRANSIENT_FIELDS` (`time`, `player`, `room`, `transition`, `events`,
-  `dirty`, `fainted`, plus anything added with
+  `dirty`, `fainted`, `lastSave`, plus anything added with
   `VL.extendGame('enemies', () => ({ knockback: null }), { transient: true })`)
-  and `hp`. Loading gives full hearts at the last save point (`savePoint`, or
-  the start when there is none or a later map change removed its screen).
-  A place done with can hand its save point on:
-  `VL.moveSavePoint((state, point) => place or null)` is asked on every
-  Continue and faint (`VL.respawnPlace`); the shipwreck and every finished
-  dungeon use it (see "The boss room"). Name the place a rule wakes him at
-  with `VL.nameWakePlace(place, 'at home')`: `VL.wakeWords(state)` is then
-  those words whenever he will not wake at his save point, and the statue,
-  the wreck's lantern, the faint screen and the pause hint say so
-  (`VL.savePointNote(state, plain)`, whose words `app.save` switches to
-  "Could not save yet" while a write fails). `VL.keepSavePoint((state, point) =>
-  true or false)` holds a save point where it is ahead of every move rule
-  (the Hollow Oak until the shockwave). Neither changes `savePoint` itself.
-  `finished` marks a finished game: the slot shows FINISHED and loads the
-  last save before the finale (the ending sets it).
-- **When (design: Option B, Zelda-style):** call `VL.earned(state)` after
-  anything the player earns (an item, a chest opened, a book, a page, a flag,
-  a boss) and the app saves at the end of that step, in whatever scene (a
-  shop, a dialogue, the equipment screen), with a "SAVED" flash in play.
-  Standing on a save point saves too (`{ type: 'savePoint', x, y }`
-  entity, a lantern, or `VL.touchSavePoint(state, place)` from your own
-  entity). Save & Quit saves; a new game is saved as soon as it is named.
-  Dying never saves or loses anything: `VL.faint(state, cause)` → the
-  `fainted` scene → `VL.respawn(state)`. `VL.addFaintLine('crab', '…')` adds
-  the line for a cause (`shrub` is already there). The one exception is a
-  big chest with `keptOnLeaving` (W42, the Mirror Shield across the lava):
-  see "Lifting" (the gloves' bullet). `VL.onLoad((state) => …)` runs on every
-  loaded game before he is placed (`VL.LOAD_HOOKS`).
+  and `hp`. Loading gives full hearts at the save's place (`savePoint`, or
+  the start when there is none or a later map change removed its screen),
+  standing still: a lantern under him saves again only once he steps off
+  and back. `finished` marks a finished game: the slot shows FINISHED (the
+  credits set and save it).
+- **When (W44, Matthew's notes: "the only time saves happen are when they
+  actually hit a save lantern"):** only three things save.
+  1. **A save lantern** (`{ type: 'savePoint', x, y }`; `on: 'nightstand'`
+     draws it on the furniture above the step). There are seven,
+     `VL.SAVE_LANTERNS` (`dungeons/save-lanterns.js`): the hut's on its
+     nightstand, the library's, one just outside the Scriptorium, the
+     Lighthouse and the Dragon's Lair doors, the Woods' on the screen below
+     the Hollow Oak (open before the map is copied: the gate tree is above
+     it), and the shipwreck's below deck. No dungeon has one inside but the
+     wreck. Standing on one calls `VL.saveGame(state, place)` (also
+     `VL.touchSavePoint`), and the wreck's says "The lantern glows. Your
+     journey is saved." (its could-not-save words while a write fails).
+  2. **Save & Quit** saves where Continue will start, `VL.quitPlace(state)`
+     → `{ place, words }` (the pause menu shows "CONTINUE STARTS " + words):
+     on the lantern he stands on; in an area with a rule
+     (`VL.quitRule(area, 'entry' | 'lastSave')`) by that rule: every dungeon
+     is `entry`, where he came into the room (`state.room.entry`; rooms come
+     back fresh, and the block lint checks every entry), the finale's
+     workshop is `lastSave` (Mr. Fenwick only follows him down the ladder);
+     elsewhere the tile he stands on when plain ground holds him there after
+     a reload (`VL.standsFirm`: not water, lava, a pit or anything solid,
+     not mid-flight or on the rope), else where he came onto the screen,
+     else his last save's place.
+  3. **The credits** save the finished game at the library's lantern.
+  A new game is saved as soon as it is named. Nothing else writes: an item,
+  a chest, a book, a boss, a story beat, a shop are kept in play until the
+  next save, and the "SAVED" flash shows only when a save is written.
+  Closing the tab loses what came since, with no reminder (Matthew: "a good
+  lesson to learn"). `VL.saveGame` keeps the save in play as `lastSave` and
+  marks the game dirty; the app writes `lastSave` at the end of the step,
+  in whatever scene.
+- **Fainting goes back to the last save:** `VL.faint(state, cause)` → the
+  `fainted` scene ("You wake up at your last save. Anything found since then
+  is waiting to be found again.") → `VL.respawn(state)`, which rebuilds the
+  game in place from `lastSave` (the same object, full hearts, at its
+  place) and writes nothing; it works with storage off too, since
+  `lastSave` lives in play. A new game's `lastSave` is its start. What a
+  faint must keep although the save is older is copied across by
+  `VL.keepThroughFaint((fainted, woken) => …)` (Gran's boss hints,
+  `bossFainted:<id>`). One-time scenes undone by a faint simply play again
+  (the shockwave after the Thornback). `VL.addFaintLine('crab', '…')` adds
+  the line for a cause (`shrub` is already there). `VL.onLoad((state) => …)`
+  runs on every loaded game before he is placed (`VL.LOAD_HOOKS`).
+- **Older saves (migration 2, W44):** a save point that is no lantern now
+  wakes him at the new one (`VL.lanternForOldPoint`): an entrance statue,
+  anywhere in a dungeon, or a boss warp's doorstep → the lantern outside
+  that dungeon; any spot in the hut → the hut's lantern; anything else (the
+  wreck's lantern, null) stays. A save written with W42's `pendingChest`
+  (the Mirror Shield mid-lava) gets the shield put back in its chest, the
+  hands as they were, and the field dropped. Retired with it: `VL.earned`,
+  the entrance statues, W31's finished-dungeon wake at home, W17's harbour
+  wake, the boss warp's save, `VL.moveSavePoint`, `VL.keepSavePoint`,
+  `VL.wakeWords`. Fixture: `tests/fixtures/save-v2-W44.json` (Save & Quit
+  on a field). Tests: `tests/w44-save-lanterns.test.js`.
 - **When a write fails** (the browser ran out of space after boot), the game
   stays dirty and every step retries; play shows "COULD NOT SAVE" and Save &
   Quit stays on the pause menu with the note until a write succeeds
@@ -885,10 +916,9 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   than resetting a student's progress.
 - The slot card shows name, hearts and books; the book count comes from
   `VL.slotSource('books', (save) => …)`, plugged in once by the library item.
-- `VL.reloadApp(app)` is a page reload that continues the same slot: what the
-  playthrough's `drive.reload()` uses to prove progress survives. Like a real
-  reload it does not save first (so a forgotten `VL.earned` shows up);
-  `VL.reloadApp(app, { save: true })` is the console shortcut.
+- `VL.reloadApp(app)` is a page reload that continues the same slot: only
+  what was saved comes back. `VL.reloadApp(app, { save: true })` saves first
+  as Save & Quit does (the console shortcut).
 
 ## Testing
 
@@ -961,9 +991,10 @@ boulder (`w14-boulder.png`) and the Bookworm up, hit and beaten
 gate, the first switch lifting it and a pot through it throwing the second
 (`w42-niche-shut.png`, `w42-niche-open.png`, `w42-niche-switch.png`), and
 the Lair's lava room with two steps onto it (`w42-lava-room.png`,
-`w42-lava-step.png`), and the shield taken there on one half heart, the
-next lava step fainting him and the shield slipping back into its chest
-(`w42-shield-returned.png`). Then W15's Woods and Hollow Oak with real keys: a step
+`w42-lava-step.png`), and, saved at the Lair's lantern, the shield taken
+there on one half heart, the next lava step fainting him with the faint
+screen's words (`w44-faint.png`) and S waking him at the lantern without it
+(`w44-faint-woke.png`, W44). Then W15's Woods and Hollow Oak with real keys: a step
 deeper into the Woods without the map leading on (`w15-woods-no-map.png`),
 the pass below the Oak shut by trees (`w15-woods-pass-shut.png`), the same
 step with the map (`w15-woods-map.png`, its popup; `w15-woods-edge-map.png`,
@@ -1027,9 +1058,12 @@ the Mirror Shield taking that hand (`w32-mirror-shield-popup.png`), SAVED in
 the HUD bar over a lair room with both keys (`w32-saved-in-hud.png`), the
 spilled hoard clear of the keys (`w32-hoard-hud.png`), broken shells in the
 HUD and the smithy's YOU HAVE line (`w32-broken-hud.png`,
-`w32-smithy-purse.png`), and the arrow onto a finished Scriptorium's statue,
-then a faint, both saying he wakes at home (`w32-statue-home.png`,
-`w32-faint-home.png`). Then W20's
+`w32-smithy-purse.png`). Then W44's save lanterns: the hut with its bed,
+empty bookshelf and nightstand lantern (`w44-hut.png`), Up onto the
+nightstand's step saving to slot 3 with SAVED in the bar
+(`w44-hut-saved.png`), every lantern where it stands
+(`w44-lantern-<id>.png`), and on a field Esc, Save & Quit naming "RIGHT
+HERE" (`w44-pause.png`) and Continue on that very tile. Then W20's
 finale with real keys: the square after the Dragon (`w20-trapdoor-popup.png`,
 `w20-trapdoor-open.png`), onto the hatch and down, Mr. Fenwick following
 (`w20-follow.png`, `w20-workshop.png`), the tunnel (`w20-tunnel.png`), the
@@ -1285,8 +1319,7 @@ looks and wandering, `scenes/dialogue.js` the conversation, and
   turns it (holding a key never skips), Esc ends the talk.
 - **Remembering and giving:** when the talk ends, by the last page or by Esc,
   the entry's `set` flags are set and its `give` handed over together, and both
-  are earned (saved) as one, so a closed tab never keeps the flag and loses the
-  gift. `give: { item: 'shellPurse', wood: 2 }` gives items (`VL.giveItem`, its
+  land in the same step, so a save never holds the flag without the gift. `give: { item: 'shellPurse', wood: 2 }` gives items (`VL.giveItem`, its
   popup follows the talk) and resources (`VL.addResource`); a later item adds a
   kind with `VL.defineGift('heartContainer', (state, n) => …)`. An unknown kind
   throws at load. A found page is a flag: `set` it. Guard a gift so it is given
@@ -1398,7 +1431,7 @@ VL.openShop(state, 'store');   // from an entity; or `shop: 'store'` on a dialog
 
 - `cost` and `gain` are resources (`state.inventory`, spent and added with
   `VL.addResource`); `give(state)` hands over anything else. A buy pays every
-  cost or none, then earns (saves) and pushes `{ type: 'bought', offer }`.
+  cost or none, then pushes `{ type: 'bought', offer }`.
 - An offer that gains shells is a **trade** ("Trade 5 wood for 1 shell?", the
   price column shows `5 wood → 1` and the shell icon); anything else is bought. `verb`
   overrides. `soldOut(state)` greys it out, `hidden(state)` leaves it off,
@@ -1505,7 +1538,7 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   Scriptorium Register (17 on the map). A later item that hands out books
   (the Bookworm's bundle, W14; the hoard, W19) defines its own with
   `VL.defineBook` and calls `VL.findBook(state, id)` (found, a message, the
-  first-book popup, earned). W10's buried book and W14's rock books only call
+  first-book popup). W10's buried book and W14's rock books only call
   `VL.markFound` with the spot id; the book is already defined here.
 - **Finding:** a `bookTrunk` (solid; S opens it once) or a `bushBook` (a
   corner of red peeks out of the leaves; cut or pull the bush, then walk onto
@@ -1649,10 +1682,7 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
 
 - **Saved:** nothing new. The tools, the map and the copies are items
   (`state.items`), ink and paper are resources, and the screens visited are
-  W1's `state.visited`. **A first visit to a screen is earned:**
-  `VL.enterScreen` marks its event `first`, and the `paperInk` system earns
-  it within the same step, so a reload right after exploring keeps it on the
-  map. A `VL.place` outside a step (a load, a respawn, a test) earns nothing.
+  W1's `state.visited` (saved with the next save, W44).
 - **Ink:** the `mortarPestle` item (W14's Bookworm gives it with
   `VL.giveItem`) is a hand tool: its key, or S on the equipment screen,
   grinds `TUNING.berriesPerInk` berries (5 since W41: one ink draws a whole
@@ -1664,7 +1694,7 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
 - **Copying:** `{ type: 'copyable', x, y, copy, look: 'mural' | 'tablet', text? }`
   is solid; S at it runs `VL.copyFrom(state, entity)`: with
   `TUNING.copyCost` (1 paper, 1 ink) it spends them and gives the `copy` item
-  (popup, earned); otherwise it describes the picture and says what is
+  (popup); otherwise it describes the picture and says what is
   missing, and once the copy is owned it says so and spends nothing. A copy is
   an item from `VL.defineCopy(id, { name, icon, about, seen, popup,
   picture(ctx, box, t) })`; its key or S on the equipment screen opens the
@@ -1698,7 +1728,7 @@ key, the lock claims), `entities/copyable.js` the mural and tablet, and
   changes (`state.tileChanges`, `VL.saveTile`) laid over, so a lifted boulder
   or an opened path shows on the map.
 - **Losing it:** `VL.loseWorldMap(state)` takes the map and empties a hand
-  holding it, and earns; W16's shockwave calls it. The visits stay, so
+  holding it; W16's shockwave calls it. The visits stay, so
   drawing it again (while the Primer is on the shelf) shows everything at once.
 - **Locks claimed:** `ink`, `worldMap`, `woodsMapCopy`, all with the planned
   rules. `mortarPestle` is a key of W14's `d1Boss`.
@@ -1714,19 +1744,11 @@ Tests: `tests/lifting.test.js`.
 
 - **The gloves** (`liftingGloves`) are worn, like the Swiftfoot Boots: an item
   with `worn: true` is owned without filling a hand. `VL.giveWornItem(state,
-  id)` gives one (popup, earned); a `{ type: 'bigChest', id, item }` (solid, S
+  id)` gives one (popup); a `{ type: 'bigChest', id, item }` (solid, S
   opens it once, `found:<id>`) wears a worn item and hands anything else over
-  like a chest. With `keptOnLeaving: true` (the Mirror Shield, W42) the item
-  is his at once but counts only once he walks off that screen alive: until
-  then the saved field `pendingChest: { id, item, area, screen, hands }`
-  holds it (fixture `tests/fixtures/save-v1-W42.json`). A faint there, or a
-  reload or Save & Quit → Continue before he leaves, puts it back
-  (`VL.returnPendingChest`: the item and `found:<id>` gone, the hands as they
-  were before it, the chest shut and full again), and the faint screen says
-  "The Mirror Shield slipped back into its chest." above "Everything else you
-  found is still yours." (`VL.faintLines`). Leaving the screen alive clears
-  it (system `pendingChestKept`) and saves. A save without the field, or one
-  that already owns the item, has nothing pending.
+  like a chest. (W42's `keptOnLeaving` and `pendingChest` are gone since W44:
+  a faint on the lava goes back to the last save, shield and all; a W42 save
+  holding a pending shield gets it put back in its chest by migration 2.)
 - **What lifts:** S facing an entity whose type says `liftable: 'pot'` (a
   `{ type: 'pot', x, y, respawn? }`, solid), a tile with `rock: true` or a
   tile with `boulder: true` (the canyon's `O`). `VL.tryLift(state)` checks the
@@ -2053,8 +2075,8 @@ Fixture: `tests/fixtures/save-v1-W16.json` (after the shockwave and the gift).
   comes first), then `TUNING.shockwaveDelay` more, then opens the
   `shockwave` scene. Since W30's boss gate keeps the hero in the den until he
   takes the heart, in play the knock-out always follows the heart; only a
-  Save & Quit before taking it (Continue starts at the statue) can still
-  leave the Oak without it. Leaving the Oak without the heart starts it outside, and
+  Save & Quit before taking it (Continue starts where he came into the den)
+  or an old save can still leave the Oak without it. Leaving the Oak without the heart starts it outside, and
   the heart is given anyway on waking (hearts are kept), held up with its
   fanfare beside the Glowstone.
 - **The scene:** `rumble` (the world shakes, rings of light, a white-out),
@@ -2065,11 +2087,13 @@ Fixture: `tests/fixtures/save-v1-W16.json` (after the shockwave and the gift).
 - **The losses** are read from `VL.LOCKS.shockwave.loses`, so the game and
   the solver can't drift apart: items are taken, resources emptied, whole
   shells become broken shells, the map goes through `VL.loseWorldMap`; a key
-  it doesn't know throws. It gives the `glowstone` (worn, like the gloves) and
-  sets the save point to the hut. Everything else is kept.
-- **Reloads:** before the flash nothing is saved, so the scene plays again;
-  after it (`flags.shockwave`) the story resumes on black at home; after
-  waking (`flags.shockwaveWoke`) it never comes back.
+  it doesn't know throws. It gives the `glowstone` (worn, like the gloves).
+  Everything else is kept. Nothing is saved (W44).
+- **Reloads and faints:** nothing in it saves, so a reload or a faint before
+  his next save goes back to the last one and the knock-out plays again; an
+  older save written after the flash (`flags.shockwave`) resumes the story
+  on black at home; once he has woken (`flags.shockwaveWoke`) and saved it
+  never comes back.
 - **The helper, Gran Ottie:** she is added to the hut's room
   (`VL.SHOCKWAVE_HELPER`, `VL.onRoomBuilt`) until she has given the wood,
   starts talking once the Glowstone's popup closes (once per visit), and her
@@ -2145,11 +2169,10 @@ back in.
   bilge (0,1): flooded; posts across to the key's chest and the ore
 ```
 
-- **The hold:** the ladder back up, a lantern on the way down (a faint or a
-  reload wakes him there, and he can always climb up and sail home), two
-  crabs. Once the page is found the wreck is done with, and the lantern
-  hands its save point to the harbour by the pier (`VL.WRECK_HOME`, through
-  `VL.moveSavePoint`), so no Continue or faint starts below deck at sea.
+- **The hold:** the ladder back up, a save lantern on the way down (one of
+  W44's seven: a faint or Continue wakes him there, and he can always climb
+  up and sail home), two crabs. (W17's harbour wake once the page was found
+  is retired: Matthew keeps this lantern inside the wreck.)
 - **The bilge:** three rows of seawater (`~`: solid, a pit, splashes) across
   the room; a grapple post on each side, so the way back is never cut off; a
   sign says how. The chest with the wreck's key (`wreckKeyChest`, a
@@ -2168,7 +2191,7 @@ as ammo (hit far switches, stun enemies)"). Tests: `tests/lighthouse.test.js`.
 
 - **The item** `slingshot` goes in a hand (E); the big chest in the
   Lighthouse's store room holds it. Its key fires one broken shell
-  (`VL.fireSlingshot`, `inventory.brokenShells` minus one, earned) straight
+  (`VL.fireSlingshot`, `inventory.brokenShells` minus one) straight
   ahead from the hero's middle, `TUNING.slingshotTiles` (10) tiles at
   `slingshotSpeed`, one shot per `slingshotCooldown`. The shell
   (`{ type: 'slingPellet', gx, gy, dx, dy }`, play state, drawn at its pixel
@@ -2357,7 +2380,7 @@ Tests: `tests/lair.test.js`, `tests/lair-route.js`, `tests/steps/w19.steps.js`,
 and the lair in `tests/playtest-3.test.js`'s boss-gate loop. Fixture:
 `tests/fixtures/save-v1-W19.json`, the real playthrough's save after the
 Dragon (the heart taken, out through the warp, so the save point is the
-lair's doorstep, -1,-5, and Continue starts at the hut: W31).
+lair's doorstep, -1,-5; since W44 it loads at the lair's lantern there).
 
 ```
                        hoard (0,-3): the Dragon
@@ -2391,12 +2414,9 @@ the boss door, the Dragon.
   hearts) is less than the round trip: at the fewest, cutting every corner,
   12 burns there and 11 back (23); walked along the walls, 16 and 15 (31).
   So he eats berries on the way (standing still on lava is safe, and E then
-  S eats); the first highland shelf's bush grows back each visit. The
-  shield counts only once he walks out alive (Matthew's call): its chest is
-  `keptOnLeaving`, so a faint on the lava, or a reload before he leaves,
-  puts it back in the chest and he wakes at the statue without it (see the
-  gloves' bullet under "Lifting"). The `mirrorShield` lock is reached only
-  once it is no longer pending. The playthrough stocks berries at that bush
+  S eats); the first highland shelf's bush grows back each visit. A faint on
+  the lava goes back to his last save, so a shield taken since is back in
+  its chest (W44 replaced W42's pending shield). The playthrough stocks berries at that bush
   on the way up and walks back out through door A (`tests/lair-route.js`).
 - **Fire** (`VL.spawnFire(state, { cx, cy, vx, vy, owner })`, entity
   `dragonFire`): flies straight over floors, pits and lava; walls and solid
@@ -2505,10 +2525,10 @@ with them home (`finale:booksHome`, `finale:home:<id>`). W33's tests: `tests/w33
   `finale:welcomedHome`): his words about those books, as at a hand-in, with
   anything carried since, then the visit's beats (a reward the hand-in made
   due). Esc skips each part. The beats after the fight play in the hall; once `forgiven`, the
-  `ending` scene plays wherever he is. Nothing below is a save point and
-  nothing shuts behind him, so a reload or a faint at any beat wakes him at
-  his last save point (the hut: every dungeon is finished by then) and the
-  next beat plays when he walks back down. `tests/finale.test.js` reloads
+  `ending` scene plays wherever he is. Nothing below is a lantern and
+  nothing shuts behind him; Save & Quit below keeps the beats but wakes him
+  at his last lantern (`VL.quitRule('workshop', 'lastSave')`), and a faint
+  goes back to that save; the next beat plays when he walks back down. `tests/finale.test.js` reloads
   after every beat and plays on to the credits.
 - **Down and up:** the `trapdoor` entity (W11's, `entities/library-finds.js`)
   takes him down to `VL.FINALE.arrival` when he walks onto it once open, and
@@ -2567,9 +2587,9 @@ with them home (`finale:booksHome`, `finale:home:<id>`). W33's tests: `tests/w33
   credits (from the fade-in, the fade-out starts as dark as it was). No HUD is
   drawn over the ending (`VL.drawWorld(..., { hud: false })`): the strip stays
   dark.
-- **Continue after the credits:** the slot shows FINISHED; Continue wakes him
-  at his last save point before the finale (the hut) in the world after the
-  ending (everything earned is kept, as always); the ending never plays again.
+- **Continue after the credits:** the credits save the game (W44), so the
+  slot shows FINISHED and Continue wakes him at the library's lantern in the
+  world after the ending; the ending never plays again.
 - **Locks:** `trapdoorOpen`, `workshop` (place workshop 0,0), `marionettes`,
   `ending` (`state.finished`), all with the planned rules. The playthrough
   plays from the title to the credits; `tests/progression.test.js` checks that
@@ -2618,7 +2638,7 @@ Dragon with the sword forged again and the guards beaten, then a faint to it).
 `systems/dungeon.js` is the framework the four dungeons (W14, W15, W18, W19)
 build on from their own files; the pieces live one per file in `entities/`
 (`locked-door`, `push-block`, `pressure-plate`, `switch`, `shutter`,
-`save-statue`, `small-key`, `boss-key`, `dungeon-map`, `warp`) and the map
+`small-key`, `boss-key`, `dungeon-map`, `warp`) and the map
 screen is `scenes/dungeon-map.js`. The worked example is
 `tests/sample-dungeon.js` (four rooms; loaded by the tests and the browser
 smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
@@ -2626,8 +2646,8 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
 
 - **Saved state:** `state.dungeons[<id>]` is `{ keysGiven, bossKey, map,
   doors, plates, switches, boss }`, read with `VL.dungeonState(state, id)` (a
-  dungeon added after a save was written gets a fresh one). Every field is a
-  permanent earning and saves at once; **room state is the visit's** (block
+  dungeon added after a save was written gets a fresh one). Every field
+  lasts and goes with the next save; **room state is the visit's** (block
   positions, a plate held down, a shutter waiting on a fight) and is rebuilt
   on every entry, so nothing can be saved half-solved. `state.tileChanges`
   holds tile changes that outlast a visit, in any area: `VL.saveTile(state,
@@ -2707,8 +2727,8 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   from inside (in front of an opening, a door or a corridor), and a sealed
   room without enemies is a softlock, so **`VL.dungeonBlockProblems`**
   searches every push sequence of every room from every tile the hero can
-  appear on (beside each exit, the statue step he respawns on, every tile a
-  door or warp lands him on) and names the first position with no exit he
+  appear on (beside each exit, a lantern he wakes on, every tile a door or
+  warp lands him on; Save & Quit in a dungeon wakes him on one of those) and names the first position with no exit he
   can reach without another push (openings, doors, locked doors, warps; an
   exit under closed bars is no exit). It models walls, solid things, plates
   pressed by blocks (or a latch plate the hero can reach, unless `weight:
@@ -2747,10 +2767,9 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   `switch` and `plate` id a shutter names is a lever (or an entity type with
   `isSwitch: true`: a target, a crystal, a lamp) or a plate in its own
   dungeon, and those need ids.
-- **Save statue:** `{ type: 'saveStatue', x, y }` at the entrance: (x, y) is
-  the step in front, where standing saves and sets the respawn point; the
-  statue stands in the wall niche above, so `(x, y - 1)` must be a wall. A
-  faint or Continue puts the hero there with everything kept.
+- **No save inside (W44):** a dungeon's save lantern stands just outside its
+  door (`VL.SAVE_LANTERNS`, see "Saving"); the shipwreck's is the one
+  inside. Save & Quit in a room wakes him where he came into it.
 - **The map:** `{ type: 'dungeonMap', id, x, y }`. M inside a dungeon opens
   the `dungeonMap` scene (M, Esc or E closes): rooms visited are lit; with the
   map every room shows and the boss's room is marked. **W12:** open the drawn
@@ -2763,22 +2782,13 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   a thrown pot: `VL.hitEnemy` does this) or `defeated: true` set by a script
   before it is removed. Absence alone never counts, so **hide a burrowing
   boss with a flag of its own (or move it off screen); never remove it
-  alive**. Then `VL.bossDefeated` saves it, puts the heart container (`heart`
+  alive**. Then `VL.bossDefeated` records it (saved with the next save), puts the heart container (`heart`
   is its found id) where the boss stood on the map and the warp out (to
   `entrance`) at `warp`, and calls `onDefeat(state)` for the dungeon's own
   rewards (the Mortar & Pestle, books). **The warp appears only once the
   heart is taken** (W30). On later visits the boss is gone and the heart
-  waits until taken, then the warp. **The warp out is a save
-  point:** stepping on it records `entrance` (outside the dungeon) as the
-  save point (`savePoint: true` on the warp). **A finished dungeon wakes
-  him at home (W31):** once the boss is beaten and its heart taken
-  (`VL.bossDone`), every Continue, reload and faint whose save point is in
-  the dungeon (its statue, anywhere inside, or that doorstep:
-  `VL.savePointInDungeon`) wakes him at the hut's lantern, `VL.HOME_SAVE`,
-  instead. Every dungeon with a boss gets this with no code of its own;
-  before it is finished the statue works as always. The Hollow Oak keeps
-  its statue until the shockwave has happened (`VL.keepSavePoint` in
-  systems/shockwave.js). **The boss gate (W30) is
+  waits until taken, then the warp. The warp saves nothing (W44): he walks
+  to a lantern. **The boss gate (W30) is
   the framework's:** `defineDungeon` puts bars (`shutter`, `bossGate: true`,
   id `<dungeon>BossGate`, `open: { bossDone: true }`) on the tile the boss
   door lands the hero on (the boss door's twin tile across the edge into
@@ -2786,8 +2796,7 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   through a boss door across an edge). They shut once he has stepped in and
   open only when the boss is beaten **and its heart taken**
   (`VL.bossDone(state, id)`), together with the warp. Fainting in there
-  wakes him at the statue with everything kept, and the gate always lets
-  him back in (its `passable` is true for the pathfinder). A boss room with
+  goes back to his last save, and the gate always lets him back in (its `passable` is true for the pathfinder). A boss room with
   its own `{ bossBeaten: true }` shutter is refused at load: delete it.
   Since he is shut in until the boss falls or he faints, a boss must be
   able to make him faint, or the boss door's lock should need the weapon
@@ -2797,7 +2806,7 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
 - **Entering and leaving:** ordinary `door` entities link the overworld and
   the dungeon both ways (fill W8's door spot from the dungeon's file). The
   hero is always placed with `VL.enterScreen`, so W6's arrival grace for
-  enemies holds in every room, after a warp and at a statue respawn. A warp
+  enemies holds in every room, after a warp and on waking. A warp
   sets `state.warpHold` (transient): `systems/movement.js` ignores the arrows
   until they are let go, so a direction held through the boss warp never
   walks the hero straight back through the door he lands beside.
@@ -2810,7 +2819,7 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   (`pickup`), `doorUnlocked` (`dungeonUnlock`), `doorLocked` (`bump`),
   `shutterOpen` (`dungeonShutter`), `blockPushed` (`dungeonBlock`),
   `platePressed`/`revealed` (`dungeonPlate`), `switchOn` (`dungeonSwitch`),
-  `warp` (`dungeonWarp`), `bossDefeated` (`dungeonBoss`), `statue` (`popup`).
+  `warp` (`dungeonWarp`), `bossDefeated` (`dungeonBoss`).
 - **Playthrough:** the pathfinder asks an entity type's `passable(state,
   entity, area)` (locked doors, shutters, blocks define it) and reads tiles
   changed with `VL.saveTile` from the save, so `walkTo` routes through an
@@ -2836,10 +2845,10 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
 2. Don't place bars in the boss room: the framework adds the boss gate on
    the boss door's landing tile (or `boss.gate`), and the warp after the
    heart. Fill the overworld door spot with a `door` into the first room and put a
-   `door` on the mat tile back out; a `saveStatue` by the entrance. Make
-   `entrance` a safe, walkable tile outside the door: the boss warp lands
-   the hero there and records it as his save point; once the dungeon is
-   finished, Continue and faints from there wake him at `VL.HOME_SAVE`.
+   `door` on the mat tile back out, and add a lantern just outside the
+   door to `VL.SAVE_LANTERNS` (with `dungeon: '<id>'`, reachable before the
+   dungeon opens). Make `entrance` a safe, walkable tile outside the door:
+   the boss warp lands the hero there.
 3. Lay the puzzles with the entities above, every id prefixed with the
    dungeon (`d1…`); every key, boss key, map, plate and switch has one.
    Every `smallKey`, `bossKey` and `lockedDoor` names its lock
@@ -2848,8 +2857,8 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
    reaches the far room another way); a block puzzle's plate says
    `weight: 'block'` so standing on it is not a solution; anything that
    should press a plate gets `weighsPlate: true` in its own entity
-   definition. Wherever the hero can appear (beside an opening, on the
-   statue step, where a door or warp lands him) he must have a way out
+   definition. Wherever the hero can appear (beside an opening, where a
+   door or warp lands him) he must have a way out
    before he pushes anything.
 4. Register the locks in the table (README "Progression"): claim the planned
    ones (`scriptoriumEntered`, `liftingGloves`, `d1Boss`, ...) and add one per
@@ -3002,7 +3011,9 @@ counter, a key or counter is unknown, a claim differs from its plan, or the
 milestone order disagrees with the stages or hides a sequence break. Optional
 locks that an event cuts off are listed as `missable` (today: the Primer book
 and the drawn world map after Dungeon 3). Hearts and health are not modelled
-(dying keeps everything, so bare-hand bush pulls never softlock). Deliberately
+(a faint goes back to the last save, W44: a state the player was already in,
+on ground he can stand on, so it opens no new softlock; bare-hand bush pulls
+never strand him). Deliberately
 broken tables in the test show each failure.
 
 Known limits (each pinned by a test in `tests/progression.test.js`):
@@ -3025,17 +3036,18 @@ screen edges and doors with real held directions; `drive.press(action)`,
 `drive.hold(actions, seconds)`, `drive.until(pred, maxSeconds, held)` and
 `drive.state`/`drive.app` do the rest (a popup scene that swallows input shows
 up as a `not reached` error naming the scene; `drive.closePopups()` reads and
-closes every waiting popup with S). `drive.reload()` stands for the
-player reloading the page: it swaps in the app returned by the `reload(app)`
-hook given to `createPlaythrough` (or `VL.reloadApp`), which W2 supplies once
-saving exists (fresh `createApp`, load; no save first, like a real reload);
-until then it throws. **`playTo` reloads after every milestone's step** and
-checks `reached` again, so progress that was never earned (`VL.earned`) fails
-there: progress survives reloading the page at any point. That reload sees
-everything saved by the end of the step, so a later earning in the same step
-(closing a popup earns) hides a missing `VL.earned` in the action itself: when
-a step ends with `drive.closePopups()` or more play, call `drive.reload()` right
-after the earning action and check it there (W5's `chestGear` step does). The default app is
+closes every waiting popup with S). `drive.saveAndQuit()` saves with real
+keys (popups read first, Esc, Save & Quit, Enter), and `drive.reload()` stands
+for the player doing that and reloading the page: it swaps in the app
+returned by the `reload(app)` hook given to `createPlaythrough` (or
+`VL.reloadApp`); `drive.reload({ save: false })` is a closed tab, nothing
+saved first. **`playTo` saves and reloads after every milestone's step** and
+checks `reached` again, so progress kept only in play state (a transient
+field, the room) fails there: everything a milestone reached survives a
+save. Dungeon steps step onto the lantern outside the door before going in
+(W44), and a step that ends in the highlands flies back down
+(`downFromTheHighlands` in `tests/highlands-route.js`), since Save & Quit
+wakes him where he quit. The default app is
 therefore a new game saved in slot 1 of an in-memory store (`slotApp`); the app
 itself is also injectable (`createPlaythrough(VL, { app })`), so the title
 screen and name entry can be driven from there, and an app without a save slot
