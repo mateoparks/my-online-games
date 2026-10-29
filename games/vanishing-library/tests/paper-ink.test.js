@@ -67,24 +67,25 @@ const FIELD = { area: 'overworld', screen: '1,1', tx: 4, ty: 6, facing: 'up' };
 
 // ---------- the Mortar & Pestle ----------
 
-test('the Mortar & Pestle is a hand tool: its key grinds one berry into ink', () => {
+test('the Mortar & Pestle is a hand tool: its key grinds berries into ink (five to one, W41)', () => {
   const t = setup();
   const { VL } = t;
   t.at(FIELD);
   VL.giveItem(t.game, 'mortarPestle');
   t.closePopups();
   assert.equal(VL.heldItem(t.game, 'mainHand'), 'mortarPestle', 'it lands in an empty hand');
-  give(VL, t.game, { berries: 2 });
+  const n = VL.TUNING.berriesPerInk;
+  give(VL, t.game, { berries: 2 * n });
   t.press('mainHand');
-  assert.deepEqual([t.game.inventory.berries, t.game.inventory.ink], [1, VL.TUNING.inkPerBerry]);
+  assert.deepEqual([t.game.inventory.berries, t.game.inventory.ink], [n, 1]);
   assert.ok(t.game.flags.madeInk);
   assert.ok(t.game.player.grind, 'the grinding shows with the hero');
   t.press('mainHand');
-  assert.equal(t.game.inventory.ink, VL.TUNING.inkPerBerry, 'one grind at a time');
+  assert.equal(t.game.inventory.ink, 1, 'one grind at a time');
   t.wait(VL.TUNING.grindSeconds + 0.05);
   assert.equal(t.game.player.grind, null);
   t.press('mainHand');
-  assert.deepEqual([t.game.inventory.berries, t.game.inventory.ink], [0, 2 * VL.TUNING.inkPerBerry]);
+  assert.deepEqual([t.game.inventory.berries, t.game.inventory.ink], [0, 2]);
   assert.equal(VL.heldItem(t.game, 'mainHand'), 'mortarPestle', 'the tool stays in hand when the berries run out');
 });
 
@@ -105,7 +106,7 @@ test('ink is earned, so a reload right after grinding keeps it', () => {
   const { VL } = t;
   t.at(FIELD);
   VL.giveItem(t.game, 'mortarPestle');
-  give(VL, t.game, { berries: 1 });
+  give(VL, t.game, { berries: VL.TUNING.berriesPerInk });
   t.closePopups();
   t.press('mainHand');
   t.reload();
@@ -118,15 +119,15 @@ test('S on the mortar in the equipment screen grinds too, and the screen counts 
   const t = setup();
   const { VL } = t;
   VL.giveItem(t.game, 'mortarPestle');
-  give(VL, t.game, { berries: 1, paper: 3 });
+  give(VL, t.game, { berries: VL.TUNING.berriesPerInk, paper: 3 });
   t.closePopups();
   t.press('equipment');
   assert.equal(t.app.sceneId, 'equipment');
   t.app.equipment.cursor = VL.equipmentItems(t.game).findIndex((item) => item.id === 'mortarPestle');
-  VL.addResource(t.game, 'berries', 1);
+  VL.addResource(t.game, 'berries', VL.TUNING.berriesPerInk);
   t.press('interact');
   t.press('interact');
-  assert.deepEqual([t.game.inventory.berries, t.game.inventory.ink], [0, 2], 'one berry per S, no waiting while paused');
+  assert.deepEqual([t.game.inventory.berries, t.game.inventory.ink], [0, 2], 'one grind per S, no waiting while paused');
   const drawn = [];
   const ctx = fakeContext();
   const sprite = VL.ART.drawSprite;

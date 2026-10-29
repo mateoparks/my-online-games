@@ -107,10 +107,11 @@ test('flight lengths are W7 tuning, out of config.js (README "Flight contract")'
   assert.ok(read('systems/chickens.js').includes('chickenFlightShort: 2'));
 });
 
-test('all eight chicken spots hold a chicken, the lost one marked lost', () => {
+test('all seven chicken spots hold a chicken, the lost one marked lost', () => {
   const { VL } = loadGame();
   const spots = Object.values(VL.SPOTS).filter((spot) => spot.how === 'chicken');
-  assert.equal(spots.length, 8);
+  // W41 took one off the highlands' middle shelves (eight before).
+  assert.equal(spots.length, 7);
   for (const spot of spots) {
     assert.ok(spot.filled, `${spot.id} is filled`);
     const entity = VL.getScreen(spot.area, spot.screen).entities.find((e) => e.spot === spot.id);
@@ -493,6 +494,13 @@ function overworld() {
   const flyFrom = (screen, tx, ty, facing, almanac = true) => {
     app.game.flags.chickenAlmanacRead = almanac;
     VL.place(app.game, { area: 'overworld', screen, tx, ty, facing });
+    // On a shelf with no chicken of its own (W41), the middle one is brought along.
+    if (!app.game.player.carrying && !app.game.room.entities.some((e) => e.type === 'chicken')) {
+      const spot = VL.SPOTS.chickenHighlands;
+      VL.place(app.game, { area: 'overworld', screen: spot.screen, tx: spot.x, ty: spot.y });
+      assert.ok(VL.liftChicken(app.game, app.game.room.entities.find((e) => e.spot === spot.id)));
+      VL.place(app.game, { area: 'overworld', screen, tx, ty, facing });
+    }
     // A chicken still in hand from the last flight carries him again.
     const hen = app.game.player.carrying ? null : app.game.room.entities.find((e) => e.type === 'chicken');
     if (hen) Object.assign(hen, { px: app.game.player.x + 4, py: app.game.player.y, x: tx, y: ty, mode: 'idle', idle: 99 });
@@ -553,7 +561,7 @@ test('respawn: a highland chicken is always at its spot, and a flight leaves one
   const lair = app.game.room.entities.filter((e) => e.type === 'chicken');
   assert.equal(lair.length, 1, 'chickenLair waits at -1,-4');
   assert.equal(lair[0].spot, 'chickenLair');
-  assert.equal(app.game.player.carrying.spot, 'chickenGap', 'and the one from across the chasm is in hand');
+  assert.equal(app.game.player.carrying.spot, 'chickenHighlands', 'and the one carried over the chasm is in hand');
 });
 
 // ---------- the swarm ----------

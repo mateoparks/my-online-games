@@ -287,11 +287,9 @@ function hookSweep({ VL, app, game }, area, starts) {
 test('on the overworld the hook never fetches a pickup the hero cannot walk to yet', () => {
   const world = loadW15();
   const { VL } = world;
-  const { fetched, seen } = hookSweep(world, 'overworld', [VL.START, VL.WOODS_ENTRY]);
+  const { hooked, fetched, seen } = hookSweep(world, 'overworld', [VL.START, VL.WOODS_ENTRY]);
   assert.ok(seen > 1000, `${seen} tiles on foot`);
-  // Since W38 the buried heart's corner is open (a ring of flowers), so no
-  // overworld pickup is out of reach on foot today; the next test keeps the
-  // sweep honest with two that are.
+  assert.ok(hooked.has('heartFieldA'), 'heartFieldA, in its nook of bushes, is tried with the real hook');
   assert.deepEqual(fetched, []);
 });
 
