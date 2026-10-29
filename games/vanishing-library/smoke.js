@@ -27,7 +27,9 @@ const sizes = [
 ];
 const walkMs = 300;
 const slideMs = 700; // ~13 px to the edge, then the 350 ms slide
-const timeoutMs = 360000;
+// The stall watchdog's limit: raised as the smoke grows (W20: 360 s; W42,
+// with W41's and W42's blocks the full run takes about 6 minutes on a busy Mac).
+const timeoutMs = 480000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

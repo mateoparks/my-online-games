@@ -1090,8 +1090,9 @@ with either or both states at R / (R + G + B) of 0.8 or more). WCAG 2.1 and 2.2
 replaced it with a CIE 1976 UCS chromaticity change over 0.2; that test isn't
 added, since every real scene scores 0% on the red check. A control run with the steady layers
 off must fail the first two, and a red-and-black strobe over 6% of the
-canvas the red one. It runs for 360 s at most (about 1.45 times its run time
-of about 250 s alone). A
+canvas the red one. The smoke runs for 480 s of awake time at most (raised
+from 360 s at W42, when the full run with W41's and W42's blocks passed six
+minutes on a busy machine). A
 test file that runs no tests, and an `async` test function, both fail the
 node run.
 
