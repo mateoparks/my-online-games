@@ -3545,6 +3545,102 @@ async function main() {
       for (const problem of w38Problems) console.log(`     ${problem}`);
     }
 
+    // W43, Matthew's sixth playtest: each of the four bosses with its life
+    // meter, full and drained by a hit (w43-meter-<boss>, w43-meter-<boss>-hit),
+    // the meter gone once it is beaten, and the Dragon's two strikes a round
+    // with real keys: a strike counts and wakes it, still in round one
+    // (w43-dragon-strike).
+    {
+      errors.length = 0;
+      const w43Problems = [];
+      const codes = { KeyD: [68, 'd'], Space: [32, ' '] };
+      const keyEvent = (code) => ({ key: codes[code][1], code, windowsVirtualKeyCode: codes[code][0], nativeVirtualKeyCode: codes[code][0] });
+      const tapKey = async (code) => {
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent(code) });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent(code) });
+        if (!(await settle())) w43Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      const holdKeyUntil = async (code, expression, ms = 4000) => {
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent(code) });
+        const ok = await waitFor(expression, ms);
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent(code) });
+        return ok;
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const GEAR = "Object.assign(g.items, { glowstone: true, woodSword: true, metalSword: true, mirrorShield: true, slingshot: true, liftingGloves: true, grapplingRope: true }); g.hands = { mainHand: 'metalSword', offHand: 'mirrorShield' }; g.inventory.brokenShells = 15;";
+      const stage = (id) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap', 'brokenShell']) g.popups.seen[id] = true;
+        Object.assign(g.flags, { shockwave: true, shockwaveDue: true, shockwaveWoke: true, 'gave:helperWood': true, chickenAlmanacRead: true });
+        ${GEAR}
+        const d = VL.DUNGEONS[${JSON.stringify(id)}];
+        for (const door of Object.keys(VL.dungeonState(g, d.id).doors || {})) VL.dungeonState(g, d.id).doors[door] = true;
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, { area: d.area, screen: d.boss.screen, tx: 7, ty: 6, facing: 'up' });
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e) || e.boss);
+        g.player.invuln = 99;
+        document.getElementById('game').focus();
+      })()`);
+      // Whether the meter's bar shows its red at its left end, drawn offscreen.
+      const barLit = "(() => { const c = document.createElement('canvas'); c.width = 256; c.height = 192; const ctx = c.getContext('2d'); VL.drawWorld(ctx, g, VL.app.game.time); const b = VL.BOSS_METER; const p = ctx.getImageData(b.x + b.w - 5, VL.TUNING.hudHeight + b.y + 4, 1, 1).data; const want = VL.ART.color('heart'); return '#' + [p[0], p[1], p[2]].map((n) => n.toString(16).padStart(2, '0')).join('') === want; })()";
+      const hits = {
+        scriptorium: 'b.hits = 1;',
+        hollowOak: 'b.life -= 1;',
+        lighthouse: 'b.life -= 1;',
+        lair: 'b.life -= 2;',
+      };
+      for (const [id, hit] of Object.entries(hits)) {
+        const boss = await see(`VL.DUNGEONS.${id}.boss.type`);
+        await stage(id);
+        await sleep(500);
+        const full = await see('VL.bossMeter(g)');
+        if (!full || full.left !== full.total) w43Problems.push(`${boss}: the meter at the start = ${JSON.stringify(full)}`);
+        if (!(await see(barLit))) w43Problems.push(`${boss}: the full bar is not drawn`);
+        await shot(`w43-meter-${boss}`);
+        await evaluate(`(() => { const g = VL.app.game; const b = g.room.bossRef; ${hit} })()`);
+        await sleep(1000);
+        const after = await see('VL.bossMeter(g)');
+        if (!after || !(after.left < full.total)) w43Problems.push(`${boss}: the meter after a hit = ${JSON.stringify(after)}`);
+        if (await see(barLit)) w43Problems.push(`${boss}: the bar's right end still lit after a hit`);
+        await shot(`w43-meter-${boss}-hit`);
+        await evaluate(`(() => { const g = VL.app.game; const b = g.room.bossRef; b.defeated = true; g.room.entities = g.room.entities.filter((e) => e !== b); })()`);
+        if (!(await waitFor(`VL.bossBeaten(g, '${id}')`, 2000))) w43Problems.push(`${boss}: not beaten`);
+        if ((await see('VL.bossMeter(g)')) !== null) w43Problems.push(`${boss}: the meter stayed after the win`);
+      }
+
+      // The Dragon with real keys: its fire bounced home, one metal strike.
+      await stage('lair');
+      await evaluate("(() => { const g = VL.app.game; g.room.bossRef.arriving = 0; })()");
+      if (!(await holdKeyUntil('KeyD', "g.room.bossRef.mode === 'dazed'", 8000))) w43Problems.push('its fire bounced home did not daze the Dragon');
+      await evaluate("(() => { const g = VL.app.game; const d = g.room.bossRef; Object.assign(g.player, VL.tileCenter(VL.tileOf(d.cx, d.cy + 30).tx, VL.tileOf(d.cx, d.cy + 30).ty), { facing: 'up' }); })()");
+      await tapKey('Space');
+      if (!(await waitFor("g.room.bossRef.mode === 'recover'", 1500))) w43Problems.push(`a metal strike did not wake the Dragon (mode ${await see('g.room.bossRef.mode')})`);
+      await sleep(150);
+      await shot('w43-dragon-strike');
+      const struck = await see('[g.room.bossRef.life, g.room.bossRef.rounds, VL.dragonRound(g.room.bossRef), VL.bossMeter(g).left, VL.bossMeter(g).total]');
+      const roundLife = await see('VL.TUNING.dragonRoundLife');
+      if (struck.join() !== `${roundLife - 2},3,1,10,12`) w43Problems.push(`after one strike: life, rounds, round, meter left, total = ${struck}`);
+
+      w43Problems.push(...errors);
+      if (w43Problems.length) failures += 1;
+      console.log(`${w43Problems.length ? 'FAIL' : 'ok  '} W43 bosses: the four bosses' life meters (full, drained, gone once beaten), the Dragon's strike waking it in round one, ${path.join(outDir, 'w43-*.png')}`);
+      for (const problem of w43Problems) console.log(`     ${problem}`);
+    }
+
     // W40, choosable hand keys with real keys: Esc → Controls (w40-controls),
     // the main hand waiting for a key (w40-capture), S refused with a note
     // (w40-refused), D refused as the off hand's key, Q taken
@@ -3838,7 +3934,7 @@ async function main() {
         };
         // The Mirror Shield held up: fire bounced home, the Dragon dazed and
         // struck, round after round, to its puff of smoke.
-        results.push(run('the Dragon: fire bounced home, dazed and struck, round after round', 20, (app, g) => lairArm(g, 'mirrorShield'), (app, g, s) => {
+        results.push(run('the Dragon: fire bounced home, dazed and struck, round after round', 34, (app, g) => lairArm(g, 'mirrorShield'), (app, g, s) => {
           g.player.invuln = 99;
           g.player.facing = 'up';
           const d = g.room.entities.find((e) => e.type === 'dragon');

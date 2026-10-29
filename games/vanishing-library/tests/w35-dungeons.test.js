@@ -430,7 +430,7 @@ test('the wood sword never hurts the Dragon, not even dazed, and says nothing; t
   {
     const { VL, state, dragon } = dazedDragon('metalSword');
     VL.hitEnemy(state, dragon, VL.TUNING.swordDamage.metalSword, VL.heroCentre(state), 'metalSword');
-    assert.equal(dragon.rounds, VL.TUNING.dragonRounds - 1, 'one metal hit ends the round');
+    assert.deepEqual([dragon.life, dragon.rounds, dragon.mode], [VL.TUNING.dragonRoundLife - VL.TUNING.swordDamage.metalSword, VL.TUNING.dragonRounds, 'recover'], 'one metal hit counts and wakes it (W43: two a round)');
   }
 });
 
@@ -786,19 +786,18 @@ test('the fan is fair: a hero who stands in its middle line, shield up, bounces 
   assert.equal(state.hp, hp, 'no purple ball touched him');
 });
 
-test('the same hits win as before, and a faint resets the fight to round one', () => {
+test('twice the hits win as before (W43: two a round, each after its own bounce), and a faint resets the fight to round one', () => {
   const { VL, state, dragon } = dragonRound(1);
   state.player.invuln = 99;
-  let hits = 0;
-  for (let round = 1; round <= 3; round += 1) {
-    assert.equal(VL.dragonRound(dragon), round);
+  const rounds = [];
+  for (let i = 0; i < 20 && dragon.mode !== 'dying'; i += 1) {
+    rounds.push(VL.dragonRound(dragon));
     VL.ENEMIES.dragon.onFire(state, dragon, { owner: dragon });
     VL.hitEnemy(state, dragon, VL.TUNING.swordDamage.metalSword, VL.heroCentre(state), 'metalSword');
-    hits += 1;
     for (let t = 0; t < 2 && !['perch', 'prowl', 'dying'].includes(dragon.mode); t += 1 / 60) VL.updateWorld(state, VL.actions({}), 1 / 60);
   }
   assert.equal(dragon.mode, 'dying');
-  assert.equal(hits, VL.TUNING.dragonRounds, 'one metal hit a round, three rounds');
+  assert.deepEqual(rounds, [1, 1, 2, 2, 3, 3], 'two metal hits a round, three rounds');
   const again = dragonRound(3);
   again.state.player.invuln = 0;
   again.state.hp = 1;

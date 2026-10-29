@@ -8,7 +8,9 @@
 // it paces after the hero and breathes one ball; in the second it flies
 // between perches and breathes two in a row; in the third, from its perches,
 // a fan of three, of which only the middle (orange) one bounces: the purple
-// ones beside it must be dodged. Every attack is drawn breath first. The
+// ones beside it must be dodged. Every attack is drawn breath first. Each
+// round takes two strikes (W43, Matthew: twice the life), and every strike
+// wakes it, so each needs its own fire bounced home. The
 // third round ends in a puff of smoke (marked `defeated` before it leaves the
 // room, README "Dungeons").
 // Nothing about it blinks: a hit shakes it instead (the flash guard, W18),
@@ -17,7 +19,8 @@
   VL.tune({
     // hp is never run down (refilled on every hit); a round's life is.
     enemyDragon: { hp: 50, damage: 2 },
-    dragonRoundLife: 2,
+    // Two metal-sword strikes a round (TUNING.swordDamage.metalSword is 2).
+    dragonRoundLife: 4,
     dragonRounds: 3,
     dragonSpeed: 26,
     dragonSpeedUp: 1.3,
@@ -269,8 +272,8 @@
       return true;
     },
     // Its hp is refilled on every hit; only a metal sword (TUNING.toughSwords)
-    // while it is dazed takes `life`. `hurt` is cleared so the framework's
-    // hurt blink never shows.
+    // while it is dazed takes `life`, and that strike wakes it. `hurt` is
+    // cleared so the framework's hurt blink never shows.
     onHit(state, dragon, weapon) {
       const damage = VL.ENEMIES.dragon.hp - dragon.hp;
       dragon.hp = VL.ENEMIES.dragon.hp;
@@ -283,7 +286,10 @@
       dragon.life -= damage;
       dragon.tint = T.dragonHitTintSeconds;
       state.events.push({ type: 'dragonHurt' });
-      if (dragon.life > 0) return;
+      if (dragon.life > 0) {
+        setMode(dragon, 'recover');
+        return;
+      }
       dragon.rounds -= 1;
       if (dragon.rounds <= 0) {
         setMode(dragon, 'dying');

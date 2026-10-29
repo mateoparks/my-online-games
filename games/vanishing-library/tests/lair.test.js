@@ -338,12 +338,16 @@ test('the Dragon takes three bounce-and-strike rounds, then goes up in a puff of
   const d = dragonOf(t);
   d.arriving = 0;
   t.game.player.invuln = 99;
+  // Each strike wakes it (W43), so every one needs its own fire bounced home.
+  const strikes = VL.TUNING.dragonRoundLife / VL.TUNING.swordDamage.metalSword;
   for (let round = 1; round <= 3; round += 1) {
-    t.until(() => ['prowl', 'perch', 'inhale', 'volley'].includes(d.mode), 2);
-    VL.ENEMIES.dragon.onFire(t.game, d, { owner: d });
-    assert.equal(d.mode, 'dazed', `round ${round}: dazed`);
-    for (let hit = 1; hit <= VL.TUNING.dragonRoundLife; hit += 1) VL.hitEnemy(t.game, d, 1, { x: 0, y: 0 }, 'metalSword');
-    if (round < 3) assert.equal(d.mode, 'recover', `round ${round} done: it shakes itself awake`);
+    for (let strike = 1; strike <= strikes; strike += 1) {
+      t.until(() => ['prowl', 'perch', 'inhale', 'volley'].includes(d.mode), 2);
+      VL.ENEMIES.dragon.onFire(t.game, d, { owner: d });
+      assert.equal(d.mode, 'dazed', `round ${round}, strike ${strike}: dazed`);
+      VL.hitEnemy(t.game, d, VL.TUNING.swordDamage.metalSword, { x: 0, y: 0 }, 'metalSword');
+      if (round < 3 || strike < strikes) assert.equal(d.mode, 'recover', `round ${round}, strike ${strike}: it shakes itself awake`);
+    }
   }
   assert.equal(d.mode, 'dying');
   t.until(() => VL.bossBeaten(t.game, AREA), VL.TUNING.dragonDyingSeconds + 0.5);
