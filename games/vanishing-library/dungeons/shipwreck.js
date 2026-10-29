@@ -221,13 +221,6 @@
   VL.fillSpot('shipwreckHatch', { type: 'door', to: { area: AREA, screen: '0,0', tx: 7, ty: 1, facing: 'down' } });
   VL.fillSpot('oreLakeIsland', { type: 'ore', id: 'oreLakeIsland' });
 
-  // Once the page is found, the hold's lantern hands the save point to the
-  // harbour, so no Continue or faint starts below deck out at sea (as a
-  // beaten dungeon's warp does, README "The boss room").
-  VL.WRECK_HOME = { area: 'overworld', screen: '2,1', tx: 8, ty: 7, facing: 'down' };
-  VL.nameWakePlace(VL.WRECK_HOME, 'by the harbour');
-  VL.moveSavePoint((state, point) => (point.area === AREA && VL.spotFound(state, 'pageShipwreck') ? VL.WRECK_HOME : null));
-
   VL.defineDungeon('wreck', {
     area: AREA,
     name: 'Shipwreck',

@@ -273,7 +273,7 @@ test('an NPC with nothing to say stays silent', () => {
   assert.equal(app.sceneId, 'play');
 });
 
-test('an entry\'s `set` flags are earned (saved) when the talk ends, and change the next talk', () => {
+test('an entry\'s `set` flags are set when the talk ends, and change the next talk', () => {
   const { VL } = loadGame();
   talkWorld(VL);
   defineTester(VL, [
@@ -281,22 +281,13 @@ test('an entry\'s `set` flags are earned (saved) when the talk ends, and change 
     { say: 'Hello again.' },
   ]);
   const app = talkApp(VL);
-  app.game.dirty = false;
-  const earned = [];
-  const original = VL.earned;
-  VL.earned = (state) => {
-    earned.push(true);
-    return original(state);
-  };
   press(VL, app, 'interact');
   assert.equal(app.game.flags['met:tester'], undefined, 'not while the words are still showing');
   assert.equal(app.dialogue.pages[0][0], 'Nice to meet you!');
   press(VL, app, 'interact');
   press(VL, app, 'interact');
-  VL.earned = original;
   assert.equal(app.sceneId, 'play');
   assert.equal(app.game.flags['met:tester'], true);
-  assert.equal(earned.length, 1);
   press(VL, app, 'interact');
   assert.equal(app.dialogue.pages[0][0], 'Hello again.');
 });
@@ -638,10 +629,9 @@ test('shop rules: prices, what is short, sold out, and a buy pays every cost or 
   assert.equal(state.inventory.shells, 4, 'a failed buy spends nothing');
   assert.deepEqual({ ...VL.buyOffer(state, offer('sword')) }, { ok: false, reason: 'notEnough', kind: 'wood' });
 
-  state.dirty = false;
   assert.equal(VL.buyOffer(state, offer('paper')).ok, true);
   assert.deepEqual([state.inventory.shells, state.inventory.ore], [2, 1]);
-  assert.equal(state.dirty, true, 'a buy is earned, so it saves');
+  assert.equal(state.dirty, false, 'a buy saves nothing by itself (W44)');
   assert.ok(state.events.some((e) => e.type === 'bought' && e.offer === 'paper'));
 
   state.inventory.wood = 8;

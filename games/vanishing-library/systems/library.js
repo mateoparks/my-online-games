@@ -83,7 +83,6 @@
     VL.showMessage(state, { title: 'You found a book!', text: `"${VL.BOOKS[id].title}"` });
     VL.showPopup(state, 'firstBook');
     state.events.push({ type: 'pickup', kind: 'book' });
-    VL.earned(state);
     return true;
   };
 
@@ -96,7 +95,6 @@
     library.returned.push(...ids);
     library.trips += 1;
     state.events.push({ type: 'booksReturned', count: ids.length });
-    VL.earned(state);
     return ids;
   };
 
@@ -107,7 +105,6 @@
     if (!isReadable(id) || VL.bookRead(state, id) || !VL.bookReturned(state, id)) return false;
     lib(state).read.push(id);
     VL.BOOKS[id].read?.(state);
-    VL.earned(state);
     return true;
   };
 
@@ -125,7 +122,6 @@
     state.items[id] = true;
     VL.holdUp(state, VL.itemSprite(id));
     VL.showPopup(state, id);
-    VL.earned(state);
   };
 
   const REWARD_GIFTS = {
@@ -146,7 +142,6 @@
     REWARD_GIFTS[id](state);
     // He turns back to the desk once it is held up, so S talks again.
     if (state.holdUp && facing) state.holdUp.facing = facing;
-    VL.earned(state);
     return true;
   };
   VL.nextRewardAt = (state) => rewardsInOrder()
@@ -255,7 +250,6 @@
       take -= 1;
     }
     library.gone.push(...taken);
-    if (taken.length || afterD3) VL.earned(state);
     return taken;
   };
 
@@ -454,7 +448,6 @@
       });
     }
     state.events.push({ type: 'pickup', kind: 'page' });
-    VL.earned(state);
     return true;
   };
 

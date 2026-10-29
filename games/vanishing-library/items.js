@@ -31,7 +31,6 @@
     }
     state.inventory[kind] = after;
     if (amount < 0) VL.tidyHands(state);
-    VL.earned(state);
   };
 
   // ---------- items ----------
@@ -84,7 +83,6 @@
       if (free && !held) state.hands[free] = id;
     }
     if (item.popup) VL.showPopup(state, id);
-    VL.earned(state);
   };
 
   // Puts an item in a hand; it leaves the other hand if it was there. Choosing
@@ -101,7 +99,6 @@
       if (twoHanded(state.hands[hand]) || (id !== null && state.hands[other] === id)) state.hands[other] = null;
       state.hands[hand] = id;
     }
-    VL.earned(state);
   };
 
   // What a hand really holds: the saved id only while the hero has that item,
@@ -160,7 +157,6 @@
     const { seen, queue } = state.popups;
     if (seen[id] || queue.includes(id)) return false;
     queue.push(id);
-    VL.earned(state);
     return true;
   };
 
@@ -190,7 +186,6 @@
     if (!VL.currentPopup(state)) return;
     const id = state.popups.queue.shift();
     state.popups.seen[id] = true;
-    VL.earned(state);
   };
 
   // ---------- facing ----------

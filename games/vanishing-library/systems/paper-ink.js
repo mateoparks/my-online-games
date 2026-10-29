@@ -340,7 +340,6 @@
     if (!state.items.worldMap) return false;
     delete state.items.worldMap;
     VL.tidyHands(state);
-    VL.earned(state);
     return true;
   };
 
@@ -470,10 +469,6 @@
   VL.defineSystem('paperInk', {
     order: 96,
     update(state, actions, dt) {
-      // Walking (or flying, or a door) onto a new screen is earned, so a
-      // reload right after exploring keeps it on the map. A teleport outside
-      // a step (a load, a respawn) is never a first visit worth a save.
-      if (state.events.some((e) => e.type === 'enterScreen' && e.first)) VL.earned(state);
       const grind = state.player.grind;
       if (grind) {
         grind.t += dt;

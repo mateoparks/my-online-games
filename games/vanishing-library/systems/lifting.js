@@ -84,7 +84,6 @@
     state.items[id] = true;
     if (VL.ITEMS[id].popup) VL.showPopup(state, id);
     state.events.push({ type: 'pickup', kind: 'item' });
-    VL.earned(state);
   };
 
   // ---------- what can be lifted ----------

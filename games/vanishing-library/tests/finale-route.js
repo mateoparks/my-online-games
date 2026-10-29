@@ -1,9 +1,9 @@
 // The finale played for real (W20): one function per milestone, each starting
-// from wherever the hero stands (the hut after a reload or a faint, or where
-// the last one left him). tests/steps/w20.steps.js strings them into the
+// from wherever the hero stands (his last save after a reload or a faint,
+// or where the last one left him). tests/steps/w20.steps.js strings them into the
 // story; tests/finale.test.js runs them from the W19 fixture.
 const assert = require('node:assert/strict');
-const { walk, ow } = require('./highlands-route');
+const { walk, ow, downFromTheHighlands } = require('./highlands-route');
 const { talkThrough } = require('./steps/w16.steps');
 const { equip, face } = require('./metal-gear-route');
 
@@ -22,6 +22,7 @@ function wake(drive) {
 function downTheTrapdoor(drive) {
   const { state } = drive;
   if (state.player.area === 'workshop') return;
+  downFromTheHighlands(drive);
   walk(drive, ow('2,0', 3, 4));
   drive.closePopups();
   drive.until((s) => s.player.area === 'workshop' && settled(s), 2, ['up']);
@@ -89,6 +90,7 @@ function fightMarionettes(drive) {
 
 const route = {
   trapdoorOpen(drive) {
+    downFromTheHighlands(drive);
     walk(drive, ow('2,0', 5, 4));
     drive.closePopups();
   },
@@ -129,7 +131,8 @@ const route = {
     assert.equal(drive.app.title.slots[drive.app.title.cursor].summary.finished, true, 'the slot shows FINISHED');
     drive.press('confirm');
     assert.equal(drive.app.sceneId, 'play');
-    assert.deepEqual([drive.state.player.area, drive.state.player.screen], [VL.HOME_SAVE.area, VL.HOME_SAVE.screen], 'Continue wakes him at the hut');
+    const lantern = VL.SAVE_LANTERNS.library;
+    assert.deepEqual([drive.state.player.area, drive.state.player.screen, ...Object.values(VL.heroTile(drive.state))], [lantern.area, lantern.screen, lantern.tx, lantern.ty], 'the credits saved at the library lantern (W44)');
   },
 };
 

@@ -208,7 +208,6 @@
       VL.markFound(state, buried.id);
       if (buried.popup) VL.showPopup(state, buried.popup);
       state.events.push({ type: 'pickup', kind: 'book' });
-      VL.earned(state);
       return 'find';
     }
     const secret = ground === 'dirt' && secretAt(state, tx, ty);

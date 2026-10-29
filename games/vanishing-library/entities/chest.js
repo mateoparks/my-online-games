@@ -71,7 +71,6 @@
         if (sprite) VL.holdUp(state, sprite);
       }
       if (chest.found) VL.showMessage(state, chest.found);
-      VL.earned(state);
       state.events.push({ type: 'pickup', kind: 'chest' });
     },
     draw(ctx, chest, x, y) {

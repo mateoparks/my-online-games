@@ -48,7 +48,7 @@ function setup({ where, gloves = true, storage = false, enemies = false } = {}) 
     find: (type, where = {}) => app.game.room.entities.find((e) => e.type === type && Object.entries(where).every(([k, v]) => e[k] === v)),
     tileHere: (tx, ty) => VL.tileAt(app.game.room.area, app.game.room.screen, tx, ty, app.game.room),
     reload(place) {
-      app = VL.reloadApp(app);
+      app = VL.reloadApp(app, { save: true });
       if (place) t.place(place);
     },
     // Reads and closes a waiting message or popup with S.

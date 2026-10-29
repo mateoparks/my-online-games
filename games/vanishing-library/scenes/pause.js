@@ -62,6 +62,7 @@
       }
       // With saving off there is nothing to write; a write that fails keeps
       // the player here with the note rather than quitting as if it saved.
+      VL.saveGame(app.game, VL.quitPlace(app.game).place);
       if (app.save() || !app.storage.ok) app.quit();
       else if (app.saveFailed) {
         // A kid must never be stuck behind full storage: after one failed
@@ -84,7 +85,7 @@
         VL.ART.text(ctx, option, centre - 32, y, { color: chosen ? 'goldLight' : 'text' });
       });
       if (VL.PAUSE_OPTIONS[app.pause.cursor] === 'Save & Quit' && app.storage.ok) {
-        VL.ART.text(ctx, `CONTINUE STARTS ${VL.popupText(VL.wakeWords(app.game) || 'at your last save point', app.game).toUpperCase()}`, centre, BOX.y + 60, { size: 'small', align: 'center', color: 'textDim' });
+        VL.ART.text(ctx, `CONTINUE STARTS ${VL.popupText(VL.quitPlace(app.game).words, app.game).toUpperCase()}`, centre, BOX.y + 60, { size: 'small', align: 'center', color: 'textDim' });
       }
       controls(app.game).forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 70 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
       if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', centre, BOX.y + 109, { size: 'small', align: 'center', color: 'goldLight' });

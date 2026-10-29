@@ -1411,7 +1411,7 @@ async function main() {
 
     // W13, the dungeon framework on the sample dungeon (tests/sample-dungeon.js,
     // loaded into the page here, never by the game) with real keys: a room
-    // with its statue and enemy, the locked door's note, the block pushed
+    // with its lantern and enemy, the locked door's note, the block pushed
     // onto its plate and the shutter lifting, the keys HUD, the map screen on M, and the
     // boss room, saved as w13-*.png. A block of its own, so its names never clash.
     {
@@ -1448,8 +1448,8 @@ async function main() {
       await dungeonGame({ area: 'sample', screen: '0,0', tx: 8, ty: 7, facing: 'up' });
       await sleep(300);
       await snap('w13-room');
-      const room = await peek("[g.room.entities.some((e) => e.type === 'slime'), g.room.entities.find((e) => e.type === 'shutter').solid, g.room.entities.some((e) => e.type === 'saveStatue')]");
-      if (room.join() !== 'true,true,true') dungeonProblems.push(`the entrance hall: slime, barred shutter, statue = ${room}`);
+      const room = await peek("[g.room.entities.some((e) => e.type === 'slime'), g.room.entities.find((e) => e.type === 'shutter').solid, g.room.entities.some((e) => e.type === 'savePoint')]");
+      if (room.join() !== 'true,true,true') dungeonProblems.push(`the entrance hall: slime, barred shutter, lantern = ${room}`);
 
       await dungeonGame({ area: 'sample', screen: '0,0', tx: 7, ty: 2, facing: 'up' }, "g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));");
       await holdArrowUntil('Up', 'g.dungeonNote');
@@ -1607,24 +1607,29 @@ async function main() {
       await shot('w42-lava-step');
       if ((await see('g.hp')) !== hpBefore - 2) scrProblems.push(`W42: two lava tiles took ${hpBefore} to ${await see('g.hp')}`);
 
-      // W42: the shield counts only once he walks out alive. Taken with one
-      // half heart left, the first lava step faints him, and it slips back
-      // into its chest (w42-shield-returned.png: the faint screen says so).
-      await scrGame({ area: 'lair', screen: '-1,-1', tx: 2, ty: 1, facing: 'left' }, "g.dungeons.lair.doors.d4DoorA = true; Object.assign(g.items, { woodSword: true, metalShield: true }); g.hands = { mainHand: 'woodSword', offHand: 'metalShield' };");
+      // W44: saved at the Lair's lantern, the shield taken with one half heart
+      // left, the first lava step faints him: the faint screen says he goes
+      // back to his last save, and S wakes him at the lantern without it.
+      await scrGame({ area: 'lair', screen: '-1,-1', tx: 2, ty: 1, facing: 'left' }, "g.dungeons.lair.doors.d4DoorA = true; Object.assign(g.items, { woodSword: true, metalShield: true }); g.hands = { mainHand: 'woodSword', offHand: 'metalShield' }; VL.saveGame(g, VL.SAVE_LANTERNS.lair);");
       await sleep(200);
       await tapKey('KeyS');
-      if (!(await waitFor("VL.app.sceneId === 'popup'", 2500))) scrProblems.push('W42: no popup from the shield chest');
+      if (!(await waitFor("VL.app.sceneId === 'popup'", 2500))) scrProblems.push('W44: no popup from the shield chest');
       await sleep(400);
       await tapKey('KeyS');
       await waitFor("VL.app.sceneId === 'play'", 1500);
-      const pending = await see("[VL.heldItem(g, 'offHand'), g.pendingChest && g.pendingChest.item]");
-      if (pending.join() !== 'mirrorShield,mirrorShield') scrProblems.push(`W42: the shield taken (off hand, pending) = ${pending}`);
+      if ((await see("VL.heldItem(g, 'offHand')")) !== 'mirrorShield') scrProblems.push('W44: the shield is not in hand');
       await evaluate('VL.app.game.hp = 1');
       await holdArrowUntil('Right', "VL.app.sceneId === 'fainted'");
       await sleep(900);
-      await shot('w42-shield-returned');
-      const returned = await see("[VL.app.sceneId, VL.hasItem(g, 'mirrorShield'), g.room.entities.find((e) => e.id === 'd4ShieldChest').opened, VL.heldItem(g, 'offHand'), VL.faintLines(g)[0]]");
-      if (returned.join() !== 'fainted,false,false,metalShield,The Mirror Shield slipped back into its chest.') scrProblems.push(`W42: a faint with the shield pending = ${returned}`);
+      await shot('w44-faint');
+      const words = await see('VL.faintLines(g)');
+      if (words.join(' ') !== 'You wake up at your last save. Anything found since then is waiting to be found again.') scrProblems.push(`W44: the faint words = ${words}`);
+      await tapKey('KeyS');
+      await waitFor("VL.app.sceneId === 'play'", 1500);
+      await sleep(300);
+      await shot('w44-faint-woke');
+      const woke = await see("[g.player.area, g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty, VL.hasItem(g, 'mirrorShield'), VL.heldItem(g, 'offHand'), g.hp === g.maxHp]");
+      if (woke.join() !== 'overworld,-1,-5,10,5,false,metalShield,true') scrProblems.push(`W44: woke after the faint = ${woke}`);
 
       const rock = await see("(() => { const s = VL.SPOTS.bookScriptoriumRock; return { screen: s.screen, x: s.x, y: s.y }; })()");
       await scrGame({ area: 'overworld', screen: rock.screen, tx: rock.x + 1, ty: rock.y, facing: 'left' });
@@ -2238,21 +2243,10 @@ async function main() {
         await sleep(400);
       }
       if (!(await see("g.room.entities.some((e) => e.type === 'warp') && g.room.entities.some((e) => e.bossGate && !e.closed)"))) lhProblems.push('the Lens Crab\'s heart taken did not open the gate and bring the warp');
-      // W31: the Lighthouse finished, a faint with its statue as the save point wakes him at the hut's lantern.
-      await evaluate("(() => { const g = VL.app.game; g.savePoint = { area: 'lighthouse', screen: '0,0', tx: 3, ty: 2, facing: 'down' }; VL.faint(g, 'crab'); })()");
-      await waitFor("VL.app.sceneId === 'fainted'", 1000);
-      await sleep(750);
-      await tapKey('KeyS');
-      if (!(await waitFor("VL.app.sceneId === 'play' && g.player.area === 'hut'", 1500))) lhProblems.push(`a faint after the Lighthouse woke him at ${await see('[g.player.area, g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty]')}, not the hut`);
-      else {
-        await sleep(300);
-        await shot('w31-faint-home');
-      }
-      if ((await see('[VL.heroTile(g).tx, VL.heroTile(g).ty].join()')) !== '2,2') lhProblems.push('not on the hut\'s lantern after the faint');
 
       lhProblems.push(...errors);
       if (lhProblems.length) failures += 1;
-      console.log(`${lhProblems.length ? 'FAIL' : 'ok  '} lighthouse: the dark door, 9 rooms, a dark floor lit by its lamps, the slingshot (chest, target), the beam solved, the Lens Crab dazed and beaten, a faint after it wakes in the hut (W31), ${path.join(outDir, 'w18-*.png')}`);
+      console.log(`${lhProblems.length ? 'FAIL' : 'ok  '} lighthouse: the dark door, 9 rooms, a dark floor lit by its lamps, the slingshot (chest, target), the beam solved, the Lens Crab dazed and beaten, ${path.join(outDir, 'w18-*.png')}`);
       for (const problem of lhProblems) console.log(`     ${problem}`);
     }
 
@@ -2586,8 +2580,7 @@ async function main() {
     // Shield from the big chest with the slingshot in the off hand (it takes
     // the hand), SAVED in the HUD bar over a dungeon room with its keys, the
     // spilled hoard clear of the keys readout, broken shells in the HUD and at
-    // the smithy, and a finished Scriptorium's statue and faint naming home.
-    // Saved as w32-*.png.
+    // the smithy. Saved as w32-*.png.
     {
       errors.length = 0;
       const w32Problems = [];
@@ -2663,24 +2656,98 @@ async function main() {
       await sleep(250);
       await shot('w32-smithy-purse');
 
-      // A finished Scriptorium: the statue says he wakes at home, and so does a faint.
-      await stage({ area: 'scriptorium', screen: '1,0', tx: 3, ty: 3, facing: 'up' }, "g.items.woodSword = true; g.hands = { mainHand: 'woodSword', offHand: null }; g.dungeons.scriptorium.boss = true; VL.markFound(g, VL.DUNGEONS.scriptorium.boss.heart);");
-      // Walk up onto the statue's step (3,2).
-      await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent('ArrowUp') });
-      await waitFor("g.dungeonNote && /wake up/.test(g.dungeonNote.text)", 3000);
-      await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent('ArrowUp') });
-      await shot('w32-statue-home');
-      if (!(await see("Boolean(g.dungeonNote && /wake up at home/.test(g.dungeonNote.text))"))) w32Problems.push(`the finished statue said: ${await see('g.dungeonNote && g.dungeonNote.text')}`);
-      await evaluate("VL.faint(VL.app.game, 'crab')");
-      await waitFor("VL.app.sceneId === 'fainted'");
-      await sleep(800);
-      await shot('w32-faint-home');
-      if ((await see("VL.wakeWords(g)")) !== 'at home') w32Problems.push('the faint does not wake him at home');
 
       w32Problems.push(...errors);
       if (w32Problems.length) failures += 1;
-      console.log(`${w32Problems.length ? 'FAIL' : 'ok  '} polish pass: the Mirror Shield takes the off hand, SAVED in the HUD bar, the hoard clear of the keys, broken shells counted, a finished statue and faint name home, ${path.join(outDir, 'w32-*.png')}`);
+      console.log(`${w32Problems.length ? 'FAIL' : 'ok  '} polish pass: the Mirror Shield takes the off hand, SAVED in the HUD bar, the hoard clear of the keys, broken shells counted, ${path.join(outDir, 'w32-*.png')}`);
       for (const problem of w32Problems) console.log(`     ${problem}`);
+    }
+
+    // W44, save lanterns and a homier hut: the hut (bed, empty bookshelf, the
+    // lantern on its nightstand), a real lantern save in slot 3 with SAVED in
+    // the bar, every lantern's spot, and Save & Quit naming where Continue
+    // starts and waking him on that very tile. Saved as w44-*.png.
+    {
+      errors.length = 0;
+      const w44Problems = [];
+      const codes = { ArrowUp: [38, 'ArrowUp'], ArrowDown: [40, 'ArrowDown'], Escape: [27, 'Escape'], Enter: [13, 'Enter'] };
+      const keyEvent = (code) => {
+        const [vk, keyName] = codes[code];
+        return { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+      };
+      const tapKey = async (code) => {
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent(code) });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent(code) });
+        if (!(await settle())) w44Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      // A new game in slot 3 (or none), placed and playing, enemies cleared.
+      const stage = (where, slot = null) => evaluate(`(() => {
+        localStorage.removeItem('vanishing-library-slot-3');
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), ${slot}, { fresh: true });
+        const g = VL.app.game;
+        g.popups.seen.controls = true;
+        VL.app.save();
+        VL.app.savedAt = null;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+      const lanterns = await see('VL.SAVE_LANTERNS');
+
+      // The hut, then up to the nightstand: the lantern saves to slot 3.
+      const home = lanterns.hut;
+      await stage({ ...home, ty: home.ty + 2, facing: 'up' }, 2);
+      await sleep(300);
+      await shot('w44-hut');
+      await call('Input.dispatchKeyEvent', { type: 'keyDown', ...keyEvent('ArrowUp') });
+      const saved = await waitFor('g.savePoint && VL.app.savedAt !== null', 3000);
+      await call('Input.dispatchKeyEvent', { type: 'keyUp', ...keyEvent('ArrowUp') });
+      await sleep(100);
+      await shot('w44-hut-saved');
+      const slot = JSON.parse(await evaluate("localStorage.getItem('vanishing-library-slot-3') || 'null'"));
+      if (!saved || !slot || slot.savePoint.tx !== home.tx || slot.savePoint.ty !== home.ty) w44Problems.push(`the hut's lantern did not save to slot 3: ${JSON.stringify(slot && slot.savePoint)}`);
+
+      // Every lantern where it stands.
+      for (const [id, lantern] of Object.entries(lanterns)) {
+        await stage({ ...lantern, ty: lantern.ty + 1 });
+        await sleep(250);
+        await shot(`w44-lantern-${id}`);
+        if (!(await see(`g.room.entities.some((e) => e.type === 'savePoint' && e.x === ${lantern.tx} && e.y === ${lantern.ty})`))) w44Problems.push(`no lantern drawn at ${id}`);
+      }
+
+      // Save & Quit on a field: the pause names it, and Continue wakes him there.
+      await stage({ area: 'overworld', screen: '1,0', tx: 5, ty: 6, facing: 'left' }, 2);
+      await evaluate('VL.app.game.inventory.wood = 3');
+      await tapKey('Escape');
+      await tapKey('ArrowDown');
+      await sleep(150);
+      await shot('w44-pause');
+      const hint = await see("VL.quitPlace(g).words");
+      if (hint !== 'right here') w44Problems.push(`the pause hint says ${hint}`);
+      await tapKey('Enter');
+      if (!(await waitFor("VL.app.sceneId === 'title'", 1500))) w44Problems.push('Save & Quit did not quit');
+      const back = JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.loadSlot(VL.app.storage, 2); return [g.player.screen, VL.heroTile(g).tx, VL.heroTile(g).ty, g.player.facing, g.inventory.wood]; })())`));
+      if (back.join() !== '1,0,5,6,left,3') w44Problems.push(`Continue after Save & Quit = ${back}`);
+      await evaluate("localStorage.removeItem('vanishing-library-slot-3')");
+
+      w44Problems.push(...errors);
+      if (w44Problems.length) failures += 1;
+      console.log(`${w44Problems.length ? 'FAIL' : 'ok  '} save lanterns: the homier hut, its nightstand lantern saving with SAVED, all seven lanterns, Save & Quit waking where he quit, ${path.join(outDir, 'w44-*.png')}`);
+      for (const problem of w44Problems) console.log(`     ${problem}`);
     }
 
     // W20, the finale with real keys: the square after the Dragon (the

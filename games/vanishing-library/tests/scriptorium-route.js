@@ -68,10 +68,12 @@ function pickUp(drive, before, dir, done) {
 const route = {
   scriptoriumEntered(drive) {
     drive.closePopups();
+    // W44: the lantern outside the door saves first.
+    const lantern = drive.VL.SAVE_LANTERNS.scriptorium;
+    drive.walkTo(lantern);
+    assert.deepEqual([drive.state.savePoint.screen, drive.state.savePoint.tx, drive.state.savePoint.ty], [lantern.screen, lantern.tx, lantern.ty], 'the lantern saved');
     drive.walkTo({ area: 'overworld', screen: '2,-2', tx: 8, ty: 4 });
     drive.until((state) => state.player.area === AREA && settled(drive), 2, ['up']);
-    drive.walkTo(at('1,0', 3, 3));
-    drive.until((state) => state.savePoint?.area === AREA, 1, ['up']);
   },
   woodsMural(drive) {
     go(drive, at('0,0', 7, 2));

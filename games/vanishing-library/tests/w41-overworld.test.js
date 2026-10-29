@@ -151,6 +151,8 @@ function shelves() {
   g.items.climbersAlmanac = true;
   for (const id of ['controls', 'hiddenPathFound']) g.popups.seen[id] = true;
   VL.place(g, ow('-1,-3', 7, 8));
+  // Saved here, so a faint goes back to the shelves with the Almanacs (W44).
+  VL.saveGame(g, ow('-1,-3', 7, 8));
   return { VL, drive };
 }
 
@@ -219,8 +221,6 @@ test('after a faint or a reload with the chicken in his arms, it is back at its 
       drive.press('interact');
       drive.closePopups();
     } else {
-      drive.state.flags.chickenAlmanacRead = true;
-      drive.app.save();
       drive.reload();
       drive.closePopups();
     }

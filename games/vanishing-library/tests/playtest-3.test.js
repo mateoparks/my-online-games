@@ -138,21 +138,19 @@ for (const id of Object.keys(BOSS_ROOMS)) {
     assert.equal(VL.dungeonCondition(state, { bossDone: true }), true);
   });
 
-  test(`${id}: fainting in the boss room wakes him at the dungeon's entrance statue with every door and key kept, and the gate lets him back in`, () => {
+  test(`${id}: fainting in the boss room goes back to his last save (the lantern outside, W44) with every door and key saved there, and the gate lets him back in`, () => {
     const { VL, state } = inBossRoom(id);
     const d = VL.dungeonState(state, id);
     d.keysGiven = 1;
     hold(VL, state, ['up'], 0.6);
     hold(VL, state, [], 0.1);
-    state.savePoint = null;
-    // The statue sets the save point as he passes it on the way in.
-    const statue = Object.entries(VL.AREAS[VL.DUNGEONS[id].area].screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'saveStatue').map((e) => ({ key, ...e })))[0];
-    state.savePoint = { area: VL.DUNGEONS[id].area, screen: statue.key, tx: statue.x, ty: statue.y, facing: 'down' };
+    const lantern = Object.values(VL.SAVE_LANTERNS).find((l) => l.dungeon === id);
+    VL.saveGame(state, lantern);
     const doors = JSON.stringify(d.doors);
     VL.faint(state, 'shrub');
     VL.respawn(state);
-    assert.deepEqual([state.player.area, state.player.screen, ...heroAt(VL, state)], [VL.DUNGEONS[id].area, statue.key, statue.x, statue.y]);
-    assert.equal(JSON.stringify(d.doors), doors, 'doors stay open');
+    assert.deepEqual([state.player.area, state.player.screen, ...heroAt(VL, state)], [lantern.area, lantern.screen, lantern.tx, lantern.ty]);
+    assert.equal(JSON.stringify(VL.dungeonState(state, id).doors), doors, 'doors stay open');
     assert.equal(VL.smallKeys(state, id), 1, 'keys kept');
     assert.equal(VL.bossBeaten(state, id), false);
     const gate = VL.getScreen(VL.DUNGEONS[id].area, BOSS_ROOMS[id].screen).entities.find((e) => e.bossGate);

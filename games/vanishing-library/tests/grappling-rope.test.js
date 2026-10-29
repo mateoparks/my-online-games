@@ -185,13 +185,13 @@ test('a faint or a new room ends the rope', () => {
   t.place(3, 8, 'up');
   t.press('mainHand');
   VL.faint(t.game, 'slime');
-  assert.equal(t.rope, null);
+  assert.ok(!t.rope);
   VL.respawn(t.game);
   t.place(7, 8, 'up');
   t.press('mainHand');
   t.place(7, 7, 'up');
   t.step();
-  assert.equal(t.rope, null);
+  assert.ok(!t.rope);
 });
 
 test('the rope, its hook and the post draw', () => {

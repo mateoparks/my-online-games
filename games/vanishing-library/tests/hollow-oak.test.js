@@ -72,26 +72,6 @@ test('the Hollow Oak door: in from the clearing to the entrance hall, and the ma
   assert.ok(!VL.unfilledSpots().includes('hollowOakDoor'));
 });
 
-test('the doorstep is safe: Continue or a faint after the win lands there, out of the spitters\' lines, and nobody hurts him while he stands still', () => {
-  const t = setup({ enemies: true });
-  const { VL } = t;
-  const step = VL.DUNGEONS.hollowOak.entrance;
-  const spitters = VL.getScreen('overworld', step.screen).entities.filter((e) => e.type === 'spitter');
-  assert.ok(spitters.length >= 1);
-  for (const e of spitters) assert.ok(Math.abs(e.x - step.tx) >= 2 && Math.abs(e.y - step.ty) >= 2, `the spitter at (${e.x},${e.y}) is out of line with the doorstep`);
-  t.game.savePoint = { ...step };
-  t.place(oak('0,0', 7, 7));
-  VL.faint(t.game);
-  t.hold([], 0.7);
-  t.press('interact');
-  assert.deepEqual([t.game.player.area, t.game.player.screen, VL.heroTile(t.game).tx, VL.heroTile(t.game).ty], [step.area, step.screen, step.tx, step.ty], 'woke on the doorstep');
-  const plants = t.game.room.entities.filter((e) => e.type === 'spitter');
-  assert.ok(plants.length === spitters.length && plants.every((e) => !VL.enemyHarmful(e)), 'W6\'s arrival grace');
-  const hp = t.game.hp;
-  t.hold([], 15);
-  assert.equal(t.game.hp, hp, 'fifteen seconds standing on the doorstep, not a scratch');
-});
-
 // ---------- layout ----------
 
 test('every lint is clean: locks, doors, blocks', () => {
@@ -371,9 +351,8 @@ test('beaten: it flips away for good, the heart and the warp appear, the win is 
   t.game.inventory.shells = 7;
   const before = plain({ items: t.game.items, inventory: t.game.inventory, hands: t.game.hands });
   beatThornback(t);
-  assert.deepEqual(calls, [], 'not in the step the win is written');
   t.step();
-  assert.deepEqual(calls, [true], 'W16\'s hook runs in the next step, after the win is saved');
+  assert.deepEqual(calls, [true], 'W16\'s hook runs once the win is in');
   assert.deepEqual(plain({ items: t.game.items, inventory: t.game.inventory, hands: t.game.hands }), before, 'the shockwave is W16\'s: nothing is lost here');
   t.step();
   const heart = t.find('heartContainer');
@@ -391,7 +370,7 @@ test('beaten: it flips away for good, the heart and the warp appear, the win is 
   assert.deepEqual(calls, [true], 'and never runs again');
 });
 
-test('the order W16 relies on: the win is written, then the hook runs, then its losses are written with its id; a reload anywhere neither loses the win nor applies the losses twice', () => {
+test('the win and the hook\'s changes are saved together by the next save (W44); a reload from before the fight plays both again', () => {
   const t = bossRoom({ storage: true });
   const { VL } = t;
   const calls = [];
@@ -400,62 +379,31 @@ test('the order W16 relies on: the win is written, then the hook runs, then its 
     state.inventory.wood = 0;
   });
   t.game.inventory.wood = 3;
-  t.app.save();
-  const saved = () => JSON.parse(t.slotText());
-  // A fresh app over a copy of the slot as it stands: a page reload there.
+  VL.saveGame(t.game, VL.quitPlace(t.game).place);
+  t.step();
+  const beforeFight = t.slotText();
+  beatThornback(t);
+  t.hold([], 0.5);
+  assert.deepEqual(calls, [3], 'the hook ran once');
+  assert.equal(t.slotText(), beforeFight, 'neither the win nor the hook wrote anything');
+  VL.saveGame(t.game, VL.quitPlace(t.game).place);
+  t.step();
+  const saved = JSON.parse(t.slotText());
+  assert.deepEqual([saved.dungeons.hollowOak.boss, saved.afterThornbackDone, saved.inventory.wood], [true, ['shockwave'], 0], 'written together');
   const reloadFrom = (text) => {
     const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: text }));
     const app = VL.createApp({ storage });
     app.startGame(VL.loadSlot(storage, 0), 0);
     app.setScene('play');
-    for (let s = 0; s < 0.5; s += STEP) app.update(VL.noActions(), STEP);
-    return { app, saved: JSON.parse(storage.read(VL.slotKey(0))) };
+    for (let s2 = 0; s2 < 0.5; s2 += STEP) app.update(VL.noActions(), STEP);
+    return app;
   };
-
-  beatThornback(t);
-  const afterWin = t.slotText();
-  assert.deepEqual([saved().dungeons.hollowOak.boss, saved().afterThornbackDone, saved().inventory.wood], [true, [], 3], 'the win is on disk before the hook runs');
-  assert.deepEqual(calls, []);
-
-  t.step();
-  assert.deepEqual(calls, [3], 'the hook runs once the win is written');
-  assert.deepEqual([saved().dungeons.hollowOak.boss, saved().afterThornbackDone, saved().inventory.wood], [true, ['shockwave'], 0], 'its losses and its id are written together');
-  const afterHook = t.slotText();
-  t.hold([], 1);
-  assert.deepEqual(calls, [3], 'never again in this session');
-
-  // Reloaded between the two writes: the win is kept and the hook runs once.
-  const between = reloadFrom(afterWin);
-  assert.deepEqual(calls, [3, 3], 'the hook runs once after that reload');
-  assert.deepEqual([between.saved.dungeons.hollowOak.boss, between.saved.afterThornbackDone, between.saved.inventory.wood], [true, ['shockwave'], 0]);
-  const again = reloadFrom(JSON.stringify(between.saved));
-  assert.deepEqual(calls, [3, 3], 'and not after the next one');
-  assert.equal(again.app.game.inventory.wood, 0);
-
-  // Reloaded after both writes: nothing runs twice.
-  const after = reloadFrom(afterHook);
-  assert.deepEqual(calls, [3, 3], 'a reload after the losses never applies them again');
-  assert.deepEqual([after.app.game.dungeons.hollowOak.boss, after.app.game.inventory.wood], [true, 0]);
-});
-
-test('a hook waits while the win could not be written, and runs once a write lands', () => {
-  const t = bossRoom({ storage: true });
-  const { VL } = t;
-  const calls = [];
-  VL.afterThornback('probe', () => calls.push(1));
-  t.app.save();
-  const write = t.app.storage.write;
-  t.app.storage.write = () => false;
-  beatThornback(t);
-  t.hold([], 0.5);
-  assert.ok(t.app.saveFailed && t.game.dirty);
-  assert.deepEqual(calls, [], 'nothing runs before the win is safe');
-  t.app.storage.write = write;
-  t.step();
-  assert.equal(JSON.parse(t.slotText()).dungeons.hollowOak.boss, true);
-  t.step();
-  assert.deepEqual(calls, [1]);
-  assert.deepEqual(JSON.parse(t.slotText()).afterThornbackDone, ['probe']);
+  const after = reloadFrom(t.slotText());
+  assert.deepEqual(calls, [3], 'a reload after the save never runs it again');
+  assert.equal(after.game.inventory.wood, 0);
+  const replay = reloadFrom(beforeFight);
+  assert.equal(VL.bossBeaten(replay.game, AREA), false, 'from the older save the Thornback waits again');
+  assert.equal(replay.game.inventory.wood, 3);
 });
 
 // A hook that throws (a W16 bug) must cost the shockwave, never the save
@@ -497,6 +445,8 @@ test('a hook that throws: the game keeps playing, its changes are undone, it is 
     assert.equal(errors.length, 1, 'and logged');
     assert.deepEqual(clean, [1], 'the clean hook runs exactly once');
     assert.equal(t.game.inventory.wood, 5, 'the throwing hook\'s half-done changes are undone');
+    VL.saveGame(t.game, VL.quitPlace(t.game).place);
+    t.step();
     const saved = JSON.parse(t.slotText());
     assert.deepEqual([saved.afterThornbackDone, saved.inventory.wood, saved.inventory.paper], [['clean'], 5, 9]);
   });
@@ -514,6 +464,8 @@ test('a hook that throws: Continue tries it once more and keeps playing (no free
     t.app.save();
     beatThornback(t);
     t.hold([], 0.5);
+    VL.saveGame(t.game, VL.quitPlace(t.game).place);
+    t.step();
     const text = t.slotText();
     assert.deepEqual(JSON.parse(text).afterThornbackDone, []);
     for (const load of [1, 2]) {
@@ -571,7 +523,7 @@ test('the afterThornbackDone fixture loads with no field reset, and a hook added
   app.setScene('play');
   for (let s = 0; s < 0.5; s += STEP) app.update(VL.noActions(), STEP);
   assert.deepEqual(calls, [1]);
-  assert.deepEqual(JSON.parse(backing.getItem(VL.slotKey(0))).afterThornbackDone, ['later']);
+  assert.deepEqual(plain(app.game.afterThornbackDone), ['later'], 'marked done, for the next save');
 });
 
 // ---------- the playthrough, one lock at a time ----------
@@ -599,11 +551,13 @@ test('a faint anywhere in the Hollow Oak, after each lock, never leaves it unsol
   for (let n = BEFORE.length + 1; n < ROUTE_MILESTONES.length; n += 1) {
     const play = createPlaythrough(VL, { milestones: ROUTE_MILESTONES, steps });
     const drive = play.playTo(ROUTE_MILESTONES[n - 1]);
+    // W44: a faint goes back to the last save, the Save & Quit after that lock.
+    const saved = drive.state.savePoint;
     VL.faint(drive.state, 'thornback');
     drive.update();
     drive.hold([], 0.7);
     drive.press('interact');
-    assert.deepEqual([drive.state.player.area, drive.state.player.screen, VL.heroTile(drive.state).tx, VL.heroTile(drive.state).ty], [AREA, '0,0', 3, 2], `woke at the statue after ${ROUTE_MILESTONES[n - 1]}`);
+    assert.deepEqual([drive.state.player.area, drive.state.player.screen, VL.heroTile(drive.state).tx, VL.heroTile(drive.state).ty], [saved.area, saved.screen, saved.tx, saved.ty], `woke at his last save after ${ROUTE_MILESTONES[n - 1]}`);
     for (const id of ROUTE_MILESTONES.slice(n)) {
       drive.fight = false;
       route[id](drive);

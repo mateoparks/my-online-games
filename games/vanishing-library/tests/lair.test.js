@@ -88,22 +88,6 @@ test('the lair door at the top of the highlands leads into the entrance hall, an
   assert.equal(VL.DUNGEONS.lair.name, 'Dragon\'s Lair');
 });
 
-test('the doorstep is safe: a faint with the doorstep as save point (the Lair not finished) wakes him there, and nothing hurts him while he stands still', () => {
-  const t = setup({ enemies: true });
-  const { VL } = t;
-  const step = VL.DUNGEONS.lair.entrance;
-  assert.ok(!VL.isSolidAt(step.area, step.screen, step.tx, step.ty));
-  t.game.savePoint = { ...step };
-  t.place(lr('0,0', 7, 7));
-  VL.faint(t.game);
-  t.hold([], 0.7);
-  t.press('interact');
-  assert.deepEqual([t.game.player.area, t.game.player.screen, VL.heroTile(t.game).tx, VL.heroTile(t.game).ty], [step.area, step.screen, step.tx, step.ty]);
-  const hp = t.game.hp;
-  t.hold([], 15);
-  assert.equal(t.game.hp, hp);
-});
-
 // ---------- layout ----------
 
 test('every lint is clean: locks, doors, blocks; 8 to 14 rooms; lava is no chicken flight', () => {
@@ -415,8 +399,9 @@ test('the W19 fixture (played through to the Dragon) loads with no field reset',
   assert.deepEqual(Object.keys(d.doors).sort(), ['d4BossDoor', 'd4DoorA', 'd4DoorB']);
   assert.ok(VL.hasItem(game, 'mirrorShield') && VL.hasItem(game, 'climbersAlmanac') && VL.LOCKS.d4Boss.reached(game));
   assert.equal(game.tileChanges['overworld:-1,-2']['10,4'], 'i', 'the hidden path open');
-  assert.deepEqual(plain([game.savePoint.area, game.savePoint.screen]), ['overworld', '-1,-5'], 'saved on the lair\'s doorstep, not rewritten');
-  assert.deepEqual(plain([game.player.area, game.player.screen]), [VL.HOME_SAVE.area, VL.HOME_SAVE.screen], 'the Lair is finished, so Continue starts at the hut (W31)');
+  const lantern = VL.SAVE_LANTERNS.lair;
+  assert.deepEqual(plain(game.savePoint), { area: lantern.area, screen: lantern.screen, tx: lantern.tx, ty: lantern.ty, facing: lantern.facing }, 'the old doorstep save point is the lair\'s lantern now (W44)');
+  assert.deepEqual(plain([game.player.area, game.player.screen, ...Object.values(VL.heroTile(game))]), [lantern.area, lantern.screen, lantern.tx, lantern.ty], 'Continue starts there');
 });
 
 // ---------- the playthrough, one lock at a time ----------
@@ -428,8 +413,7 @@ test('the W19 steps drive the story milestones from the title to the Dragon, rel
   for (const id of ['climbersAlmanac', 'highlands', 'dragonsLairEntered', 'mirrorShield', 'd4Boss']) assert.equal(typeof registry[id], 'function', id);
   const drive = createPlaythrough(VL).playTo('d4Boss');
   assert.ok(VL.LOCKS.d4Boss.reached(drive.state) && VL.spotFound(drive.state, 'heartD4'));
-  assert.deepEqual(plain([drive.state.savePoint.area, drive.state.savePoint.screen]), ['overworld', '-1,-5'], 'the warp saved the doorstep');
-  assert.deepEqual(plain([drive.state.player.area, drive.state.player.screen]), [VL.HOME_SAVE.area, VL.HOME_SAVE.screen], 'the reload after the win wakes him at the hut (W31)');
+  assert.deepEqual(plain([drive.state.player.area, drive.state.player.screen]), ['overworld', '-1,-5'], 'Save & Quit on the doorstep the warp left him on wakes him there (W44)');
 });
 
 test('a faint anywhere in the lair, after each lock, never leaves it unsolvable', () => {
@@ -438,11 +422,13 @@ test('a faint anywhere in the lair, after each lock, never leaves it unsolvable'
   for (let n = 1; n < ROUTE.length; n += 1) {
     const play = createPlaythrough(VL, { milestones: [...BEFORE, ...ROUTE], steps });
     const drive = play.playTo(ROUTE[n - 1]);
+    // W44: a faint goes back to the last save, the Save & Quit after that lock.
+    const saved = drive.state.savePoint;
     VL.faint(drive.state, 'dragon');
     drive.update();
     drive.hold([], 0.7);
     drive.press('interact');
-    assert.deepEqual([drive.state.player.area, drive.state.player.screen, VL.heroTile(drive.state).tx, VL.heroTile(drive.state).ty], [AREA, '0,0', 3, 2], `woke at the statue after ${ROUTE[n - 1]}`);
+    assert.deepEqual([drive.state.player.area, drive.state.player.screen, VL.heroTile(drive.state).tx, VL.heroTile(drive.state).ty], [saved.area, saved.screen, saved.tx, saved.ty], `woke at his last save after ${ROUTE[n - 1]}`);
     for (const id of ROUTE.slice(n)) {
       drive.fight = false;
       route[id](drive);

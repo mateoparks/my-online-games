@@ -40,7 +40,7 @@ function setup({ storage = false, dungeon = false } = {}) {
     },
     at: (where) => VL.place(app.game, where),
     reload() {
-      app = VL.reloadApp(app);
+      app = VL.reloadApp(app, { save: true });
       return app;
     },
     closePopups() {
@@ -101,7 +101,7 @@ test('grinding with no berries says what is missing and changes nothing', () => 
   assert.match(VL.currentPopup(t.game).text, /berries/i);
 });
 
-test('ink is earned, so a reload right after grinding keeps it', () => {
+test('ink is kept by Save & Quit right after grinding', () => {
   const t = setup({ storage: true });
   const { VL } = t;
   t.at(FIELD);
@@ -231,7 +231,7 @@ test('a copy held in a hand, or chosen with S on the equipment screen, opens to 
 
 // ---------- visits ----------
 
-test('the first visit to a screen is earned, so a reload right after exploring keeps it', () => {
+test('the first visit to a screen is kept by Save & Quit right after exploring', () => {
   const t = setup({ storage: true });
   const { VL } = t;
   const walk = (dir, from) => {
@@ -256,7 +256,7 @@ test('the first visit to a screen is earned, so a reload right after exploring k
   assert.equal(earned, false, 'a screen seen before earns nothing');
 });
 
-test('going through a door to a new inside is earned too', () => {
+test('going through a door to a new inside is kept too', () => {
   const t = setup({ storage: true });
   const { VL } = t;
   // The hut door is up from the start tile.
@@ -590,7 +590,7 @@ test('in a real dungeon M opens the dungeon map and never the world map, by any 
   assert.equal(t.app.sceneId, 'worldMap');
 });
 
-test('first visits to dungeon rooms fire the room hooks and are earned, but never ink an overworld screen', () => {
+test('first visits to dungeon rooms fire the room hooks and are kept by a save, but never ink an overworld screen', () => {
   const t = setup({ dungeon: true, storage: true });
   const { VL } = t;
   t.at(FIELD);
@@ -620,7 +620,7 @@ test('first visits to dungeon rooms fire the room hooks and are earned, but neve
   assert.equal(t.game.visited['sample:0,0'], true);
   assert.ok(t.game.room.dungeonReady, 'the room hooks ran as the room was built');
   assert.equal(t.game.room.entities.find((e) => e.type === 'shutter').solid, true, 'its shutter settled before the first step');
-  assert.notEqual(t.app.savedAt, savedAt, 'the first visit is earned');
+  assert.equal(t.app.savedAt, savedAt, 'a first visit saves nothing by itself (W44)');
   for (const key of ['1,0', '0,-1', '0,-2']) {
     t.at({ area: 'sample', screen: key, tx: 8, ty: 8 });
     assert.ok(t.game.room.dungeonReady, `${key} is prepared as it is built, before any step`);

@@ -172,7 +172,7 @@ test('the hut chest holds the wood sword and shield: S opens it once, both go in
   assert.ok(chest, 'a chest in the hut');
   VL.place(t.game, { area: 'hut', screen: '0,0', tx: chest.x, ty: chest.y + 1, facing: 'up' });
   t.press('interact');
-  assert.ok(t.game.events.some((e) => e.type === 'earned'));
+  assert.equal(t.game.dirty, false, 'a find saves nothing by itself (W44)');
   assert.equal(VL.hasItem(t.game, 'woodSword'), true);
   assert.equal(VL.hasItem(t.game, 'woodShield'), true);
   assert.deepEqual(plain(t.game.hands), { mainHand: 'woodSword', offHand: 'woodShield' });
@@ -300,11 +300,13 @@ test('bare hands: S or Space pulls a bush for the same drops at half a heart eac
   assert.equal(t.game.popups.queue.length, 0, 'the pull popup is shown once');
 });
 
-test('a shrub can win: pulling on the last half heart faints you, and you wake with everything', () => {
+test('a shrub can win: pulling on the last half heart faints you, and you wake back at your last save', () => {
   const t = setup();
   const { VL } = t;
   t.game.inventory.wood = 3;
   t.at({ tx: 3, ty: 3, facing: 'up' });
+  VL.saveGame(t.game, { area: t.game.player.area, screen: t.game.player.screen, tx: 3, ty: 4 });
+  t.game.inventory.wood = 5;
   t.game.hp = 1;
   t.game.popups.seen.pull = true;
   t.press('interact');
@@ -317,7 +319,7 @@ test('a shrub can win: pulling on the last half heart faints you, and you wake w
   t.press('interact');
   assert.equal(t.app.sceneId, 'play');
   assert.equal(t.game.hp, t.game.maxHp);
-  assert.ok(t.game.inventory.wood >= 3);
+  assert.equal(t.game.inventory.wood, 3, 'the wood saved, not what came since');
 });
 
 test('with a sword in hand S does not pull a bush (no free hurt)', () => {
@@ -386,7 +388,6 @@ test('a berry bush: S picks its berries, it stays bare until you come back, and 
   assert.equal(VL.LOCKS.berryBush.reached(t.game), true, 'seeing one is the place');
   t.press('interact');
   assert.equal(t.game.inventory.berries, VL.TUNING.berriesPerPick);
-  assert.ok(t.game.events.some((e) => e.type === 'earned'), 'berries are earned');
   assert.ok(VL.LOCKS.berries.reached(t.game));
   assert.deepEqual(plain(t.game.popups.queue), ['berries']);
   assert.equal(t.game.hp, t.game.maxHp, 'picking never hurts');
@@ -494,14 +495,14 @@ test('popups: shown once each, over a paused world, and a queued one survives a 
   const where = { ...t.game.player };
   t.hold(['left'], 0.3);
   assert.equal(t.game.player.x, where.x, 'the world is paused under a popup');
-  const next = VL.reloadApp(t.app);
-  assert.deepEqual(plain(next.game.popups.queue), ['wood'], 'still waiting after a reload');
+  const next = VL.reloadApp(t.app, { save: true });
+  assert.deepEqual(plain(next.game.popups.queue), ['wood'], 'still waiting after Save & Quit and a reload');
   t.press('interact');
   assert.equal(t.app.sceneId, 'play');
   assert.equal(t.game.popups.seen.wood, true);
   VL.showPopup(t.game, 'wood');
   assert.equal(t.game.popups.queue.length, 0, 'never again');
-  const after = VL.reloadApp(t.app);
+  const after = VL.reloadApp(t.app, { save: true });
   assert.equal(after.game.popups.seen.wood, true, 'seen is saved');
 });
 
@@ -741,15 +742,15 @@ test('W5 claims its locks with the planned rules and implements the chestGear mi
   assert.deepEqual([...report.problems], []);
 });
 
-test('the playthrough reloads after every milestone: progress set without VL.earned fails there', () => {
+test('the playthrough saves and reloads after every milestone: progress kept only in play state fails there', () => {
   const { VL } = loadGame();
   const { createPlaythrough } = require('./playthrough');
-  VL.defineLock('fixtureFlag', { doc: '§ Starting and saving: Death', reached: (state) => Boolean(state.flags.fixture) });
-  const forgetful = createPlaythrough(VL, { milestones: ['start', 'fixtureFlag'], steps: { start() {}, fixtureFlag: (drive) => { drive.state.flags.fixture = true; } } });
-  assert.throws(() => forgetful.playTo('fixtureFlag'), /fixtureFlag did not survive a reload/);
+  VL.defineLock('fixtureFlag', { doc: '§ Starting and saving: Death', reached: (state) => Boolean(state.flags.fixture || state.room?.fixture) });
+  const forgetful = createPlaythrough(VL, { milestones: ['start', 'fixtureFlag'], steps: { start() {}, fixtureFlag: (drive) => { drive.state.room.fixture = true; } } });
+  assert.throws(() => forgetful.playTo('fixtureFlag'), /fixtureFlag did not survive Save & Quit and a reload/);
   const careful = createPlaythrough(VL, {
     milestones: ['start', 'fixtureFlag'],
-    steps: { start() {}, fixtureFlag: (drive) => { drive.state.flags.fixture = true; VL.earned(drive.state); drive.update(); } },
+    steps: { start() {}, fixtureFlag: (drive) => { drive.state.flags.fixture = true; drive.update(); } },
   });
   const before = careful.drive.app;
   assert.ok(VL.LOCKS.fixtureFlag.reached(careful.playTo('fixtureFlag').state));

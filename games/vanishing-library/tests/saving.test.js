@@ -83,13 +83,13 @@ test('a save carries v and the persistent fields only: no transient play state, 
   state.flags.chest = true;
   const save = VL.serializeSave(state);
   assert.equal(save.v, VL.saveVersion());
-  assert.equal(save.v, 1);
+  assert.equal(save.v, 2, 'W44 moved old save points to the lanterns');
   assert.equal(save.name, 'Hero');
   assert.deepEqual({ ...save.flags }, { chest: true });
   assert.deepEqual({ ...save.satchel }, { wood: 2 }, 'extension fields are saved');
   assert.equal(save.savePoint, null);
   assert.equal(save.finished, false);
-  for (const field of ['hp', 'time', 'player', 'room', 'transition', 'events', 'dirty', 'fainted']) {
+  for (const field of ['hp', 'time', 'player', 'room', 'transition', 'events', 'dirty', 'fainted', 'lastSave']) {
     assert.equal(field in save, false, `${field} is not saved`);
   }
   assert.doesNotThrow(() => JSON.stringify(save));
@@ -248,18 +248,19 @@ test('a committed v1 save still loads after a schema change, through a migration
 
 test('migrations are sequential and each version is defined once', () => {
   const { VL } = loadGame();
-  assert.equal(VL.saveVersion(), 1);
-  assert.throws(() => VL.defineMigration(3, (s) => s), /2/);
-  assert.throws(() => VL.defineMigration(1, (s) => s), /1/);
-  VL.defineMigration(2, (s) => ({ ...s, two: true }));
-  assert.throws(() => VL.defineMigration(2, (s) => s), /2/);
-  VL.defineMigration(3, (s) => ({ ...s, three: true }));
-  const migrated = VL.migrateSave({ v: 1, name: 'X' });
-  assert.equal(migrated.v, 3);
-  assert.equal(migrated.two && migrated.three, true);
-  assert.equal(VL.migrateSave({ v: 2, name: 'X' }).three, true);
-  assert.equal(VL.migrateSave({ v: 2, name: 'X' }).two, undefined, 'starts after its own version');
-  assert.throws(() => VL.migrateSave({ v: 4, name: 'X' }), /newer/);
+  const base = VL.saveVersion();
+  assert.equal(base, 2, 'W44 defined version 2');
+  assert.throws(() => VL.defineMigration(base + 2, (s) => s), new RegExp(String(base + 1)));
+  assert.throws(() => VL.defineMigration(base, (s) => s), new RegExp(String(base)));
+  VL.defineMigration(base + 1, (s) => ({ ...s, one: true }));
+  assert.throws(() => VL.defineMigration(base + 1, (s) => s), new RegExp(String(base + 1)));
+  VL.defineMigration(base + 2, (s) => ({ ...s, two: true }));
+  const migrated = VL.migrateSave({ v: base, name: 'X' });
+  assert.equal(migrated.v, base + 2);
+  assert.equal(migrated.one && migrated.two, true);
+  assert.equal(VL.migrateSave({ v: base + 1, name: 'X' }).two, true);
+  assert.equal(VL.migrateSave({ v: base + 1, name: 'X' }).one, undefined, 'starts after its own version');
+  assert.throws(() => VL.migrateSave({ v: base + 3, name: 'X' }), /newer/);
 });
 
 test('a save from a newer game reads as newer, never damaged, and is left as it is', () => {
@@ -427,19 +428,20 @@ test('every saved field is JSON-safe, for a new game and after the playthrough',
 
 // ---------- earning, save points, fainting ----------
 
-test('earning marks the game dirty and raises an event; a save point is an earning too', () => {
+test('earning is not saving (W44); a save point marks the game dirty, keeps the save in play and raises an event', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
   const state = playState(VL, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
   assert.equal(state.dirty, false);
-  VL.earned(state);
-  assert.equal(state.dirty, true);
-  assert.ok(state.events.some((e) => e.type === 'earned'));
-  state.dirty = false;
+  assert.equal(VL.earned, undefined, 'VL.earned is gone');
+  state.flags.chest = true;
   VL.touchSavePoint(state, { area: 'test', screen: '0,0', tx: 8, ty: 2 });
   assert.deepEqual({ ...state.savePoint }, { area: 'test', screen: '0,0', tx: 8, ty: 2, facing: 'down' });
   assert.equal(state.dirty, true);
   assert.ok(state.events.some((e) => e.type === 'saved'));
+  assert.equal(state.lastSave.flags.chest, true, 'the save is kept in play');
+  state.flags.later = true;
+  assert.equal(state.lastSave.flags.later, undefined, 'a copy, not the live game');
 });
 
 test('standing on a savePoint entity sets the save point', () => {
@@ -453,7 +455,7 @@ test('standing on a savePoint entity sets the save point', () => {
   assert.equal(state.dirty, true);
 });
 
-test('fainting keeps everything earned and respawns at the save point with full hearts', () => {
+test('fainting goes back to the last save: at its save point with full hearts, what came since gone', () => {
   const { VL } = loadGame();
   addFixtureWorld(VL);
   VL.extendGame('satchel', () => ({ satchel: { wood: 0 } }));
@@ -461,6 +463,7 @@ test('fainting keeps everything earned and respawns at the save point with full 
   state.satchel.wood = 4;
   VL.touchSavePoint(state, { area: 'room', screen: '0,0', tx: 7, ty: 5 });
   VL.place(state, { area: 'test', screen: '1,0', tx: 8, ty: 2 });
+  state.satchel.wood = 9;
   VL.faint(state, 'shrub');
   assert.equal(state.hp, 0);
   assert.equal(state.fainted.cause, 'shrub');

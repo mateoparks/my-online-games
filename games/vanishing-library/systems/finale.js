@@ -4,8 +4,8 @@
 // Mr. Fenwick follows the hero down, she sets three giant marionettes on them
 // (entities/marionette.js: cut every string; she is never fought), then
 // confesses through one last puppet show, he forgives her, and the ending
-// plays (scenes/finale.js). Every beat is a saved flag, set as it ends, so a
-// reload anywhere picks up at the next one. The place and its words live in
+// plays (scenes/finale.js). Every beat is a flag set as it ends, so a save
+// anywhere picks up at the next one. The place and its words live in
 // dungeons/workshop.js. README "The finale (W20)".
 (() => {
   VL.tune({
@@ -69,7 +69,6 @@
     state.library.returned.push(...ids);
     for (const id of ids) state.flags[`finale:home:${id}`] = true;
     state.flags['finale:booksHome'] = true;
-    VL.earned(state);
     return ids;
   }
   VL.endingBooks = (state) => state.library.returned.filter((id) => flag(state, `finale:home:${id}`));
@@ -113,7 +112,6 @@
           for (const hatch of state.room.entities) if (hatch.type === 'trapdoor') hatch.open = true;
           VL.showPopup(state, 'trapdoorOpen');
           state.events.push({ type: 'trapdoorOpened' });
-          VL.earned(state);
         }
         return;
       }

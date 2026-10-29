@@ -128,7 +128,6 @@
     if (!end || (!end.set && !end.give)) return;
     for (const flag of [].concat(end.set || [])) state.flags[flag] = true;
     for (const [kind, what] of Object.entries(end.give || {})) giftOf(kind)(state, what);
-    VL.earned(state);
   };
 
   // An NPC's feet point (like state.player's) at its tile, part way back

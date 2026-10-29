@@ -141,7 +141,6 @@
     if (room > 0) VL.addResource(state, 'shells', room);
     state.hp = state.maxHp;
     VL.showPopup(state, 'crabFeast');
-    VL.earned(state);
   }
 
   function crabBeaten(state, crab) {
@@ -158,7 +157,6 @@
       for (const other of state.room.entities) if (other.type === 'crab') makeAngry(other);
       VL.showPopup(state, 'crabsAngry');
     }
-    VL.earned(state);
   }
 
   VL.defineSystem('crabs', {

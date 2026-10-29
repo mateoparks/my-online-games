@@ -49,8 +49,9 @@ VL.createApp = function createApp({ storage } = {}) {
         app.game.sceneRequest = null;
         if (app.sceneId === 'play') app.setScene(request.id, request.data);
       }
-      // Autosave in every scene (a shop or a reward is earned outside play);
-      // a failed write leaves the game dirty, so this is also the retry.
+      // A save asked for this step (a lantern, the credits) is written here,
+      // in every scene; a failed write leaves the game dirty, so this is
+      // also the retry.
       if (app.game?.dirty) app.save();
       if (app.saveConflict && app.sceneId !== 'conflict') app.setScene('conflict');
     },
@@ -61,15 +62,16 @@ VL.createApp = function createApp({ storage } = {}) {
     // a game another window made there since is found at the first write.
     startGame(game, slot, { fresh = false } = {}) {
       app.game = game;
+      if (!game.lastSave) game.lastSave = VL.serializeSave(game);
       app.slot = slot;
       app.slotText = slot === null || fresh ? null : app.storage.read(VL.slotKey(slot));
       app.savedAt = null;
       app.saveFailed = false;
       app.saveConflict = false;
     },
-    // Writes the game to its slot; true when it was written. A game without
-    // a slot (tests, the smoke) or with storage off just drops the dirty
-    // mark. A write that fails keeps the game dirty and sets saveFailed
+    // Writes the game's last save (VL.saveGame) to its slot; true when it
+    // was written. A game without a slot (tests, the smoke) or with storage
+    // off just drops the dirty mark. A write that fails keeps the game dirty and sets saveFailed
     // until one succeeds; a slot another window wrote since sets
     // saveConflict and is never overwritten. A slot that is gone (site data
     // cleared) holds nothing to keep, so it is simply written again.
@@ -87,7 +89,7 @@ VL.createApp = function createApp({ storage } = {}) {
         game.dirty = false;
         return false;
       }
-      const text = JSON.stringify(VL.serializeSave(game));
+      const text = JSON.stringify(game.lastSave || VL.serializeSave(game));
       const ok = current !== undefined && app.storage.write(key, text);
       if (ok) {
         app.slotText = text;

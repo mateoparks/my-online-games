@@ -1,7 +1,7 @@
 // Scripted playthrough: drives the real game (app.update with Actions) from a
 // new game to a named milestone, running one registered step per milestone
-// and checking each milestone's `reached` on the way, again after a page
-// reload following every step. Steps are data:
+// and checking each milestone's `reached` on the way, again after Save &
+// Quit and a page reload following every step. Steps are data:
 // tests/steps/<item>.steps.js registers them (README "Progression").
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -94,12 +94,28 @@ function createDrive(VL, initialApp, reload) {
     get state() {
       return app.game;
     },
-    // A player reloading the page: the hook builds a fresh app and loads the
-    // save (without saving first, so a forgotten VL.earned shows). W2 owns saving, so it supplies the hook (pass `reload`
-    // to createPlaythrough, or define VL.reloadApp once saves exist).
-    reload() {
+    // Esc, Save & Quit with real keys (W44: the only saves are that, a
+    // lantern and the credits), the waiting popups read first.
+    saveAndQuit() {
+      drive.closePopups();
+      if (app.sceneId !== 'play') throw new Error(`Save & Quit needs the play scene, not ${app.sceneId}`);
+      drive.press('pause');
+      const index = VL.PAUSE_OPTIONS.indexOf('Save & Quit');
+      while (app.pause.cursor !== index) drive.press('down');
+      drive.press('confirm');
+      if (app.sceneId === 'pause') throw new Error('Save & Quit did not quit (the write failed)');
+    },
+    // A player reloading the page: by default after Save & Quit, so what
+    // comes back is everything the save holds; `{ save: false }` reloads
+    // without saving (a closed tab). The hook builds a fresh app and loads
+    // the slot (pass `reload` to createPlaythrough, or VL.reloadApp).
+    reload({ save = true } = {}) {
       const hook = reload || VL.reloadApp;
       if (!hook) throw new Error('drive.reload needs a reload hook (W2): pass reload(app) to createPlaythrough or define VL.reloadApp');
+      const { slot } = app;
+      if (save) drive.saveAndQuit();
+      // Quitting forgets the slot; the reloaded page continues the one played.
+      app.slot = slot;
       app = hook(app);
     },
     // Scripted play is about progression, so enemies are cleared from every
@@ -199,11 +215,11 @@ function createPlaythrough(VL, { milestones = VL.MILESTONES, steps = registry, a
         drive.fight = false;
         steps[id](drive);
         assert.ok(lock.reached(drive.state), `milestone ${id} was not reached by its steps`);
-        // Progress survives reloading the page at any point: reload (no save
-        // first) after every milestone and check it again.
+        // Progress survives a save at any point: Save & Quit and reload after
+        // every milestone and check it again.
         if (drive.app.slot === null) throw new Error(`playTo reloads after ${id}, so the game needs a save slot: start from the title or the default app`);
         drive.reload();
-        assert.ok(drive.state && lock.reached(drive.state), `milestone ${id} did not survive a reload (a missing VL.earned?)`);
+        assert.ok(drive.state && lock.reached(drive.state), `milestone ${id} did not survive Save & Quit and a reload (progress kept in play state?)`);
       }
       return drive;
     },
