@@ -35,8 +35,19 @@
 
   VL.eggOnFace = (state) => Boolean(state?.room?.egg);
 
+  // `eggWorn`: the egg was on when this room was built over. The new room has
+  // none, so an arrow still held would now walk him straight back; like a warp
+  // (state.warpHold, systems/movement.js) it is ignored until it is let go.
+  VL.extendGame('eggOnFace', () => ({ eggWorn: false }), { transient: true });
+  VL.onRoomBuilt((state) => {
+    if (!state.eggWorn) return;
+    state.eggWorn = false;
+    state.warpHold = true;
+  });
+
   VL.splatEgg = function splatEgg(state) {
     state.room.egg = { at: state.time };
+    state.eggWorn = true;
     state.events.push({ type: 'eggSplat' }, { type: 'chickenCluck' });
   };
 
@@ -47,6 +58,7 @@
 
   VL.onFaint((state) => {
     if (state.room) state.room.egg = null;
+    state.eggWorn = false;
   });
 
   // ---------- back to front ----------

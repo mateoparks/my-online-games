@@ -3,7 +3,7 @@
 // wreck's five shells, the metal shovel on paths and forest floor, the buried
 // heart's flowers, and the quiet fields after the shockwave.
 const assert = require('node:assert/strict');
-const { test, loadGame, playState, hold, fakeDocument } = require('./harness');
+const { test, loadGame, playState, hold, holdUntil, fakeDocument } = require('./harness');
 const { findPath } = require('./playthrough');
 
 const ow = (screen, tx, ty, facing = 'up') => ({ area: 'overworld', screen, tx, ty, facing });
@@ -64,10 +64,13 @@ test('the slimes, bats, gulls and beach crabs are the light enemies; the Lens Cr
   assert.deepEqual(light, ['bat', 'crab', 'gull', 'slime']);
 });
 
-for (const type of ['slime', 'bat', 'gull', 'crab']) {
-  test(`the hook pulls a ${type} right up to him: half a heart off, and it sits stunned in front of him long enough for a swing`, () => {
-    const { VL, state, press, enemy } = setup();
-    const e = enemy(type, 7, 3);
+// The hero stands mid-field; each light enemy waits four tiles off in the
+// direction he faces.
+const PULL_FROM = { up: [7, 1], down: [7, 9], left: [3, 5], right: [11, 5] };
+for (const type of ['slime', 'bat', 'gull', 'crab']) for (const [facing, [ex, ey]] of Object.entries(PULL_FROM)) {
+  test(`the hook pulls a ${type} right up to him facing ${facing}: half a heart off, and it sits stunned in front of him long enough for a swing`, () => {
+    const { VL, state, press, enemy } = setup(here('0,0', 7, 5, facing));
+    const e = enemy(type, ex, ey);
     const { hp } = state;
     press('mainHand');
     hold(VL, state, [], 0.8);
@@ -75,8 +78,12 @@ for (const type of ['slime', 'bat', 'gull', 'crab']) {
     assert.equal(state.hp, hp - 1, 'half a heart');
     assert.ok(e.stunned > VL.TUNING.swingSeconds + 0.3, `stunned for ${e.stunned}`);
     assert.equal(e.hp, VL.ENEMIES[type].hp, 'the pull itself does not hurt it');
-    assert.ok(Math.abs(e.cx - state.player.x) < 1, 'straight in front');
-    assert.ok(e.cy < state.player.y - 5 && !overlapHero(state, e, VL), 'in front, not on top of him');
+    const [fx, fy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[facing];
+    const ahead = (e.cx - state.player.x) * fx + (e.cy - (state.player.y - 5)) * fy;
+    const aside = (e.cx - state.player.x) * fy + (e.cy - (state.player.y - 5)) * fx;
+    assert.ok(Math.abs(aside) < 1, `straight in front (${aside} aside)`);
+    assert.ok(Math.abs(ahead - VL.TUNING.ropePullGap) < 1, `${ahead} px in front`);
+    assert.ok(!overlapHero(state, e, VL), 'not on top of him');
     const { tx, ty } = VL.tileOf(e.cx, e.cy);
     assert.ok(!VL.isSolidAt('w38', '0,0', tx, ty, state.room), 'on open ground');
     assert.ok(VL.ART.SPRITES['fx-stun-star'], 'dizzy stars');
@@ -239,7 +246,6 @@ test('every person who talks, shopkeepers and the librarian too, only says "Look
 
 test('any new screen clears the egg: an edge, a door or warp, a faint; and it is never saved', () => {
   const { VL, state } = egged();
-  VL.splatEgg(state);
   // He walks off the east edge holding left (it's on his face).
   VL.place(state, here('0,0', 14, 5, 'right'));
   VL.splatEgg(state);
@@ -255,6 +261,32 @@ test('any new screen clears the egg: an edge, a door or warp, a faint; and it is
   assert.ok(!VL.eggOnFace(VL.restoreGame(JSON.parse(save))), 'a reload clears it');
   VL.faint(state, 'slime');
   assert.ok(!VL.eggOnFace(state), 'a faint');
+});
+
+test('after the egg clears on a new screen, the arrow he is still holding does not walk him straight back until he lets go', () => {
+  const { VL, state } = egged();
+  VL.place(state, here('0,0', 14, 5, 'right'));
+  VL.splatEgg(state);
+  // Holding left walks him off the east edge (it's on his face)...
+  for (let i = 0; i < 120 && state.player.screen === '0,0'; i += 1) VL.updateWorld(state, VL.actions({ held: ['left'] }), 1 / 60);
+  assert.equal(state.player.screen, '1,0');
+  assert.ok(!VL.eggOnFace(state));
+  // ... and the same held left, now plain left again, is ignored.
+  hold(VL, state, ['left'], 1);
+  assert.equal(state.player.screen, '1,0', 'not walked back west');
+  const x = state.player.x;
+  hold(VL, state, ['left'], 0.3);
+  assert.equal(state.player.x, x, 'still waiting for the key to be let go');
+  // Once he lets go, left is left.
+  hold(VL, state, [], 0.1);
+  holdUntil(VL, state, ['left'], () => state.player.screen === '0,0');
+  assert.ok(!VL.eggOnFace(state), 'left walks left, back west');
+  // A screen change without the egg sets no hold.
+  hold(VL, state, [], 1);
+  VL.place(state, here('1,0', 7, 7));
+  const y = state.player.y;
+  hold(VL, state, ['up'], 0.2);
+  assert.ok(state.player.y < y, 'no hold without an egg');
 });
 
 test('the splat draws over his face in every facing, on top of the hero', () => {

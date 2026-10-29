@@ -1696,7 +1696,10 @@ across gaps, yank things"); posts are `entities/grapple-post.js`. Tests:
 Matthew's Easter egg, in `systems/egg-on-face.js`. The rope's hook at a hen
 brings back an egg that splats on the hero's face (`state.room.egg`, so it
 lasts the visit: an edge, a door, a warp, a faint or a reload clears it, and
-it is never saved). The hen is not hurt and no swarm comes.
+it is never saved). The hen is not hurt and no swarm comes. When a new
+screen replaces the egged one, an arrow still held is ignored until it is let
+go (`state.eggWorn` sets `state.warpHold`), so the reversed key he walked off
+with doesn't walk him straight back.
 
 - **Back to front:** the action filter `eggOnFace` swaps up and down, left
   and right, and the two hands, so Space uses the off hand and D the main

@@ -98,13 +98,13 @@
     return pages;
   };
 
-  // Turns the NPC to face the hero and opens the dialogue scene. False when
-  // the NPC has nothing to say right now.
   // `override(state, entity)` returns an entry to say instead of the
   // person's own (egg on his face, W38), or null.
   VL.TALK_OVERRIDES = [];
   VL.overrideTalk = (override) => VL.TALK_OVERRIDES.push(override);
 
+  // Turns the NPC to face the hero and opens the dialogue scene. False when
+  // the NPC has nothing to say right now.
   VL.talkTo = function talkTo(state, entity) {
     const npc = VL.NPCS[entity.id];
     if (!npc) return false;
