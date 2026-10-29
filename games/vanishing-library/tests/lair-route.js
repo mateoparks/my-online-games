@@ -21,9 +21,10 @@ function toTheLair(drive) {
   const screen = state.player.screen;
   if (state.player.area !== 'overworld' || !['-1,-3', '-2,-3', '-2,-4', '-1,-4', '-1,-5'].includes(screen)) climb.highlands(drive);
   if (['-1,-3', '-2,-3', '-2,-4'].includes(drive.state.player.screen)) {
+    // Berries first, while he is still on the shelf screens with the bush;
+    // then the middle chicken (-2,-3) carried over the second chasm.
     if (!drive.VL.hasItem(drive.state, 'mirrorShield')) stockBerries(drive, berriesForTheShield(drive.state) + 2);
-    walk(drive, ow('-2,-4', 12, 4));
-    flyFrom(drive, ow('-2,-4', 12, 4), 'chickenGap', 'right');
+    flyFrom(drive, ow('-2,-4', 12, 4), 'chickenHighlands', 'right');
     assert.equal(drive.state.player.screen, '-1,-4', 'over the second chasm');
   }
   // His hands are wanted for the sword and the shield from here on.

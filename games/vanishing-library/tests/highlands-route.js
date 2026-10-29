@@ -196,12 +196,15 @@ const route = {
   },
 };
 
-// Takes the spot's chicken up (S) from beside it, back to `from`, and F.
+// Takes the spot's chicken up (S) from beside it, wherever its spot is (W41:
+// the middle shelves' one chicken is carried to either chasm), back to
+// `from`, and F.
 function flyFrom(drive, from, spot, dir) {
   const { VL } = drive;
-  const screen = from.screen;
+  const screen = VL.SPOTS[spot].screen;
   if (drive.state.player.carrying?.spot !== spot) {
     drive.state.player.carrying && dropChicken(drive);
+    if (drive.state.player.screen !== screen) walk(drive, ow(screen, VL.SPOTS[spot].x, VL.SPOTS[spot].y));
     for (let tries = 0; tries < 8 && drive.state.player.carrying?.spot !== spot; tries += 1) {
       const hen = drive.state.room.entities.find((e) => e.type === 'chicken' && e.spot === spot);
       assert.ok(hen, `${spot} waits on ${screen}`);

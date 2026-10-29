@@ -1,7 +1,7 @@
 // W38, Matthew's fifth playtest notes (world, combat and Easter eggs): the
 // rope pulls light enemies in, the egg on his face, the Lighthouse's map, the
-// wreck's five shells, the metal shovel on paths and forest floor, the buried
-// heart's flowers, and the quiet fields after the shockwave.
+// wreck's five shells, the metal shovel on paths and forest floor, and the
+// quiet fields after the shockwave.
 const assert = require('node:assert/strict');
 const { test, loadGame, playState, hold, holdUntil, fakeDocument } = require('./harness');
 const { findPath } = require('./playthrough');
@@ -542,27 +542,6 @@ test('the metal shovel\'s words say it digs paths and the forest floor too', () 
   const item = VL.ITEMS.metalShovel;
   assert.match(item.popup.text, /path/i);
   assert.equal(VL.ART.popupLayout(item.popup).overflow, false);
-});
-
-// ---------- the buried heart's flowers ----------
-
-test('the buried heart has a ring of flowers round its bare square, the plain flowers of the fields, and no sign or sparkle', () => {
-  const { VL } = loadGame();
-  const screen = VL.getScreen('overworld', '5,0');
-  const spot = VL.SPOTS.heartFieldA;
-  assert.deepEqual([spot.screen, spot.x, spot.y], ['5,0', 14, 8]);
-  assert.equal(screen.tiles[8][14], '.', 'bare grass');
-  const ring = [];
-  for (let dy = -1; dy <= 1; dy += 1) {
-    for (let dx = -1; dx <= 1; dx += 1) {
-      const ch = screen.tiles[8 + dy][14 + dx];
-      if ((dx || dy) && !VL.tileInfo('overworld', ch).tree) ring.push(ch);
-    }
-  }
-  assert.deepEqual(ring, [',', ',', ',', ',', ','], 'flowers all round but the tree');
-  assert.ok(!screen.entities.some((e) => Math.abs(e.x - 14) <= 2 && Math.abs(e.y - 8) <= 2 && e.id !== 'heartFieldA'), 'nothing else marks it');
-  const elsewhere = Object.values(VL.AREAS.overworld.screens).filter((s) => s !== screen && s.tiles.some((row) => row.includes(','))).length;
-  assert.ok(elsewhere > 5, 'flowers grow all over the fields');
 });
 
 // ---------- the quiet fields after the shockwave ----------

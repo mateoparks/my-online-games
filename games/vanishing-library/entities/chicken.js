@@ -34,7 +34,7 @@
     },
   });
 
-  for (const spot of ['chickenCoop', 'chickenSquare', 'chickenRiverside', 'chickenLedge', 'chickenHighlands', 'chickenGap', 'chickenLair']) {
+  for (const spot of ['chickenCoop', 'chickenSquare', 'chickenRiverside', 'chickenLedge', 'chickenHighlands', 'chickenLair']) {
     VL.fillSpot(spot, { type: 'chicken' });
   }
   VL.fillSpot('lostChicken', { type: 'chicken', lost: true });

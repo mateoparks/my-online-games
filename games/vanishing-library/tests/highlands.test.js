@@ -143,7 +143,7 @@ test('from the ledge a long flight crosses the chasm and its screen edge, and he
   assert.equal(state.player.carrying?.spot, 'chickenLedge', 'the chicken lands with him');
   assert.ok(VL.LOCKS.highlands.reached(state));
   const hens = state.room.entities.filter((e) => e.type === 'chicken').map((e) => e.spot);
-  assert.deepEqual(plain(hens), ['chickenHighlands'], 'the shelf\'s own chicken is at its spot too');
+  assert.deepEqual(plain(hens), [], 'the first shelf has no chicken of its own since W41');
 });
 
 test('without the Chicken Keeper\'s Almanac read, a short flight falls short and flaps him back to the ledge', () => {
@@ -164,14 +164,25 @@ test('every highland flight works both ways from a chicken at its spot, and a ch
     state.room.entities = state.room.entities.filter((e) => !VL.isEnemy(e));
     state.player.carrying = null;
     hold(VL, state, [], 0.05);
+    // The middle shelves' one chicken (W41) is carried from its own screen.
+    const home = VL.SPOTS[spot];
+    if (home.screen !== place.screen) {
+      VL.place(state, { area: 'overworld', screen: home.screen, tx: home.x, ty: home.y });
+      assert.ok(VL.liftChicken(state, state.room.entities.find((e) => e.spot === spot)), `${spot} lifted on ${home.screen}`);
+      VL.place(state, place);
+      return flyNow(facing);
+    }
     const hen = state.room.entities.find((e) => e.type === 'chicken' && e.spot === spot);
     assert.ok(hen, `${spot} is at its spot on ${place.screen}`);
     Object.assign(hen, { px: state.player.x, py: state.player.y + 6, mode: 'idle', idle: 99 });
+    return flyNow(facing);
+  };
+  const flyNow = (facing) => {
     fly(VL, state, facing);
     return [state.player.screen, ...heroTile(VL, state)];
   };
-  assert.deepEqual(takeOff(ow('-2,-4', 12, 4), 'chickenGap', 'right'), ['-1,-4', 1, 4], 'east over the second chasm');
-  assert.equal(state.player.carrying?.spot, 'chickenGap');
+  assert.deepEqual(takeOff(ow('-2,-4', 12, 4), 'chickenHighlands', 'right'), ['-1,-4', 1, 4], 'east over the second chasm');
+  assert.equal(state.player.carrying?.spot, 'chickenHighlands');
   assert.ok(state.room.entities.some((e) => e.type === 'chicken' && e.spot === 'chickenLair'), 'the lair side keeps its own chicken');
   assert.deepEqual(takeOff(ow('-1,-4', 1, 5), 'chickenLair', 'left'), ['-2,-4', 12, 5], 'and back west');
   assert.deepEqual(takeOff(ow('-1,-3', 7, 9), 'chickenHighlands', 'down'), ['-1,-2', 7, 3], 'down to the ledge');
