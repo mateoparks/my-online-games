@@ -467,7 +467,7 @@ test('typewriter: Space and Enter work like S; Esc ends the talk at once', () =>
   defineTester(VL, [{ say: ['One.', 'Two.'] }]);
   const app = talkApp(VL);
   press(VL, app, 'interact');
-  press(VL, app, 'mainHand');
+  press(VL, app, 'space');
   press(VL, app, 'confirm');
   assert.equal(app.dialogue.page, 1);
   press(VL, app, 'pause');
@@ -480,7 +480,7 @@ test('holding S never skips text: only a fresh press finishes or turns a page', 
   defineTester(VL, [{ say: ['The first page is here.', 'And the second.'] }]);
   const app = talkApp(VL);
   press(VL, app, 'interact');
-  for (let i = 0; i < 600; i += 1) app.update(VL.actions({ held: ['interact', 'confirm', 'mainHand'] }), STEP);
+  for (let i = 0; i < 600; i += 1) app.update(VL.actions({ held: ['interact', 'confirm', 'space'] }), STEP);
   assert.equal(app.sceneId, 'dialogue');
   assert.equal(app.dialogue.page, 0);
   assert.equal(VL.dialogueRevealed(app.dialogue), 'The first page is here.', 'typed out by time alone');

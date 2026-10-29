@@ -67,7 +67,7 @@
     icon: 'shield-metal',
     prefers: 'offHand',
     about: 'Blocks more than wood, even a diving gull.',
-    popup: { title: 'You got a Metal Shield!', text: 'It stops more than the wood one, even a diving gull. Hold D to raise it.' },
+    popup: { title: 'You got a Metal Shield!', text: 'It stops more than the wood one, even a diving gull. Hold {offKey} to raise it.' },
     hold(state) {
       state.player.shield = true;
     },

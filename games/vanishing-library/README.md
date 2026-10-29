@@ -12,14 +12,14 @@ Keyboard only for now (laptop or desktop).
 |---|---|
 | Arrow keys | Walk |
 | S | Pick up, talk, read, open chests, pick berries, throw what you carry |
-| Space | Use the item in your main hand (a sword, the slingshot, ...) |
-| D | Use the item in your off hand (a shield, ...) |
+| Space | Use the item in your main hand (a sword, the slingshot, ...); another key can be chosen (Esc → Controls) |
+| D | Use the item in your off hand (a shield, ...); another key can be chosen (Esc → Controls) |
 | E | Equipment: choose what goes in each hand |
 | X | Dig with your shovel, whatever your hands hold (once you have a shovel); closes the equipment view and the maps (E, M and Esc do too), a shop and the librarian's shelf (Esc does too) |
 | M | The map, once you have one (the world map, or a dungeon's map) |
 | N | Sound on or off |
-| Esc | Pause, or Save & Quit |
-| Enter | Confirm a name or a menu choice (in menus, Space and S work too) |
+| Esc | Pause: Resume, Save & Quit, or Controls (choose the hand keys) |
+| Enter | Confirm a name or a menu choice (in menus, Space and S work too, whichever hand Space uses) |
 | Backspace | Delete a letter, or a saved game on the title screen |
 
 Two-handed tools work with Space or D; X digs with the best shovel you own without changing what your hands hold. The first time you play, a popup
@@ -703,6 +703,44 @@ default. Boy or girl changes only the words, never the sprites.
   grass (`w37-world-<outfit>.png`), every facing (`w37-facing-<facing>.png`),
   the puppet show and the title's hero.
 
+## Hand keys (W40)
+
+Matthew's note: let the player choose the main-hand and off-hand keys.
+`systems/hand-keys.js` and `scenes/controls.js`; tests:
+`tests/w40-hand-keys.test.js`. Saved per slot as `handKeys: { mainHand,
+offHand }`, key codes (`'Space'`, `'KeyQ'`, `'Digit1'`; fixture
+`tests/fixtures/save-v1-W40.json`). A save without it plays with Space and D
+(`VL.DEFAULT_HAND_KEYS`); `VL.handKeys(state)` reads it, a reserved, shared
+or unknown code falling back to the default, and with no game (title, name
+entry) it is the default.
+
+- **Choosable:** any letter A-Z or digit 0-9 the game does not use, and
+  Space. Taken (`VL.reservedKey`): every code in `VL.KEYS` (arrows, S, E, F,
+  X, M, Esc, Enter, Backspace, Delete) and the mute key N. A number pad digit
+  is that digit (`VL.keyCode`). `VL.handKeyChoice(state, hand, code)` says
+  `ok`, `taken`, `otherHand` or `notAKey`; `VL.setHandKey` and
+  `VL.resetHandKeys` change it and save. A key added to `VL.KEYS` later is
+  taken at once; a save that already chose it falls back to Space and D.
+- **The input layer:** `VL.KEYS` no longer holds the hands.
+  `VL.actionsForKey(event, hands)` gives every action of a key: its fixed
+  one, `space` for the Space bar, and a hand when the binding names it. The
+  boot loop calls `input.setHands(VL.handKeys(app.game))` before each poll;
+  a change lets go of every held key. `actions.keys` lists the codes pressed
+  since the last poll (no repeats), only for the Controls screen. Game logic
+  still reads `mainHand` / `offHand`, so W38's egg swap swaps the chosen keys.
+- **The Controls screen** (pause menu, third row): Main hand, Off hand,
+  Reset to Space and D, Back. S, Space or Enter on a hand waits for a key; a
+  taken key, the other hand's key or a key that is not a letter, digit or
+  Space is refused with a note and it keeps waiting; Esc or X backs out
+  unchanged. Esc or X on the screen goes back to the pause menu, on Controls.
+  The refusal never names F (the chicken flight stays a secret).
+- **Text:** `VL.popupText` fills `{mainKey}` and `{offKey}` with the chosen
+  keys in words (`Space`, `Q`, `1`). Small labels use `VL.handKeyMark`
+  (`␣`, `Q`) and the pause list `VL.handKeyHint` (`␣` or `Q:`); the HUD slots
+  read `mainKey` / `offKey` from `VL.ART.hudModel`. A test scans every string
+  in the game and fails on Space, `␣` or a lone D outside the tokens, with an
+  allow-list for other uses.
+
 ## Engine notes
 
 - Logical canvas 256×192: a 16px HUD strip over a 16×11 grid of 16px tiles.
@@ -742,7 +780,8 @@ sends the player back to the title. One file per scene, each drawing through
 the art kit, and the render smoke in `tests/engine.test.js` covers every one.
 
 - Menus accept Enter, S or Space: `VL.confirmed(actions)`. Enter is the
-  `confirm` action, Backspace and Delete are `erase`. A scene that wants a
+  `confirm` action, the Space bar is `space` (always, whichever hand it
+  uses or none, W40; never the main-hand action), Backspace and Delete are `erase`. A scene that wants a
   press to do nothing in the world just does not call `VL.updateWorld`
   that step, so a confirm never leaks into play.
 - `actions.typed` is the text typed since the last poll (`'\b'` for
@@ -1009,6 +1048,12 @@ thorny slime, a step onto lava (`w35-lava.png`), the Lair's guards (a wood
 sword's "Clink!", the metal sword beats them, the cave opens), the hoard
 with no twinkle, the dazed Dragon untouched by wood and tinted by metal
 (`w35-dragon-hit-tint.png`), and the third round's fan (`w35-dragon-fan.png`).
+Then W40's hand keys with real keys: Esc, down to Controls
+(`w40-controls.png`), the main hand waiting (`w40-capture.png`), S refused
+with a note (`w40-refused.png`), D refused as the off hand's key, Q taken
+(`w40-controls-chosen.png`), the pause list naming Q (`w40-pause-keys.png`),
+Q swinging and Space not, the sword's popup saying Q
+(`w40-popup-custom-key.png`) and the equipment view (`w40-equipment.png`).
 Last, the flash guard (WCAG 2.3.1): dark rooms while hurt,
 the beam, the Lens Crab's rounds, the Dragon's rounds, its fire through a
 metal shield, a stone head's fire bounced home, the slides up through the boss

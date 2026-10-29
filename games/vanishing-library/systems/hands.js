@@ -67,7 +67,7 @@
     icon: 'sword-wood',
     sword: true,
     about: 'Swing it to cut bushes.',
-    popup: { title: 'You got a Wood Sword!', text: 'Press Space to swing it. Cutting bushes can turn up wood, shells and hearts.' },
+    popup: { title: 'You got a Wood Sword!', text: 'Press {mainKey} to swing it. Cutting bushes can turn up wood, shells and hearts.' },
     use(state, hand) {
       VL.swing(state, 'woodSword', hand);
     },
@@ -78,7 +78,7 @@
     icon: 'shield-wood',
     prefers: 'offHand',
     about: 'Hold it up to block small things.',
-    popup: { title: 'You got a Wood Shield!', text: 'Hold D to raise it. Press E to choose what each hand holds.' },
+    popup: { title: 'You got a Wood Shield!', text: 'Hold {offKey} to raise it. Press E to choose what each hand holds.' },
     hold(state) {
       state.player.shield = true;
     },

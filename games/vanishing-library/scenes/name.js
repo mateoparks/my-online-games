@@ -74,7 +74,7 @@
       if (!begin) {
         const was = naming.row;
         const choosing = Boolean(CHOICES[ROWS[naming.row]]);
-        if (choosing && (pressed.interact || pressed.mainHand)) {
+        if (choosing && (pressed.interact || pressed.space)) {
           // S or Space on a choice keeps it and steps down; its letter is not for the name.
           naming.row += 1;
         } else {

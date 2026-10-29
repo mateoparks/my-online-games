@@ -57,7 +57,7 @@ test('a toggle reached with Tab keeps its own Enter and Space', () => {
 });
 
 test('name entry: ↓ picks START, and S, Space or Enter there starts the game', () => {
-  for (const confirm of ['interact', 'mainHand', 'confirm']) {
+  for (const confirm of ['interact', 'space', 'confirm']) {
     const { VL } = loadGame();
     const app = titleApp(VL);
     press(VL, app, 'confirm');

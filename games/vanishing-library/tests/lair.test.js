@@ -457,8 +457,8 @@ test('every word the lair says fits its box and its font', () => {
   boxes.push(VL.POPUPS.mirrorShield, VL.HOARD_WORDS, { text: VL.SPOUT_WORDS });
   for (const id of VL.HOARD_BOOKS) boxes.push({ title: 'You found a book!', text: VL.BOOKS[id].blurb });
   for (const box of boxes) {
-    assert.deepEqual(plain(VL.ART.missingGlyphs(`${box.title || ''} ${box.text}`)), [], box.text);
-    assert.ok(!VL.ART.popupLayout(box).overflow, `fits: ${box.text}`);
+    assert.deepEqual(plain(VL.ART.missingGlyphs(VL.popupText(`${box.title || ''} ${box.text}`, null))), [], box.text);
+    assert.ok(!VL.ART.popupLayout({ ...box, text: VL.popupText(box.text, null) }).overflow, `fits: ${box.text}`);
   }
   for (const note of [VL.LAIR_SWORD_WORDS, VL.SHIELD_FIRE_NOTE, VL.DRAGON_WORDS.beaten]) {
     assert.deepEqual(plain(VL.ART.missingGlyphs(note, 'small')), [], note);

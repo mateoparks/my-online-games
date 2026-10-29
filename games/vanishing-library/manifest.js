@@ -58,6 +58,7 @@ VL.FILES = {
     'systems/boss-hints.js',
     'systems/egg-on-face.js',
     'systems/hero-look.js',
+    'systems/hand-keys.js',
   ],
 
   entities: [
@@ -148,6 +149,7 @@ VL.FILES = {
     'scenes/shockwave.js',
     'scenes/finale.js',
     'scenes/library-shelf.js',
+    'scenes/controls.js',
   ],
 
   boot: [

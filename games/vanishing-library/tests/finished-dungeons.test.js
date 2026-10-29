@@ -184,7 +184,8 @@ test('W31 saves nothing new: no game field was added', () => {
   const { VL } = loadGame();
   const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W18.json'), 'utf8'));
   // Fields added since, each with its own fixture: W34's crab count
-  // (save-v1-W34.json) and W37's look (save-v1-W37.json).
-  const later = ['crabs', 'look'];
+  // (save-v1-W34.json), W37's look (save-v1-W37.json) and W40's hand keys
+  // (save-v1-W40.json).
+  const later = ['crabs', 'look', 'handKeys'];
   assert.deepEqual(Object.keys(VL.serializeSave(VL.createGame({ name: 'Robin' }))).filter((key) => !(key in fixture) && !later.includes(key)), []);
 });

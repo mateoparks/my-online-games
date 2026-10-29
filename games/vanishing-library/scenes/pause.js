@@ -1,16 +1,17 @@
-// Pause (Esc): the world freezes under a menu with Resume and Save & Quit,
-// plus the controls (never F: the chicken flight stays a secret).
+// Pause (Esc): the world freezes under a menu with Resume, Save & Quit and
+// Controls (the hand keys, W40), plus the key list (never F: the chicken
+// flight stays a secret).
 (() => {
   VL.ART.addColors({ pauseShade: '#1b1b2480' });
-  VL.PAUSE_OPTIONS = ['Resume', 'Save & Quit'];
+  VL.PAUSE_OPTIONS = ['Resume', 'Save & Quit', 'Controls'];
   const QUIT_OPTIONS = ['Yes', 'No'];
-  const BOX = { x: 40, y: 40, w: 176, h: 112 };
+  const BOX = { x: 40, y: 34, w: 176, h: 124 };
   const DIALOG = { x: 36, y: 64, w: 184, h: 52 };
   // Space is not mentioned until the player holds a main-hand item, X until
   // there is a shovel, nor M until there is a map to open (design: Controls).
   const controls = (state) => [
     '↑↓←→ MOVE    S: TALK, PICK UP',
-    (VL.ART.hudModel(state).mainHand ? '␣ MAIN HAND    D: OFF HAND' : 'D: OFF HAND') + (VL.bestShovel?.(state) ? '    X: DIG' : ''),
+    (VL.ART.hudModel(state).mainHand ? `${VL.handKeyHint(state, 'mainHand')} MAIN HAND    ` : '') + `${VL.handKeyHint(state, 'offHand')} OFF HAND` + (VL.bestShovel?.(state) ? '    X: DIG' : ''),
     'E: EQUIPMENT    N: SOUND ON/OFF',
     VL.hasItem(state, 'worldMap') || VL.inDungeon(state) ? 'M: MAP    ESC: BACK TO THE GAME' : 'ESC: BACK TO THE GAME',
   ];
@@ -18,9 +19,10 @@
   VL.pauseControls = controls;
 
   VL.defineScene('pause', {
-    enter(app) {
-      // quitChoice indexes QUIT_OPTIONS; No is the default.
-      app.pause = { cursor: 0, triedQuit: false, askQuit: false, quitChoice: 1 };
+    enter(app, data) {
+      // quitChoice indexes QUIT_OPTIONS; No is the default. Back from
+      // Controls, the cursor stays on Controls.
+      app.pause = { cursor: data?.cursor ?? 0, triedQuit: false, askQuit: false, quitChoice: 1 };
     },
 
     update(app, actions) {
@@ -44,13 +46,18 @@
         return;
       }
       if (pressed.up || pressed.down) {
-        pause.cursor = 1 - pause.cursor;
+        const count = VL.PAUSE_OPTIONS.length;
+        pause.cursor = (pause.cursor + (pressed.down ? 1 : count - 1)) % count;
         VL.sfx('menuMove');
       }
       if (!VL.confirmed(actions)) return;
       VL.sfx('menuSelect');
       if (VL.PAUSE_OPTIONS[pause.cursor] === 'Resume') {
         app.setScene('play');
+        return;
+      }
+      if (VL.PAUSE_OPTIONS[pause.cursor] === 'Controls') {
+        app.setScene('controls');
         return;
       }
       // With saving off there is nothing to write; a write that fails keeps
@@ -77,11 +84,11 @@
         VL.ART.text(ctx, option, centre - 32, y, { color: chosen ? 'goldLight' : 'text' });
       });
       if (VL.PAUSE_OPTIONS[app.pause.cursor] === 'Save & Quit' && app.storage.ok) {
-        VL.ART.text(ctx, `CONTINUE STARTS ${VL.popupText(VL.wakeWords(app.game) || 'at your last save point', app.game).toUpperCase()}`, centre, BOX.y + 48, { size: 'small', align: 'center', color: 'textDim' });
+        VL.ART.text(ctx, `CONTINUE STARTS ${VL.popupText(VL.wakeWords(app.game) || 'at your last save point', app.game).toUpperCase()}`, centre, BOX.y + 60, { size: 'small', align: 'center', color: 'textDim' });
       }
-      controls(app.game).forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 58 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
-      if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'goldLight' });
-      else if (app.saveFailed) VL.ART.text(ctx, 'COULD NOT SAVE. STILL TRYING', centre, BOX.y + 97, { size: 'small', align: 'center', color: 'heartLight' });
+      controls(app.game).forEach((hint, i) => VL.ART.text(ctx, hint, centre, BOX.y + 70 + i * 9, { size: 'small', align: 'center', color: 'textDim' }));
+      if (!app.storage.ok) VL.ART.text(ctx, 'SAVING IS OFF IN THIS BROWSER', centre, BOX.y + 109, { size: 'small', align: 'center', color: 'goldLight' });
+      else if (app.saveFailed) VL.ART.text(ctx, 'COULD NOT SAVE. STILL TRYING', centre, BOX.y + 109, { size: 'small', align: 'center', color: 'heartLight' });
       if (app.pause.askQuit) {
         const mid = VL.TUNING.width / 2;
         VL.ART.drawBox(ctx, DIALOG.x, DIALOG.y, DIALOG.w, DIALOG.h);

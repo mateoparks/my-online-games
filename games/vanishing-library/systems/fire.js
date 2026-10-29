@@ -62,7 +62,7 @@
     about: 'Bounces fire back where it came from. Blocks everything a metal shield does.',
     popup: {
       title: 'You got the Mirror Shield!',
-      text: 'It\'s in your off hand now. Hold D to raise it towards a ball of fire and it bounces right back! E swaps what you hold.',
+      text: 'It\'s in your off hand now. Hold {offKey} to raise it towards a ball of fire and it bounces right back! E swaps what you hold.',
     },
     hold(state) {
       state.player.shield = true;

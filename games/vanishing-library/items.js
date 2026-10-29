@@ -127,7 +127,8 @@
 
   // { title, text }; `{name}` in either is the hero's name, and `{he}`,
   // `{him}`, `{his}`, `{hers}`, `{himself}`, `{boy}` (capitalised too: `{He}`)
-  // are the hero's words, boy or girl (W37, `state.look.gender`).
+  // are the hero's words, boy or girl (W37, `state.look.gender`); `{mainKey}`
+  // and `{offKey}` the keys this save chose for the hands (W40).
   VL.POPUPS = {};
 
   VL.definePopup = function definePopup(id, popup) {
@@ -144,6 +145,7 @@
     const words = VL.HERO_WORDS[state?.look?.gender] || VL.HERO_WORDS.boy;
     return String(text ?? '')
       .replace(/\{name\}/g, state?.name || VL.DEFAULT_NAME || 'Hero')
+      .replace(/\{(main|off)Key\}/g, (token, hand) => VL.handKeyWord(state, `${hand}Hand`))
       .replace(/\{(he|him|his|hers|himself|boy)\}/gi, (token, key) => {
         const word = words[key.toLowerCase()];
         if (key === key.toLowerCase()) return word;

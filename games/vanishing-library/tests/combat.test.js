@@ -991,7 +991,7 @@ test('the heart-container popup and the metal gear popups fit and use the font',
     assert.ok(popup, id);
     const layout = VL.ART.popupLayout({ title: popup.title, text: VL.popupText(popup.text, { name: 'Robin' }) });
     assert.ok(!layout.overflow, id);
-    assert.equal(VL.ART.missingGlyphs(`${popup.title}${popup.text}`, 'normal').length, 0, id);
+    assert.equal(VL.ART.missingGlyphs(`${popup.title}${VL.popupText(popup.text, { name: 'Robin' })}`, 'normal').length, 0, id);
   }
 });
 

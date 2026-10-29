@@ -128,7 +128,7 @@
     draw(ctx, app, t) {
       pages[app.artPage](ctx, t);
       if (app.artPage === 2) {
-        VL.ART.drawPopup(ctx, { title: 'Wood Sword', text: 'You found a wood sword! Press Space to swing it at bushes and slimes.' }, t);
+        VL.ART.drawPopup(ctx, { title: 'Wood Sword', text: VL.popupText('You found a wood sword! Press {mainKey} to swing it at bushes and slimes.', app.game) }, t);
       }
       text(ctx, `ART ${app.artPage + 1}/${pages.length} ← →`, 252, 185, { size: 'small', align: 'right', color: 'text', shadow: 'outline' });
     },

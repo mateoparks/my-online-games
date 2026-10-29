@@ -85,7 +85,7 @@
     name: 'Wood Shovel',
     icon: 'shovel-wood',
     twoHanded: true,
-    about: 'Takes both hands. Space or D digs sand.',
+    about: 'Takes both hands. {mainKey} or {offKey} digs sand.',
     popup: { title: 'You got a Wood Shovel!', text: 'Whole shells hide in the beach sand. Dig for them!' },
     use(state, hand) {
       VL.dig(state, 'woodShovel', hand);
