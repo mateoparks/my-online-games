@@ -620,7 +620,7 @@ test('every finale line fits its box and the font, and a line about the hero nam
   }
   for (const beat of VL.ENDING_BEATS) assert.ok(!VL.ART.popupLayout({ text: VL.popupText(beat.say, state), title: beat.speaker || null }).overflow, `one page: ${beat.say}`);
   assert.ok(VL.ENDING_BEATS.some((b) => /\{name\}/.test(b.say)), 'the town thanks the hero by name');
-  assert.ok(VL.ENDING_BEATS.some((b) => /home town together/.test(b.say)), 'the promise');
+  assert.ok(VL.FINALE_WORDS.forgiven.some(([, say]) => /home town together/.test(say)), 'the promise');
   assert.ok(VL.ENDING_BEATS.some((b) => /writing books of its own/.test(b.say)), 'the town writes its own books');
 });
 

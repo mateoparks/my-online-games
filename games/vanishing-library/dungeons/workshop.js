@@ -130,11 +130,11 @@
   VL.defineDecor('wsHeads', (ctx, x, y) => {
     rect(ctx, 'outline', x, y + 10, 64, 4);
     rect(ctx, 'woodDark', x + 1, y + 11, 62, 2);
-    const heads = [['npcSilver', 'npcPlum'], ['hair', 'npcNavy'], ['npcBlonde', 'npcRose'], ['outline', 'roof'], ['npcSilver', 'npcNavy'], ['hair', 'leaf']];
-    heads.forEach(([hair, neck], i) => {
+    const heads = [['npcSilver', 'npcPlum'], ['hair', 'npcNavy'], ['npcBlonde', 'npcRose'], ['outline', 'roof'], ['npcBlack', 'npcNavy', 'skinBrown'], ['hair', 'leaf']];
+    heads.forEach(([hair, neck, skin = 'skin'], i) => {
       const hx = x + 3 + i * 10;
       rect(ctx, 'outline', hx - 1, y + 1, 9, 10);
-      rect(ctx, 'skin', hx, y + 2, 7, 8);
+      rect(ctx, skin, hx, y + 2, 7, 8);
       rect(ctx, hair, hx, y + 2, 7, 2);
       rect(ctx, 'ink', hx + 1, y + 5, 1, 1);
       rect(ctx, 'ink', hx + 5, y + 5, 1, 1);
@@ -304,7 +304,7 @@
     if (at) room.entities.push({ type: 'npc', id: 'librarian', talk: 'librarianFinale', x: at.x, y: at.y, facing: 'left' });
     if (room.screen !== VL.FINALE.hall) return;
     if (state.flags.marionettes) VL.wifeComesDown(state);
-    else room.entities.push({ type: 'decor', art: 'wsPuppeteer', x: 7, y: 0 });
+    else room.entities.push({ type: 'decor', art: 'wsPuppeteer', x: 7, y: 0, speaker: 'librarianWife', speakerBox: { x: 1, y: 0, w: 14, h: 21 } });
   });
 
   // Off her gallery and onto the hall floor (at once on a later visit, or in
@@ -342,18 +342,16 @@
       [HER, 'Please, both of you, go back up! My puppets will see you out. Off you go, my lovelies!'],
     ],
     showAsked: [
-      [HER, 'Stop! Please... that\'s enough. My poor puppets.'],
-      [HER, 'Oh, {name}. They could have hurt you. Whatever was I thinking?'],
+      [HER, 'Stop! Please, that\'s enough. Oh, {name}, my puppets could have hurt you. Whatever was I thinking?'],
       [HIM, 'My dear... the books. All this time, was it you?'],
-      [HER, 'Yes. Let me tell it properly, the only way I know how. One last show.'],
+      [HER, 'Yes. Let me tell it the only way I know how. One last show.'],
     ],
     forgiven: [
-      [HER, 'That\'s the true story. I\'m so sorry, my dear. I took the books, every one, and gave them to that old dragon to keep.'],
-      [HER, 'I only wanted to go home. I didn\'t know how to tell you, so I did a sad, silly thing instead.'],
-      [HER, 'And I\'m sorry to you too, {name}. You worked so hard, and I only made it harder.'],
-      [HIM, 'Oh, my dear. I never knew you missed home so much. I\'m sorry I never asked.'],
-      [HIM, 'Of course I forgive you. Will you stay, and help me fill the shelves again?'],
-      [HER, 'I will. I\'ll carry every last book home from that mountain myself. Thank you, my dear. And thank you, {name}.'],
+      [HER, 'I\'m so sorry, my dear. I only wanted to go home.'],
+      [HIM, 'Oh, my sweetheart, I\'m sorry I didn\'t realize how much you missed home.'],
+      [HER, 'Let\'s fix this! Let\'s bring back all the books and fill the library!'],
+      [HIM, 'Yes, and then let\'s plan a visit to your home town together!'],
+      [HER, 'Oh! Do you mean it? Then I\'ll put on a puppet show there, all about this town.'],
     ],
   };
 

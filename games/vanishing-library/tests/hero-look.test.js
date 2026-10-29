@@ -302,15 +302,21 @@ test('new game: the name, then boy or girl, clothes and hair beside it, with a l
 // The strings drawn while `draw` runs, with their colours.
 function textsDrawn(VL, draw) {
   const drawn = [];
-  const original = VL.ART.text;
+  const { text: original, drawPopup } = VL.ART;
   VL.ART.text = (ctx, str, x, y, options = {}) => {
     drawn.push({ str: String(str), color: options.color });
     return original(ctx, str, x, y, options);
   };
+  // A popup's title and lines are drawn inside the kit, past VL.ART.text.
+  VL.ART.drawPopup = (ctx, popup, t) => {
+    const layout = drawPopup(ctx, popup, t);
+    for (const str of [layout.title, ...layout.lines]) if (str) drawn.push({ str: String(str), color: 'popup' });
+    return layout;
+  };
   try {
     draw();
   } finally {
-    VL.ART.text = original;
+    Object.assign(VL.ART, { text: original, drawPopup });
   }
   return drawn;
 }
@@ -446,9 +452,8 @@ test('the intro says his or her culture, from the game\'s choice', () => {
 });
 
 // Everything drawn as text while the hero plays, boy or girl, with a token
-// planted in each source that is drawn outside the talk and popups (book
-// titles, equipment, the shockwave, fainting, shows, shops, dungeons, maps,
-// credits): each must come out as the hero's word, never as a raw {token}.
+// planted in each source (book titles, equipment, the shockwave, fainting,
+// shows, talk speakers, shops, dungeons, maps, the pause, credits): each must come out as the hero's word, never as a raw {token}.
 test('every text the hero sees goes through popupText: no {token} is ever drawn raw', () => {
   for (const gender of ['boy', 'girl']) {
     const { VL } = loadGame();
@@ -465,6 +470,10 @@ test('every text the hero sees goes through popupText: no {token} is ever drawn 
     VL.DUNGEONS.scriptorium.name = plant(VL.DUNGEONS.scriptorium.name);
     VL.COPIES.woodsMapCopy.name = plant(VL.COPIES.woodsMapCopy.name);
     VL.CREDITS.unshift({ big: mark });
+    for (const [id, name] of Object.entries(VL.REGION_NAMES)) if (name) VL.REGION_NAMES[id] = plant(name);
+    VL.MAP_ASK = plant(VL.MAP_ASK);
+    const wakeWords = VL.wakeWords;
+    VL.wakeWords = (state) => plant(wakeWords(state) || 'at home');
     const shop = VL.SCENES.shop.smokeData().shop;
     shop.title = plant(shop.title);
     for (const offer of shop.offers) offer.name = plant(offer.name);
@@ -497,6 +506,8 @@ test('every text the hero sees goes through popupText: no {token} is ever drawn 
         app.setScene('puppetShow', { show: 0 });
         app.puppetShow.beat = app.puppetShow.show.beats.length - 1;
       },
+      dialogue: () => app.setScene('dialogue', { speaker: plant('Pip'), pages: [['Hello!']] }),
+      conversation: () => app.setScene('dialogue', { speaker: 'Pip', speakers: ['Pip', plant('Nell')], pages: [['Hello!'], ['Hi!']] }),
       shop: () => app.setScene('shop', { shop }),
       shopAsk: () => {
         app.setScene('shop', { shop });
@@ -516,24 +527,29 @@ test('every text the hero sees goes through popupText: no {token} is ever drawn 
         app.setScene('dungeonMap');
       },
       copyView: () => app.setScene('copyView', { id: 'woodsMapCopy' }),
-      worldMapAsk: () => app.setScene('worldMap', {}),
+      worldMapAsk: () => app.setScene('worldMap', { mode: 'ask' }),
       worldMap: () => app.setScene('worldMap', { mode: 'view' }),
-      pause: () => app.setScene('pause'),
+      pause: () => {
+        // The line shows on Save & Quit, where saving works.
+        app.storage = Object.assign(Object.create(app.storage), { ok: true });
+        app.setScene('pause');
+        app.pause.cursor = VL.PAUSE_OPTIONS.indexOf('Save & Quit');
+      },
       credits: () => {
         app.setScene('ending');
         Object.assign(app.ending, { phase: 'credits', t: 0 });
       },
     };
-    const unplanted = ['worldMapAsk', 'worldMap', 'pause'];
     for (const [id, open] of Object.entries(cases)) {
       fresh();
       open();
+      if (id === 'conversation') app.dialogue.page = 1;
       const drawn = textsDrawn(VL, () => {
         for (const t of [0, 0.5, 3]) VL.render(fakeContext(), app, t);
       }).map((d) => d.str);
       const all = drawn.join(' | ');
       assert.doesNotMatch(all, /\{[A-Za-z]+\}/, `${gender} ${id}: ${all}`);
-      if (!unplanted.includes(id)) assert.ok(all.toLowerCase().includes(word), `${gender} ${id} shows the planted line: ${all}`);
+      assert.ok(all.toLowerCase().includes(word), `${gender} ${id} shows the planted line: ${all}`);
     }
   }
 });
@@ -602,12 +618,10 @@ const OTHERS = [
   ['scenes/puppet-show.js', 'Nosy Ned is back! He just won\'t stop'],
   ['scenes/puppet-show.js', 'He climbed all the way up the mountain'],
   ['scenes/puppet-show.js', 'He landed in a haystack'],
-  ['scenes/puppet-show.js', 'But it was not her town.'],
-  ['scenes/puppet-show.js', 'Her home was far over the hills'],
-  ['scenes/puppet-show.js', 'She married a kind librarian. He loved his books'],
-  ['scenes/puppet-show.js', 'So she had a sad, silly idea. If the books were gone, perhaps he would'],
+  ['scenes/puppet-show.js', 'But it was not her town, and she missed home.'],
+  ['scenes/puppet-show.js', 'She married a kind librarian who would never, ever leave his books. So she had a sad, silly idea: if the books were gone, perhaps he would leave too.'],
   ['scenes/puppet-show.js', 'Every night, she carried books up a secret tunnel'],
-  ['scenes/puppet-show.js', 'And so, at last, did she.'],
+  ['scenes/puppet-show.js', 'only grew sadder, and so did she.'],
   ['scenes/puppet-show.js', 'Now he reads one book every Sunday.'],
 ];
 

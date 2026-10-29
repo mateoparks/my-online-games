@@ -996,7 +996,13 @@ title, then a kind show and the packed library (`w20-kind-show.png`,
 hero puppet, which fades (`w33-hero-over-puppet.png`), Esc in the ending's
 first fade-in, the ending with nothing in the HUD strip
 (`w33-ending-no-hud.png`), and the slingshot's ammo count inside its slot
-(`w33-ammo-in-slot.png`). Then W35's dungeon notes, with real keys: a seed
+(`w33-ammo-in-slot.png`). Then W39's finale talk, S turning the pages: every
+page of the hall's three talks with the box checked clear of whoever speaks,
+hers low and his high (`w39-confront-<n>.png`, `w39-after-fight-<n>.png`,
+`w39-forgiven-<n>.png`), each beat of the confession show
+(`w39-show-<n>.png`), each box of the ending (`w39-ending-<n>.png`), and Mr.
+Fenwick beside Gran Ottie and at his desk (`w39-fenwick-and-gran.png`,
+`w39-fenwick-library.png`). Then W35's dungeon notes, with real keys: a seed
 over the Hollow Oak's roots (`w35-seed-over-roots.png`), Gran Ottie's hint
 after a faint (`w35-gran-hint.png`), the Lighthouse with no heaps and a
 thorny slime, a step onto lava (`w35-lava.png`), the Lair's guards (a wood
@@ -1151,9 +1157,27 @@ looks and wandering, `scenes/dialogue.js` the conversation, and
   who it is; `wander` is how many tiles from where it stands it may stroll (0
   stands still). An entity's own `wander` or `talk` overrides the definition.
 - **Looks:** `VL.defineNpcLook('librarian', { head: 'short' | 'hat' | 'bun',
-  colors: { hair, hairLight, top, topDark, topLight, legs, hat, hatLight } })`
+  colors: { hair, hairLight, top, topDark, topLight, legs, hat, hatLight, skin, skinShade, temples } })`
   makes the 12×14 sprites `npc-<look>-<facing>-<0|1|2>` like the hero's. Built
-  in: `elder`, `fisher`, `gardener`, `townsfolk`.
+  in: `elder`, `fisher`, `gardener`, `townsfolk`. `skin`/`skinShade` default to
+  the hero's `skin`/`skinShade` (W39 adds `skinBrown`/`skinBrownShade`, and
+  `npcBlack`, `npcBlackLight`, `npcGray`); `temples` (short head only) grays
+  two hair pixels beside the face in each facing. Mr. Fenwick (W39): warm brown
+  skin, black hair gray at the temples, navy; his show puppet
+  (`puppet-librarian`), marionette and painted head in the workshop match.
+  The puppet and the marionette keep their gray to one pixel at each temple
+  and wear no glasses, so the gray never joins up into a band.
+- **Where the talk box goes** (`VL.dialogueSide`, W39): on the half of the
+  screen away from the one speaking, so the box flips as a conversation
+  passes between people (Mrs. Fenwick on her gallery: low; Mr. Fenwick on the
+  hall floor: high), and never over the speaker. The hero decides only when
+  nobody on screen speaks (away from the hero), or when the speaker's far half
+  would cover the speaker. The speaker is the room's `npc` whose name is on
+  the box, or decor that stands for one: `{ type: 'decor', ..., speaker:
+  '<npc id>', speakerBox: { x, y, w, h } }` (tile pixels, as drawn). Speaker
+  names go through `VL.popupText`. `tests/w39-finale-talk.test.js` checks the
+  drawn box against the drawn sprites in the hall, the workshop, the library
+  and town. Shops use their own full-screen panel, so this doesn't apply.
 - **Wandering:** one step at a time, off the screen's edge rows, never onto a
   wall (this visit's tiles, so a cut bush is open), another entity or the hero,
   never onto a tile beside a thing that isn't a person (so no one stands on the
@@ -2419,9 +2443,13 @@ with them home (`finale:booksHome`, `finale:home:<id>`). W33's tests: `tests/w33
   she, the librarian and four townsfolk have new lines, and the townsfolk have
   lines between the Dragon and the ending too.
 - **The ending** (`scenes/finale.js`): the library staged with the town in it
-  (`VL.ENDING_BEATS`: the shelves filling, Gran's three cheers, the cheer,
-  Miss Quill's "The Adventures of {name}", the promise to visit her home town,
-  the town writing its own books), a fade, then `VL.CREDITS` rolling (S or Esc jumps
+  (`VL.ENDING_BEATS`, Matthew's script word for word since W39: the town
+  carrying the hoard home as the shelves fill, Miss Quill's "The Adventures of
+  {name}" going up, Gran's three cheers, everyone's cheer with a hop, the town
+  writing its own books; the promise to visit her home town is now said in
+  the hall, the last lines of `VL.FINALE_WORDS.forgiven`). Every box sits at
+  the bottom: the speakers stand on row 5 and the shelves along the top stay
+  in view, a fade, then `VL.CREDITS` rolling (S or Esc jumps
   to THE END; again goes to the title). `finished` is set and saved as the
   credits begin. Esc during the first fade-in or the beats skips to the
   credits (from the fade-in, the fade-out starts as dark as it was). No HUD is

@@ -132,11 +132,11 @@
 
   // ---------- asking before drawing ----------
 
-  const ASK = 'Draw a map of everywhere you have been? It uses 1 paper and 1 ink.';
+  VL.MAP_ASK = 'Draw a map of everywhere you have been? It uses 1 paper and 1 ink.';
 
   function drawAsk(ctx, game, view, t) {
     const w = 200;
-    const lines = VL.ART.wrapText(VL.popupText(ASK, game), w - 12, 'normal');
+    const lines = VL.ART.wrapText(VL.popupText(VL.MAP_ASK, game), w - 12, 'normal');
     const line = VL.ART.lineHeight('normal');
     const h = 12 + (lines.length + 2) * line;
     const x = Math.floor((VL.TUNING.width - w) / 2);

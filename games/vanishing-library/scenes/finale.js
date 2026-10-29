@@ -1,8 +1,7 @@
 // The ending (design: Ending (decided), Final scenes before the credits):
-// back in the library, the shelves fill up with the hoard's books, the town
-// thanks the hero by name and a book about them goes on the shelf, the
-// librarian promises they'll visit her home town together, a line about the
-// town writing its own books, then the credits and the title. The game is
+// back in the library, the town fills the shelves with the hoard's books, a
+// book about the hero goes on the shelf, the town cheers the hero by name, a
+// line about the town writing its own books, then the credits and the title. The game is
 // marked finished as the credits begin, so a reload from there on shows the
 // slot as FINISHED; Continue wakes him at his last save point before the
 // finale (the hut), in the world after the ending. README "The finale (W20)".
@@ -12,31 +11,29 @@
 
   // Where everyone stands in the library (tiles); the hero faces the desk.
   const HERO_AT = { area: 'library', screen: '0,0', tx: 7, ty: 6, facing: 'up' };
+  // The speakers stand on row 5, where a box at the bottom leaves them in
+  // view, and the shelves along the top stay clear of every box.
   const PARTY = [
     { id: 'librarianWife', x: 9, y: 3, facing: 'down' },
-    { id: 'gran', x: 3, y: 8, facing: 'up' },
-    { id: 'shopkeeper', x: 5, y: 8, facing: 'up' },
-    { id: 'smith', x: 10, y: 8, facing: 'up' },
-    { id: 'binder', x: 12, y: 8, facing: 'up' },
-    { id: 'chickenKid', x: 3, y: 5, facing: 'right' },
+    { id: 'gran', x: 3, y: 5, facing: 'right' },
     { id: 'juniper', x: 5, y: 5, facing: 'right' },
     { id: 'nell', x: 10, y: 5, facing: 'left' },
-    { id: 'miller', x: 12, y: 5, facing: 'left' },
+    { id: 'binder', x: 12, y: 5, facing: 'left' },
+    { id: 'chickenKid', x: 3, y: 7, facing: 'up' },
+    { id: 'shopkeeper', x: 5, y: 7, facing: 'up' },
+    { id: 'smith', x: 10, y: 7, facing: 'up' },
+    { id: 'miller', x: 12, y: 7, facing: 'up' },
   ];
 
   // Each beat is a page of words: `speaker`, `at` (where the box goes, clear
   // of whoever is in the picture), `fill` (how full the shelves get), `party`
   // (the town is there), `heroBook`, `cheer` (everyone hops).
   VL.ENDING_BEATS = [
-    { say: 'Mrs. Fenwick led the way up the mountain, and the whole town helped carry the Dragon\'s hoard home.', at: 'bottom', fill: 0.5 },
-    { say: 'One by one, the books went back on the shelves. And this time, they stayed.', at: 'bottom', fill: 1 },
-    { speaker: 'Gran Ottie', say: 'Three cheers for {name}, who brought our books home!', at: 'top', party: true },
-    { speaker: 'Everyone', say: 'Hip, hip, hooray! Hip, hip, hooray! Hip, hip, HOORAY!', at: 'top', party: true, cheer: true },
-    { speaker: 'Miss Quill', say: 'And this one is brand new. I bound it myself: "The Adventures of {name}"!', at: 'bottom', party: true, heroBook: true },
-    { speaker: 'Mr. Fenwick', say: 'It goes right here, in the middle, where everyone can see it. Thank you, {name}. For everything.', at: 'bottom', party: true, heroBook: true },
-    { speaker: 'Mr. Fenwick', say: 'And my dear, once the library is running again, we\'ll visit your home town together. I promise.', at: 'bottom', party: true, heroBook: true },
-    { speaker: 'Mrs. Fenwick', say: 'Oh! Do you mean it? Then I\'ll put on a puppet show there, all about this town.', at: 'bottom', party: true, heroBook: true },
-    { say: 'Before long, the whole town was writing books of its own: paper from the mill, ink from the berries, and Miss Quill\'s bindery busy day and night.', at: 'bottom', party: true, heroBook: true },
+    { say: 'The whole town helped carry the Dragon\'s hoard home, and the books went back on the shelves. This time, they stayed.', at: 'bottom', fill: 1, party: true },
+    { speaker: 'Miss Quill', say: 'And here\'s a brand-new one I bound myself: "The Adventures of {name}"!', at: 'bottom', party: true, heroBook: true },
+    { speaker: 'Gran Ottie', say: 'Three cheers for {name}!', at: 'bottom', party: true, heroBook: true },
+    { speaker: 'Everyone', say: 'Hip, hip, hooray! Hip, hip, hooray! Hip, hip, HOORAY!', at: 'bottom', party: true, heroBook: true, cheer: true },
+    { say: 'Before long, the whole town was reading and writing books of its own, and Miss Quill\'s bindery was busy day and night.', at: 'bottom', party: true, heroBook: true },
   ];
 
   // Blank strings are gaps; `big` lines are titles.
