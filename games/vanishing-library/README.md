@@ -1151,6 +1151,8 @@ looks and wandering, `scenes/dialogue.js` the conversation, and
   two hair pixels beside the face in each facing. Mr. Fenwick (W39): warm brown
   skin, black hair gray at the temples, navy; his show puppet
   (`puppet-librarian`), marionette and painted head in the workshop match.
+  The puppet and the marionette keep their gray to one pixel at each temple
+  and wear no glasses, so the gray never joins up into a band.
 - **Where the talk box goes** (`VL.dialogueSide`, W39): on the half of the
   screen away from the one speaking, so the box flips as a conversation
   passes between people (Mrs. Fenwick on her gallery: low; Mr. Fenwick on the

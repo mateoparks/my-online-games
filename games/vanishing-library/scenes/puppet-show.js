@@ -46,8 +46,8 @@
     rows: ['..hH..', '.hhhh.', 'hseseh', '.ssss.', '.tttt.', 'tttttt', 'tTttTt', 'tttttt', '..ww..', '..ww..'],
   });
   VL.ART.defineSprite('puppet-librarian', {
-    colors: { h: 'npcBlack', G: 'npcGray', s: 'skinBrown', e: 'ink', g: 'metalDark', t: 'npcNavy', T: 'npcNavyDark', w: stick },
-    rows: ['.hhhh.', 'GhhhhG', 'hgegeg', '.ssss.', 'tttttt', 'tTttTt', '.tttt.', '..ww..', '..ww..'],
+    colors: { h: 'npcBlack', G: 'npcGray', s: 'skinBrown', e: 'ink', t: 'npcNavy', T: 'npcNavyDark', w: stick },
+    rows: ['.hhhh.', 'hhhhhh', 'GseseG', '.ssss.', 'tttttt', 'tTttTt', '.tttt.', '..ww..', '..ww..'],
   });
   VL.ART.defineSprite('puppet-book', {
     colors: { r: 'heart', w: 'white', d: 'heartLight', s: stick },

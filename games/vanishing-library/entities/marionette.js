@@ -130,15 +130,11 @@
     rect(ctx, look.hair, hx, y - 11, 1, 3);
     rect(ctx, look.hair, hx + 9, y - 11, 1, 3);
     if (look.temples) {
-      rect(ctx, look.temples, hx, y - 12, 1, 2);
-      rect(ctx, look.temples, hx + 9, y - 12, 1, 2);
+      rect(ctx, look.temples, hx, y - 12, 1, 1);
+      rect(ctx, look.temples, hx + 9, y - 12, 1, 1);
     }
     rect(ctx, 'ink', hx + 2, y - 10, 2, 2);
     rect(ctx, 'ink', hx + 6, y - 10, 2, 2);
-    if (m.puppet === 'librarian') {
-      rect(ctx, 'metalDark', hx + 1, y - 11, 4, 1);
-      rect(ctx, 'metalDark', hx + 5, y - 11, 4, 1);
-    }
     rect(ctx, 'heartLight', hx + 1, y - 8, 1, 1);
     rect(ctx, 'heartLight', hx + 8, y - 8, 1, 1);
     rect(ctx, 'woodDark', hx + 3, y - 7, 4, 1);
