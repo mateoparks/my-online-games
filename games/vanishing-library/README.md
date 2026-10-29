@@ -1078,8 +1078,8 @@ with either or both states at R / (R + G + B) of 0.8 or more). WCAG 2.1 and 2.2
 replaced it with a CIE 1976 UCS chromaticity change over 0.2; that test isn't
 added, since every real scene scores 0% on the red check. A control run with the steady layers
 off must fail the first two, and a red-and-black strobe over 6% of the
-canvas the red one. It runs for 360 s at most (about 1.45 times its run time
-of about 250 s alone). A
+canvas the red one. It runs for 540 s of awake time at most (about 1.45 times its run time
+of about 365 s alone, W43; it was 360 s when the run took 250 s). A
 test file that runs no tests, and an `async` test function, both fail the
 node run.
 

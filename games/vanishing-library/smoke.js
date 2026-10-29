@@ -27,7 +27,7 @@ const sizes = [
 ];
 const walkMs = 300;
 const slideMs = 700; // ~13 px to the edge, then the 350 ms slide
-const timeoutMs = 360000;
+const timeoutMs = 540000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -3606,13 +3606,13 @@ async function main() {
       for (const [id, hit] of Object.entries(hits)) {
         const boss = await see(`VL.DUNGEONS.${id}.boss.type`);
         await stage(id);
-        await sleep(500);
+        await sleep(300);
         const full = await see('VL.bossMeter(g)');
         if (!full || full.left !== full.total) w43Problems.push(`${boss}: the meter at the start = ${JSON.stringify(full)}`);
         if (!(await see(barLit))) w43Problems.push(`${boss}: the full bar is not drawn`);
         await shot(`w43-meter-${boss}`);
         await evaluate(`(() => { const g = VL.app.game; const b = g.room.bossRef; ${hit} })()`);
-        await sleep(1000);
+        await sleep(850);
         const after = await see('VL.bossMeter(g)');
         if (!after || !(after.left < full.total)) w43Problems.push(`${boss}: the meter after a hit = ${JSON.stringify(after)}`);
         if (await see(barLit)) w43Problems.push(`${boss}: the bar's right end still lit after a hit`);
