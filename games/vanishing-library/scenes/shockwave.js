@@ -59,7 +59,7 @@
   const TEXT_WIDTH = 216;
   const TEXT_TOP = 72;
 
-  const pages = () => VL.SHOCKWAVE_LINES.map((line) => VL.ART.wrapText(line, TEXT_WIDTH));
+  const pages = (game) => VL.SHOCKWAVE_LINES.map((line) => VL.ART.wrapText(VL.popupText(line, game), TEXT_WIDTH));
 
   function startPhase(view, phase) {
     view.phase = phase;
@@ -89,7 +89,7 @@
       } else if (view.phase === 'flash' && view.t >= T.flash) {
         startPhase(view, 'dark');
       } else if (view.phase === 'dark') {
-        const text = pages()[view.page].join('\n');
+        const text = pages(game)[view.page].join('\n');
         view.shown = Math.min(text.length, view.shown + dt * VL.TUNING.talkCharsPerSecond);
         if (!VL.confirmed(actions)) return;
         if (view.shown < text.length) view.shown = text.length;
@@ -142,7 +142,7 @@
         return;
       }
       if (view.phase === 'dark') {
-        const shownText = pages()[view.page].join('\n').slice(0, Math.floor(view.shown));
+        const shownText = pages(game)[view.page].join('\n').slice(0, Math.floor(view.shown));
         shownText.split('\n').forEach((row, i) => {
           VL.ART.text(ctx, row, width / 2, TEXT_TOP + i * (VL.ART.lineHeight('normal') + 2), { align: 'center', color: 'white' });
         });

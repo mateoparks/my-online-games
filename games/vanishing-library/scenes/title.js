@@ -79,7 +79,9 @@
       const { width } = VL.TUNING;
       const title = app.title;
       VL.ART.drawTiles(ctx, shore, 0, SHORE_Y, t);
-      VL.ART.drawHero(ctx, { facing: 'down', moving: false }, 92, SHORE_Y + 28, t);
+      // The hero on the shore wears the chosen slot's look.
+      const chosen = title.slots[title.cursor];
+      VL.ART.drawHero(ctx, { facing: 'down', moving: false }, 92, SHORE_Y + 28, t, chosen?.status === 'ok' ? chosen.save.look : null);
       VL.ART.drawShadow(ctx, 152, SHORE_Y + 29, 9);
       VL.ART.drawSprite(ctx, 'chicken', 147, SHORE_Y + 20);
       VL.ART.drawShadow(ctx, 48, SHORE_Y + 29, 7);

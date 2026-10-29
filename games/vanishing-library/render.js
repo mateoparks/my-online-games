@@ -47,7 +47,7 @@ VL.drawWorld = function drawWorld(ctx, state, t, { hud = true } = {}) {
   // steady layers keep their place in the order but never flash.
   const off = player.flash > 0 && Math.floor(player.flash * 16) % 2 === 1;
   for (const layer of VL.HERO_LAYERS) if (!off || layer.steady) layer.draw(ctx, state, heroX, heroY, t, 'behind');
-  if (!off) VL.ART.drawHero(ctx, player, heroX, heroY, t);
+  if (!off) VL.ART.drawHero(ctx, player, heroX, heroY, t, state.look);
   for (const layer of VL.HERO_LAYERS) if (!off || layer.steady) layer.draw(ctx, state, heroX, heroY, t, 'front');
   VL.ART.drawLight(ctx, VL.ART.lightFor(player.area), width, playHeight);
   // Readouts over the play area (a dungeon's keys): over the light, never

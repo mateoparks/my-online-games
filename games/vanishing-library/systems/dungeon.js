@@ -976,7 +976,7 @@
     VL.ART.drawSprite(ctx, 'item-small-key', box.x + 12, box.y + 3);
     VL.ART.text(ctx, `x${VL.smallKeys(state, dungeon.id)}`, box.x + 20, box.y + 4, { size: 'small', color: 'text', shadow: 'outline' });
     if (d.bossKey) VL.ART.drawSprite(ctx, 'item-boss-key', box.x + 1, box.y + 1);
-    if (state.dungeonNote) VL.ART.text(ctx, state.dungeonNote.text, VL.TUNING.width / 2, 4, { size: 'small', align: 'center', color: 'goldLight', shadow: 'outline' });
+    if (state.dungeonNote) VL.ART.text(ctx, VL.popupText(state.dungeonNote.text, state), VL.TUNING.width / 2, 4, { size: 'small', align: 'center', color: 'goldLight', shadow: 'outline' });
   });
 
   // ---------- sounds ----------
