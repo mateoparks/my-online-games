@@ -181,9 +181,16 @@
     return saving ? { text: saving.saved, t: 0, saving } : null;
   };
 
+  // `hook(state)` runs on every loaded game before he is placed: a file
+  // undoes there what only counts once a moment is over (a treasure taken
+  // but not yet carried out of its room), as a faint would.
+  VL.LOAD_HOOKS = [];
+  VL.onLoad = (hook) => VL.LOAD_HOOKS.push(hook);
+
   function stateFrom(save) {
     const { v, ...fields } = save;
     const state = Object.assign(VL.createGame({ name: save.name }), fields);
+    for (const hook of VL.LOAD_HOOKS) hook(state);
     state.hp = state.maxHp;
     VL.place(state, VL.respawnPlace(state));
     return state;

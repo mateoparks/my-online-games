@@ -9,7 +9,8 @@
 //   mural, block → key A    │ map                │ rock
 //        └───── entrance (1,0) ──rock── pit room (2,0) ─door B─ copying hall (3,0)
 //                statue      (overworld)   pot → switch → key B,   pot over desks →
-//                                          ore                     switch → boss key
+//                                          ore                     switch → gate → pot →
+//                                                                  switch → boss key
 (() => {
   const { rect } = VL.ART;
   const DUNGEON = 'scriptorium';
@@ -256,8 +257,10 @@
         pot(13, 4),
       ],
     },
-    // The copying hall: a switch hemmed in by reading desks. A pot thrown
-    // over the desks throws it, and the boss key is free.
+    // The copying hall: a switch hemmed in by reading desks, and a second
+    // in a walled niche, sealed by a gate until the first is thrown (W42).
+    // A pot over the desks throws the first; through the open gate, a pot
+    // over the niche's desk throws the second, and the boss key is free.
     '3,0': {
       tiles: [
         '################',
@@ -266,19 +269,21 @@
         '#__________ddd_#',
         '#______________#',
         '_______________#',
-        '#_#_#__________#',
-        '#_#_#___dd_dd__#',
-        '#_###__________#',
-        '#______________#',
+        '#_#_#______#_#_#',
+        '#_#_#___dd_#d#_#',
+        '#_###______#_#_#',
+        '#__________###_#',
         '################',
       ],
       entities: [
         { type: 'lockedDoor', id: 'd1DoorB', kind: 'small', x: 0, y: 5, lock: 'd1DoorB' },
         { type: 'switch', id: 'd1SwitchDesk', x: 12, y: 2 },
-        { type: 'shutter', id: 'd1ShutterBossKey', x: 3, y: 6, open: { switch: 'd1SwitchDesk' } },
+        { type: 'shutter', id: 'd1ShutterNiche', x: 12, y: 6, open: { switch: 'd1SwitchDesk' } },
+        { type: 'switch', id: 'd1SwitchNiche', x: 12, y: 8 },
+        { type: 'shutter', id: 'd1ShutterBossKey', x: 3, y: 6, open: { switch: 'd1SwitchNiche' } },
         { type: 'bossKey', id: 'd1BossKey', x: 3, y: 7, lock: 'd1BossKey' },
         { type: 'bat', x: 7, y: 3 },
-        { type: 'bat', x: 13, y: 8 },
+        { type: 'bat', x: 9, y: 9 },
         pot(7, 9),
         pot(14, 5),
         pot(9, 4),

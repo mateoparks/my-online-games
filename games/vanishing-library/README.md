@@ -834,7 +834,10 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   entity). Save & Quit saves; a new game is saved as soon as it is named.
   Dying never saves or loses anything: `VL.faint(state, cause)` → the
   `fainted` scene → `VL.respawn(state)`. `VL.addFaintLine('crab', '…')` adds
-  the line for a cause (`shrub` is already there).
+  the line for a cause (`shrub` is already there). The one exception is a
+  big chest with `keptOnLeaving` (W42, the Mirror Shield across the lava):
+  see "Lifting" (the gloves' bullet). `VL.onLoad((state) => …)` runs on every
+  loaded game before he is placed (`VL.LOAD_HOOKS`).
 - **When a write fails** (the browser ran out of space after boot), the game
   stays dirty and every step retries; play shows "COULD NOT SAVE" and Save &
   Quit stays on the pause menu with the note until a write succeeds
@@ -954,7 +957,13 @@ thrown over the pits onto the switch (`w14-lift.png`, `w14-throw.png`,
 `w14-switch.png`), a book under a rock (`w14-rock-book.png`), a canyon
 boulder (`w14-boulder.png`) and the Bookworm up, hit and beaten
 (`w14-boss.png`, `w14-boss-hit.png`, `w14-reward-popup.png`,
-`w14-reward.png`). Then W15's Woods and Hollow Oak with real keys: a step
+`w14-reward.png`); W42's copying hall, a pot shattering on the niche's shut
+gate, the first switch lifting it and a pot through it throwing the second
+(`w42-niche-shut.png`, `w42-niche-open.png`, `w42-niche-switch.png`), and
+the Lair's lava room with two steps onto it (`w42-lava-room.png`,
+`w42-lava-step.png`), and the shield taken there on one half heart, the
+next lava step fainting him and the shield slipping back into its chest
+(`w42-shield-returned.png`). Then W15's Woods and Hollow Oak with real keys: a step
 deeper into the Woods without the map leading on (`w15-woods-no-map.png`),
 the pass below the Oak shut by trees (`w15-woods-pass-shut.png`), the same
 step with the map (`w15-woods-map.png`, its popup; `w15-woods-edge-map.png`,
@@ -976,9 +985,9 @@ the sword and shield in hand (`w29-dig-key-popup.png`, `w29-dig-x.png`), a
 wood sword clinking off a thorny spitter (`w29-tough-spitter.png`) and the
 path the copied map opens before the Oak (`w29-woods-path.png`). Then W30's
 notes with real keys: the word a wood sword gets from a thorny spitter
-(`w30-wood-sword-message.png`), the Hollow Oak's moss room and the key X
-digs out of its grass with the metal shovel (`w30-grass-room.png`,
-`w30-grass-key.png`), and the boss gate shut behind the hero, still shut
+(`w30-wood-sword-message.png`), the Hollow Oak's moss room, one dig bringing
+nothing up, every other grass tile dug and X on the last bringing up the key
+(W42; `w30-grass-room.png`, `w42-grass-one-left.png`, `w30-grass-key.png`), and the boss gate shut behind the hero, still shut
 with the heart on the floor, and open with the warp once it is taken
 (`w30-boss-gate-closed.png`, `w30-boss-gate-heart.png`,
 `w30-boss-gate-open.png`). Then W18's
@@ -1707,7 +1716,17 @@ Tests: `tests/lifting.test.js`.
   with `worn: true` is owned without filling a hand. `VL.giveWornItem(state,
   id)` gives one (popup, earned); a `{ type: 'bigChest', id, item }` (solid, S
   opens it once, `found:<id>`) wears a worn item and hands anything else over
-  like a chest.
+  like a chest. With `keptOnLeaving: true` (the Mirror Shield, W42) the item
+  is his at once but counts only once he walks off that screen alive: until
+  then the saved field `pendingChest: { id, item, area, screen, hands }`
+  holds it (fixture `tests/fixtures/save-v1-W42.json`). A faint there, or a
+  reload or Save & Quit → Continue before he leaves, puts it back
+  (`VL.returnPendingChest`: the item and `found:<id>` gone, the hands as they
+  were before it, the chest shut and full again), and the faint screen says
+  "The Mirror Shield slipped back into its chest." above "Everything else you
+  found is still yours." (`VL.faintLines`). Leaving the screen alive clears
+  it (system `pendingChestKept`) and saves. A save without the field, or one
+  that already owns the item, has nothing pending.
 - **What lifts:** S facing an entity whose type says `liftable: 'pot'` (a
   `{ type: 'pot', x, y, respawn? }`, solid), a tile with `rock: true` or a
   tile with `boulder: true` (the canyon's `O`). `VL.tryLift(state)` checks the
@@ -1762,7 +1781,8 @@ through to the Bookworm, two canyon boulders lifted).
   gallery (0,0)       stacks (1,-1) --door A-- vault (2,-1): the gloves
   mural, block->key A      | map                   | rock
        +------- entrance (1,0) ---rock--- pit room (2,0) --door B-- copying hall (3,0)
-                statue, door out          pot->switch->key B, ore    pot over desks->switch->boss key
+                statue, door out          pot->switch->key B, ore    pot over desks->switch->gate,
+                                                                     pot through gate->switch->boss key
 ```
 
 - **The way in:** the `scriptoriumDoor` spot is a `door` with
@@ -1778,8 +1798,17 @@ through to the Bookworm, two canyon boulders lifted).
   which the big chest holds the Lifting Gloves (mid-dungeon); only then can
   the rocks in the entrance's east corridor and the vault's south corridor be
   lifted, so key B, door B and the boss key all lie past the gloves and key
-  A can't be wasted on door B. Two throw puzzles: a pot over the pits onto a
-  switch (key B), a pot over the reading desks onto a switch (the boss key).
+  A can't be wasted on door B. Throw puzzles: a pot over the pits onto a
+  switch (key B), and the copying hall's two switches (W42): a pot over the
+  reading desks throws `d1SwitchDesk`, which lifts the gate (`d1ShutterNiche`)
+  of a walled niche; a pot through it, over the niche's desk, throws
+  `d1SwitchNiche`, which lifts the boss key's bars. Before the gate lifts no
+  straight line from any tile he can stand on reaches the niche's switch
+  (walls on three sides, the shut gate on the fourth), and no tile touches it,
+  so neither a throw, a shot, the hook nor the sword can throw it first; even
+  with the gate up only a throw does (the desk keeps the sword off). Both are
+  saved in `switches`; every pot there respawns. A save from before W42 that
+  had thrown the desk switch finds the gate up and the niche's switch to throw.
   The ore lump (`oreScriptorium`) is in the pit room. The Woods mural is a
   W12 `copyable` in the gallery, open from the start (copying needs ink, which
   needs the boss's Mortar & Pestle).
@@ -1940,7 +1969,7 @@ again, with `afterThornbackDone`.
   tangle S (-1,-1) -- root hall (0,-1) --ledge-- pit garden (1,-1): key B on an island
   map                      |                          | door B
   moss room (-1,0) -- entrance (0,0) --bars-- sap well (1,0): switch + boss key on an island
-  key under the grass  statue, door out to 7,-2
+  key under all the grass  statue, door out to 7,-2
 ```
 
 - **The way in:** W8's `hollowOakDoor` spot in the clearing (7,-2) is a
@@ -1948,8 +1977,14 @@ again, with `afterThornbackDone`.
 - **Metal gear (W30):** the tangle's two thorny spitters (`tough: true`)
   fall only to the metal sword, and key A (`reveal: 'cleared'`) appears once
   both are beaten. West of the entrance, the moss room's odd patch of grass
-  (`,` grass, `*` its dug hole) hides a small key (`d2KeyMoss`,
-  `reveal: 'dug'`) that only the metal shovel digs up; no sign says so.
+  (`,` grass, `*` its dug hole) hides a small key (`d2KeyMoss`) that only
+  the metal shovel digs up; no sign says so. **W42:** it is
+  `reveal: 'dugAll'`: it comes up in whichever of the 18 grass tiles is dug
+  last in one visit (`systems/digging.js`), not from any one tile. The holes
+  are the visit's (`VL.setRoomTile`), so leaving partway, or leaving with the
+  key up but not taken, starts the patch over; once taken it is found for
+  good. The other digs keep the ordinary grass table (a whole shell 15% of
+  the time). The room holds nothing else, so nothing can stand on a tile.
   Door C (`d2DoorC`) stands between the root hall and the great hollow, so
   both keys are spent on doors C and A. Juniper in town mentions the metal
   shovel and grass between Dungeon 1 and Dungeon 2. A save from before W30
@@ -2330,7 +2365,7 @@ lair's doorstep, -1,-5, and Continue starts at the hut: W31).
   ledge (-1,-2) ------ great cave (0,-2) --door B-- forge (1,-2)
   spout -> key B, map       | bars (the hall's spout)   block, spout -> boss key
   shield room (-1,-1) --door A-- hall (0,-1)
-  the Mirror Shield              |
+  lava, the Mirror Shield        |
   cellar (-1,0) ------- entrance (0,0): statue, door out
   block on plate -> key A
 ```
@@ -2350,6 +2385,19 @@ the boss door, the Dragon.
   labels the floor's stretches with every gate as a wall and checks no
   lava step joins two), and the
   playthrough's planner never walks on a tile that `hurts`.
+- **The shield room (W42):** lava from wall to wall but for the square
+  inside door A (14,5) and the big chest in the far corner (1,1); no enemy,
+  no post. Every heart container in the table (start 6 + 7 x 2 = 20 half
+  hearts) is less than the round trip: at the fewest, cutting every corner,
+  12 burns there and 11 back (23); walked along the walls, 16 and 15 (31).
+  So he eats berries on the way (standing still on lava is safe, and E then
+  S eats); the first highland shelf's bush grows back each visit. The
+  shield counts only once he walks out alive (Matthew's call): its chest is
+  `keptOnLeaving`, so a faint on the lava, or a reload before he leaves,
+  puts it back in the chest and he wakes at the statue without it (see the
+  gloves' bullet under "Lifting"). The `mirrorShield` lock is reached only
+  once it is no longer pending. The playthrough stocks berries at that bush
+  on the way up and walks back out through door A (`tests/lair-route.js`).
 - **Fire** (`VL.spawnFire(state, { cx, cy, vx, vy, owner })`, entity
   `dragonFire`): flies straight over floors, pits and lava; walls and solid
   things stop it (`VL.fireStops`). It hurts `TUNING.fireDamage` (a full
@@ -2608,8 +2656,9 @@ smoke, never by the game); `tests/dungeon.test.js` is its suite. Fixture:
   back*; a door opened is the key spent, one saved fact. `{ type: 'smallKey',
   id, x, y, lock, reveal?: 'cleared' }` is found once; `reveal: 'cleared'`
   keeps it hidden until every enemy in the room is beaten; `reveal: 'dug'`
-  until a shovel that digs its ground digs its tile (W30, the Hollow Oak's
-  moss room). `{ type: 'bossKey',
+  until a shovel that digs its ground digs its tile (W30); `reveal: 'dugAll'`
+  until every tile of the patch it lies under is dug in one visit, and then
+  in the last one (W42, the Hollow Oak's moss room). `{ type: 'bossKey',
   id, x, y, lock }` likewise. From code (a chest, a drop, a script):
   `VL.giveSmallKey(state, dungeonId, n)` (counted in `keysGiven`),
   `VL.giveBossKey`, `VL.giveDungeonMap`; a chest holds one as

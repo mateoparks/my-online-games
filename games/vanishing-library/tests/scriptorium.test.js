@@ -362,7 +362,7 @@ test('playthrough: the Scriptorium lock by lock, reloading after each, from the 
     keysGiven: 0, bossKey: true, map: true, boss: true,
     doors: { d1DoorA: true, d1DoorB: true, d1BossDoor: true },
     plates: { d1PlateGallery: true },
-    switches: { d1SwitchPit: true, d1SwitchDesk: true },
+    switches: { d1SwitchPit: true, d1SwitchDesk: true, d1SwitchNiche: true },
   });
 });
 

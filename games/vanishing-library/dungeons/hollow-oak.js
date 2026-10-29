@@ -311,7 +311,9 @@
       ],
     },
     // The moss room (W30): an odd patch of grass, and a key buried in it
-    // that only the metal shovel digs up. Nothing says so: the grass is the hint.
+    // that only the metal shovel digs up. Nothing says so: the grass is the
+    // hint. W42: it comes up in whichever grass tile is dug last, and the
+    // holes fill in again when he leaves.
     '-1,0': {
       tiles: [
         '################',
@@ -327,7 +329,7 @@
         '################',
       ],
       entities: [
-        { type: 'smallKey', id: 'd2KeyMoss', x: 9, y: 5, lock: 'd2KeyMoss', reveal: 'dug' },
+        { type: 'smallKey', id: 'd2KeyMoss', x: 9, y: 5, lock: 'd2KeyMoss', reveal: 'dugAll' },
       ],
     },
     // The Thornback's den.

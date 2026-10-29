@@ -142,7 +142,7 @@ test('the map tells the truth: key A and door A on foot; key B, door B and the b
   assert.ok(findPath(VL, from, at('0,-1', 1, 5), t.game), 'door A on foot');
   assert.ok(!findPath(VL, from, at('0,-2', 7, 5), t.game), 'the great cave waits on the hall\'s stone head');
   d.doors.d4DoorA = true;
-  assert.ok(findPath(VL, from, at('-1,-1', 7, 3), t.game), 'the Mirror Shield past door A');
+  assert.ok(findPath(VL, from, at('-1,-1', 14, 5), t.game), 'the Mirror Shield\'s room past door A (W42: across its lava on foot)');
   d.switches.d4SpoutHall = true;
   assert.ok(findPath(VL, from, at('0,-2', 7, 5), t.game));
   assert.ok(!beside('-1,-2', 'd4KeyB'), 'key B waits on the ledge\'s stone head');

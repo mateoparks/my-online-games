@@ -350,32 +350,28 @@ const dig = (VL, state) => {
   hold(VL, state, [], 0.4);
 };
 
-test('the moss room: an odd patch of grass west of the entrance, no sign, and a small key under it', () => {
+test('the moss room: an odd patch of grass west of the entrance, no sign, and a small key under it (W42: under the whole patch)', () => {
   const { VL } = loadGame();
   const room = VL.getScreen('hollowOak', '-1,0');
   const grass = room.tiles.flatMap((row, ty) => [...row].map((ch, tx) => ({ ch, tx, ty }))).filter(({ ch }) => VL.tileInfo('hollowOak', ch).grass);
   assert.ok(grass.length >= 12, `${grass.length} grass tiles`);
   assert.ok(!room.entities.some((e) => e.type === 'sign'), 'nothing hints at it but the grass');
   const k = room.entities.find((e) => e.id === 'd2KeyMoss');
-  assert.equal(k.reveal, 'dug');
+  assert.equal(k.reveal, 'dugAll');
   assert.ok(VL.tileInfo('hollowOak', room.tiles[k.y][k.x]).grass, 'under the grass');
   assert.equal(VL.getScreen('hollowOak', '0,0').tiles[5][0], '_', 'the entrance opens west into it');
 });
 
-test('a wood shovel cannot dig the grass; the metal shovel digs up the key, which is then picked up and counted', () => {
+test('a wood shovel cannot dig the grass; one metal-shovel dig is not enough (W42: tests/w42-dungeon-puzzles.test.js digs the whole patch)', () => {
   {
     const { VL, state } = oakWith(['woodShovel'], oak('-1,0', 8, 5, 'right'));
     assert.equal(VL.dig(state, 'woodShovel'), 'blocked');
     assert.ok(key(state, 'd2KeyMoss').hidden);
   }
   const { VL, state } = oakWith(['metalShovel'], oak('-1,0', 8, 5, 'right'));
-  assert.ok(key(state, 'd2KeyMoss').hidden, 'not shown before the dig');
   dig(VL, state);
-  assert.ok(!key(state, 'd2KeyMoss').hidden, 'the key comes up into the hole');
-  assert.equal(VL.smallKeys(state, 'hollowOak'), 0, 'not counted until picked up');
-  hold(VL, state, ['right'], 0.6);
-  assert.ok(VL.spotFound(state, 'd2KeyMoss'));
-  assert.equal(VL.smallKeys(state, 'hollowOak'), 1);
+  assert.ok(key(state, 'd2KeyMoss').hidden, 'still under the rest of the grass');
+  assert.equal(VL.smallKeys(state, 'hollowOak'), 0);
 });
 
 test('the tangle\'s key A appears only once both thorny spitters are beaten, which only a metal sword does', () => {

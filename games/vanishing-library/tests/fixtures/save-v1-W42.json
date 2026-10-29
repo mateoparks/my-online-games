@@ -1,0 +1,137 @@
+{
+  "v": 1,
+  "name": "Robin",
+  "rngState": 1,
+  "maxHp": 20,
+  "flags": {
+    "found:d4ShieldChest": true
+  },
+  "visited": {
+    "overworld:1,1": true,
+    "lair:-1,-1": true
+  },
+  "savePoint": {
+    "area": "lair",
+    "screen": "0,0",
+    "tx": 3,
+    "ty": 3,
+    "facing": "up"
+  },
+  "finished": false,
+  "inventory": {
+    "wood": 0,
+    "shells": 0,
+    "brokenShells": 0,
+    "berries": 4,
+    "ore": 0,
+    "paper": 0,
+    "ink": 0
+  },
+  "items": {
+    "woodSword": true,
+    "metalShield": true,
+    "mirrorShield": true
+  },
+  "hands": {
+    "mainHand": "woodSword",
+    "offHand": "mirrorShield"
+  },
+  "popups": {
+    "seen": {
+      "controls": true,
+      "dungeonMap": true,
+      "berries": true,
+      "digKey": true
+    },
+    "queue": [
+      "mirrorShield"
+    ]
+  },
+  "dungeons": {
+    "scriptorium": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "hollowOak": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "lighthouse": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "wreck": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {},
+      "plates": {},
+      "switches": {},
+      "boss": false
+    },
+    "lair": {
+      "keysGiven": 0,
+      "bossKey": false,
+      "map": false,
+      "doors": {
+        "d4DoorA": true
+      },
+      "plates": {},
+      "switches": {},
+      "boss": false
+    }
+  },
+  "tileChanges": {},
+  "library": {
+    "returned": [],
+    "read": [],
+    "gone": [],
+    "trips": 0,
+    "lastTripAt": 0,
+    "stolen": {
+      "trips": 0,
+      "bosses": 0
+    },
+    "noticed": 0
+  },
+  "look": {
+    "outfit": "green",
+    "hair": "short",
+    "gender": "boy"
+  },
+  "handKeys": {
+    "mainHand": "Space",
+    "offHand": "KeyD"
+  },
+  "crabs": {
+    "killed": 0,
+    "angry": false,
+    "feast": false
+  },
+  "pendingChest": {
+    "id": "d4ShieldChest",
+    "item": "mirrorShield",
+    "area": "lair",
+    "screen": "-1,-1",
+    "hands": {
+      "mainHand": "woodSword",
+      "offHand": "metalShield"
+    }
+  },
+  "afterThornbackDone": []
+}

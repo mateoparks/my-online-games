@@ -149,14 +149,33 @@ const route = {
     assert.ok(drive.state.room.entities.some((e) => e.type === 'smallKey' && e.id === 'd2KeyA' && !e.hidden), 'key A appears');
     pickUp(drive, at('-1,-2', 3, 3), 'right', (state) => VL.spotFound(state, 'd2KeyA'));
   },
-  // The moss room's key, dug up from under the grass with the metal shovel (X).
+  // The moss room's key (W42): every grass tile dug with the metal shovel (X)
+  // in one visit, west to east, and it comes up in the last.
   d2KeyMoss(drive) {
     const { VL } = drive;
-    go(drive, at('-1,0', 8, 5));
-    face(drive, 'right');
-    drive.press('dig');
-    drive.hold([], 0.4);
-    assert.ok(drive.state.room.entities.some((e) => e.type === 'smallKey' && e.id === 'd2KeyMoss' && !e.hidden), 'the key comes up');
+    const grass = [];
+    VL.getScreen(AREA, '-1,0').tiles.forEach((row, ty) => [...row].forEach((ch, tx) => {
+      if (ch === ',') grass.push([tx, ty]);
+    }));
+    grass.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    go(drive, at('-1,0', 3, 5));
+    for (const [tx, ty] of grass) {
+      // A shell a dig turned up may stop the walk with its popup.
+      for (let tries = 0; tries < 3; tries += 1) {
+        try {
+          drive.walkTo(at('-1,0', tx - 1, ty));
+          break;
+        } catch (error) {
+          if (!/not reached/.test(error.message) || drive.app.sceneId !== 'popup') throw error;
+          drive.closePopups();
+        }
+      }
+      face(drive, 'right');
+      drive.press('dig');
+      drive.hold([], 0.4);
+    }
+    const [lx, ly] = grass[grass.length - 1];
+    assert.ok(drive.state.room.entities.some((e) => e.type === 'smallKey' && e.id === 'd2KeyMoss' && !e.hidden && e.x === lx && e.y === ly), 'the key comes up in the last hole');
     drive.until((state) => VL.spotFound(state, 'd2KeyMoss'), 2, ['right']);
     drive.closePopups();
   },

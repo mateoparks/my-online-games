@@ -1563,6 +1563,69 @@ async function main() {
       await sleep(300);
       await shot('w14-switch');
 
+      // W42: the copying hall's second switch, sealed in its niche until the
+      // first is thrown. A pot at the shut gate shatters on it; one over the
+      // desks throws the first switch and the gate lifts; one through the
+      // gate over the niche's desk throws the second, and the boss key's
+      // bars lift (w42-niche-*.png).
+      const liftHallPot = async () => {
+        await evaluate(`(() => { const g = VL.app.game; if (!g.room.entities.some((e) => e.type === 'pot' && e.x === 14 && e.y === 5)) g.room.entities.push({ type: 'pot', x: 14, y: 5, respawn: true }); Object.assign(g.player, VL.tileCenter(13, 5), { facing: 'right' }); })()`);
+        await tapKey('KeyS');
+        await sleep(250);
+        if (!(await see("Boolean(g.player.lifted)"))) scrProblems.push('W42: no pot lifted in the copying hall');
+      };
+      const throwFrom = async (tx, ty, facing) => {
+        await evaluate(`(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(${tx}, ${ty}), { facing: '${facing}' }); })()`);
+        await tapKey('KeyS');
+        await waitFor("!g.room.entities.some((e) => e.type === 'liftThrown')", 1500);
+        await sleep(200);
+      };
+      await scrGame(scr('3,0', 12, 5, 'down'));
+      await evaluate("VL.app.game.room.entities = VL.app.game.room.entities.filter((e) => !VL.isEnemy(e))");
+      await sleep(200);
+      await shot('w42-niche-shut');
+      await liftHallPot();
+      await throwFrom(12, 5, 'down');
+      if (await see('Boolean(g.dungeons.scriptorium.switches.d1SwitchNiche)')) scrProblems.push('W42: a pot passed the shut gate');
+      await liftHallPot();
+      await throwFrom(12, 4, 'up');
+      if (!(await see('Boolean(g.dungeons.scriptorium.switches.d1SwitchDesk)'))) scrProblems.push('W42: the pot over the desks did not throw the first switch');
+      await shot('w42-niche-open');
+      await liftHallPot();
+      await throwFrom(12, 5, 'down');
+      if (!(await see('Boolean(g.dungeons.scriptorium.switches.d1SwitchNiche)'))) scrProblems.push('W42: the pot through the gate did not throw the second switch');
+      if (await see("g.room.entities.find((e) => e.id === 'd1ShutterBossKey').closed")) scrProblems.push('W42: the boss key\'s bars did not lift');
+      await shot('w42-niche-switch');
+
+      // W42: the Lair's shield room, lava wall to wall; a step onto it burns.
+      await scrGame({ area: 'lair', screen: '-1,-1', tx: 14, ty: 5, facing: 'left' }, 'g.dungeons.lair.doors.d4DoorA = true;');
+      await sleep(250);
+      await shot('w42-lava-room');
+      const hpBefore = await see('g.hp');
+      await holdArrowUntil('Left', 'VL.heroTile(g).tx === 12');
+      await sleep(150);
+      await shot('w42-lava-step');
+      if ((await see('g.hp')) !== hpBefore - 2) scrProblems.push(`W42: two lava tiles took ${hpBefore} to ${await see('g.hp')}`);
+
+      // W42: the shield counts only once he walks out alive. Taken with one
+      // half heart left, the first lava step faints him, and it slips back
+      // into its chest (w42-shield-returned.png: the faint screen says so).
+      await scrGame({ area: 'lair', screen: '-1,-1', tx: 2, ty: 1, facing: 'left' }, "g.dungeons.lair.doors.d4DoorA = true; Object.assign(g.items, { woodSword: true, metalShield: true }); g.hands = { mainHand: 'woodSword', offHand: 'metalShield' };");
+      await sleep(200);
+      await tapKey('KeyS');
+      if (!(await waitFor("VL.app.sceneId === 'popup'", 2500))) scrProblems.push('W42: no popup from the shield chest');
+      await sleep(400);
+      await tapKey('KeyS');
+      await waitFor("VL.app.sceneId === 'play'", 1500);
+      const pending = await see("[VL.heldItem(g, 'offHand'), g.pendingChest && g.pendingChest.item]");
+      if (pending.join() !== 'mirrorShield,mirrorShield') scrProblems.push(`W42: the shield taken (off hand, pending) = ${pending}`);
+      await evaluate('VL.app.game.hp = 1');
+      await holdArrowUntil('Right', "VL.app.sceneId === 'fainted'");
+      await sleep(900);
+      await shot('w42-shield-returned');
+      const returned = await see("[VL.app.sceneId, VL.hasItem(g, 'mirrorShield'), g.room.entities.find((e) => e.id === 'd4ShieldChest').opened, VL.heldItem(g, 'offHand'), VL.faintLines(g)[0]]");
+      if (returned.join() !== 'fainted,false,false,metalShield,The Mirror Shield slipped back into its chest.') scrProblems.push(`W42: a faint with the shield pending = ${returned}`);
+
       const rock = await see("(() => { const s = VL.SPOTS.bookScriptoriumRock; return { screen: s.screen, x: s.x, y: s.y }; })()");
       await scrGame({ area: 'overworld', screen: rock.screen, tx: rock.x + 1, ty: rock.y, facing: 'left' });
       await tapKey('KeyS');
@@ -1614,7 +1677,7 @@ async function main() {
 
       scrProblems.push(...errors);
       if (scrProblems.length) failures += 1;
-      console.log(`${scrProblems.length ? 'FAIL' : 'ok  '} scriptorium: 7 rooms, the locked door, the gloves, lift and throw, a rock book, a boulder, the Bookworm and its rewards, ${path.join(outDir, 'w14-*.png')}`);
+      console.log(`${scrProblems.length ? 'FAIL' : 'ok  '} scriptorium: 7 rooms, the locked door, the gloves, lift and throw, a rock book, a boulder, the Bookworm and its rewards, ${path.join(outDir, 'w14-*.png')}; W42's two switches and the lava room, ${path.join(outDir, 'w42-*.png')}`);
       for (const problem of scrProblems) console.log(`     ${problem}`);
     }
 
@@ -1991,8 +2054,16 @@ async function main() {
       await stage({ area: 'hollowOak', screen: '-1,0', tx: 8, ty: 5, facing: 'right' }, "VL.giveItem(g, 'metalShovel'); g.popups.queue.length = 0;");
       await settle();
       await shoot('w30-grass-room');
+      // W42: the key comes up only from the last grass tile dug; every other one is dug first.
       await hit('KeyX');
-      if (!(await waitFor("g.room.entities.some((e) => e.id === 'd2KeyMoss' && !e.hidden)"))) w30Problems.push('the metal shovel did not dig up the moss room\'s key');
+      await waitFor('!g.player.dig');
+      if (await read("g.room.entities.some((e) => e.id === 'd2KeyMoss' && !e.hidden)")) w30Problems.push('one dig brought up the moss room\'s key (W42: only the last of the patch does)');
+      await evaluate(`(() => { const g = VL.app.game; for (let ty = 0; ty < 11; ty += 1) for (let tx = 0; tx < 16; tx += 1) if (VL.tileAt('hollowOak', '-1,0', tx, ty, g.room) === ',' && !(tx === 9 && ty === 6)) VL.setRoomTile(g, tx, ty, VL.DIG_HOLES.dirt); })()`);
+      await evaluate(`(() => { const g = VL.app.game; Object.assign(g.player, VL.tileCenter(8, 6), { facing: 'right' }); })()`);
+      await settle();
+      await shoot('w42-grass-one-left');
+      await hit('KeyX');
+      if (!(await waitFor("g.room.entities.some((e) => e.id === 'd2KeyMoss' && !e.hidden && e.x === 9 && e.y === 6)"))) w30Problems.push('the last grass tile dug did not bring up the moss room\'s key');
       await waitFor('!g.player.dig');
       await shoot('w30-grass-key');
 
@@ -2455,7 +2526,7 @@ async function main() {
       }
 
       // The Mirror Shield from the big chest.
-      await stage(lair('-1,-1', 7, 3), "g.items.woodSword = true; g.hands = { mainHand: 'woodSword', offHand: null };");
+      await stage(lair('-1,-1', 2, 1, 'left'), "g.items.woodSword = true; g.hands = { mainHand: 'woodSword', offHand: null };");
       await tapKey('KeyS');
       await sleep(1250);
       await shot('w19-shield-popup');
@@ -2559,7 +2630,7 @@ async function main() {
       const lair = (screen, tx, ty, facing = 'up') => ({ area: 'lair', screen, tx, ty, facing });
 
       // The Mirror Shield with the slingshot in the off hand: S at the big chest.
-      await stage(lair('-1,-1', 7, 3), "g.items.woodSword = true; g.items.slingshot = true; g.inventory.brokenShells = 9; g.hands = { mainHand: 'woodSword', offHand: 'slingshot' };");
+      await stage(lair('-1,-1', 2, 1, 'left'), "g.items.woodSword = true; g.items.slingshot = true; g.inventory.brokenShells = 9; g.hands = { mainHand: 'woodSword', offHand: 'slingshot' };");
       await tapKey('KeyS');
       await waitFor("VL.app.sceneId === 'popup'", 3000);
       await shot('w32-mirror-shield-popup');
