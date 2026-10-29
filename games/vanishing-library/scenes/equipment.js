@@ -41,9 +41,7 @@
     view.top = VL.clamp(VL.clamp(view.top, row - GRID.rows + 1, row), 0, lastTop);
   }
 
-  function arrow(ctx, x, y, up) {
-    for (let i = 0; i < 3; i += 1) VL.ART.rect(ctx, 'goldLight', x + 2 - i, up ? y + i : y + 2 - i, 1 + i * 2, 1);
-  }
+  const arrow = (ctx, x, y, up) => VL.ART.moreArrow(ctx, x, y, up);
 
   function frame(ctx, name, x, y, w, h) {
     VL.ART.rect(ctx, name, x + 1, y, w - 2, 1);

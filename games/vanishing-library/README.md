@@ -450,7 +450,10 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   because a reward given at the end of a talk or a reading happens outside a
   world update, and an event pushed there is cleared unplayed. Today: chests, big chests, heart containers, the librarian's
   rewards and the Scriptorium key, the Bookworm's mortar and books, Pip's
-  page. Shop and smithy purchases do not hold up. `state.holdUp` is play
+  page. Shop and smithy purchases do not hold up. A hold sets the hero
+  facing down; one with `holdUp.facing` turns him back that way when it
+  ends (only the library's rewards set it, so S at the desk talks again,
+  W36). `state.holdUp` is play
   state; `VL.tickHoldUp` is the play scene's clock, and a test that drives
   the app waits it out before closing popups.
 - **Equipment screen (`'equipment'`, E):** arrows choose, Space or D puts the
@@ -1380,7 +1383,10 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   older count keeps it and is never given it twice: a save that got the
   heart at 10 gets the boots on its next visit once it has 12 and no second
   heart at 30; the W26 save that got the purse at 5 gets the boots at 12,
-  nothing at 20 and the heart at 30 (`tests/fixtures/save-v1-W26.json`). The purse raises
+  nothing at 20 and the heart at 30 (`tests/fixtures/save-v1-W26.json`).
+  His words are `VL.rewardSpeech(state, id)`: `VL.REWARD_SPEECH[id]` at
+  exactly the count ("Twelve books"), and a first line without a number when
+  one hand-in jumps past it, so it never contradicts the tally. The purse raises
   `TUNING.shellCap` (15 whole shells, W29) to `shellCapPurse` (50 since
   W34, was 250). Every price in town fits the first purse except the
   binding (40 shells since W34, so the purse comes first: the
@@ -1443,8 +1449,11 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   pick opens `reading` with `{ book, again: true }`, which reads
   `VL.rereadWords(book)` (`reread`, else `reading`, else the blurb) and skips
   `VL.finishReading`, so nothing is given or changed. The sealed Register has
-  its own `reread` so it never hands over the key again. A vanished book is
-  not offered.
+  its own `reread` so it never hands over the key again, and so do the
+  Herbalist's Notes and the Smith's Ledger (no second map mark or discount
+  promised). X also leaves a re-reading. A vanished book is not offered.
+  The shelf, the shop and the equipment view show "more this way" with the
+  same small gold triangles (`VL.ART.moreArrow`).
 - **Sounds:** `booksReturned` and a finished reading play `libraryChime`.
 
 ## Paper and ink (W12)

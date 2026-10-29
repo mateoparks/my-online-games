@@ -1,7 +1,7 @@
 // The librarian reads a returned book aloud: the open book over the paused
 // world, his words typed out below. The book's effect switches on when the
 // reading ends, however it ends (VL.finishReading). A book read again from
-// the shelf (`again`, W36) only reads.
+// the shelf (`again`, W36) only reads, and X leaves it like the shelf.
 (() => {
   VL.ART.addColors({ readingShade: '#1b1b24a0' });
   const BOOK = { x: 52, y: 22, w: 152, h: 76 };
@@ -54,7 +54,7 @@
 
     update(app, actions, dt) {
       const view = app.reading;
-      if (actions.pressed.pause) {
+      if (actions.pressed.pause || (view.again && actions.pressed.dig)) {
         close(app);
         return;
       }

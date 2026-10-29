@@ -50,7 +50,7 @@
     ],
   });
 
-  const titled = (id, title, color, icon, reading, effect) => VL.defineBook(id, { kind: 'titled', title, color, icon, reading, read: effect });
+  const titled = (id, title, color, icon, reading, effect, reread) => VL.defineBook(id, { kind: 'titled', title, color, icon, reading, read: effect, reread });
   const popupOnRead = (id, popup) => {
     VL.definePopup(id, popup);
     return (state) => VL.showPopup(state, id);
@@ -59,7 +59,11 @@
     'Old Mother Bryony wrote this! She knew every plant on the island.',
     'She says there are only three berry bushes in all the land: one in the fields by your hut, one deep in the Whispering Woods, and one high up in the highlands.',
     'Berries heal you, and crushed with a mortar and pestle they make fine ink. If you ever draw a map, I\'ll mark the bushes on it.',
-  ], popupOnRead('herbalistRead', { title: 'Herbalist\'s Notes', text: 'Three berry bushes: by your hut, in the Whispering Woods and up in the highlands. A map you draw will show them.' }));
+  ], popupOnRead('herbalistRead', { title: 'Herbalist\'s Notes', text: 'Three berry bushes: by your hut, in the Whispering Woods and up in the highlands. A map you draw will show them.' }), [
+    'Old Mother Bryony\'s notes! She knew every plant on the island, and every weed by its first name.',
+    'Three berry bushes in all the land: by your hut, deep in the Whispering Woods, and high up in the highlands.',
+    'And look, she drew a little smiling berry in the margin. All these years, and I never noticed!',
+  ]);
   titled('bookTideTables', 'Tide Tables', 'water', 'reading-wave', [
     'Every high and low tide for a hundred years. Rather dry reading... ha!',
     'But see this note in the margin: "Dig just after the tide goes out. The best shells are left behind."',
@@ -68,7 +72,11 @@
     'Brannock\'s great-grandfather kept this. Every lump of ore he ever used!',
     'And a note at the back: "Rumour has it there\'s ore in the hold of the old shipwreck." If you draw a map, I\'ll mark it for you!',
     'And here\'s his trick for using fewer shells at the forge! I\'ll tell Brannock, and he\'ll charge you less.',
-  ], popupOnRead('smithsLedgerRead', { title: 'The Smith\'s Ledger', text: 'Rumour has it there\'s ore on the old shipwreck: a map you draw will show it. The smith forges metal gear for fewer shells now.' }));
+  ], popupOnRead('smithsLedgerRead', { title: 'The Smith\'s Ledger', text: 'Rumour has it there\'s ore on the old shipwreck: a map you draw will show it. The smith forges metal gear for fewer shells now.' }), [
+    'Brannock\'s great-grandfather kept this. Every lump of ore he ever used! He wrote very small, to save paper.',
+    'Here\'s that note about ore in the old shipwreck. Rumours are a bit like ore, {name}: you have to dig for them.',
+    'And his forge trick! Brannock uses it every day now. The last page is just a drawing of a very proud anvil.',
+  ]);
   titled('bookPrimer', 'The Cartographer\'s Primer', 'gold', 'reading-map', [
     'How to draw a map of every place you have ever been. How wonderful!',
     'With paper and ink, you could draw the whole island. I\'ll keep this one safe on the shelf for you, {name}.',

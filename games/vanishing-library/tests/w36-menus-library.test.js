@@ -286,7 +286,7 @@ test('re-reading a titled book replays its pages and changes nothing: no second 
   t.app.libraryShelf.cursor = VL.shelfRows(t.game).indexOf('bookHerbalist');
   t.press('interact');
   assert.equal(t.app.sceneId, 'reading');
-  assert.deepEqual(plain(t.app.reading.pages), plain(VL.dialoguePages(VL.BOOKS.bookHerbalist.reading, t.game)));
+  assert.deepEqual(plain(t.app.reading.pages), plain(VL.dialoguePages(VL.rereadWords(VL.BOOKS.bookHerbalist), t.game)));
   t.pressUntil(t.idle);
   const after = JSON.stringify({ library: t.game.library, flags: t.game.flags, items: t.game.items, maxHp: t.game.maxHp, popups: t.game.popups });
   assert.equal(after, before);
@@ -355,8 +355,130 @@ test('the shelf scene draws every title inside its box, in the font, and scrolls
   }
   assert.equal(t.app.libraryShelf.cursor, rows.length - 1);
   assert.ok(t.app.libraryShelf.scroll > 0, 'the list scrolled');
-  const strings = drawnText(VL, t.app).map((s) => s.str);
-  assert.ok(strings.includes('↑'), 'a cue for more above');
+  const cues = [];
+  const original = VL.ART.moreArrow;
+  VL.ART.moreArrow = (ctx, x, y, up) => {
+    cues.push({ x, y, up });
+    return original(ctx, x, y, up);
+  };
+  try {
+    VL.render(fakeContext(), t.app, 0);
+  } finally {
+    VL.ART.moreArrow = original;
+  }
+  assert.deepEqual(cues.map((c) => c.up), [true], 'a gold arrow for more above, none below at the end');
+  assert.ok(cues.every((c) => c.x >= 20 && c.x + 5 <= 236), 'inside the box');
+  assert.ok(!drawnText(VL, t.app).some((s) => s.str === '↑' || s.str === '↓'), 'no faint glyph cues');
+  t.press('down');
+  cues.length = 0;
+  VL.ART.moreArrow = (ctx, x, y, up) => cues.push({ up });
+  try {
+    VL.render(fakeContext(), t.app, 0);
+  } finally {
+    VL.ART.moreArrow = original;
+  }
+  assert.deepEqual(cues.map((c) => c.up), [false], 'wrapped to the top: an arrow for more below');
+});
+
+test('the shop\'s scroll cues are the same gold arrows', () => {
+  const t = setup();
+  const { VL } = t;
+  // No counter has more rows than fit today: one is stretched to show the cue.
+  const rowsOf = VL.shopRows;
+  VL.shopRows = (state, view) => {
+    const rows = rowsOf(state, view);
+    return [...rows.slice(0, -1), ...rows.slice(0, -1), ...rows.slice(0, -1), 'leave'];
+  };
+  t.app.setScene('shop', { shop: 'store' });
+  const cues = [];
+  const original = VL.ART.moreArrow;
+  VL.ART.moreArrow = (ctx, x, y, up) => cues.push({ x, up });
+  try {
+    VL.render(fakeContext(), t.app, 0);
+  } finally {
+    VL.ART.moreArrow = original;
+    VL.shopRows = rowsOf;
+  }
+  assert.ok(cues.every((c) => c.x + 5 <= 238), 'inside the box');
+  assert.deepEqual(cues.map((c) => c.up), [false]);
+  assert.ok(!drawnText(VL, t.app).some((s) => s.str === '↑' || s.str === '↓'));
+});
+
+// ---------- re-reading and reward words, scroll cues, facing after a reward ----------
+
+test('X leaves a re-reading, as the shelf\'s "X: BACK" says, and changes nothing', () => {
+  const t = shelfGame();
+  const { VL } = t;
+  const before = JSON.stringify({ library: t.game.library, flags: t.game.flags, items: t.game.items });
+  t.app.setScene('libraryShelf');
+  t.app.libraryShelf.cursor = VL.shelfRows(t.game).indexOf('bookHerbalist');
+  t.press('interact');
+  assert.equal(t.app.sceneId, 'reading');
+  t.press('dig');
+  assert.equal(t.app.sceneId, 'play');
+  assert.equal(JSON.stringify({ library: t.game.library, flags: t.game.flags, items: t.game.items }), before);
+});
+
+test('a book whose first reading promised something does not promise it again when read again', () => {
+  const { VL } = loadGame();
+  const again = (id) => VL.rereadWords(VL.BOOKS[id]).join(' ');
+  assert.doesNotMatch(again('bookSmithsLedger'), /I'll tell Brannock|charge you less|I'll mark/);
+  assert.match(again('bookSmithsLedger'), /forge/);
+  assert.doesNotMatch(again('bookHerbalist'), /I'll mark/);
+  assert.match(again('bookHerbalist'), /berry/i);
+  for (const book of Object.values(VL.BOOKS)) {
+    if (!book.reading) continue;
+    const words = again(book.id);
+    assert.doesNotMatch(words, /Take it|I'll tell|I'll mark|I'll have something/, book.id);
+  }
+});
+
+test('his reward words match the tally: "Twelve books" at exactly twelve, other words when one hand-in jumps past it', () => {
+  const words = (t) => t.app.dialogue.pages.flat().join(' ');
+  const rewardTalk = (count) => {
+    const t = setup();
+    const { VL } = t;
+    find(VL, t.game, GENERIC.slice(0, count));
+    t.atDesk();
+    t.press('interact');
+    t.pressUntil(() => t.app.sceneId === 'dialogue' && words(t).includes('Swiftfoot Boots'));
+    return { t, said: words(t) };
+  };
+  assert.match(rewardTalk(12).said, /Twelve books/);
+  const { t, said } = rewardTalk(15);
+  assert.doesNotMatch(said, /Twelve/);
+  assert.match(said, /Robin/);
+  const { VL } = t;
+  for (const id of Object.keys(VL.REWARD_SPEECH)) {
+    const least = VL.TUNING.libraryRewards[id];
+    const game = { library: { returned: Array.from({ length: least + 3 }, (_, i) => `b${i}`), gone: [] }, flags: {} };
+    const line = VL.rewardSpeech(game, id)[0];
+    assert.doesNotMatch(line, /Twelve|Twenty|Thirty/, `${id} past its count`);
+    assert.doesNotMatch(line, /\b(he|him|his)\b/i);
+    assert.deepEqual(plain(VL.rewardSpeech({ ...game, library: { returned: game.library.returned.slice(0, least), gone: [] } }, id)), plain(VL.REWARD_SPEECH[id]));
+  }
+});
+
+test('after a library reward is held up the hero faces the desk again, so S talks to him without pressing Up', () => {
+  const t = setup();
+  const { VL } = t;
+  find(VL, t.game, GENERIC.slice(0, 12));
+  t.atDesk();
+  assert.equal(t.game.player.facing, 'up');
+  t.press('interact');
+  t.pressUntil(() => VL.hasItem(t.game, 'swiftfootBoots') && t.idle());
+  assert.equal(t.game.player.facing, 'up');
+  t.press('interact');
+  assert.equal(t.app.sceneId, 'dialogue', 'S at the desk talks to him again');
+});
+
+test('a chest\'s hold-up still leaves the hero facing down (only library rewards turn back)', () => {
+  const { VL } = loadGame();
+  const state = { player: { facing: 'left' }, events: [], popups: { queue: [], seen: {} } };
+  VL.holdUp(state, 'pickup-heart-container', { quiet: true });
+  state.popups.queue.length = 0;
+  VL.tickHoldUp(state, 2);
+  assert.equal(state.player.facing, 'down');
 });
 
 // ---------- 8. rewards: boots at 12, purse at 20, heart at 30 ----------

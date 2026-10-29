@@ -92,6 +92,11 @@
 
   // ---------- boxes and popups ----------
 
+  // A small gold triangle, 5x3 at (x, y): there is more of a list this way.
+  VL.ART.moreArrow = function moreArrow(ctx, x, y, up) {
+    for (let i = 0; i < 3; i += 1) rect(ctx, 'goldLight', x + 2 - i, up ? y + i : y + 2 - i, 1 + i * 2, 1);
+  };
+
   // A framed panel: dark outline with clipped corners, a light inner edge.
   VL.ART.drawBox = function drawBox(ctx, x, y, w, h) {
     rect(ctx, 'shadow', x + 2, y + h, w - 2, 2);

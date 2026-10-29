@@ -77,8 +77,8 @@
         text(ctx, book.title, BOX.x + 28, y, { color: chosen ? 'goldLight' : 'text' });
       });
       const right = BOX.x + BOX.w - 8;
-      if (view.scroll > 0) text(ctx, '↑', right, ROW.top - 8, { size: 'small', color: 'textDim' });
-      if (view.scroll + ROW.visible < rows.length) text(ctx, '↓', right, ROW.top + ROW.visible * ROW.height - 6, { size: 'small', color: 'textDim' });
+      if (view.scroll > 0) VL.ART.moreArrow(ctx, right - 2, ROW.top - 5, true);
+      if (view.scroll + ROW.visible < rows.length) VL.ART.moreArrow(ctx, right - 2, ROW.top + ROW.visible * ROW.height - 3, false);
       const hint = rows.length > 1 ? '↑↓ CHOOSE   S: READ IT   X: BACK' : 'X: BACK';
       text(ctx, hint, BOX.x + BOX.w / 2, BOX.y + h - 11, { size: 'small', align: 'center', color: 'textDim' });
     },

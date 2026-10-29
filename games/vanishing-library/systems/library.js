@@ -142,7 +142,10 @@
   VL.giveLibraryReward = function giveLibraryReward(state, id) {
     if (VL.rewardGiven(state, id) || VL.booksReturned(state) < VL.TUNING.libraryRewards[id]) return false;
     state.flags[`reward:${id}`] = true;
+    const facing = state.player?.facing;
     REWARD_GIFTS[id](state);
+    // He turns back to the desk once it is held up, so S talks again.
+    if (state.holdUp && facing) state.holdUp.facing = facing;
     VL.earned(state);
     return true;
   };
@@ -371,6 +374,16 @@
     shellPurse: ['Twenty books! The library hasn\'t been this full in years.', 'This was my grandmother\'s shell purse. It holds a great many shells. Take it, please!'],
     heartLibrary: ['Thirty books! I can hardly believe it, {name}.', 'I found this tucked behind the oldest shelf. I think it wants to be yours.'],
   };
+  // When one hand-in jumps past a reward's count: the tally just said how many.
+  const REWARD_PAST_COUNT = {
+    swiftfootBoots: 'So many books, {name}! You must have run all over the island to find them.',
+    shellPurse: 'Look at all these books! The library hasn\'t been this full in years.',
+    heartLibrary: 'So many books! I can hardly believe it, {name}.',
+  };
+  VL.rewardSpeech = (state, id) => {
+    const [first, ...rest] = VL.REWARD_SPEECH[id];
+    return [VL.booksReturned(state) === VL.TUNING.libraryRewards[id] ? first : REWARD_PAST_COUNT[id], ...rest];
+  };
 
   // In the library, plays the next beat as soon as nothing else is showing.
   VL.defineSystem('librarian', {
@@ -390,7 +403,7 @@
       } else {
         VL.requestScene(state, 'dialogue', {
           speaker: VL.LIBRARIAN,
-          pages: VL.dialoguePages(VL.REWARD_SPEECH[beat.id], state),
+          pages: VL.dialoguePages(VL.rewardSpeech(state, beat.id), state),
           end: { give: { libraryReward: beat.id } },
         });
       }
