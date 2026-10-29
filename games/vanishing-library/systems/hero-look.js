@@ -1,7 +1,7 @@
 // W37: the hero's look (clothes colour, hair length) and boy or girl, chosen
 // with the name. The look is a recolour and hair layer over the hero's own
 // sprites: a variant keeps every pixel's place (face, hands, feet), so
-// anything drawn over the hero lines up whatever he wears. README "Hero look".
+// anything drawn over the hero lines up whatever the hero wears. README "Hero look".
 (() => {
   VL.HERO_OUTFITS = ['green', 'blue', 'purple', 'pink', 'yellow'];
   VL.HERO_HAIRS = ['short', 'long'];
@@ -12,7 +12,7 @@
   VL.ART.addColors({
     outfitBlue: '#2c47b8', outfitBlueDark: '#1f3388', outfitBlueLight: '#6585e6',
     outfitPurple: '#8b4fc9', outfitPurpleDark: '#64349a', outfitPurpleLight: '#b688ea',
-    outfitPink: '#e2589a', outfitPinkDark: '#b23a74', outfitPinkLight: '#ff9fcb',
+    outfitPink: '#e85fb4', outfitPinkDark: '#b53c88', outfitPinkLight: '#ffa3dc',
     outfitYellow: '#f2c419', outfitYellowDark: '#bf8c0c', outfitYellowLight: '#ffe776',
   });
   // Each outfit's three tunic shades; green is the hero's original tunic.

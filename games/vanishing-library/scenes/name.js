@@ -1,6 +1,7 @@
 // Name entry, typed into an on-canvas field (design: everything on the
 // canvas), with the hero's look and boy or girl beside it (W37). Enter starts
-// the game in the chosen slot, or ↓ to START and S; Esc goes back.
+// the game in the chosen slot, or ↓ to START and S, once boy or girl is
+// picked (nothing is assumed); Esc goes back.
 (() => {
   VL.NAME_MAX = 12;
   VL.DEFAULT_NAME = 'Hero';
@@ -41,8 +42,11 @@
     const row = ROWS[naming.row];
     const options = CHOICES[row]();
     const at = options.indexOf(naming.look[row]);
-    // The colours go round; for a pair, ← is the first and → the second.
-    const next = options.length > 2 ? (at + step + options.length) % options.length : VL.clamp(at + step, 0, options.length - 1);
+    // The colours go round; for a pair, ← is the first and → the second
+    // (from no pick too: boy or girl starts unpicked).
+    let next;
+    if (options.length > 2) next = (at + step + options.length) % options.length;
+    else next = step > 0 ? options.length - 1 : 0;
     if (next === at) return false;
     naming.look[row] = options[next];
     return true;
@@ -52,7 +56,7 @@
     // Typing goes into the field: letter shortcuts (such as N for mute) stay off here.
     textEntry: true,
     enter(app, data) {
-      app.naming = { slot: data?.slot ?? 0, text: '', row: 0, onStart: false, look: { ...VL.DEFAULT_LOOK } };
+      app.naming = { slot: data?.slot ?? 0, text: '', row: 0, onStart: false, look: { ...VL.DEFAULT_LOOK, gender: null }, asked: false };
       // N is a letter here, so a mute note from the title would only confuse.
       VL.SOUND.clearNote();
       typeInto(app.naming, data?.typed || '');
@@ -87,6 +91,14 @@
         naming.onStart = ROWS[naming.row] === 'start';
         return;
       }
+      if (!VL.HERO_GENDERS.includes(naming.look.gender)) {
+        // No start until boy or girl is picked: the cursor goes to that row and asks.
+        if (ROWS[naming.row] !== 'gender') VL.sfx('menuMove');
+        naming.row = ROWS.indexOf('gender');
+        naming.onStart = false;
+        naming.asked = true;
+        return;
+      }
       VL.sfx('menuSelect');
       const name = naming.text.trim() || VL.DEFAULT_NAME;
       // Each adventure rolls its own drops.
@@ -98,7 +110,8 @@
 
     draw(ctx, app, t) {
       const { width } = VL.TUNING;
-      const { text, look, row } = app.naming;
+      const { text, look, row, asked } = app.naming;
+      const picked = VL.HERO_GENDERS.includes(look.gender);
       const { rect } = VL.ART;
       const current = ROWS[row];
       VL.ART.text(ctx, 'Name your hero', width / 2, 8, { size: 'large', align: 'center', color: 'goldLight', shadow: 'outline' });
@@ -136,13 +149,15 @@
         let x = OPTION_X;
         for (const option of CHOICES[id]()) {
           const word = WORDS[option];
-          const picked = look[id] === option;
-          VL.ART.text(ctx, word, x, ROW_Y[id], { color: picked ? 'goldLight' : 'textDim' });
+          const on = look[id] === option;
+          VL.ART.text(ctx, word, x, ROW_Y[id], { color: on ? 'goldLight' : 'textDim' });
           const w = VL.ART.measureText(word);
-          if (picked) rect(ctx, 'goldLight', x, ROW_Y[id] + 9, w, 1);
+          if (on) rect(ctx, 'goldLight', x, ROW_Y[id] + 9, w, 1);
           x += w + 14;
         }
       }
+      // Asked for after a refused start, under the two words, until one is picked.
+      if (asked && !picked && Math.floor(t * 3) % 4 !== 3) VL.ART.text(ctx, '← BOY OR GIRL? →', OPTION_X, ROW_Y.gender + 11, { size: 'small', color: 'goldLight' });
       VL.HERO_OUTFITS.forEach((outfit, i) => {
         const x = OPTION_X + i * SWATCH.step;
         const y = ROW_Y.outfit - 1;
@@ -156,9 +171,9 @@
       VL.ART.text(ctx, look.outfit.toUpperCase(), OPTION_X, ROW_Y.outfit + 12, { size: 'small', color: current === 'outfit' ? 'goldLight' : 'textDim' });
 
       VL.ART.drawBox(ctx, START.x, START.y, START.w, START.h);
-      VL.ART.text(ctx, 'START', START.x + START.w / 2, START.y + 3, { align: 'center', color: current === 'start' ? 'goldLight' : 'text' });
+      VL.ART.text(ctx, 'START', START.x + START.w / 2, START.y + 3, { align: 'center', color: current === 'start' ? 'goldLight' : picked ? 'text' : 'textDim' });
       VL.ART.text(ctx, 'TYPE A NAME   ↑↓ CHOOSE   ←→ CHANGE', width / 2, 150, { size: 'small', align: 'center', color: 'textDim' });
-      VL.ART.text(ctx, 'ENTER: START   ESC: BACK', width / 2, 160, { size: 'small', align: 'center', color: 'textDim' });
+      VL.ART.text(ctx, picked ? 'ENTER: START   ESC: BACK' : 'PICK BOY OR GIRL, THEN ENTER   ESC: BACK', width / 2, 160, { size: 'small', align: 'center', color: 'textDim' });
     },
   });
 })();

@@ -11,6 +11,11 @@ const throwingStorage = { getItem: blocked, setItem: blocked, removeItem: blocke
 
 const STEP = 1 / 60;
 const press = (VL, app, action) => app.update(VL.actions({ pressed: [action] }), STEP);
+// W37: from the name field, ↓ to HERO and ← for Boy (a new game assumes neither).
+const pickBoy = (VL, app) => {
+  press(VL, app, 'down');
+  press(VL, app, 'left');
+};
 const type = (VL, app, typed) => app.update(VL.actions({ typed }), STEP);
 const wait = (VL, app, seconds, held = []) => {
   for (let t = 0; t < seconds - 1e-9; t += STEP) app.update(VL.actions({ held }), STEP);
@@ -27,6 +32,7 @@ function newGameTo(VL, app, name, slot = 0, stopAt = 'play') {
   press(VL, app, 'confirm');
   assert.equal(app.sceneId, 'name');
   type(VL, app, name);
+  pickBoy(VL, app);
   press(VL, app, 'confirm');
   assert.equal(app.sceneId, 'intro');
   if (stopAt === 'intro') return;
@@ -152,6 +158,7 @@ test('new game: slot → typed name → intro → play, saved as soon as it is n
   assert.equal(app.sceneId, 'name');
   type(VL, app, 'Robin');
   assert.equal(app.naming.text, 'Robin');
+  pickBoy(VL, app);
   press(VL, app, 'confirm');
   assert.equal(app.sceneId, 'intro');
   assert.equal(app.game.name, 'Robin');
@@ -184,6 +191,7 @@ test('name entry: 12 characters at most, backspace, only characters the font has
   assert.equal(app.sceneId, 'name');
   assert.equal(app.game, null);
   type(VL, app, '   ');
+  pickBoy(VL, app);
   press(VL, app, 'confirm');
   assert.equal(app.game.name, 'Hero', 'blank name defaults');
   assert.equal(app.sceneId, 'intro');
@@ -209,6 +217,7 @@ test('name entry trims spaces and Esc goes back to the title without a game', ()
   assert.equal(backing.map.size, 0);
   press(VL, app, 'confirm');
   type(VL, app, ' Kai ');
+  pickBoy(VL, app);
   press(VL, app, 'confirm');
   assert.equal(app.game.name, 'Kai');
   assert.equal(app.slot, 1);
@@ -650,6 +659,7 @@ test('a stale Empty card never overwrites a game another window made in that slo
   press(VL, a, 'confirm');
   assert.equal(a.sceneId, 'name');
   type(VL, a, 'Zed');
+  pickBoy(VL, a);
   press(VL, a, 'confirm');
   const saved = JSON.parse(backing.getItem(VL.slotKey(0)));
   assert.equal(saved.name, 'Kai', 'Kai\'s game is kept');

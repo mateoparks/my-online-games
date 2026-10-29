@@ -127,8 +127,8 @@
       const item = list[app.equipment.cursor];
       const infoY = GRID.y + 2 * (GRID.h + GRID.gap) + 2;
       if (item) {
-        VL.ART.text(ctx, item.name, GRID.x, infoY, { color: 'goldLight' });
-        VL.ART.text(ctx, item.about, GRID.x, infoY + 11, { color: 'text' });
+        VL.ART.text(ctx, VL.popupText(item.name, game), GRID.x, infoY, { color: 'goldLight' });
+        VL.ART.text(ctx, VL.popupText(item.about, game), GRID.x, infoY + 11, { color: 'text' });
       } else {
         VL.ART.text(ctx, 'Nothing yet. Look around!', GRID.x, infoY, { color: 'textDim' });
       }

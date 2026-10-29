@@ -8,6 +8,9 @@ module.exports = (step) => {
     if (drive.app.sceneId !== 'title') return;
     drive.press('confirm');
     drive.update(VL.actions({ typed: 'Robin' }));
+    // W37: ↓ to HERO and ← for Boy; a new game assumes neither.
+    drive.press('down');
+    drive.press('left');
     drive.press('confirm');
     drive.hold([], VL.INTRO.skipAfter + 0.1);
     drive.press('interact');

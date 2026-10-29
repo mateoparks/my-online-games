@@ -154,7 +154,9 @@ test('the five outfits look distinct from each other and stand out on sand, gras
       assert.ok(distance(main, ground) >= 55, `${main} on ${ground}: ${distance(main, ground).toFixed(0)}`);
     }
   }
-  // Three shades each, light to dark, so the hero keeps his top-left light.
+  // Pink leans magenta, so a pink hero stands apart from a townsperson's rose top.
+  assert.ok(distance('outfitPink', 'npcRose') >= 90, `pink vs the rose top: ${distance('outfitPink', 'npcRose').toFixed(0)}`);
+  // Three shades each, light to dark, so the hero keeps the top-left light.
   const luma = (name) => rgb(name).reduce((sum, v, i) => sum + v * [0.299, 0.587, 0.114][i], 0);
   for (const outfit of VL.HERO_OUTFITS) {
     const { tunic, tunicDark, tunicLight } = VL.OUTFIT_COLORS[outfit];
@@ -182,9 +184,9 @@ test('the world draws the hero in the game\'s look, in every pose (walking, hold
   assert.ok(spritesDrawn(VL, () => VL.drawWorld(fakeContext(), old, 0.3)).includes('hero-down-0'));
 });
 
-test('the puppet shows\' hero puppet wears the player\'s look, the confession show included', () => {
+test('the puppet shows\' hero puppet wears the player\'s look where it stands for the player', () => {
   const { VL } = loadGame();
-  for (const data of [{ show: 0 }, { confession: true }]) {
+  for (const data of [{ show: 0 }, { confession: true }, { kind: 0 }]) {
     const app = VL.createApp();
     app.game = VL.newGame({ look: { outfit: 'yellow', hair: 'long', gender: 'girl' } });
     app.setScene('puppetShow', data);
@@ -231,6 +233,32 @@ test('the title\'s shore hero wears the look of the slot the cursor is on', () =
   assert.deepEqual(heroOf(), ['hero-down-0~pink-long']);
 });
 
+test('Sir Bumble is a story\'s hero, not the player: his own puppet, the same for every look', () => {
+  const { VL } = loadGame();
+  // The only shows casting the player's puppet: the first show's brave little
+  // hero, the confession's brave young hero and The Library That Grew.
+  const shows = [...VL.PUPPET_SHOWS, VL.CONFESSION_SHOW, ...VL.KIND_SHOWS];
+  const casting = (name) => shows.filter((show) => show.beats.some((beat) => beat.cast[name] !== undefined)).map((show) => show.title);
+  assert.deepEqual(casting('hero'), ['The Dragon Who Wanted a Hug', 'The Puppeteer Who Missed Home', 'The Library That Grew']);
+  assert.deepEqual(casting('bumble'), ['Sir Bumble\'s Busy Day']);
+  for (const look of [{ outfit: 'yellow', hair: 'long', gender: 'girl' }, { outfit: 'blue', hair: 'short', gender: 'boy' }, undefined]) {
+    const app = VL.createApp();
+    app.game = VL.newGame({ look });
+    app.setScene('puppetShow', { show: 1 });
+    const ids = new Set();
+    for (const beat of app.puppetShow.show.beats.keys()) {
+      app.puppetShow.beat = beat;
+      for (const actor of Object.values(app.puppetShow.actors)) actor.rise = 0;
+      for (const [name, x] of Object.entries(app.puppetShow.show.beats[beat].cast)) app.puppetShow.actors[name] = { x, rise: 1, target: x };
+      for (const id of spritesDrawn(VL, () => app.scene.draw(fakeContext(), app, 1))) ids.add(id);
+    }
+    assert.ok(ids.has('puppet-bumble'), JSON.stringify(look));
+    assert.ok(![...ids].some((id) => id.startsWith('puppet-hero')), `${JSON.stringify(look)}: ${[...ids]}`);
+  }
+  const bumble = VL.ART.SPRITES['puppet-bumble'].def;
+  assert.ok(!Object.values(bumble.colors).some((name) => /^tunic/.test(name)), 'none of the colours a look recolours');
+});
+
 // ---------- the chooser ----------
 
 test('new game: the name, then boy or girl, clothes and hair beside it, with a live preview, then START', () => {
@@ -271,19 +299,68 @@ test('new game: the name, then boy or girl, clothes and hair beside it, with a l
   assert.deepEqual(plain(JSON.parse(app.storage.read(VL.slotKey(0))).look), { outfit: 'yellow', hair: 'long', gender: 'girl' }, 'saved as soon as it is named');
 });
 
-test('the chooser: Enter in the field starts with today\'s look; S or Space on a choice steps down; a letter goes back to the name', () => {
-  const { VL } = loadGame();
-  let app = nameApp(VL);
-  type(VL, app, 'Ash');
-  press(VL, app, 'confirm');
-  assert.equal(app.sceneId, 'intro');
-  assert.deepEqual(plain(app.game.look), plain(VL.DEFAULT_LOOK));
+// The strings drawn while `draw` runs, with their colours.
+function textsDrawn(VL, draw) {
+  const drawn = [];
+  const original = VL.ART.text;
+  VL.ART.text = (ctx, str, x, y, options = {}) => {
+    drawn.push({ str: String(str), color: options.color });
+    return original(ctx, str, x, y, options);
+  };
+  try {
+    draw();
+  } finally {
+    VL.ART.text = original;
+  }
+  return drawn;
+}
 
-  app = nameApp(VL);
+test('boy or girl starts unpicked: no start until it is chosen, from any row or key, and the HERO row asks', () => {
+  const { VL } = loadGame();
+  for (const [row, key, typed] of [[0, 'confirm', ''], [1, 'confirm', ''], [2, 'confirm', ''], [3, 'confirm', ''], [4, 'confirm', ''], [4, 'interact', 's'], [4, 'mainHand', ' ']]) {
+    const app = nameApp(VL);
+    type(VL, app, 'Ash');
+    assert.equal(app.naming.look.gender, null, 'nothing is assumed');
+    assert.deepEqual([app.naming.look.outfit, app.naming.look.hair], ['green', 'short'], 'clothes and hair keep today\'s look');
+    for (let i = 0; i < row; i += 1) press(VL, app, 'down');
+    const before = textsDrawn(VL, () => VL.render(fakeContext(), app, 0));
+    assert.ok(!before.some((d) => /BOY OR GIRL\?/.test(d.str)), 'no question before a start is tried');
+    assert.ok(before.some((d) => /PICK BOY OR GIRL/.test(d.str)), 'the hint says what START needs');
+    for (const word of ['Boy', 'Girl']) assert.equal(before.find((d) => d.str === word).color, 'textDim', `${word} is not shown as picked`);
+    app.update(VL.actions({ pressed: [key], typed }), STEP);
+    assert.equal(app.sceneId, 'name', `${key} on row ${row}`);
+    assert.equal(app.game, null, 'VL.newGame is never reached without a pick');
+    assert.ok(!app.storage.read(VL.slotKey(0)), 'nothing saved');
+    assert.equal(app.naming.row, 1, 'the cursor goes to the HERO row');
+    assert.equal(app.naming.onStart, false);
+    assert.equal(app.naming.text, 'Ash');
+    assert.ok(textsDrawn(VL, () => VL.render(fakeContext(), app, 0)).some((d) => d.str === '← BOY OR GIRL? →'), 'and asks there');
+  }
+  // From no pick, ← is Boy and → is Girl; then a start goes ahead.
+  for (const [key, gender] of [['left', 'boy'], ['right', 'girl']]) {
+    const app = nameApp(VL);
+    type(VL, app, 'Ash');
+    press(VL, app, 'confirm');
+    press(VL, app, key);
+    assert.equal(app.naming.look.gender, gender, key);
+    const after = textsDrawn(VL, () => VL.render(fakeContext(), app, 0));
+    assert.ok(!after.some((d) => /BOY OR GIRL/.test(d.str)), 'the question and the hint go once picked');
+    assert.ok(after.some((d) => d.str === 'ENTER: START   ESC: BACK'));
+    assert.equal(after.find((d) => d.str === (gender === 'boy' ? 'Boy' : 'Girl')).color, 'goldLight');
+    press(VL, app, 'confirm');
+    assert.equal(app.sceneId, 'intro');
+    assert.deepEqual(plain(app.game.look), { outfit: 'green', hair: 'short', gender });
+  }
+});
+
+test('the chooser: S or Space on a choice steps down; a letter goes back to the name; Enter starts from any row once picked', () => {
+  const { VL } = loadGame();
+  const app = nameApp(VL);
   type(VL, app, 'Jo');
   press(VL, app, 'down');
   press(VL, app, 'interact', 's');
-  assert.equal(app.naming.row, 2, 'S on boy or girl keeps it and steps to the clothes');
+  assert.equal(app.naming.row, 2, 'S on boy or girl steps to the clothes');
+  assert.equal(app.naming.look.gender, null, 'and picks nothing');
   press(VL, app, 'mainHand', ' ');
   assert.equal(app.naming.row, 3, 'Space too');
   assert.equal(app.naming.text, 'Jo', 'neither typed into the name');
@@ -291,11 +368,14 @@ test('the chooser: Enter in the field starts with today\'s look; S or Space on a
   assert.equal(app.naming.row, 0);
   assert.equal(app.naming.text, 'Joe');
   press(VL, app, 'left');
-  assert.equal(app.naming.look.gender, 'boy', 'left and right in the field change nothing');
+  press(VL, app, 'right');
+  assert.equal(app.naming.look.gender, null, 'left and right in the field change nothing');
   press(VL, app, 'up');
   assert.equal(app.naming.row, 0, 'nothing above the name');
   press(VL, app, 'down');
   press(VL, app, 'right');
+  press(VL, app, 'down');
+  press(VL, app, 'down');
   press(VL, app, 'confirm');
   assert.equal(app.sceneId, 'intro', 'Enter starts from any row');
   assert.equal(app.game.look.gender, 'girl');
@@ -314,6 +394,9 @@ test('every word of the chooser is in the font and fits the canvas', () => {
   };
   for (const outfit of VL.HERO_OUTFITS) {
     app.naming.look.outfit = outfit;
+    // Unpicked and asked (the question and the longer hint), then picked.
+    app.naming.look.gender = outfit === 'green' ? null : 'girl';
+    app.naming.asked = true;
     app.naming.text = 'WWWWWWWWWWWW';
     for (let row = 0; row < 5; row += 1) {
       app.naming.row = row;
@@ -326,6 +409,7 @@ test('every word of the chooser is in the font and fits the canvas', () => {
     assert.ok(left >= 0 && right <= VL.TUNING.width && y >= 0 && y < VL.TUNING.height, `${str} at ${left}..${right}, ${y}`);
   }
   assert.ok(drawn.some((d) => d.str === 'Girl') && drawn.some((d) => d.str === 'Long') && drawn.some((d) => d.str === 'YELLOW'));
+  assert.ok(drawn.some((d) => d.str === '← BOY OR GIRL? →') && drawn.some((d) => /^PICK BOY OR GIRL/.test(d.str)));
 });
 
 // ---------- boy or girl: the words ----------
@@ -361,6 +445,92 @@ test('the intro says his or her culture, from the game\'s choice', () => {
   }
 });
 
+// Everything drawn as text while the hero plays, boy or girl, with a token
+// planted in each source that is drawn outside the talk and popups (book
+// titles, equipment, the shockwave, fainting, shows, shops, dungeons, maps,
+// credits): each must come out as the hero's word, never as a raw {token}.
+test('every text the hero sees goes through popupText: no {token} is ever drawn raw', () => {
+  for (const gender of ['boy', 'girl']) {
+    const { VL } = loadGame();
+    const mark = '{Himself}X';
+    const word = gender === 'boy' ? 'himselfx' : 'herselfx';
+    const plant = (text) => `${mark} ${text}`;
+    VL.BOOKS.bookChickenAlmanac.title = plant(VL.BOOKS.bookChickenAlmanac.title);
+    for (const item of Object.values(VL.ITEMS)) Object.assign(item, { name: plant(item.name), about: plant(item.about || '') });
+    VL.SHOCKWAVE_LINES[0] = plant(VL.SHOCKWAVE_LINES[0]);
+    for (const cause of Object.keys(VL.FAINT_LINES)) VL.FAINT_LINES[cause] = plant(VL.FAINT_LINES[cause]);
+    VL.PUPPET_SHOWS[0].title = plant(VL.PUPPET_SHOWS[0].title);
+    VL.PUPPET_SHOWS[0].beats.at(-1).speaker = plant(VL.PUPPET_SHOWS[0].beats.at(-1).speaker);
+    VL.DUNGEONS.scriptorium.name = plant(VL.DUNGEONS.scriptorium.name);
+    VL.COPIES.woodsMapCopy.name = plant(VL.COPIES.woodsMapCopy.name);
+    VL.CREDITS.unshift({ big: mark });
+    const shop = VL.SCENES.shop.smokeData().shop;
+    shop.title = plant(shop.title);
+    for (const offer of shop.offers) offer.name = plant(offer.name);
+
+    const look = { outfit: 'pink', hair: 'long', gender };
+    const app = VL.createApp();
+    const fresh = () => {
+      app.game = VL.newGame({ name: 'Robin', look });
+      for (const id of Object.keys(VL.ITEMS)) VL.giveItem(app.game, id);
+      return app.game;
+    };
+    const cases = {
+      reading: () => app.setScene('reading', { book: 'bookChickenAlmanac' }),
+      equipment: () => app.setScene('equipment'),
+      shockwave: () => {
+        app.setScene('shockwave', { from: 'dark' });
+        app.shockwave.shown = 999;
+      },
+      fainted: () => {
+        app.game.fainted = { cause: 'crab' };
+        app.setScene('fainted');
+      },
+      puppetShow: () => {
+        app.setScene('puppetShow', { show: 0 });
+        app.puppetShow.beat = app.puppetShow.show.beats.length - 1;
+      },
+      shop: () => app.setScene('shop', { shop }),
+      shopAsk: () => {
+        app.setScene('shop', { shop });
+        Object.assign(app.shopView, { mode: 'ask', asking: shop.offers[0], answer: 0 });
+      },
+      shopNote: () => {
+        app.setScene('shop', { shop });
+        app.shopView.note = { text: plant('Thank you!'), bad: false, t: 0 };
+      },
+      dungeonNote: () => {
+        VL.place(app.game, { area: 'scriptorium', screen: Object.keys(VL.AREAS.scriptorium.screens)[0], tx: 7, ty: 5 });
+        app.game.dungeonNote = { text: plant('Locked.'), t: 0 };
+        app.setScene('play');
+      },
+      dungeonMap: () => {
+        VL.place(app.game, { area: 'scriptorium', screen: Object.keys(VL.AREAS.scriptorium.screens)[0], tx: 7, ty: 5 });
+        app.setScene('dungeonMap');
+      },
+      copyView: () => app.setScene('copyView', { id: 'woodsMapCopy' }),
+      worldMapAsk: () => app.setScene('worldMap', {}),
+      worldMap: () => app.setScene('worldMap', { mode: 'view' }),
+      pause: () => app.setScene('pause'),
+      credits: () => {
+        app.setScene('ending');
+        Object.assign(app.ending, { phase: 'credits', t: 0 });
+      },
+    };
+    const unplanted = ['worldMapAsk', 'worldMap', 'pause'];
+    for (const [id, open] of Object.entries(cases)) {
+      fresh();
+      open();
+      const drawn = textsDrawn(VL, () => {
+        for (const t of [0, 0.5, 3]) VL.render(fakeContext(), app, t);
+      }).map((d) => d.str);
+      const all = drawn.join(' | ');
+      assert.doesNotMatch(all, /\{[A-Za-z]+\}/, `${gender} ${id}: ${all}`);
+      if (!unplanted.includes(id)) assert.ok(all.toLowerCase().includes(word), `${gender} ${id} shows the planted line: ${all}`);
+    }
+  }
+});
+
 // String literals in a file's source, comments skipped.
 function literals(source) {
   const out = [];
@@ -388,10 +558,13 @@ function literals(source) {
   return out;
 }
 
-// Every he/she word in the game's text that is about someone else: the
-// librarian, his wife, Bryony, Brannock, Henrietta, Nell, Mabel, the dragon,
-// Sir Bumble and Nosy Ned. The hero's own words are tokens ({his}).
+// Every he/she word or gendered noun in the game's text that is about
+// someone else: the librarian, his wife, Bryony, Brannock, Henrietta, Nell,
+// Mabel, the dragon, Sir Bumble and Nosy Ned (plus the chooser's own
+// question). The hero's own words are tokens ({his}).
 const OTHERS = [
+  ['scenes/name.js', '← BOY OR GIRL? →'],
+  ['scenes/name.js', 'PICK BOY OR GIRL, THEN ENTER'],
   ['regions/townsfolk.js', 'The librarian planted these flowers himself'],
   ['regions/townsfolk.js', 'he mostly stares at his empty shelves'],
   ['regions/buildings.js', 'Mabel spins round... did she see?'],
@@ -428,22 +601,37 @@ const OTHERS = [
   ['scenes/puppet-show.js', 'Now he reads one book every Sunday.'],
 ];
 
-test('no hero pronoun is left written out in the game\'s text: each he or she is someone else\'s (allow-list)', () => {
+// Pronouns, then gendered nouns and forms of address ("my lad", "young
+// lady", "sir"): said to the hero, each assumes a boy or a girl. "Miss"
+// counts only as an address ("Thank you, miss."), not the verb.
+const GENDERED = new RegExp(`\\b(${[
+  'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 'boys?', 'girls?',
+  'lads?', 'lass(ie)?', 'sons?', 'daughters?', 'grand(son|daughter)s?', 'young (man|men|lady|ladies|woman|women)',
+  'sir', "ma'?am", 'madam', 'mister', 'missus', 'mrs?', 'miss(?=[,.!?])', 'gentlem[ae]n', 'lad(y|ies)', 'dame', 'lord',
+  'princes?s?', 'kings?', 'queens?', 'heroine', 'brothers?', 'sisters?', 'fellow', 'chap', 'guy', 'gal', 'man', 'woman',
+].join('|')})\\b`, 'i');
+// A title before a capitalised name (Mrs. Fenwick, Sir Bumble, Miss Quill)
+// is someone's name, never the hero's ({name} is a token).
+const TITLED = /\b(Mr|Mrs|Ms|Miss|Sir|Dame|Lady|Lord|King|Queen|Prince|Princess)\.? [A-Z][a-z]+/g;
+
+test('no hero pronoun or gendered word is left written out in the game\'s text: each is someone else\'s (allow-list)', () => {
   const { VL } = loadGame();
-  const pronoun = /\b(he|him|his|himself|she|her|hers|herself|boy|girl)\b/i;
   const used = new Set();
   const strays = [];
   for (const file of VL.scriptFiles()) {
     for (const text of literals(read(file))) {
       // Tokens are the hero's; sentences only (code strings have no spaces).
-      const words = text.replace(/\{[A-Za-z]+\}/g, '');
-      if (!/\s/.test(text) || !pronoun.test(words)) continue;
+      const words = text.replace(/\{[A-Za-z]+\}/g, '').replace(TITLED, '');
+      if (!/\s/.test(text) || !GENDERED.test(words)) continue;
       const other = OTHERS.findIndex(([where, part]) => where === file && text.includes(part));
       if (other === -1) strays.push(`${file}: ${text}`);
       else used.add(other);
     }
   }
-  assert.deepEqual(strays, [], 'a he/she about the hero is a {he}/{his} token; one about someone else joins OTHERS');
+  assert.deepEqual(strays, [], 'a he/she about the hero is a {he}/{his} token; a lad, sir or lady said to the hero is reworded; one about someone else joins OTHERS');
+  // The scan sees the nouns and forms of address, and lets names through.
+  for (const said of ['Well done, my lad!', 'Thank you, young lady.', 'Yes, sir.', 'Off you go, son.', 'Hello, ma\'am.', 'Hail, princess!', 'Thank you, miss.']) assert.match(said.replace(TITLED, ''), GENDERED, said);
+  for (const name of ['Ask Mrs. Fenwick.', 'Sir Bumble hops.', 'Miss Quill binds the pages.', 'You can\'t miss it.']) assert.doesNotMatch(name.replace(TITLED, ''), GENDERED, name);
   assert.deepEqual(OTHERS.filter((_, i) => !used.has(i)), [], 'every allow-list entry still matches a line');
 });
 

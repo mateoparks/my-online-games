@@ -182,7 +182,7 @@
           if (y < -LINE || y > height) return;
           if (typeof line === 'string') {
             if (line) VL.ART.text(ctx, VL.popupText(line, game), width / 2, y, { align: 'center', color: 'text' });
-          } else VL.ART.text(ctx, line.big, width / 2, y - 2, { size: 'large', align: 'center', color: 'goldLight', shadow: 'outline' });
+          } else VL.ART.text(ctx, VL.popupText(line.big, game), width / 2, y - 2, { size: 'large', align: 'center', color: 'goldLight', shadow: 'outline' });
         });
         if (rolled >= end && Math.floor(t * 2) % 2 === 0) VL.ART.text(ctx, 'S: BACK TO THE TITLE', width - 8, 180, { size: 'small', align: 'right', color: 'textDim' });
         return;
@@ -198,7 +198,7 @@
           left -= line.length + 1;
           return part;
         });
-        VL.ART.drawPopup(ctx, { title: beat.speaker || null, text: typed.join('\n'), at: beat.at, prompt: view.shown >= text.length }, t);
+        VL.ART.drawPopup(ctx, { title: beat.speaker ? VL.popupText(beat.speaker, game) : null, text: typed.join('\n'), at: beat.at, prompt: view.shown >= text.length }, t);
       }
       const dark = view.phase === 'fadeIn' ? 1 - view.t / T.fadeIn : view.phase === 'fadeOut' ? view.t / T.fadeOut : 0;
       if (dark > 0) {

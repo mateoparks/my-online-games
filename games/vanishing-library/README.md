@@ -624,7 +624,11 @@ default. Boy or girl changes only the words, never the sprites.
   with the hero walking and turning through every facing at 4× beside them.
   ↑↓ move between rows, ←→ change a choice, S or Space on a choice steps
   down, a letter typed on any other row goes back to the name, Enter starts
-  from anywhere (the old fast path: type, Enter).
+  from anywhere. **Boy or girl starts unpicked** (Matthew: "Definitely don't
+  assume"); clothes and hair start as today's hero. Until it is picked, a
+  start (Enter on any row, S or Space on START) moves the cursor to the HERO
+  row and shows `← BOY OR GIRL? →` under it instead of starting; from no
+  pick ← is Boy and → is Girl. `VL.newGame` is never reached without one.
 - **Drawing the hero:** `VL.ART.drawHero(ctx, player, x, y, t, look)`;
   `render.js` passes `state.look`, the title passes the chosen slot's. A
   sprite is worn with `VL.ART.lookSprite(id, look)`: today's look returns
@@ -653,18 +657,29 @@ default. Boy or girl changes only the words, never the sprites.
   the eyes), so a face overlay never needs to know the look; one
   covering the whole head should be 2px wider for long hair, or sit under
   it by drawing in the `'behind'` pass.
-- **Also wearing it:** the puppet shows' hero puppet (`puppet-hero`, every
-  show, the confession included), the finale's hero marionette and the town
+- **Also wearing it:** the puppet shows' hero puppet (`puppet-hero`) where it
+  stands for the player: the first show's "brave little hero", the
+  confession's "brave young hero" and the kind show "The Library That Grew".
+  Sir Bumble is a story character, so his show casts his own puppet
+  (`puppet-bumble`, a bumblebee knight in a helmet) in every game; the finale's hero marionette and the town
   booth's little hero puppet (both get `look` on their room copy from a
   `VL.onRoomBuilt` hook), and the hero on the title's shore (the slot the
   cursor is on).
 - **The hero's words:** `VL.popupText` turns `{he}`, `{him}`, `{his}`
   (his/her), `{hers}` (his/hers), `{himself}`, `{boy}` (boy/girl), and the
   same capitalised (`{He}`, `{His}`, ...), into the hero's words from
-  `look.gender` (`VL.HERO_WORDS`); no look means a boy. **Never write a hero
+  `look.gender` (`VL.HERO_WORDS`); no look means a boy. **All text the
+  hero sees goes through `VL.popupText`**, not only talk: book titles,
+  equipment names and descriptions, the shockwave and fainting lines, show
+  titles, shop titles, rows, questions and notes, dungeon and map names,
+  dungeon notes and the credits' headings; a test plants tokens in each and
+  fails on any `{token}` drawn raw, boy or girl. **Never write a hero
   pronoun out:** a test scans every string in the game and fails on a he,
-  she, him, her, his, hers, boy or girl that is neither a token nor on its
-  allow-list of other characters (the librarian, his wife, Bryony, Brannock,
+  she, him, her, his, hers, boy or girl, or a gendered noun or form of
+  address (lad, lass, son, daughter, young man, sir, ma'am, mister, lady,
+  prince, king, ...; a title before a capitalised name, such as Mrs.
+  Fenwick or Sir Bumble, is someone's name and passes) that is neither a
+  token nor on its allow-list of other characters (the librarian, his wife, Bryony, Brannock,
   Henrietta, Nell, Mabel, the dragon, Sir Bumble, Nosy Ned). Text about
   someone else joins that list in `tests/hero-look.test.js`. Today only the
   intro's last line is the hero's (`to save {his} culture`); the rest of the
@@ -704,8 +719,8 @@ default. Boy or girl changes only the words, never the sprites.
 
 `VL.START_SCENE` is `'title'` (`scenes/title.js`). A new player goes title
 (three slots) → `name` (typed into a field on the canvas, 12 characters,
-"Hero" when left blank, with the hero's look beside it (W37); Enter, or ↓ to
-START and S, Space or Enter) → `intro` (the three weathered lines; S, Space or
+"Hero" when left blank, with the hero's look beside it (W37); boy or girl
+must be picked, then Enter, or ↓ to START and S, Space or Enter) → `intro` (the three weathered lines; S, Space or
 Enter skips after half a second) → `play`. From play, Esc opens `pause`
 (Resume, Save & Quit, the controls); hearts running out opens `fainted`,
 where a press respawns the hero; `conflict` (another window saved this slot)

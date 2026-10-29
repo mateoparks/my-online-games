@@ -320,7 +320,7 @@ async function main() {
     // localStorage in this profile).
     errors.length = 0;
     const flowProblems = [];
-    const vk = { Enter: 13, Escape: 27, ArrowDown: 40, KeyN: 78, KeyS: 83 };
+    const vk = { Enter: 13, Escape: 27, ArrowLeft: 37, ArrowDown: 40, KeyN: 78, KeyS: 83 };
     const tap = async (code, keyName = code) => {
       const event = { key: keyName, code, windowsVirtualKeyCode: vk[code], nativeVirtualKeyCode: vk[code] };
       await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
@@ -355,6 +355,15 @@ async function main() {
     const typed = await evaluate('VL.app.naming && VL.app.naming.text');
     if (typed !== 'Robin') flowProblems.push(`the name field holds ${JSON.stringify(typed)}, expected "Robin"`);
     await canvasShot('name');
+    // W37: boy or girl starts unpicked, so Enter first moves to the HERO row and asks.
+    await tap('Enter');
+    await expectScene('name', 'Enter with no boy or girl picked');
+    const asked = await evaluate('JSON.stringify([VL.app.naming.row, VL.app.naming.asked, VL.app.naming.look.gender, Boolean(VL.app.game)])');
+    if (asked !== JSON.stringify([1, true, null, false])) flowProblems.push(`Enter with no pick: [row, asked, gender, game] = ${asked}`);
+    await canvasShot('name-ask');
+    await tap('ArrowLeft');
+    const picked = await evaluate('VL.app.naming.look.gender');
+    if (picked !== 'boy') flowProblems.push(`← from no pick gave ${JSON.stringify(picked)}, expected "boy"`);
     await tap('Enter');
     await expectScene('intro', 'Enter on the name');
     await sleep(1500);
@@ -391,7 +400,7 @@ async function main() {
     if (!resumed || resumed[0] !== 'Robin' || resumed[1] !== resumed[2]) flowProblems.push(`continued as ${JSON.stringify(resumed)}`);
     flowProblems.push(...errors);
     if (flowProblems.length) failures += 1;
-    console.log(`${flowProblems.length ? 'FAIL' : 'ok  '} start flow: title, name "Robin", intro, play, pause, Save & Quit, reload, continue`);
+    console.log(`${flowProblems.length ? 'FAIL' : 'ok  '} start flow: title, name "Robin", Enter asks boy or girl, ← Boy, intro, play, pause, Save & Quit, reload, continue`);
     for (const problem of flowProblems) console.log(`     ${problem}`);
 
     // Sound in a real browser: the arrow presses above unlocked WebAudio, every
@@ -541,13 +550,20 @@ async function main() {
       if (!onStage) lookProblems.push('the hero puppet is not on stage for the shot');
       await snap('w37-puppet-show');
       await hit('Escape');
+      // Sir Bumble is a story's hero: his own puppet, whatever the player wears.
+      await evaluate("VL.app.setScene('puppetShow', { show: 1 })");
+      await sleep(700);
+      const bumble = await peek("(() => { const ids = []; const d = VL.ART.drawSprite; VL.ART.drawSprite = (c, id, ...r) => { ids.push(id); return d(c, id, ...r); }; VL.app.scene.draw(document.createElement('canvas').getContext('2d'), VL.app, 1); VL.ART.drawSprite = d; return ids.filter((id) => id.startsWith('puppet-')); })()");
+      if (!bumble.includes('puppet-bumble') || bumble.some((id) => id.startsWith('puppet-hero'))) lookProblems.push(`Sir Bumble's show drew ${bumble}`);
+      await snap('w37-puppet-bumble');
+      await hit('Escape');
       await evaluate("VL.app.setScene('title', { slot: 2 })");
       await sleep(150);
       await snap('w37-title-look');
       await evaluate("localStorage.removeItem('vanishing-library-slot-3')");
       lookProblems.push(...errors);
       if (lookProblems.length) failures += 1;
-      console.log(`${lookProblems.length ? 'FAIL' : 'ok  '} W37 look: the chooser in all ${outfits.length * 2} looks, a girl into the intro, the world, every facing, the puppet show, the title`);
+      console.log(`${lookProblems.length ? 'FAIL' : 'ok  '} W37 look: the chooser in all ${outfits.length * 2} looks, a girl into the intro, the world, every facing, the puppet show, Sir Bumble's own puppet, the title`);
       for (const problem of lookProblems.slice(0, 8)) console.log(`     ${problem}`);
     }
 

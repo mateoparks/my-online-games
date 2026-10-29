@@ -510,6 +510,9 @@ test('the controls popup comes once at the start, teaching the arrows, E and S b
   const app = VL.createApp({ storage: VL.createStorage(memoryStorage()) });
   app.update(VL.actions({ pressed: ['confirm'] }), STEP);
   app.update(VL.actions({ typed: 'Robin' }), STEP);
+  // W37: ↓ to HERO and ← for Boy; a new game assumes neither.
+  app.update(VL.actions({ pressed: ['down'] }), STEP);
+  app.update(VL.actions({ pressed: ['left'] }), STEP);
   app.update(VL.actions({ pressed: ['confirm'] }), STEP);
   assert.equal(app.sceneId, 'intro');
   for (let t = 0; t < 1; t += STEP) app.update(VL.noActions(), STEP);
