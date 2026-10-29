@@ -125,7 +125,9 @@
 
   // ---------- popups ----------
 
-  // { title, text }; `{name}` in either is the hero's name.
+  // { title, text }; `{name}` in either is the hero's name, and `{he}`,
+  // `{him}`, `{his}`, `{hers}`, `{himself}`, `{boy}` (capitalised too: `{He}`)
+  // are the hero's words, boy or girl (W37, `state.look.gender`).
   VL.POPUPS = {};
 
   VL.definePopup = function definePopup(id, popup) {
@@ -133,7 +135,21 @@
     VL.POPUPS[id] = { id, ...popup };
   };
 
-  VL.popupText = (text, state) => String(text ?? '').replace(/\{name\}/g, state?.name || VL.DEFAULT_NAME || 'Hero');
+  VL.HERO_WORDS = {
+    boy: { he: 'he', him: 'him', his: 'his', hers: 'his', himself: 'himself', boy: 'boy' },
+    girl: { he: 'she', him: 'her', his: 'her', hers: 'hers', himself: 'herself', boy: 'girl' },
+  };
+  const capital = (word) => word[0].toUpperCase() + word.slice(1);
+  VL.popupText = (text, state) => {
+    const words = VL.HERO_WORDS[state?.look?.gender] || VL.HERO_WORDS.boy;
+    return String(text ?? '')
+      .replace(/\{name\}/g, state?.name || VL.DEFAULT_NAME || 'Hero')
+      .replace(/\{(he|him|his|hers|himself|boy)\}/gi, (token, key) => {
+        const word = words[key.toLowerCase()];
+        if (key === key.toLowerCase()) return word;
+        return key === capital(key.toLowerCase()) ? capital(word) : token;
+      });
+  };
 
   // Queues a popup unless it was ever shown or is already waiting; the play
   // scene opens it with the world paused underneath.

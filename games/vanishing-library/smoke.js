@@ -131,9 +131,9 @@ const slideSetup = `(() => {
           return drawScreen.call(this, ctx, screenArea, screenKey, ox, oy, ...rest);
         };
         const drawHero = VL.ART.drawHero;
-        VL.ART.drawHero = function (ctx, player, x, y, t) {
+        VL.ART.drawHero = function (ctx, player, x, y, ...rest) {
           if (VL.app.game.transition) window.__slideDraws.push({ hero: true, x, y });
-          return drawHero.call(this, ctx, player, x, y, t);
+          return drawHero.call(this, ctx, player, x, y, ...rest);
         };
         return JSON.stringify({ dir, dx, dy, from: key, to: VL.neighborKey(key, dx, dy), tx, ty });
       }
@@ -320,7 +320,7 @@ async function main() {
     // localStorage in this profile).
     errors.length = 0;
     const flowProblems = [];
-    const vk = { Enter: 13, Escape: 27, ArrowDown: 40, KeyN: 78, KeyS: 83 };
+    const vk = { Enter: 13, Escape: 27, ArrowLeft: 37, ArrowDown: 40, KeyN: 78, KeyS: 83 };
     const tap = async (code, keyName = code) => {
       const event = { key: keyName, code, windowsVirtualKeyCode: vk[code], nativeVirtualKeyCode: vk[code] };
       await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
@@ -355,6 +355,15 @@ async function main() {
     const typed = await evaluate('VL.app.naming && VL.app.naming.text');
     if (typed !== 'Robin') flowProblems.push(`the name field holds ${JSON.stringify(typed)}, expected "Robin"`);
     await canvasShot('name');
+    // W37: boy or girl starts unpicked, so Enter first moves to the HERO row and asks.
+    await tap('Enter');
+    await expectScene('name', 'Enter with no boy or girl picked');
+    const asked = await evaluate('JSON.stringify([VL.app.naming.row, VL.app.naming.asked, VL.app.naming.look.gender, Boolean(VL.app.game)])');
+    if (asked !== JSON.stringify([1, true, null, false])) flowProblems.push(`Enter with no pick: [row, asked, gender, game] = ${asked}`);
+    await canvasShot('name-ask');
+    await tap('ArrowLeft');
+    const picked = await evaluate('VL.app.naming.look.gender');
+    if (picked !== 'boy') flowProblems.push(`← from no pick gave ${JSON.stringify(picked)}, expected "boy"`);
     await tap('Enter');
     await expectScene('intro', 'Enter on the name');
     await sleep(1500);
@@ -391,7 +400,7 @@ async function main() {
     if (!resumed || resumed[0] !== 'Robin' || resumed[1] !== resumed[2]) flowProblems.push(`continued as ${JSON.stringify(resumed)}`);
     flowProblems.push(...errors);
     if (flowProblems.length) failures += 1;
-    console.log(`${flowProblems.length ? 'FAIL' : 'ok  '} start flow: title, name "Robin", intro, play, pause, Save & Quit, reload, continue`);
+    console.log(`${flowProblems.length ? 'FAIL' : 'ok  '} start flow: title, name "Robin", Enter asks boy or girl, ← Boy, intro, play, pause, Save & Quit, reload, continue`);
     for (const problem of flowProblems) console.log(`     ${problem}`);
 
     // Sound in a real browser: the arrow presses above unlocked WebAudio, every
@@ -437,6 +446,125 @@ async function main() {
       if (soundProblems.length) failures += 1;
       console.log(`${soundProblems.length ? 'FAIL' : 'ok  '} sound: context ${sound.state}, mute toggles and persists, ${path.join(outDir, 'muted.png')}`);
       for (const problem of soundProblems) console.log(`     ${problem}`);
+    }
+
+    // W37's look with real keys: a new game in slot 3, a girl, every clothes
+    // colour with short and long hair on the chooser (w37-look-<outfit>-<hair>),
+    // then pink and long into the intro ("her culture") and play; each outfit
+    // in the world on sand under grass (w37-world-<outfit>), every facing
+    // (w37-facing-<facing>), the hero puppet on stage (w37-puppet-show) and the
+    // title hero in the slot's look (w37-title-look). A block of its own.
+    {
+      errors.length = 0;
+      const lookProblems = [];
+      const codes = { Enter: [13, 'Enter'], Escape: [27, 'Escape'], KeyS: [83, 's'], ArrowDown: [40, 'ArrowDown'], ArrowUp: [38, 'ArrowUp'], ArrowLeft: [37, 'ArrowLeft'], ArrowRight: [39, 'ArrowRight'] };
+      const hit = async (code, keyName) => {
+        const [vkCode, name] = codes[code] || [code.charCodeAt(3), keyName];
+        const event = { key: keyName || name, code, windowsVirtualKeyCode: vkCode, nativeVirtualKeyCode: vkCode };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) lookProblems.push(`animation frames stopped after ${code}`);
+      };
+      const snap = async (name) => {
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      };
+      const peek = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { return ${expression}; })())`));
+      await evaluate("localStorage.removeItem('vanishing-library-slot-3'); VL.app.setScene('title', { slot: 2 }); document.getElementById('game').focus()");
+      await hit('Enter');
+      if ((await peek('VL.app.sceneId')) !== 'name') lookProblems.push('Enter on slot 3 did not open name entry');
+      for (const ch of 'Sky') await hit(`Key${ch.toUpperCase()}`, ch);
+      await hit('ArrowDown');
+      await hit('ArrowRight');
+      await hit('ArrowDown');
+      const outfits = await peek('VL.HERO_OUTFITS');
+      for (const [i, outfit] of outfits.entries()) {
+        if (i) await hit('ArrowRight');
+        await hit('ArrowDown');
+        for (const hair of ['short', 'long']) {
+          await hit(hair === 'long' ? 'ArrowRight' : 'ArrowLeft');
+          const look = await peek('VL.app.naming.look');
+          if (look.outfit !== outfit || look.hair !== hair || look.gender !== 'girl') lookProblems.push(`the chooser shows ${JSON.stringify(look)}, expected a girl in ${outfit} with ${hair} hair`);
+          await sleep(150);
+          await snap(`w37-look-${outfit}-${hair}`);
+        }
+        await hit('ArrowUp');
+      }
+      // Back to pink, long hair, then START.
+      await hit('ArrowLeft');
+      await hit('ArrowDown');
+      await hit('ArrowRight');
+      await hit('ArrowDown');
+      await hit('KeyS', 's');
+      if ((await peek('VL.app.sceneId')) !== 'intro') lookProblems.push(`S on START went to ${await peek('VL.app.sceneId')}`);
+      const intro = await peek('VL.popupText(VL.INTRO_LINES[2], VL.app.game)');
+      if (intro !== 'to save her culture from oblivion...') lookProblems.push(`the intro says ${JSON.stringify(intro)}`);
+      const saved = await peek("JSON.parse(localStorage.getItem('vanishing-library-slot-3') || 'null')");
+      if (!saved || JSON.stringify(saved.look) !== JSON.stringify({ outfit: 'pink', hair: 'long', gender: 'girl' }) || saved.name !== 'Sky') lookProblems.push(`slot 3 holds ${JSON.stringify(saved && { name: saved.name, look: saved.look })}`);
+      await sleep(600);
+      await hit('KeyS', 's');
+      await sleep(400);
+      await hit('KeyS', 's');
+      if ((await peek('VL.app.sceneId')) !== 'play') lookProblems.push(`after the intro and the controls popup: ${await peek('VL.app.sceneId')}`);
+      // Sand with grass just above it, away from the screen edges.
+      const spot = await peek(`(() => {
+        for (const key of Object.keys(VL.AREAS.overworld.screens)) {
+          const tiles = VL.getScreen('overworld', key).tiles;
+          for (let ty = 3; ty < 9; ty += 1) for (let tx = 3; tx < 13; tx += 1) {
+            if (tiles[ty][tx] === 's' && tiles[ty + 1][tx] === 's' && tiles[ty][tx - 1] === 's' && tiles[ty][tx + 1] === 's' && tiles[ty - 1][tx] === '.' && tiles[ty - 1][tx - 1] === '.') return { area: 'overworld', screen: key, tx, ty };
+          }
+        }
+        return null;
+      })()`);
+      if (!spot) lookProblems.push('no sand under grass to stand the hero on');
+      const stand = (look, facing) => evaluate(`(() => {
+        const g = VL.app.game;
+        g.look = ${JSON.stringify(look)};
+        VL.place(g, ${JSON.stringify({ ...spot, facing })});
+        g.room.entities = g.room.entities.filter((e) => !VL.ENEMIES[e.type]);
+        g.player.moving = false;
+      })()`);
+      if (spot) {
+        for (const outfit of outfits) {
+          await stand({ outfit, hair: 'long', gender: 'girl' }, 'down');
+          await sleep(200);
+          const drawn = await peek("(() => { const ids = []; const d = VL.ART.drawSprite; VL.ART.drawSprite = (c, id, ...r) => { ids.push(id); return d(c, id, ...r); }; VL.drawWorld(document.createElement('canvas').getContext('2d'), VL.app.game, 0); VL.ART.drawSprite = d; return ids.filter((id) => id.startsWith('hero-')); })()");
+          if (!drawn.includes(`hero-down-0~${outfit}-long`)) lookProblems.push(`${outfit}: the world drew ${drawn}`);
+          await snap(`w37-world-${outfit}`);
+        }
+        for (const facing of ['down', 'left', 'up', 'right']) {
+          await stand({ outfit: 'yellow', hair: 'long', gender: 'girl' }, facing);
+          await sleep(150);
+          await snap(`w37-facing-${facing}`);
+        }
+      }
+      await evaluate("VL.app.game.look = { outfit: 'pink', hair: 'long', gender: 'girl' }; VL.app.setScene('puppetShow', { show: 0 })");
+      const heroBeat = 'VL.app.puppetShow.show.beats[VL.app.puppetShow.beat].cast.hero !== undefined';
+      for (let i = 0; i < 8 && !(await peek(heroBeat)); i += 1) {
+        await sleep(120);
+        await hit('KeyS', 's');
+      }
+      await sleep(700);
+      const onStage = await peek(heroBeat);
+      if (!onStage) lookProblems.push('the hero puppet is not on stage for the shot');
+      await snap('w37-puppet-show');
+      await hit('Escape');
+      // Sir Bumble is a story's hero: his own puppet, whatever the player wears.
+      await evaluate("VL.app.setScene('puppetShow', { show: 1 })");
+      await sleep(700);
+      const bumble = await peek("(() => { const ids = []; const d = VL.ART.drawSprite; VL.ART.drawSprite = (c, id, ...r) => { ids.push(id); return d(c, id, ...r); }; VL.app.scene.draw(document.createElement('canvas').getContext('2d'), VL.app, 1); VL.ART.drawSprite = d; return ids.filter((id) => id.startsWith('puppet-')); })()");
+      if (!bumble.includes('puppet-bumble') || bumble.some((id) => id.startsWith('puppet-hero'))) lookProblems.push(`Sir Bumble's show drew ${bumble}`);
+      await snap('w37-puppet-bumble');
+      await hit('Escape');
+      await evaluate("VL.app.setScene('title', { slot: 2 })");
+      await sleep(150);
+      await snap('w37-title-look');
+      await evaluate("localStorage.removeItem('vanishing-library-slot-3')");
+      lookProblems.push(...errors);
+      if (lookProblems.length) failures += 1;
+      console.log(`${lookProblems.length ? 'FAIL' : 'ok  '} W37 look: the chooser in all ${outfits.length * 2} looks, a girl into the intro, the world, every facing, the puppet show, Sir Bumble's own puppet, the title`);
+      for (const problem of lookProblems.slice(0, 8)) console.log(`     ${problem}`);
     }
 
     // W5's core loop with real keys: the hut and its chest (S), the sword and
@@ -1830,8 +1958,10 @@ async function main() {
         }
         return false;
       };
-      const stage = (where, setup = '', keepEnemies = false) => evaluate(`(() => {
-        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+      // Boy or girl is always picked (W37), never left to the default.
+      const BOY = { outfit: 'green', hair: 'short', gender: 'boy' };
+      const stage = (where, setup = '', keepEnemies = false, look = BOY) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin', look: ${JSON.stringify(look)} }), null);
         const g = VL.app.game;
         g.popups.seen.controls = true;
         g.popups.seen.digKey = true;
@@ -2937,8 +3067,10 @@ async function main() {
         const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
         fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
       };
-      const stage = (where, setup = '', keepEnemies = false) => evaluate(`(() => {
-        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+      // Boy or girl is always picked (W37), never left to the default.
+      const BOY = { outfit: 'green', hair: 'short', gender: 'boy' };
+      const stage = (where, setup = '', keepEnemies = false, look = BOY) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin', look: ${JSON.stringify(look)} }), null);
         const g = VL.app.game;
         for (const id of ['controls', 'dungeonMap', 'digKey', 'woodsWithMap']) g.popups.seen[id] = true;
         g.items.woodSword = true;
@@ -3054,8 +3186,9 @@ async function main() {
         const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
         fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
       };
+      // Boy or girl is always picked (W37), never left to the default.
       const stage = (where, setup = '') => evaluate(`(() => {
-        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        VL.app.startGame(VL.newGame({ name: 'Robin', look: { outfit: 'purple', hair: 'long', gender: 'girl' } }), null);
         const g = VL.app.game;
         for (const id of ['controls', 'dungeonMap', 'digKey', 'woodsWithMap', 'firstBook']) g.popups.seen[id] = true;
         g.items.woodSword = true;
@@ -3113,10 +3246,168 @@ async function main() {
       }
       if ((await see('VL.app.sceneId')) !== 'play') w36Problems.push(`not back in play after the reading: ${await see('VL.app.sceneId')}`);
 
+      // Egg on her face (W38): he says only the egg line and offers no shelf.
+      await evaluate('VL.splatEgg(VL.app.game)');
+      await tapKey('KeyS');
+      await sleep(300);
+      const eggWords = await see("VL.app.sceneId === 'dialogue' ? VL.app.dialogue.pages.map((p) => p.join(' ')) : VL.app.sceneId");
+      if (JSON.stringify(eggWords) !== JSON.stringify(['Looks like you have some egg on your face, Robin.'])) w36Problems.push(`egged talk: ${JSON.stringify(eggWords)}`);
+      await shot('w36-library-egged');
+      for (let i = 0; i < 5 && (await see('VL.app.sceneId')) !== 'play'; i += 1) {
+        await tapKey('KeyS');
+        await sleep(400);
+      }
+      await sleep(300);
+      const afterEgg = await see('[VL.app.sceneId, g.libraryOffer]');
+      if (afterEgg.join() !== 'play,false') w36Problems.push(`egged talk opened something: ${afterEgg}`);
+
       w36Problems.push(...errors);
       if (w36Problems.length) failures += 1;
-      console.log(`${w36Problems.length ? 'FAIL' : 'ok  '} fifth playtest (menus, library): X leaves a shop, books and pages in the equipment view, the Scriptorium key, the librarian's shelf and a book read again, ${path.join(outDir, 'w36-*.png')}`);
+      console.log(`${w36Problems.length ? 'FAIL' : 'ok  '} fifth playtest (menus, library): X leaves a shop, books and pages in the equipment view, the Scriptorium key, the librarian's shelf and a book read again, no shelf with egg on her face, ${path.join(outDir, 'w36-*.png')}`);
       for (const problem of w36Problems) console.log(`     ${problem}`);
+    }
+
+    // W38, Matthew's fifth playtest notes (world, combat, Easter eggs): the
+    // rope reels a slime in (half a heart, stars over it), a hooked hen's egg
+    // on his face (the arrows reversed), holes in the road and the Woods
+    // floor, the buried heart's ring of flowers, the Lighthouse map in the
+    // cellar, the wreck's five shells, and the home fields quiet after the
+    // shockwave even with a sword. Saved as w38-*.png.
+    {
+      errors.length = 0;
+      const w38Problems = [];
+      const codes = { KeyX: [88, 'x'], KeyM: [77, 'm'], KeyS: [83, 's'], Space: [32, ' '] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) w38Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      // Boy or girl is always picked (W37), never left to the default.
+      const BOY = { outfit: 'green', hair: 'short', gender: 'boy' };
+      const stage = (where, setup = '', keepEnemies = false, look = BOY) => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin', look: ${JSON.stringify(look)} }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap', 'dungeonMapLighthouse', 'digKey', 'woodsWithMap', 'grapplingRope']) g.popups.seen[id] = true;
+        g.items.woodSword = true;
+        g.hands = { mainHand: 'woodSword', offHand: null };
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        if (!${keepEnemies}) g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+      const ow = (screen, tx, ty, facing = 'up') => ({ area: 'overworld', screen, tx, ty, facing });
+      const roped = "g.items.grapplingRope = true; g.hands = { mainHand: 'grapplingRope', offHand: 'woodSword' };";
+
+      // Space throws the rope at a slime: reeled in, stunned, half a heart.
+      await stage(ow('1,0', 7, 8), roped);
+      await evaluate("(() => { const g = VL.app.game; const e = VL.spawnEnemy(g, 'slime', 7, 4); e.arriving = 0; })()");
+      await settle();
+      const hpBefore = await see('g.hp');
+      await tapKey('Space');
+      await sleep(450);
+      await shot('w38-rope-pull');
+      const pulled = await see("(() => { const e = g.room.entities.find((x) => x.type === 'slime'); return e && [g.hp, e.stunned > 0, Math.round(g.player.y - 5 - e.cy)]; })()");
+      if (!pulled || pulled[0] !== hpBefore - 1 || !pulled[1] || pulled[2] < 10 || pulled[2] > 18) w38Problems.push(`the rope pull: ${JSON.stringify(pulled)} (hp before ${hpBefore})`);
+
+      // Space at a hen: egg on his face, and Up walks him down.
+      await stage(ow('1,0', 7, 8), roped);
+      await evaluate("(() => { const g = VL.app.game; const hen = { type: 'chicken', x: 7, y: 4 }; VL.setUpChicken(g, hen); g.room.entities.push(hen); })()");
+      await settle();
+      await tapKey('Space');
+      await sleep(600);
+      if (!(await see('VL.eggOnFace(g)'))) w38Problems.push('no egg on his face');
+      await evaluate("VL.app.game.player.facing = 'down'");
+      await sleep(100);
+      await shot('w38-egg-on-face');
+      const y0 = await see('g.player.y');
+      await holdArrowUntil('Up', 'false', 400);
+      if (!((await see('g.player.y')) > y0)) w38Problems.push('with egg on his face, Up did not walk him down');
+      await evaluate("VL.app.game.player.facing = 'left'");
+      await sleep(100);
+      await shot('w38-egg-on-face-left');
+
+      // A girl with long hair: the splat on her face in every facing and
+      // holding something up, and everyone still says it to her by name.
+      await stage(ow('1,0', 7, 8), roped, false, { outfit: 'pink', hair: 'long', gender: 'girl' });
+      await evaluate("(() => { const g = VL.app.game; const hen = { type: 'chicken', x: 7, y: 4 }; VL.setUpChicken(g, hen); g.room.entities.push(hen); })()");
+      await settle();
+      await tapKey('Space');
+      await sleep(600);
+      if (!(await see('VL.eggOnFace(g) && g.look.gender === "girl" && g.look.hair === "long"'))) w38Problems.push('no egg on the girl\'s face');
+      for (const facing of ['down', 'up', 'left', 'right']) {
+        await evaluate(`VL.app.game.player.facing = '${facing}'`);
+        await sleep(100);
+        await shot(`w38-egg-girl-long-${facing}`);
+        const splat = await see("(() => { let id = null; const draw = VL.ART.drawSprite; VL.ART.drawSprite = (c, s, ...r) => { if (s.startsWith('fx-egg-face')) id = s; return draw(c, s, ...r); }; try { VL.drawWorld(document.createElement('canvas').getContext('2d'), g, 0); } finally { VL.ART.drawSprite = draw; } return id; })()");
+        if (splat !== `fx-egg-face-${facing}`) w38Problems.push(`the girl facing ${facing}: splat ${splat}`);
+      }
+      await evaluate("(() => { const g = VL.app.game; g.player.facing = 'left'; VL.holdUp(g, 'item-' + VL.ITEMS.grapplingRope.icon, { quiet: true }); })()");
+      await sleep(250);
+      await shot('w38-egg-girl-long-hold');
+      if (!(await see('g.player.holding && VL.eggOnFace(g)'))) w38Problems.push('the girl is not holding up with the egg on');
+      const eggLine = await see("(() => { g.sceneRequest = null; VL.talkTo(g, { type: 'npc', id: 'librarian', x: 9, y: 7 }); const pages = g.sceneRequest?.data.pages.map((p) => p.join(' ')); g.sceneRequest = null; return pages; })()");
+      if (JSON.stringify(eggLine) !== JSON.stringify(['Looks like you have some egg on your face, Robin.'])) w38Problems.push(`the girl's egg line: ${JSON.stringify(eggLine)}`);
+
+      // X with the metal shovel: a hole in the road, a hole in the Woods floor.
+      await stage(ow('1,1', 8, 5, 'right'), 'g.items.metalShovel = true;');
+      await settle();
+      await tapKey('KeyX');
+      await sleep(400);
+      await shot('w38-path-hole');
+      if ((await see('VL.tileAt("overworld", "1,1", 9, 5, g.room)')) !== '=') w38Problems.push('X did not dig the road');
+      await stage(ow('5,-1', 4, 7, 'right'), 'g.items.metalShovel = true;');
+      await settle();
+      await tapKey('KeyX');
+      await sleep(400);
+      await shot('w38-moss-hole');
+      if ((await see('VL.tileAt("overworld", "5,-1", 5, 7, g.room)')) !== '~') w38Problems.push('X did not dig the Woods floor');
+
+      // The buried heart's ring of flowers.
+      await stage(ow('5,0', 11, 8, 'right'));
+      await settle();
+      await shot('w38-heart-flowers');
+
+      // The Lighthouse map, in the cellar on the way to key A; M shows every room.
+      await stage({ area: 'lighthouse', screen: '-1,0', tx: 9, ty: 2, facing: 'left' }, 'g.items.glowstone = true;');
+      await settle();
+      await holdArrowUntil('Left', "VL.dungeonState(g, 'lighthouse').map", 1500);
+      if (!(await see("VL.dungeonState(g, 'lighthouse').map"))) w38Problems.push('no Lighthouse map in the cellar');
+      for (let i = 0; i < 6 && (await see('VL.app.sceneId')) !== 'play'; i += 1) await tapKey('KeyS');
+      await tapKey('KeyM');
+      await sleep(300);
+      await shot('w38-lighthouse-map');
+      if ((await see('VL.app.sceneId')) !== 'dungeonMap') w38Problems.push(`M opened ${await see('VL.app.sceneId')}`);
+
+      // The wreck's chest: five whole shells, and it says so.
+      await stage({ area: 'wreck', screen: '1,0', tx: 7, ty: 3, facing: 'up' });
+      await settle();
+      await tapKey('KeyS');
+      await sleep(1500);
+      await shot('w38-wreck-shells');
+      if ((await see('g.inventory.shells')) !== 5) w38Problems.push(`the wreck's chest gave ${await see('g.inventory.shells')} shells`);
+
+      // After the shockwave the fields by the hut stay quiet, sword or not.
+      await stage(ow('1,1', 6, 4), 'VL.applyShockwave(g); g.flags.shockwaveWoke = true; g.flags["gave:helperWood"] = true; g.items.woodSword = true; g.hands = { mainHand: "woodSword", offHand: null };', true);
+      await settle();
+      await holdArrowUntil('Up', "g.player.screen === '1,0' && !g.transition", 3000);
+      await shot('w38-quiet-fields');
+      const quiet = await see("[g.player.screen, g.room.entities.filter((e) => VL.isEnemy(e)).length]");
+      if (quiet.join() !== '1,0,0') w38Problems.push(`north of the hut after the shockwave: ${quiet}`);
+
+      w38Problems.push(...errors);
+      if (w38Problems.length) failures += 1;
+      console.log(`${w38Problems.length ? 'FAIL' : 'ok  '} fifth playtest: the rope reels a slime in, egg on his face and on a long-haired girl's (every facing, holding up, the line by name), holes in the road and the Woods, the heart's flowers, the Lighthouse map in the cellar, the wreck's five shells, quiet fields after the shockwave, ${path.join(outDir, 'w38-*.png')}`);
+      for (const problem of w38Problems) console.log(`     ${problem}`);
     }
 
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an

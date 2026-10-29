@@ -127,7 +127,7 @@
       const { text, rect } = VL.ART;
       VL.drawWorld(ctx, game, t);
       VL.ART.drawBox(ctx, BOX.x, BOX.y, BOX.w, BOX.h);
-      text(ctx, view.shop.title, BOX.x + 8, BOX.y + 6, { color: 'goldLight', shadow: 'boxShade' });
+      text(ctx, VL.popupText(view.shop.title, game), BOX.x + 8, BOX.y + 6, { color: 'goldLight', shadow: 'boxShade' });
       const rows = VL.shopRows(game, view);
       const right = BOX.x + BOX.w - 8;
       rows.slice(view.scroll, view.scroll + ROW.visible).forEach((row, i) => {
@@ -145,7 +145,7 @@
           const sprite = VL.ART.sprite(row.icon);
           VL.ART.drawSprite(ctx, row.icon, BOX.x + 23 - Math.floor(sprite.w / 2), y + 4 - Math.floor(sprite.h / 2));
         }
-        text(ctx, row.name, BOX.x + 30, y, { color: soldOut ? 'textDim' : chosen ? 'goldLight' : 'text' });
+        text(ctx, VL.popupText(row.name, game), BOX.x + 30, y, { color: soldOut ? 'textDim' : chosen ? 'goldLight' : 'text' });
         if (soldOut) {
           text(ctx, 'SOLD OUT', right, y + 1, { size: 'small', align: 'right', color: 'textDim' });
           return;
@@ -208,7 +208,7 @@
     const x = BOX.x + 8;
     const width = BOX.w - 16;
     if (view.mode === 'ask') {
-      const question = VL.ART.wrapText(VL.shopQuestion(view), width).slice(0, 2);
+      const question = VL.ART.wrapText(VL.popupText(VL.shopQuestion(view), game), width).slice(0, 2);
       text(ctx, question.join('\n'), x, y, { color: 'text' });
       const answerY = y + question.length * VL.ART.lineHeight() + 1;
       ['Yes', 'No'].forEach((label, i) => {
@@ -219,7 +219,7 @@
       return;
     }
     if (view.note) {
-      text(ctx, VL.ART.wrapText(view.note.text, width).slice(0, 2).join('\n'), x, y, { color: view.note.bad ? 'heartLight' : 'goldLight' });
+      text(ctx, VL.ART.wrapText(VL.popupText(view.note.text, game), width).slice(0, 2).join('\n'), x, y, { color: view.note.bad ? 'heartLight' : 'goldLight' });
       return;
     }
     const row = rows[view.cursor];

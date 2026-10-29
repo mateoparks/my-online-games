@@ -562,3 +562,77 @@ test('the 40-shell binding still needs the 50-shell purse (W34), and the purse s
   assert.ok(stageOf('swiftfootBoots') === 0, 'twelve books come before the shockwave, so the boots do too');
   assert.ok(stageOf('heartLibrary') >= 0, 'the heart at thirty is reachable');
 });
+
+// ---------- with W37 (boy or girl) and W38 (egg on his face, shell chests) ----------
+
+test('with egg on his face the librarian only says the egg line: no hand-in, no reward, and no shelf to read from', () => {
+  const t = shelfGame();
+  const { VL } = t;
+  find(VL, t.game, GENERIC.slice(2, 12));
+  const shelved = () => JSON.stringify([t.game.library.returned, t.game.library.read]);
+  const before = shelved();
+  t.atDesk();
+  VL.splatEgg(t.game);
+  t.press('interact');
+  assert.equal(t.app.sceneId, 'dialogue');
+  assert.deepEqual(plain(t.app.dialogue.pages.map((page) => page.join(' '))), ['Looks like you have some egg on your face, Robin.']);
+  const seen = t.pressUntil(t.idle);
+  assert.ok(!seen.includes('libraryShelf') && !seen.includes('reading'), seen.join(' '));
+  assert.equal(t.game.libraryOffer, false);
+  assert.equal(shelved(), before, 'nothing handed in or read');
+  assert.equal(VL.hasItem(t.game, 'swiftfootBoots'), false, 'no reward');
+  // Washed off (a new screen), the same talk hands in, rewards and offers the shelf.
+  t.atDesk();
+  assert.ok(!VL.eggOnFace(t.game));
+  t.press('interact');
+  t.pressUntil(() => t.app.sceneId === 'libraryShelf');
+  assert.ok(VL.hasItem(t.game, 'swiftfootBoots'));
+});
+
+test('the wreck chest waits for room; the purse his twenty-book speech gives makes room, and the chest still ends its hold-up facing down', () => {
+  const t = setup();
+  const { VL } = t;
+  const wreck = () => {
+    t.at({ area: 'wreck', screen: '1,0', tx: 7, ty: 3, facing: 'up' });
+    return t.game.room.entities.find((e) => e.id === 'wreckShellChest');
+  };
+  t.game.inventory.shells = VL.TUNING.shellCap - 2;
+  VL.ENTITIES.chest.onInteract(t.game, wreck());
+  assert.ok(!t.game.flags['found:wreckShellChest'], 'no room for five');
+  t.game.popups.queue.length = 0;
+  t.game.message = null;
+  find(VL, t.game, GENERIC.slice(0, 20));
+  t.atDesk();
+  t.press('interact');
+  const words = [];
+  t.pressUntil(() => {
+    if (t.app.sceneId === 'dialogue') words.push(t.app.dialogue.pages.flat().join(' '));
+    return VL.hasItem(t.game, 'shellPurse') && t.idle();
+  });
+  assert.ok(words.some((w) => w.startsWith('Twenty books!')), words.join(' | '));
+  assert.equal(t.game.player.facing, 'up', 'the reward turns him back to the desk');
+  const chest = wreck();
+  VL.ENTITIES.chest.onInteract(t.game, chest);
+  assert.ok(chest.opened);
+  assert.equal(t.game.inventory.shells, VL.TUNING.shellCap + 3);
+  t.pressUntil(t.idle);
+  assert.equal(t.game.player.facing, 'down', 'a chest never borrows the library\'s turn back');
+});
+
+test('the Lighthouse shell chest gives its broken shells after a library reward, held up facing down', () => {
+  const t = setup();
+  const { VL } = t;
+  find(VL, t.game, GENERIC.slice(0, 12));
+  t.atDesk();
+  t.press('interact');
+  t.pressUntil(() => VL.hasItem(t.game, 'swiftfootBoots') && t.idle());
+  const stair = VL.getScreen('lighthouse', '-1,-2').entities.find((e) => e.id === 'd3ShellChest');
+  t.at({ area: 'lighthouse', screen: '-1,-2', tx: stair.x - 1, ty: stair.y, facing: 'right' });
+  const chest = t.game.room.entities.find((e) => e.id === 'd3ShellChest');
+  const broken = t.game.inventory.brokenShells;
+  VL.ENTITIES.chest.onInteract(t.game, chest);
+  assert.ok(chest.opened);
+  assert.equal(t.game.inventory.brokenShells, broken + 5);
+  t.pressUntil(t.idle);
+  assert.equal(t.game.player.facing, 'down');
+});

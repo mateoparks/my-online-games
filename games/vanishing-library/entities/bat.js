@@ -18,6 +18,8 @@
   });
 
   VL.defineEnemy('bat', {
+    // Light enough for the rope to pull in (systems/grappling-rope.js).
+    light: true,
     tuning: 'enemyBat',
     flies: true,
     body: { w: 10, h: 8 },

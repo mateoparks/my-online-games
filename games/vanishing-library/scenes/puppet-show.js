@@ -11,6 +11,12 @@
     colors: { h: 'hair', s: 'skin', e: 'ink', t: 'tunic', T: 'tunicDark', w: stick },
     rows: ['.hhhh.', 'hhhhhh', 'hseses', '.ssss.', 'tttttt', 'tTttTt', '.tttt.', '..ww..', '..ww..'],
   });
+  // Sir Bumble, a story's hero and not the player: a bumblebee knight, the
+  // same in every game whatever the player's look.
+  VL.ART.defineSprite('puppet-bumble', {
+    colors: { f: 'berry', m: 'metal', M: 'metalDark', s: 'skin', e: 'ink', t: 'gold', T: 'ink', w: stick },
+    rows: ['..f...', '.mmmm.', 'mmmmmM', 'Mseses', '.ssss.', 'tttttt', 'TTTTTT', '.tttt.', '..ww..', '..ww..'],
+  });
   // The meddling young hero of her later shows: a hero type, but not the
   // player's own look, so the joke stays a joke on a first play.
   VL.ART.defineSprite('puppet-ned', {
@@ -52,7 +58,7 @@
     rows: ['...rr...', '..rrrr..', '.rrrrrr.', 'RRRRRRRR', '.pppppp.', '.pwppdp.', '.ppppdp.', '...ss...', '...ss...'],
   });
   const PUPPETS = {
-    hero: 'puppet-hero', ned: 'puppet-ned', dragon: 'puppet-dragon', goose: 'puppet-goose', cat: 'puppet-cat', haystack: 'puppet-haystack',
+    hero: 'puppet-hero', bumble: 'puppet-bumble', ned: 'puppet-ned', dragon: 'puppet-dragon', goose: 'puppet-goose', cat: 'puppet-cat', haystack: 'puppet-haystack',
     wife: 'puppet-wife', librarian: 'puppet-librarian', book: 'puppet-book', house: 'puppet-house',
   };
 
@@ -77,11 +83,11 @@
       title: 'Sir Bumble\'s Busy Day',
       sky: 'showSky',
       beats: [
-        { say: 'Sir Bumble was the busiest hero in the whole wide world.', cast: { hero: 0.5 }, move: { hero: 'hop' } },
-        { say: 'He fetched cats out of trees. He fetched hats out of wells.', cast: { hero: 0.3, cat: 0.7 }, move: { hero: 'run' } },
-        { say: 'He fetched so many things that he forgot to fetch his own lunch!', cast: { hero: 0.5 }, move: { hero: 'shake' } },
-        { say: 'Poor Sir Bumble. Sometimes it\'s nice to stay at home. The end!', cast: { hero: 0.5 } },
-        { speaker: 'Mrs. Fenwick', say: 'Thank you, dears. Run along now.', cast: { hero: 0.5 } },
+        { say: 'Sir Bumble was the busiest hero in the whole wide world.', cast: { bumble: 0.5 }, move: { bumble: 'hop' } },
+        { say: 'He fetched cats out of trees. He fetched hats out of wells.', cast: { bumble: 0.3, cat: 0.7 }, move: { bumble: 'run' } },
+        { say: 'He fetched so many things that he forgot to fetch his own lunch!', cast: { bumble: 0.5 }, move: { bumble: 'shake' } },
+        { say: 'Poor Sir Bumble. Sometimes it\'s nice to stay at home. The end!', cast: { bumble: 0.5 } },
+        { speaker: 'Mrs. Fenwick', say: 'Thank you, dears. Run along now.', cast: { bumble: 0.5 } },
       ],
     },
     {
@@ -241,7 +247,9 @@
       for (let i = 0; i < WINDOW.w; i += 1) rect(ctx, 'showHill', WINDOW.x + i, FLOOR - 6 + Math.round(Math.sin(i / 14) * 3), 1, 20);
       for (const [name, actor] of Object.entries(view.actors)) {
         if (actor.rise <= 0) continue;
-        const sprite = VL.ART.sprite(PUPPETS[name]);
+        // The hero puppet stands for the player, so it wears the player's look (W37).
+        const id = name === 'hero' ? VL.ART.lookSprite(PUPPETS.hero, VL.heroLook(app.game)) : PUPPETS[name];
+        const sprite = VL.ART.sprite(id);
         let px = WINDOW.x + actor.x * WINDOW.w - (sprite.w * SCALE) / 2;
         let py = FLOOR - sprite.h * SCALE + 6 + Math.round((1 - actor.rise) * 40);
         if (actor.move === 'hop') py -= Math.round(Math.abs(Math.sin(t * 6)) * 6);
@@ -258,7 +266,7 @@
         ctx.clip();
         ctx.translate(Math.round(px), Math.round(py));
         ctx.scale(SCALE, SCALE);
-        VL.ART.drawSprite(ctx, PUPPETS[name], 0, 0);
+        VL.ART.drawSprite(ctx, id, 0, 0);
         ctx.restore();
       }
       // The front board hides the puppeteer's hands.
@@ -273,7 +281,7 @@
       rect(ctx, 'curtain', WINDOW.x - 4, WINDOW.y - 14, WINDOW.w + 8, 14);
       for (let s = 0; s < WINDOW.w + 8; s += 8) rect(ctx, 'curtainLight', WINDOW.x - 4 + s, WINDOW.y - 2, 6, 3);
       rect(ctx, 'gold', WINDOW.x - 4, WINDOW.y - 14, WINDOW.w + 8, 1);
-      VL.ART.text(ctx, view.show.title, width / 2, WINDOW.y - 11, { align: 'center', color: 'goldLight', shadow: 'outline' });
+      VL.ART.text(ctx, VL.popupText(view.show.title, app.game), width / 2, WINDOW.y - 11, { align: 'center', color: 'goldLight', shadow: 'outline' });
       const text = textOf(view, app.game);
       const beat = beatOf(view);
       // Typed along the final line breaks, so words never jump between lines.
@@ -283,7 +291,7 @@
         left -= line.length + 1;
         return part;
       });
-      VL.ART.drawPopup(ctx, { title: beat.speaker || null, text: typed.join('\n'), at: 'bottom', prompt: view.shown >= text.length }, t);
+      VL.ART.drawPopup(ctx, { title: beat.speaker ? VL.popupText(beat.speaker, app.game) : null, text: typed.join('\n'), at: 'bottom', prompt: view.shown >= text.length }, t);
     },
 
     smokeData: () => ({ show: 2 }),

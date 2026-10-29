@@ -98,16 +98,22 @@
     return pages;
   };
 
+  // `override(state, entity)` returns an entry to say instead of the
+  // person's own (egg on his face, W38), or null.
+  VL.TALK_OVERRIDES = [];
+  VL.overrideTalk = (override) => VL.TALK_OVERRIDES.push(override);
+
   // Turns the NPC to face the hero and opens the dialogue scene. False when
   // the NPC has nothing to say right now.
   VL.talkTo = function talkTo(state, entity) {
     const npc = VL.NPCS[entity.id];
     if (!npc) return false;
-    const entry = VL.pickDialogue(state, entity.talk || npc.talk);
+    const override = VL.TALK_OVERRIDES.map((rule) => rule(state, entity)).find(Boolean);
+    const entry = override || VL.pickDialogue(state, entity.talk || npc.talk);
     if (!entry) return false;
     entity.facing = VL.facingToward(VL.npcFeet(entity, 0, 0), state.player);
     entity.walk = null;
-    state.events.push({ type: 'talk', npc: entity.id });
+    if (!override) state.events.push({ type: 'talk', npc: entity.id });
     VL.requestScene(state, 'dialogue', {
       speaker: VL.popupText(npc.name, state),
       pages: VL.dialoguePages(entry.say, state),

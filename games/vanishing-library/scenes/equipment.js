@@ -143,7 +143,7 @@
       const item = list[app.equipment.cursor];
       const infoY = GRID.y + 2 * (GRID.h + GRID.gap) + 2;
       if (item) {
-        VL.ART.text(ctx, item.name, GRID.x, infoY, { color: 'goldLight' });
+        VL.ART.text(ctx, VL.popupText(item.name, game), GRID.x, infoY, { color: 'goldLight' });
         const lines = VL.equipmentAboutLines(game, item);
         const top = app.equipment.about;
         lines.slice(top, top + VL.EQUIPMENT_ABOUT_LINES).forEach((line, i) => {
@@ -165,12 +165,12 @@
       // W36: books found but not yet handed in, and the bindery's pages.
       const countsY = resourcesY + 12;
       const carried = VL.booksCarried(game).length;
-      const books = `${carried} ${carried === 1 ? 'book' : 'books'} to return`;
+      const books = VL.popupText(`${carried} ${carried === 1 ? 'book' : 'books'} to return`, game);
       centred(ctx, 'pickup-book', GRID.x + 4, countsY + 3);
       VL.ART.text(ctx, books, GRID.x + 12, countsY, { color: 'text' });
       const pagesX = GRID.x + 12 + VL.ART.measureText(books) + 14;
       centred(ctx, 'pickup-page', pagesX + 4, countsY + 3);
-      VL.ART.text(ctx, `${VL.loosePages(game)}/${VL.pagesToBind()} pages`, pagesX + 11, countsY, { color: 'text' });
+      VL.ART.text(ctx, VL.popupText(`${VL.loosePages(game)}/${VL.pagesToBind()} pages`, game), pagesX + 11, countsY, { color: 'text' });
       const hint = list.length > GRID.cols ? '←→↑↓ CHOOSE   ␣/D: HOLD   S: USE   X: BACK' : list.length ? '←→ CHOOSE   ␣/D: HOLD   S: USE   X: BACK' : 'X: BACK';
       VL.ART.text(ctx, hint, BOX.x + BOX.w / 2, BOX.y + BOX.h - 11, { size: 'small', align: 'center', color: 'textDim' });
     },

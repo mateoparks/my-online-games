@@ -429,8 +429,10 @@ What the hero carries, the hands, popups, bushes and pickups. `items.js`
   its foot) collects it. `entities/ore.js` fills the `oreShallows` and
   `oreWoods` spots with `VL.fillSpot`. One-time finds are saved as
   `state.flags['found:<id>']` (`VL.markFound`/`VL.spotFound`). A `chest` (`{ type: 'chest', id, contents: [{ item } |
-  { resource, amount }] }`) and a `sign` (`{ type: 'sign', text, title }`) are
-  solid and answer S.
+  { resource, amount }], found?: { title, text } }`) and a `sign` (`{ type: 'sign', text, title }`) are
+  solid and answer S. A chest shows `found` once opened (the wreck's "Five
+  whole shells!"), and stays shut, saying why, while capped shells in it
+  would not all fit in the purse (W38).
 - **Popups:** `VL.definePopup(id, { title, text })` (`{name}` is the hero's
   name) and `VL.showPopup(state, id)` queue a once-only explanation; the play
   scene opens the `popup` scene over the paused world, and closing it marks it
@@ -572,7 +574,8 @@ holds the heart containers.
   (`reveal: 'dug'`, spot `how: 'buried'`): it is hidden until the metal
   shovel digs exactly its tile (X), then comes up into the hole like the
   Hollow Oak's moss key and is taken by stepping on it, once. Its lock needs
-  `metalShovel` and stays optional.
+  `metalShovel` and stays optional. Since W38 a ring of the fields' plain
+  flowers (`,`) round its bare square, against the trees, is the only clue.
 - **Sounds:** events `enemyHit` (`hit`), `heroHurt` (`hurt`), `blocked`
   (`clank`), `enemyDefeated` (`poof`), `spit`, `squawk` and `heartContainer`
   (`fanfare`).
@@ -608,7 +611,7 @@ Saved field `crabs: { killed, angry, feast }` (fixture
   `TUNING.angryCrabSpeed` (34, under his 47, so he can always walk away),
   backing off while calm. `moveEnemy` keeps it on its own screen. The usual
   arrival grace still holds, and the shockwave's quiet home screens still
-  have no enemies for a sword-less hero.
+  have no enemies until the Lighthouse.
 - **The island's eleven:** `VL.islandDigTiles()` is the lake island's sand
   (3,-3) but the trunks' tiles: eleven (the ore's counts once picked up).
   Digging all eleven in one visit spawns a crab (`egg: true`) on each hole,
@@ -617,6 +620,88 @@ Saved field `crabs: { killed, angry, feast }` (fixture
   `crabFeast` popup; after that they still come out, and give nothing.
   Leaving the screen sends them home and fills the holes in. Lock
   `islandCrabs` (optional: the island and a shovel).
+
+## Hero look (W37)
+
+Matthew's note: a choice of clothes colour and hair length when starting,
+and (PM) boy or girl for the words. `systems/hero-look.js`; tests:
+`tests/hero-look.test.js`. Saved field `look: { outfit, hair, gender }`
+(`green|blue|purple|pink|yellow`, `short|long`, `boy|girl`; fixture
+`tests/fixtures/save-v1-W37.json`). A save without it loads as
+`VL.DEFAULT_LOOK`, today's hero (a boy in green with short hair), so no
+migration; `VL.heroLook(state)` reads it with any odd value put back to the
+default. Boy or girl changes only the words, never the sprites.
+
+- **The chooser** sits on the name scene: the name, HERO (Boy, Girl),
+  CLOTHES (five swatches; the colours go round), HAIR (Short, Long), START,
+  with the hero walking and turning through every facing at 4× beside them.
+  ↑↓ move between rows, ←→ change a choice, S or Space on a choice steps
+  down, a letter typed on any other row goes back to the name, Enter starts
+  from anywhere. **Boy or girl starts unpicked** (Matthew: "Definitely don't
+  assume"); clothes and hair start as today's hero. Until it is picked, a
+  start (Enter on any row, S or Space on START) moves the cursor to the HERO
+  row and shows `← BOY OR GIRL? →` under it instead of starting; from no
+  pick ← is Boy and → is Girl. `VL.newGame` is never reached without one.
+- **Drawing the hero:** `VL.ART.drawHero(ctx, player, x, y, t, look)`;
+  `render.js` passes `state.look`, the title passes the chosen slot's. A
+  sprite is worn with `VL.ART.lookSprite(id, look)`: today's look returns
+  `id` itself, anything else a variant `<id>~<outfit>-<hair>` defined the
+  first time it is asked for. A variant recolours `tunic`, `tunicDark` and
+  `tunicLight` to the outfit's shades (`VL.OUTFIT_COLORS`) and, for long
+  hair, lays the sprite's hair overlay over its rows. **Every pixel keeps
+  its place:** same size, same face, eyes never covered, so anything drawn
+  over the hero lines up in every look.
+- **A new hero pose** (a sprite drawn through `VL.ART.heroFrame`) gets its
+  colours for free; give it long hair with
+  `VL.ART.defineHeroHair('hero-<pose>', rows)` (`'h'` hair, `'H'` its light,
+  `'.'` leaves the pixel; rows past the overlay are left alone), or it is
+  drawn with short hair.
+- **Drawing on the hero's face or head** (an egg, a hat): use a hero layer,
+  `VL.defineHeroLayer(id, (ctx, state, x, y, t, pass) => …)` in the
+  `'front'` pass, and place it from the sprite's top-left, exactly as
+  `drawHero` does: `const { sprite, bob } = VL.ART.heroFrame(state.player, t)`,
+  `left = x - 6`, `top = y - 10 - bob - Math.round(state.player.lift || 0)`.
+  The face (facing down) is sprite columns 2-9, rows 3-6, eyes at columns 3
+  and 8 of row 4; facing left the face is columns 1-6, rows 3-6 (eye at
+  column 2, row 4), facing right its mirror (columns 5-10); facing up there
+  is no face. Long hair adds pixels only outside the face (down: columns 1
+  and 10, rows 2-7; up: down the back, rows 2-9; left/right: behind the
+  head, rows 4-8; the arms-up `hero-hold`: columns 2 and 9, rows 3-7, beside
+  the eyes), so a face overlay never needs to know the look; one
+  covering the whole head should be 2px wider for long hair, or sit under
+  it by drawing in the `'behind'` pass.
+- **Also wearing it:** the puppet shows' hero puppet (`puppet-hero`) where it
+  stands for the player: the first show's "brave little hero", the
+  confession's "brave young hero" and the kind show "The Library That Grew".
+  Sir Bumble is a story character, so his show casts his own puppet
+  (`puppet-bumble`, a bumblebee knight in a helmet) in every game; the finale's hero marionette and the town
+  booth's little hero puppet (both get `look` on their room copy from a
+  `VL.onRoomBuilt` hook), and the hero on the title's shore (the slot the
+  cursor is on).
+- **The hero's words:** `VL.popupText` turns `{he}`, `{him}`, `{his}`
+  (his/her), `{hers}` (his/hers), `{himself}`, `{boy}` (boy/girl), and the
+  same capitalised (`{He}`, `{His}`, ...), into the hero's words from
+  `look.gender` (`VL.HERO_WORDS`); no look means a boy. **All text the
+  hero sees goes through `VL.popupText`**, not only talk: book titles,
+  equipment names and descriptions, the shockwave and fainting lines, show
+  titles, shop titles, rows, questions and notes, dungeon and map names,
+  dungeon notes, the librarian's shelf and a re-reading (W36) and the
+  credits' headings; a test plants tokens in each and
+  fails on any `{token}` drawn raw, boy or girl. **Never write a hero
+  pronoun out:** a test scans every string in the game and fails on a he,
+  she, him, her, his, hers, boy or girl, or a gendered noun or form of
+  address (lad, lass, son, daughter, young man, sir, ma'am, mister, lady,
+  prince, king, ...; a title before a capitalised name, such as Mrs.
+  Fenwick or Sir Bumble, is someone's name and passes) that is neither a
+  token nor on its allow-list of other characters (the librarian, his wife, Bryony, Brannock,
+  Henrietta, Nell, Mabel, the dragon, Sir Bumble, Nosy Ned). Text about
+  someone else joins that list in `tests/hero-look.test.js`. Today only the
+  intro's last line is the hero's (`to save {his} culture`); the rest of the
+  game already speaks to the hero as "you" or by name.
+- The render smoke shoots the chooser in all ten looks
+  (`w37-look-<outfit>-<hair>.png`), each outfit with long hair on sand under
+  grass (`w37-world-<outfit>.png`), every facing (`w37-facing-<facing>.png`),
+  the puppet show and the title's hero.
 
 ## Engine notes
 
@@ -648,7 +733,8 @@ Saved field `crabs: { killed, angry, feast }` (fixture
 
 `VL.START_SCENE` is `'title'` (`scenes/title.js`). A new player goes title
 (three slots) → `name` (typed into a field on the canvas, 12 characters,
-"Hero" when left blank; Enter, or ↓ to START and S, Space or Enter) → `intro` (the three weathered lines; S, Space or
+"Hero" when left blank, with the hero's look beside it (W37); boy or girl
+must be picked, then Enter, or ↓ to START and S, Space or Enter) → `intro` (the three weathered lines; S, Space or
 Enter skips after half a second) → `play`. From play, Esc opens `pause`
 (Resume, Save & Quit, the controls); hearts running out opens `fainted`,
 where a press respawns the hero; `conflict` (another window saved this slot)
@@ -1276,8 +1362,12 @@ shops. Fixture: `tests/fixtures/save-v1-W10.json`.
   and Esc lists X from then on (`VL.pauseControls`).
 - **Digging:** `VL.dig(state, shovel)` digs the tile ahead and returns
   `'blocked'`, `'find'`, `'secret'`, `'shell'`, `'brokenShell'` or `'empty'` (false while a dig is
-  under way). Sand takes any shovel, grass only the metal one (`digsDirt`).
-  A hole is the visit's tile (`VL.DIG_HOLES`, `@` sand, `*` grass, through
+  under way). Sand takes any shovel; grass, the road (`path`) and the Woods
+  floor (`moss`) only the metal one (`digsDirt`, W38 for the last two, which
+  hide what grass does). A hole keeps its ground's flag and is never solid,
+  so a dug doorstep or gate path still reads and walks as path; gates,
+  doors and bridges are none of those grounds and refuse the shovel.
+  A hole is the visit's tile (`VL.DIG_HOLES`, `@` sand, `*` grass, `=` path, `~` moss, through
   `VL.setRoomTile`), so it is gone on the next visit; **W14**, which owns saved
   per-visit tile overrides, decides whether holes should persist. One roll
   per dig (`VL.digFind`, the seeded `VL.random`): a whole shell pops out as
@@ -1452,6 +1542,8 @@ Fixture: `tests/fixtures/save-v1-W11.json`.
   its own `reread` so it never hands over the key again, and so do the
   Herbalist's Notes and the Smith's Ledger (no second map mark or discount
   promised). X also leaves a re-reading. A vanished book is not offered.
+  With egg on his face (W38) the egg line replaces his talk and sends no
+  `talk` event, so nothing is handed in and no shelf is offered.
   The shelf, the shop and the equipment view show "more this way" with the
   same small gold triangles (`VL.ART.moreArrow`).
 - **Sounds:** `booksReturned` and a finished reading play `libraryChime`.
@@ -1692,6 +1784,19 @@ across gaps, yank things"); posts are `entities/grapple-post.js`. Tests:
   enemy is stunned (`calm` for `ropeStunSeconds`, no damage) unless its
   definition has `onHook(state, enemy)` returning true (the Thornback);
   anything else solid, or a wall, sends it back.
+- **Light enemies are reeled in (W38):** an enemy whose definition says
+  `light: true` (slime, bat, gull, beach crab) is dragged back with the rope
+  (`phase: 'reel'`, under the arrival hold so it thinks nothing and is
+  harmless) to stand `ropePullGap` px before the hero's middle, in the
+  sword's reach, then stunned (`VL.stunEnemy`, `ropeStunSeconds`, the
+  slingshot's stars) and calm a little longer. Arriving costs him
+  `ropePullDamage` half hearts as a `sure` hit (`VL.hurtHero` past the
+  shield and the invulnerability, `knock: false`). `VL.moveEnemy` moves it,
+  so a walker stops at a wall or water, stunned there, and then he is not
+  hurt. An optional `onPulled(state, enemy)` settles it (the gull drops low,
+  then climbs home).
+- **A chicken** the hook reaches (standing on the ground) sends back an egg
+  for his face (`VL.ropeHitsChicken`, `VL.splatEgg`; see Egg on his face).
 - **Posts come in pairs:** put one on each side of a gap so the way back is
   never cut off (the Hollow Oak's test checks every crossing has a way back).
   On the overworld the rope works wherever a post is placed (none yet).
@@ -1704,6 +1809,31 @@ across gaps, yank things"); posts are `entities/grapple-post.js`. Tests:
 - **Saved:** the item only. A faint, a door or a new screen ends a throw.
 - **Sounds:** events `ropeThrow`, `ropeClink`, `ropeHooked` (`ropeHook`),
   `ropeStun`, `ropeLand` (`step`).
+
+## Egg on his face (W38)
+
+Matthew's Easter egg, in `systems/egg-on-face.js`. The rope's hook at a hen
+brings back an egg that splats on the hero's face (`state.room.egg`, so it
+lasts the visit: an edge, a door, a warp, a faint or a reload clears it, and
+it is never saved). The hen is not hurt and no swarm comes. When a new
+screen replaces the egged one, an arrow still held is ignored until it is let
+go (`state.eggWorn` sets `state.warpHold`), so the reversed key he walked off
+with doesn't walk him straight back.
+
+- **Back to front:** the action filter `eggOnFace` swaps up and down, left
+  and right, and the two hands, so Space uses the off hand and D the main
+  hand. `VL.defineActionFilter(id, filter)` (`engine.js`) sits between the
+  input and every system (`VL.filterActions`); a filter returns a copy and
+  never touches key handling, so touch controls get the same trick.
+- **Everyone says so:** `VL.overrideTalk(rule)` (`talk.js`) lets a rule say
+  something instead of a person's own lines; while egged every NPC,
+  shopkeepers and the librarian too, says only `VL.EGG_WORDS` ("Looks like
+  you have some egg on your face, {name}.") with no shop, gift or hand-in.
+- **Drawn over him** (hero layer `eggOnFace`, `fx-egg-face-<facing>`), never
+  in the hero's sprites, so any outfit wears it. Sound: `eggSplat`. The
+  splat follows the sprite `VL.ART.heroFrame` picks, not `player.facing`
+  (`hero-hold` faces the camera), and sits inside W37's face box, clear of
+  long hair, in every look ("Hero look (W37)").
 
 ## The Hollow Oak (W15)
 
@@ -1825,8 +1955,10 @@ Fixture: `tests/fixtures/save-v1-W16.json` (after the shockwave and the gift).
   entry gives `{ helperWood: TUNING.helperWood }`: a gift kind that adds the
   wood, holds it up and queues the `helperWood` popup. Afterwards she is back
   at her well, nudging a swordless hero to the smithy.
-- **The climb back:** while he owns no sword after the shockwave, the home
-  corner (`VL.SHOCKWAVE_QUIET`: 0,0, 1,0, 0,1, 1,1) has no enemies. A pull
+- **The climb back:** after the shockwave the home corner
+  (`VL.SHOCKWAVE_QUIET`: 0,0, 1,0, 0,1, 1,1) has no enemies until the
+  Lighthouse is first entered (`VL.shockwaveQuiet`, W38; before, a sword
+  brought them back), which is what Gran's "quiet for a good while" says. A pull
   that faints the hero keeps what the bush dropped (`VL.onFaint`), anywhere.
 - **Locks claimed:** `shockwave` and `helperWood`, with the planned rules.
 - **Sounds:** `shockRumble`, `shockFlash`, `shockWake` (played by the scene).
@@ -1995,12 +2127,19 @@ on W13's framework, with its boss in `entities/lens-crab.js`. Tests:
                        lamp room (0,-3): the Lens Crab
                             | boss door (oneWay)
   map stair (-1,-2) -- gallery (0,-2) --door B-- workshop (1,-2): 3 mirrors -> crystal -> boss key
-  dark floor, map           | bars (stair target)
+  dark floor, shell chest   | bars (stair target)
                        stairwell (0,-1) --door A-- store (1,-1): the Slingshot
                             |                         | bars (store target)
   cellar (-1,0) ----- entrance (0,0)              cistern (1,0): 2 mirrors -> crystal -> key B
-  dark floor, key A   statue, door out
+  dark floor, map, key A   statue, door out
 ```
+
+- **The map (W38):** `d3Map` lies on the cellar's dark floor, on the way to
+  key A, so it is found early as in the Scriptorium and the Hollow Oak; at
+  the top of the map stair it came when only the workshop and the lamp room
+  were left, and the map hardly showed a room he had not seen. The map
+  stair keeps a chest of five broken shells (`d3ShellChest`) for the
+  slingshot.
 
 - **The way in:** W8's `lighthouseDoor` spot on the headland (-1,1) is a
   `door` with `needs: 'glowstone'`: without the Glowstone it is solid and

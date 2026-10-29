@@ -54,7 +54,7 @@
       const d = VL.dungeonState(game, dungeon.id);
       VL.ART.rect(ctx, 'dgnShade', 0, 0, VL.TUNING.width, VL.TUNING.height);
       VL.ART.drawBox(ctx, BOX.x, BOX.y, BOX.w, BOX.h);
-      VL.ART.text(ctx, dungeon.name.toUpperCase(), BOX.x + BOX.w / 2, BOX.y + 7, { align: 'center', color: 'goldLight', shadow: 'boxShade' });
+      VL.ART.text(ctx, VL.popupText(dungeon.name, game).toUpperCase(), BOX.x + BOX.w / 2, BOX.y + 7, { align: 'center', color: 'goldLight', shadow: 'boxShade' });
       const cells = VL.dungeonMapLayout(dungeon);
       const blink = Math.floor(t * 3) % 2 === 0;
       for (const [key, cell] of Object.entries(cells)) {

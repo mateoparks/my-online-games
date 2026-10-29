@@ -171,10 +171,16 @@
     rect(ctx, 'leafLight', x + 23, y + 5 + dy, 3, 1);
     rect(ctx, 'ink', x + 27, y + 6 + dy, 1, 1);
     rect(ctx, 'leaf', x + 20, y + 3 + dy, 2, 2);
+    // The hero puppet wears the player's look (`booth.look`, W37).
     const hy = bob(2);
+    const look = VL.normalLook(booth?.look);
     rect(ctx, 'skin', x + 37, y + 3 + hy, 4, 4);
     rect(ctx, 'hair', x + 37, y + 3 + hy, 4, 1);
-    rect(ctx, 'tunic', x + 36, y + 7 + hy, 6, 4);
+    if (look.hair === 'long') {
+      rect(ctx, 'hair', x + 36, y + 3 + hy, 1, 5);
+      rect(ctx, 'hair', x + 41, y + 3 + hy, 1, 5);
+    }
+    rect(ctx, VL.OUTFIT_COLORS[look.outfit].tunic, x + 36, y + 7 + hy, 6, 4);
   });
 
   // The Old Scriptorium: grey stone and slate, ivy, an arched door with a

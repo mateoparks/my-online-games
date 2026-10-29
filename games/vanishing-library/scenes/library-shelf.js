@@ -55,32 +55,32 @@
     draw(ctx, app, t) {
       const game = app.game;
       const view = app.libraryShelf;
-      const { text } = VL.ART;
+      const say = (words, x, y, style) => VL.ART.text(ctx, VL.popupText(words, game), x, y, style);
       VL.drawWorld(ctx, game, t);
       const rows = VL.shelfRows(game);
       // As tall as the rows need, up to the full box.
       const h = Math.min(BOX.h, ROW.top - BOX.y + Math.min(ROW.visible, rows.length) * ROW.height + 16);
       VL.ART.drawBox(ctx, BOX.x, BOX.y, BOX.w, h);
-      text(ctx, VL.LIBRARIAN, BOX.x + 8, BOX.y + 6, { color: 'goldLight', shadow: 'boxShade' });
-      text(ctx, 'Shall I read you one again?', BOX.x + 8, BOX.y + 18, { color: 'text' });
+      say(VL.LIBRARIAN, BOX.x + 8, BOX.y + 6, { color: 'goldLight', shadow: 'boxShade' });
+      say('Shall I read you one again?', BOX.x + 8, BOX.y + 18, { color: 'text' });
       rows.slice(view.scroll, view.scroll + ROW.visible).forEach((row, i) => {
         const index = view.scroll + i;
         const y = ROW.top + i * ROW.height;
         const chosen = index === view.cursor;
-        if (chosen) text(ctx, '→', BOX.x + 6, y, { color: 'gold' });
+        if (chosen) say('→', BOX.x + 6, y, { color: 'gold' });
         if (row === 'no') {
-          text(ctx, 'No, thank you', BOX.x + 28, y, { color: chosen ? 'goldLight' : 'textDim' });
+          say('No, thank you', BOX.x + 28, y, { color: chosen ? 'goldLight' : 'textDim' });
           return;
         }
         const book = VL.BOOKS[row];
         spine(ctx, book.color, BOX.x + 18, y - 1);
-        text(ctx, book.title, BOX.x + 28, y, { color: chosen ? 'goldLight' : 'text' });
+        say(book.title, BOX.x + 28, y, { color: chosen ? 'goldLight' : 'text' });
       });
       const right = BOX.x + BOX.w - 8;
       if (view.scroll > 0) VL.ART.moreArrow(ctx, right - 2, ROW.top - 5, true);
       if (view.scroll + ROW.visible < rows.length) VL.ART.moreArrow(ctx, right - 2, ROW.top + ROW.visible * ROW.height - 3, false);
       const hint = rows.length > 1 ? '↑↓ CHOOSE   S: READ IT   X: BACK' : 'X: BACK';
-      text(ctx, hint, BOX.x + BOX.w / 2, BOX.y + h - 11, { size: 'small', align: 'center', color: 'textDim' });
+      say(hint, BOX.x + BOX.w / 2, BOX.y + h - 11, { size: 'small', align: 'center', color: 'textDim' });
     },
   });
 })();

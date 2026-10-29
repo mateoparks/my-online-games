@@ -6,12 +6,12 @@
 //
 //                       lamp room (0,-3): the Lens Crab
 //                            │ boss door
-//   map stair (-1,-2) ── gallery (0,-2) ─door B─ workshop (1,-2): beam → boss key
-//   dark floor               │ bars (target)
+//   stair (-1,-2) ────── gallery (0,-2) ─door B─ workshop (1,-2): beam → boss key
+//   dark floor, shells       │ bars (target)
 //                       stairwell (0,-1) ─door A─ store (1,-1): the Slingshot
 //                            │                        │ bars (target)
 //   cellar (-1,0) ──── entrance (0,0)             cistern (1,0): beam → key B
-//   dark floor, key A    statue, door out
+//   dark floor, map, key A   statue, door out
 (() => {
   const { rect } = VL.ART;
   const DUNGEON = 'lighthouse';
@@ -112,7 +112,8 @@
         { type: 'sign', x: 10, y: 2, title: 'The Lighthouse', text: 'The keeper\'s old lamps still line the dark rooms. Hold your Glowstone up to one (S) and it will burn again.' },
       ],
     },
-    // The cellar: a dark floor, one narrow way between the pits, key A at its end.
+    // The cellar: a dark floor, one narrow way between the pits, the map on
+    // it (found early, as in the other dungeons, W38) and key A at its end.
     '-1,0': {
       tiles: [
         '################',
@@ -129,6 +130,7 @@
       ],
       entities: [
         { type: 'smallKey', id: 'd3KeyA', x: 2, y: 2, lock: 'd3KeyA' },
+        { type: 'dungeonMap', id: 'd3Map', x: 8, y: 2 },
         lamp('d3LampCellarA', 14, 6),
         lamp('d3LampCellarB', 3, 2),
         { type: 'bat', x: 9, y: 7 },
@@ -234,7 +236,7 @@
         { type: 'bat', x: 4, y: 6 },
       ],
     },
-    // The map stair: another dark floor, the dungeon map at the top.
+    // The stair: another dark floor, a chest of slingshot shells at the top.
     '-1,-2': {
       tiles: [
         '################',
@@ -250,7 +252,7 @@
         '################',
       ],
       entities: [
-        { type: 'dungeonMap', id: 'd3Map', x: 7, y: 2 },
+        { type: 'chest', id: 'd3ShellChest', x: 7, y: 2, contents: [{ resource: 'brokenShells', amount: 5 }], found: { title: 'Five broken shells!', text: 'The old keeper\'s spares. Just right for a slingshot.' } },
         lamp('d3LampMapA', 14, 4),
         lamp('d3LampMapB', 2, 8),
         { type: 'bat', x: 11, y: 2 },

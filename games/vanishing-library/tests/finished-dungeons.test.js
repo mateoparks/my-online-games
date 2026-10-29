@@ -183,6 +183,8 @@ test('the W18 fixture (saved at the Lighthouse statue, the Lens Crab beaten and 
 test('W31 saves nothing new: no game field was added', () => {
   const { VL } = loadGame();
   const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W18.json'), 'utf8'));
-  // W34's crab count is the one field added since (its fixture: save-v1-W34.json).
-  assert.deepEqual(Object.keys(VL.serializeSave(VL.createGame({ name: 'Robin' }))).filter((key) => !(key in fixture) && key !== 'crabs'), []);
+  // Fields added since, each with its own fixture: W34's crab count
+  // (save-v1-W34.json) and W37's look (save-v1-W37.json).
+  const later = ['crabs', 'look'];
+  assert.deepEqual(Object.keys(VL.serializeSave(VL.createGame({ name: 'Robin' }))).filter((key) => !(key in fixture) && !later.includes(key)), []);
 });
