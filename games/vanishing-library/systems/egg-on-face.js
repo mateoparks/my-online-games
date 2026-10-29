@@ -81,8 +81,9 @@
   VL.defineHeroLayer('eggOnFace', (ctx, state, x, y, t, pass) => {
     const player = state.player;
     if (pass !== 'front' || !VL.eggOnFace(state)) return;
-    const facing = FACE_AT[player.facing] ? player.facing : 'down';
-    const { bob } = VL.ART.heroFrame(player, t);
+    // From the sprite drawn, not player.facing: `hero-hold` faces the camera.
+    const { sprite, bob } = VL.ART.heroFrame(player, t);
+    const facing = FACE_AT[sprite.split('-')[1]] ? sprite.split('-')[1] : 'down';
     const top = y - 10 - bob - Math.round(player.lift || 0);
     const [dx, dy] = FACE_AT[facing];
     VL.ART.drawSprite(ctx, `fx-egg-face-${facing}`, x - 6 + dx, top + dy);

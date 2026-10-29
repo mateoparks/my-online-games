@@ -97,7 +97,7 @@
     if (view.mode === 'drawing') return;
     for (const label of map.labels) {
       VL.ART.rect(ctx, 'parchmentLight', ox + label.x, oy + label.y, label.w, label.h);
-      VL.ART.text(ctx, label.name, ox + label.x + 1, oy + label.y + 1, { size: 'small', color: 'mapInk' });
+      VL.ART.text(ctx, VL.popupText(label.name, game), ox + label.x + 1, oy + label.y + 1, { size: 'small', color: 'mapInk' });
     }
     for (const mark of map.marks) {
       const { x, y } = cell(mark.screen);
@@ -134,9 +134,9 @@
 
   const ASK = 'Draw a map of everywhere you have been? It uses 1 paper and 1 ink.';
 
-  function drawAsk(ctx, view, t) {
+  function drawAsk(ctx, game, view, t) {
     const w = 200;
-    const lines = VL.ART.wrapText(ASK, w - 12, 'normal');
+    const lines = VL.ART.wrapText(VL.popupText(ASK, game), w - 12, 'normal');
     const line = VL.ART.lineHeight('normal');
     const h = 12 + (lines.length + 2) * line;
     const x = Math.floor((VL.TUNING.width - w) / 2);
@@ -194,7 +194,7 @@
     draw(ctx, app, t) {
       const view = app.worldMapView;
       shade(ctx, app, t);
-      if (view.mode === 'ask') drawAsk(ctx, view, t);
+      if (view.mode === 'ask') drawAsk(ctx, app.game, view, t);
       else drawMap(ctx, app.game, view, t);
     },
 
@@ -228,7 +228,7 @@
       const copy = VL.COPIES[app.copyView.id];
       shade(ctx, app, t);
       paper(ctx, BOX.x, BOX.y, BOX.w, BOX.h);
-      VL.ART.text(ctx, copy.name.toUpperCase(), BOX.x + BOX.w / 2, BOX.y + 7, { align: 'center', color: 'mapInk', shadow: 'parchmentLight' });
+      VL.ART.text(ctx, VL.popupText(copy.name, app.game).toUpperCase(), BOX.x + BOX.w / 2, BOX.y + 7, { align: 'center', color: 'mapInk', shadow: 'parchmentLight' });
       copy.picture(ctx, { x: BOX.x + 10, y: BOX.y + 22, w: BOX.w - 20, h: BOX.h - 34 }, t, app.game);
     },
 

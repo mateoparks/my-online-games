@@ -76,6 +76,13 @@
     hero: { hair: 'hair', top: 'tunic', topDark: 'tunicDark', legs: 'boots' },
     librarian: { hair: 'npcSilver', top: 'npcNavy', topDark: 'npcNavyDark', legs: 'woodDark' },
   };
+  // The hero marionette wears the player's clothes and hair (`m.look`, W37).
+  function lookOf(m) {
+    if (m.puppet !== 'hero') return LOOKS[m.puppet];
+    const look = VL.normalLook(m.look);
+    const outfit = VL.OUTFIT_COLORS[look.outfit];
+    return { ...LOOKS.hero, top: outfit.tunic, topDark: outfit.tunicDark, long: look.hair === 'long' };
+  }
 
   // An arm from the shoulder up to the hand the string holds (or hanging when cut).
   function arm(ctx, from, hand, color) {
@@ -89,7 +96,7 @@
   }
 
   function drawPerson(ctx, m, x, y, t) {
-    const look = LOOKS[m.puppet];
+    const look = lookOf(m);
     const sway = Math.sin(t * 2 + m.phase) * 1.5;
     const [left, right] = m.strings;
     const lean = (left.cut ? -2 : 0) + (right.cut ? 2 : 0);
@@ -113,6 +120,11 @@
     if (m.puppet === 'hero') part(ctx, 'wood', hands[1].x, hands[1].y - 7, 2, 7);
     // A big painted head.
     const hx = bx - 5 + (left.cut && !right.cut ? -1 : 0) + (right.cut && !left.cut ? 1 : 0);
+    // Long hair hangs either side, behind the head's outline.
+    if (look.long) {
+      part(ctx, look.hair, hx - 3, y - 12, 3, 9);
+      part(ctx, look.hair, hx + 10, y - 12, 3, 9);
+    }
     part(ctx, 'skin', hx, y - 14, 10, 9);
     rect(ctx, look.hair, hx, y - 14, 10, 3);
     rect(ctx, look.hair, hx, y - 11, 1, 3);
@@ -160,11 +172,12 @@
       rect(ctx, 'ink', x - 12, y + 3, 1, 1);
       return;
     }
-    const look = LOOKS[m.puppet];
+    const look = lookOf(m);
     part(ctx, look.top, x - 7, y + 3, 12, 6);
     part(ctx, look.legs, x + 5, y + 6, 6, 3);
     part(ctx, 'skin', x - 11, y + 1, 8, 7);
     rect(ctx, look.hair, x - 11, y + 1, 8, 2);
+    if (look.long) rect(ctx, look.hair, x - 11, y + 3, 1, 5);
     rect(ctx, 'ink', x - 9, y + 4, 1, 1);
     rect(ctx, 'ink', x - 6, y + 4, 1, 1);
   }

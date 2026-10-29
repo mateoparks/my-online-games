@@ -57,6 +57,7 @@ VL.FILES = {
     'systems/finale.js',
     'systems/boss-hints.js',
     'systems/egg-on-face.js',
+    'systems/hero-look.js',
   ],
 
   entities: [

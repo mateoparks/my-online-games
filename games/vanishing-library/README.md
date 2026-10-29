@@ -611,6 +611,87 @@ Saved field `crabs: { killed, angry, feast }` (fixture
   Leaving the screen sends them home and fills the holes in. Lock
   `islandCrabs` (optional: the island and a shovel).
 
+## Hero look (W37)
+
+Matthew's note: a choice of clothes colour and hair length when starting,
+and (PM) boy or girl for the words. `systems/hero-look.js`; tests:
+`tests/hero-look.test.js`. Saved field `look: { outfit, hair, gender }`
+(`green|blue|purple|pink|yellow`, `short|long`, `boy|girl`; fixture
+`tests/fixtures/save-v1-W37.json`). A save without it loads as
+`VL.DEFAULT_LOOK`, today's hero (a boy in green with short hair), so no
+migration; `VL.heroLook(state)` reads it with any odd value put back to the
+default. Boy or girl changes only the words, never the sprites.
+
+- **The chooser** sits on the name scene: the name, HERO (Boy, Girl),
+  CLOTHES (five swatches; the colours go round), HAIR (Short, Long), START,
+  with the hero walking and turning through every facing at 4× beside them.
+  ↑↓ move between rows, ←→ change a choice, S or Space on a choice steps
+  down, a letter typed on any other row goes back to the name, Enter starts
+  from anywhere. **Boy or girl starts unpicked** (Matthew: "Definitely don't
+  assume"); clothes and hair start as today's hero. Until it is picked, a
+  start (Enter on any row, S or Space on START) moves the cursor to the HERO
+  row and shows `← BOY OR GIRL? →` under it instead of starting; from no
+  pick ← is Boy and → is Girl. `VL.newGame` is never reached without one.
+- **Drawing the hero:** `VL.ART.drawHero(ctx, player, x, y, t, look)`;
+  `render.js` passes `state.look`, the title passes the chosen slot's. A
+  sprite is worn with `VL.ART.lookSprite(id, look)`: today's look returns
+  `id` itself, anything else a variant `<id>~<outfit>-<hair>` defined the
+  first time it is asked for. A variant recolours `tunic`, `tunicDark` and
+  `tunicLight` to the outfit's shades (`VL.OUTFIT_COLORS`) and, for long
+  hair, lays the sprite's hair overlay over its rows. **Every pixel keeps
+  its place:** same size, same face, eyes never covered, so anything drawn
+  over the hero lines up in every look.
+- **A new hero pose** (a sprite drawn through `VL.ART.heroFrame`) gets its
+  colours for free; give it long hair with
+  `VL.ART.defineHeroHair('hero-<pose>', rows)` (`'h'` hair, `'H'` its light,
+  `'.'` leaves the pixel; rows past the overlay are left alone), or it is
+  drawn with short hair.
+- **Drawing on the hero's face or head** (an egg, a hat): use a hero layer,
+  `VL.defineHeroLayer(id, (ctx, state, x, y, t, pass) => …)` in the
+  `'front'` pass, and place it from the sprite's top-left, exactly as
+  `drawHero` does: `const { sprite, bob } = VL.ART.heroFrame(state.player, t)`,
+  `left = x - 6`, `top = y - 10 - bob - Math.round(state.player.lift || 0)`.
+  The face (facing down) is sprite columns 2-9, rows 3-6, eyes at columns 3
+  and 8 of row 4; facing left the face is columns 1-6, rows 3-6 (eye at
+  column 2, row 4), facing right its mirror (columns 5-10); facing up there
+  is no face. Long hair adds pixels only outside the face (down: columns 1
+  and 10, rows 2-7; up: down the back, rows 2-9; left/right: behind the
+  head, rows 4-8; the arms-up `hero-hold`: columns 2 and 9, rows 3-7, beside
+  the eyes), so a face overlay never needs to know the look; one
+  covering the whole head should be 2px wider for long hair, or sit under
+  it by drawing in the `'behind'` pass.
+- **Also wearing it:** the puppet shows' hero puppet (`puppet-hero`) where it
+  stands for the player: the first show's "brave little hero", the
+  confession's "brave young hero" and the kind show "The Library That Grew".
+  Sir Bumble is a story character, so his show casts his own puppet
+  (`puppet-bumble`, a bumblebee knight in a helmet) in every game; the finale's hero marionette and the town
+  booth's little hero puppet (both get `look` on their room copy from a
+  `VL.onRoomBuilt` hook), and the hero on the title's shore (the slot the
+  cursor is on).
+- **The hero's words:** `VL.popupText` turns `{he}`, `{him}`, `{his}`
+  (his/her), `{hers}` (his/hers), `{himself}`, `{boy}` (boy/girl), and the
+  same capitalised (`{He}`, `{His}`, ...), into the hero's words from
+  `look.gender` (`VL.HERO_WORDS`); no look means a boy. **All text the
+  hero sees goes through `VL.popupText`**, not only talk: book titles,
+  equipment names and descriptions, the shockwave and fainting lines, show
+  titles, shop titles, rows, questions and notes, dungeon and map names,
+  dungeon notes and the credits' headings; a test plants tokens in each and
+  fails on any `{token}` drawn raw, boy or girl. **Never write a hero
+  pronoun out:** a test scans every string in the game and fails on a he,
+  she, him, her, his, hers, boy or girl, or a gendered noun or form of
+  address (lad, lass, son, daughter, young man, sir, ma'am, mister, lady,
+  prince, king, ...; a title before a capitalised name, such as Mrs.
+  Fenwick or Sir Bumble, is someone's name and passes) that is neither a
+  token nor on its allow-list of other characters (the librarian, his wife, Bryony, Brannock,
+  Henrietta, Nell, Mabel, the dragon, Sir Bumble, Nosy Ned). Text about
+  someone else joins that list in `tests/hero-look.test.js`. Today only the
+  intro's last line is the hero's (`to save {his} culture`); the rest of the
+  game already speaks to the hero as "you" or by name.
+- The render smoke shoots the chooser in all ten looks
+  (`w37-look-<outfit>-<hair>.png`), each outfit with long hair on sand under
+  grass (`w37-world-<outfit>.png`), every facing (`w37-facing-<facing>.png`),
+  the puppet show and the title's hero.
+
 ## Engine notes
 
 - Logical canvas 256×192: a 16px HUD strip over a 16×11 grid of 16px tiles.
@@ -641,7 +722,8 @@ Saved field `crabs: { killed, angry, feast }` (fixture
 
 `VL.START_SCENE` is `'title'` (`scenes/title.js`). A new player goes title
 (three slots) → `name` (typed into a field on the canvas, 12 characters,
-"Hero" when left blank; Enter, or ↓ to START and S, Space or Enter) → `intro` (the three weathered lines; S, Space or
+"Hero" when left blank, with the hero's look beside it (W37); boy or girl
+must be picked, then Enter, or ↓ to START and S, Space or Enter) → `intro` (the three weathered lines; S, Space or
 Enter skips after half a second) → `play`. From play, Esc opens `pause`
 (Resume, Save & Quit, the controls); hearts running out opens `fainted`,
 where a press respawns the hero; `conflict` (another window saved this slot)
@@ -1711,7 +1793,10 @@ with doesn't walk him straight back.
   shopkeepers and the librarian too, says only `VL.EGG_WORDS` ("Looks like
   you have some egg on your face, {name}.") with no shop, gift or hand-in.
 - **Drawn over him** (hero layer `eggOnFace`, `fx-egg-face-<facing>`), never
-  in the hero's sprites, so any outfit wears it. Sound: `eggSplat`.
+  in the hero's sprites, so any outfit wears it. Sound: `eggSplat`. The
+  splat follows the sprite `VL.ART.heroFrame` picks, not `player.facing`
+  (`hero-hold` faces the camera), and sits inside W37's face box, clear of
+  long hair, in every look ("Hero look (W37)").
 
 ## The Hollow Oak (W15)
 

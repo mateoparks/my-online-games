@@ -312,6 +312,76 @@ test('the splat draws over his face in every facing, on top of the hero', () => 
   }
 });
 
+// Where the hero sprite and the splat land, from one drawWorld.
+function drawnAt(VL, state) {
+  const ctx = fakeDocument().createElement('canvas').getContext('2d');
+  const drawn = [];
+  const original = VL.ART.drawSprite;
+  VL.ART.drawSprite = (c, id, x, y, ...rest) => {
+    drawn.push({ id, x, y });
+    return original(c, id, x, y, ...rest);
+  };
+  try {
+    VL.drawWorld(ctx, state, 0);
+  } finally {
+    VL.ART.drawSprite = original;
+  }
+  return { hero: drawn.find((d) => d.id.startsWith('hero-')), egg: drawn.find((d) => d.id.startsWith('fx-egg-face')) };
+}
+
+// W37's face boxes from the hero sprite's top-left (README "Hero look"):
+// down/hold columns 2-9, left 1-6, right 5-10, rows 2-6 counting the brow;
+// up has no face, so the drips sit at the sides of the head.
+const FACE_BOX = { down: [2, 9], left: [0, 6], right: [5, 11], up: [0, 11] };
+
+test('the splat sits on the face in every look (each clothes colour, short or long hair, boy or girl), every facing and frame', () => {
+  const { VL, state } = egged();
+  VL.splatEgg(state);
+  for (const outfit of VL.HERO_OUTFITS) {
+    for (const hair of VL.HERO_HAIRS) {
+      for (const gender of VL.HERO_GENDERS) {
+        state.look = { outfit, hair, gender };
+        for (const facing of ['down', 'up', 'left', 'right']) {
+          for (const moving of [false, true]) {
+            Object.assign(state.player, { facing, moving });
+            const { hero, egg } = drawnAt(VL, state);
+            const where = `${outfit} ${hair} ${gender} ${facing}${moving ? ' walking' : ''}`;
+            assert.equal(egg?.id, `fx-egg-face-${facing}`, where);
+            const sprite = VL.ART.sprite(egg.id);
+            const [lo, hi] = FACE_BOX[facing];
+            assert.ok(egg.x - hero.x >= lo && egg.x - hero.x + sprite.w - 1 <= hi, `${where}: columns ${egg.x - hero.x}..`);
+            assert.ok(egg.y - hero.y >= 2 && egg.y - hero.y + sprite.h - 1 <= 6, `${where}: rows ${egg.y - hero.y}..`);
+          }
+        }
+      }
+    }
+  }
+});
+
+test('holding something up (facing the camera) the splat is the face-on one, whichever way he last faced', () => {
+  const { VL, state } = egged();
+  VL.splatEgg(state);
+  state.look = { outfit: 'pink', hair: 'long', gender: 'girl' };
+  for (const facing of ['down', 'up', 'left', 'right']) {
+    Object.assign(state.player, { facing, holding: true });
+    const { hero, egg } = drawnAt(VL, state);
+    assert.match(hero.id, /^hero-hold/, facing);
+    assert.equal(egg?.id, 'fx-egg-face-down', facing);
+    assert.deepEqual([egg.x - hero.x, egg.y - hero.y], [2, 2], facing);
+  }
+});
+
+test('the egg line is the same for a boy and a girl, by name, with no word left for the hero', () => {
+  for (const gender of ['boy', 'girl']) {
+    const { VL, state } = egged();
+    state.name = 'Robin';
+    state.look = { outfit: 'blue', hair: 'long', gender };
+    VL.splatEgg(state);
+    VL.talkTo(state, { type: 'npc', id: 'librarian', x: 9, y: 7 });
+    assert.deepEqual(JSON.parse(JSON.stringify(state.sceneRequest.data.pages.map((page) => page.join(' ')))), ['Looks like you have some egg on your face, Robin.'], gender);
+  }
+});
+
 // ---------- the Lighthouse's map ----------
 
 test('the Lighthouse map lies on foot from the entrance, early, as in the Scriptorium and the Hollow Oak', () => {

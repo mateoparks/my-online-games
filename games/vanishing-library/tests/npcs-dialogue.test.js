@@ -124,6 +124,9 @@ test('name entry accepts accented letters, joins a typed accent with its letter,
     app.update(VL.actions({ typed }), STEP);
     assert.equal(app.naming.text, expected, JSON.stringify(typed));
   }
+  // W37: boy or girl must be picked before START.
+  press(VL, app, 'down');
+  press(VL, app, 'left');
   app.update(VL.actions({ pressed: ['confirm'] }), STEP);
   assert.equal(app.game.name, 'AB');
 });

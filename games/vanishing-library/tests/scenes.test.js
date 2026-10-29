@@ -11,6 +11,11 @@ const throwingStorage = { getItem: blocked, setItem: blocked, removeItem: blocke
 
 const STEP = 1 / 60;
 const press = (VL, app, action) => app.update(VL.actions({ pressed: [action] }), STEP);
+// W37: from the name field, ↓ to HERO and ← for Boy (a new game assumes neither).
+const pickBoy = (VL, app) => {
+  press(VL, app, 'down');
+  press(VL, app, 'left');
+};
 const type = (VL, app, typed) => app.update(VL.actions({ typed }), STEP);
 const wait = (VL, app, seconds, held = []) => {
   for (let t = 0; t < seconds - 1e-9; t += STEP) app.update(VL.actions({ held }), STEP);
@@ -27,6 +32,7 @@ function newGameTo(VL, app, name, slot = 0, stopAt = 'play') {
   press(VL, app, 'confirm');
   assert.equal(app.sceneId, 'name');
   type(VL, app, name);
+  pickBoy(VL, app);
   press(VL, app, 'confirm');
   assert.equal(app.sceneId, 'intro');
   if (stopAt === 'intro') return;
@@ -152,6 +158,7 @@ test('new game: slot → typed name → intro → play, saved as soon as it is n
   assert.equal(app.sceneId, 'name');
   type(VL, app, 'Robin');
   assert.equal(app.naming.text, 'Robin');
+  pickBoy(VL, app);
   press(VL, app, 'confirm');
   assert.equal(app.sceneId, 'intro');
   assert.equal(app.game.name, 'Robin');
@@ -184,6 +191,7 @@ test('name entry: 12 characters at most, backspace, only characters the font has
   assert.equal(app.sceneId, 'name');
   assert.equal(app.game, null);
   type(VL, app, '   ');
+  pickBoy(VL, app);
   press(VL, app, 'confirm');
   assert.equal(app.game.name, 'Hero', 'blank name defaults');
   assert.equal(app.sceneId, 'intro');
@@ -209,6 +217,7 @@ test('name entry trims spaces and Esc goes back to the title without a game', ()
   assert.equal(backing.map.size, 0);
   press(VL, app, 'confirm');
   type(VL, app, ' Kai ');
+  pickBoy(VL, app);
   press(VL, app, 'confirm');
   assert.equal(app.game.name, 'Kai');
   assert.equal(app.slot, 1);
@@ -217,10 +226,13 @@ test('name entry trims spaces and Esc goes back to the title without a game', ()
 test('the intro shows the three weathered lines, then plays on its own', () => {
   const { VL, document } = loadGame();
   assert.equal(VL.INTRO_LINES.length, 3);
-  assert.equal(VL.INTRO_LINES.join(' '), 'In a world where books mysteriously disappear, one brave adventurer has set out to save his culture from oblivion...');
+  assert.equal(VL.INTRO_LINES.join(' '), 'In a world where books mysteriously disappear, one brave adventurer has set out to save {his} culture from oblivion...');
   for (const line of VL.INTRO_LINES) {
-    assert.deepEqual([...VL.ART.missingGlyphs(line)], [], line);
-    assert.ok(VL.ART.wrapText(line, 232).length <= 2, 'each line fits in two rows');
+    for (const gender of VL.HERO_GENDERS) {
+      const shown = VL.popupText(line, { look: { gender } });
+      assert.deepEqual([...VL.ART.missingGlyphs(shown)], [], shown);
+      assert.ok(VL.ART.wrapText(shown, 232).length <= 2, 'each line fits in two rows');
+    }
   }
   const { app } = titleApp(VL);
   newGameTo(VL, app, 'Ash', 0, 'intro');
@@ -647,6 +659,7 @@ test('a stale Empty card never overwrites a game another window made in that slo
   press(VL, a, 'confirm');
   assert.equal(a.sceneId, 'name');
   type(VL, a, 'Zed');
+  pickBoy(VL, a);
   press(VL, a, 'confirm');
   const saved = JSON.parse(backing.getItem(VL.slotKey(0)));
   assert.equal(saved.name, 'Kai', 'Kai\'s game is kept');

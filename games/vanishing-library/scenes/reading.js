@@ -22,7 +22,7 @@
     ctx.restore();
   }
 
-  VL.drawOpenBook = function drawOpenBook(ctx, book, t) {
+  VL.drawOpenBook = function drawOpenBook(ctx, book, t, state) {
     const { x, y, w, h } = BOOK;
     const half = w / 2;
     VL.ART.rect(ctx, 'shadow', x + 3, y + h, w - 2, 3);
@@ -32,7 +32,7 @@
     VL.ART.rect(ctx, 'white', x + half + 1, y + 1, half - 3, h - 3);
     VL.ART.rect(ctx, 'sandDark', x + half - 1, y + 1, 2, h - 2);
     for (let line = y + 8; line < y + h - 6; line += 6) VL.ART.rect(ctx, 'sandLight', x + half + 8, line, half - 16, 1);
-    const titleLines = VL.ART.wrapText(book.title, half - 12, 'normal');
+    const titleLines = VL.ART.wrapText(VL.popupText(book.title, state), half - 12, 'normal');
     const top = y + Math.floor((h - titleLines.length * 10) / 2);
     titleLines.forEach((line, i) => VL.ART.text(ctx, line, x + half / 2, top + i * 10, { align: 'center', color: 'ink' }));
     const icon = VL.ART.sprite(book.icon);
@@ -80,7 +80,7 @@
       const view = app.reading;
       VL.drawWorld(ctx, app.game, t);
       VL.ART.rect(ctx, 'readingShade', 0, 0, VL.TUNING.width, VL.TUNING.height);
-      VL.drawOpenBook(ctx, view.book, t);
+      VL.drawOpenBook(ctx, view.book, t, app.game);
       const lines = [];
       let left = Math.floor(view.shown);
       const height = Math.max(...view.pages.map((page) => page.length));
