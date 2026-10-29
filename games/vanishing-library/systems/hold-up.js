@@ -49,7 +49,10 @@
     if (hold.t < VL.TUNING.holdUpSeconds) return 'raise';
     if (VL.currentPopup(state)) return 'popup';
     state.holdUp = null;
-    if (state.player) state.player.holding = false;
+    if (state.player) {
+      state.player.holding = false;
+      if (hold.facing) state.player.facing = hold.facing;
+    }
     return null;
   };
 

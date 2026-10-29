@@ -1,6 +1,7 @@
 // The librarian reads a returned book aloud: the open book over the paused
 // world, his words typed out below. The book's effect switches on when the
-// reading ends, however it ends (VL.finishReading).
+// reading ends, however it ends (VL.finishReading). A book read again from
+// the shelf (`again`, W36) only reads, and X leaves it like the shelf.
 (() => {
   VL.ART.addColors({ readingShade: '#1b1b24a0' });
   const BOOK = { x: 52, y: 22, w: 152, h: 76 };
@@ -9,7 +10,7 @@
 
   function close(app) {
     const game = app.game;
-    if (VL.finishReading(game, app.reading.id)) VL.sfx('libraryChime');
+    if (!app.reading.again && VL.finishReading(game, app.reading.id)) VL.sfx('libraryChime');
     app.setScene(VL.currentPopup(game) && !game.holdUp ? 'popup' : 'play');
   }
 
@@ -42,16 +43,18 @@
   };
 
   VL.defineScene('reading', {
-    // data: { book: id } (a titled or sealed book on the shelves)
+    // data: { book: id, again } (a titled or sealed book on the shelves; any
+    // book on them with `again`)
     enter(app, data) {
       const book = VL.BOOKS[data.book];
-      app.reading = { id: data.book, book, pages: VL.dialoguePages(book.reading, app.game), page: 0, shown: 0 };
+      const again = Boolean(data.again);
+      app.reading = { id: data.book, book, again, pages: VL.dialoguePages(again ? VL.rereadWords(book) : book.reading, app.game), page: 0, shown: 0 };
       VL.sfx('popup');
     },
 
     update(app, actions, dt) {
       const view = app.reading;
-      if (actions.pressed.pause) {
+      if (actions.pressed.pause || (view.again && actions.pressed.dig)) {
         close(app);
         return;
       }

@@ -6,21 +6,21 @@ const { test, loadGame, playApp, fakeDocument, memoryStorage } = require('./harn
 
 // ---------- 1. the tally never promises a reward he is about to give ----------
 
-test('handing in the tenth book, the tally skips "Bring me N more": the heart comes right after', () => {
+test('handing in the twelfth book, the tally skips "Bring me N more": the boots come right after (W36)', () => {
   const { VL } = loadGame();
   const game = VL.newGame({ name: 'Robin' });
   const generic = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic');
-  generic.slice(0, 9).forEach((id) => VL.markFound(game, id));
-  const nine = VL.returnSpeech(game, VL.returnBooks(game));
-  assert.ok(nine.at(-1).includes('Bring me 1 more'), nine.at(-1));
-  VL.markFound(game, generic[9]);
-  const ten = VL.returnSpeech(game, VL.returnBooks(game));
-  assert.equal(VL.pendingReward(game), 'heartLibrary');
-  assert.ok(ten.at(-1).includes('10 books') && !ten.at(-1).includes('more'), ten.at(-1));
-  VL.giveLibraryReward(game, 'heartLibrary');
-  VL.markFound(game, generic[10]);
+  generic.slice(0, 11).forEach((id) => VL.markFound(game, id));
   const eleven = VL.returnSpeech(game, VL.returnBooks(game));
-  assert.ok(eleven.at(-1).includes('Bring me 9 more'), 'the next goal again once the reward is given');
+  assert.ok(eleven.at(-1).includes('Bring me 1 more'), eleven.at(-1));
+  VL.markFound(game, generic[11]);
+  const twelve = VL.returnSpeech(game, VL.returnBooks(game));
+  assert.equal(VL.pendingReward(game), 'swiftfootBoots');
+  assert.ok(twelve.at(-1).includes('12 books') && !twelve.at(-1).includes('more'), twelve.at(-1));
+  VL.giveLibraryReward(game, 'swiftfootBoots');
+  VL.markFound(game, generic[12]);
+  const thirteen = VL.returnSpeech(game, VL.returnBooks(game));
+  assert.ok(thirteen.at(-1).includes('Bring me 7 more'), 'the next goal again once the reward is given');
 });
 
 // ---------- 2. every loose page says so; the talk box leaves the speaker in view ----------

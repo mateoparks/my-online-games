@@ -221,7 +221,7 @@ function talkThroughFenwick(VL, drive) {
       seen = drive.app.dialogue;
       talks.push(seen.pages.flat().join(' '));
     }
-    if (drive.app.sceneId === 'play' && !drive.state.libraryChain && !drive.state.holdUp && !VL.currentPopup(drive.state)) break;
+    if (drive.app.sceneId === 'play' && !drive.state.libraryChain && !drive.state.libraryOffer && !drive.state.holdUp && !VL.currentPopup(drive.state)) break;
     drive.hold([], 0.35);
     if (drive.app.sceneId !== 'play') drive.press('interact');
   }
@@ -251,19 +251,25 @@ for (const [how, start] of [
   }],
   ['in an old finished save healed on Continue (W20)', () => continueFrom('save-v1-W20.json')],
 ]) {
-  test(`the first talk ${how}: he welcomes the hero home, reads the blurbs of the books the ending brought home, then gives the reward due`, () => {
+  test(`the first talk ${how}: he welcomes the hero home, reads the blurbs of the books the ending brought home and any found since, then gives the reward due`, () => {
     const { VL, drive } = start();
     assert.equal(drive.state.finished, true);
     const hp = drive.state.maxHp;
-    assert.equal(VL.pendingReward(drive.state), 'heartLibrary', 'the hand-in made the 10-book reward due');
+    // W36: the first reward is at 12 books, so two found since the ending make it due.
+    assert.equal(VL.booksReturned(drive.state), 10);
+    assert.equal(VL.pendingReward(drive.state), null);
+    const since = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic' && !VL.spotFound(drive.state, id)).slice(0, 2);
+    for (const id of since) VL.markFound(drive.state, id);
     const talks = talkThroughFenwick(VL, drive);
     assert.match(talks[0], /Welcome back/);
     assert.doesNotMatch(talks[0], /where were we/);
     assert.doesNotMatch(talks.join(' '), HANDED_IN);
     for (const id of VL.HOARD_BOOKS) assert.ok(talks.join(' ').includes(blurbOf(VL, id)), `${id}'s blurb is read`);
-    assert.ok(talks.some((words) => words.includes('Ten books')), talks.join(' | '));
-    assert.equal(VL.rewardGiven(drive.state, 'heartLibrary'), true, 'the heart is given');
-    assert.equal(drive.state.maxHp, hp + 2);
+    for (const id of since) assert.ok(talks.join(' ').includes(blurbOf(VL, id)), `${id}, found since, is handed in with them`);
+    assert.ok(talks.some((words) => words.includes('Twelve books')), talks.join(' | '));
+    assert.equal(VL.rewardGiven(drive.state, 'swiftfootBoots'), true, 'the boots are given');
+    assert.ok(VL.hasItem(drive.state, 'swiftfootBoots'));
+    assert.equal(drive.state.maxHp, hp);
     // Said once: the next talk is the usual after-the-ending line.
     drive.reload();
     drive.hold([], 0.2);
@@ -273,6 +279,7 @@ for (const [how, start] of [
 
 test('the welcome home is skippable: Esc on it still lets the books\' blurbs and the reward follow, and Esc skips those too', () => {
   const { VL, drive } = continueFrom('save-v1-W20.json');
+  for (const id of Object.keys(VL.BOOKS).filter((book) => VL.BOOKS[book].kind === 'generic' && !VL.spotFound(drive.state, book)).slice(0, 2)) VL.markFound(drive.state, id);
   drive.walkTo({ area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT });
   drive.hold(['up'], 0.1);
   drive.press('interact');
@@ -285,7 +292,7 @@ test('the welcome home is skippable: Esc on it still lets the books\' blurbs and
   drive.press('pause');
   drive.hold([], 0.1);
   assert.equal(drive.app.sceneId, 'dialogue', 'then the reward');
-  assert.match(drive.app.dialogue.pages.flat().join(' '), /Ten books/);
+  assert.match(drive.app.dialogue.pages.flat().join(' '), /Twelve books/);
 });
 
 test('the W33 fixture (the finale played from the W19 save with the books brought home) loads FINISHED with nothing reset or left to hand in', () => {

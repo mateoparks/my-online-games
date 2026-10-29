@@ -456,6 +456,7 @@ test('every text the hero sees goes through popupText: no {token} is ever drawn 
     const word = gender === 'boy' ? 'himselfx' : 'herselfx';
     const plant = (text) => `${mark} ${text}`;
     VL.BOOKS.bookChickenAlmanac.title = plant(VL.BOOKS.bookChickenAlmanac.title);
+    VL.BOOKS.bookChickenAlmanac.reread = [plant('Again!')];
     for (const item of Object.values(VL.ITEMS)) Object.assign(item, { name: plant(item.name), about: plant(item.about || '') });
     VL.SHOCKWAVE_LINES[0] = plant(VL.SHOCKWAVE_LINES[0]);
     for (const cause of Object.keys(VL.FAINT_LINES)) VL.FAINT_LINES[cause] = plant(VL.FAINT_LINES[cause]);
@@ -477,6 +478,12 @@ test('every text the hero sees goes through popupText: no {token} is ever drawn 
     };
     const cases = {
       reading: () => app.setScene('reading', { book: 'bookChickenAlmanac' }),
+      rereading: () => app.setScene('reading', { book: 'bookChickenAlmanac', again: true }),
+      libraryShelf: () => {
+        app.game.library.returned.push('bookChickenAlmanac');
+        app.game.library.read.push('bookChickenAlmanac');
+        app.setScene('libraryShelf');
+      },
       equipment: () => app.setScene('equipment'),
       shockwave: () => {
         app.setScene('shockwave', { from: 'dark' });
@@ -580,6 +587,9 @@ const OTHERS = [
   ['regions/library.js', 'Her name\'s Henrietta.'],
   ['regions/library.js', 'She flapped off up the cliff road'],
   ['regions/library.js', 'Last I saw her, she was up on the cliffs'],
+  ['regions/library.js', 'Old Mother Bryony\'s notes! She knew every plant'],
+  ['regions/library.js', 'she drew a little smiling berry in the margin'],
+  ['regions/library.js', 'And his forge trick! Brannock uses it every day now.'],
   ['dungeons/workshop.js', 'Her workbench: paint pots'],
   ['dungeons/workshop.js', 'Let her speak, {name}.'],
   ['dungeons/workshop.js', 'The librarian waters his flowers'],

@@ -147,7 +147,7 @@ function readAtTheLibrary(drive) {
   face(drive, 'up');
   drive.press('interact');
   for (let i = 0; i < 120; i += 1) {
-    const idle = drive.app.sceneId === 'play' && !drive.state.libraryChain && !VL.currentPopup(drive.state);
+    const idle = drive.app.sceneId === 'play' && !drive.state.libraryChain && !drive.state.libraryOffer && !VL.currentPopup(drive.state);
     if (idle) break;
     drive.hold([], 0.35);
     if (drive.app.sceneId !== 'play') drive.press('interact');

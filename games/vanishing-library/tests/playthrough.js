@@ -147,15 +147,18 @@ function createDrive(VL, initialApp, reload) {
       // Back onto the tile's centre first: a hero left flush against a chest
       // or a door is off it, and each node below is checked against a centre.
       const start = VL.tileCenter(here.tx, here.ty);
+      // W36: the Swiftfoot Boots come at 12 books, so the scripted route
+      // wears them; a step of theirs can pass over a 0.7 px window.
+      const slack = (state) => Math.max(0.7, VL.heroSpeed(state) * STEP * 0.6);
       for (const [axis, minus, plus] of [['x', 'left', 'right'], ['y', 'up', 'down']]) {
-        drive.until((state) => Math.abs(state.player[axis] - start[axis]) < 0.7, 1, [player[axis] > start[axis] ? minus : plus]);
+        drive.until((state) => Math.abs(state.player[axis] - start[axis]) < slack(state), 1, [player[axis] > start[axis] ? minus : plus]);
       }
       for (const node of route.slice(1)) {
         const spot = VL.tileCenter(node.tx, node.ty);
         // Tile centres are 12 steps apart, so holding a direction lands on
         // the next centre exactly; the slack covers edge wrap and door arrival.
         drive.until((state) => state.player.area === node.area && state.player.screen === node.screen && !state.transition
-          && Math.abs(state.player.x - spot.x) < 0.7 && Math.abs(state.player.y - spot.y) < 0.7, 3, [node.dir]);
+          && Math.abs(state.player.x - spot.x) < slack(state) && Math.abs(state.player.y - spot.y) < slack(state), 3, [node.dir]);
       }
     },
   };

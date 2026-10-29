@@ -68,9 +68,10 @@
   lock('bookDragons', { type: 'item', needs: ['highlands', 'library'], gives: ['dragonsRead'], supplies: { books: 1 }, optional: true, doc: '§ Books, pages and the library: A Child\'s Book of Dragons', by: 'W8' });
   // W34: out on the wreck, so it comes nearer the highlands it opens.
   lock('bookChickenAlmanac', { type: 'item', needs: ['shipwreck', 'library'], gives: ['chickenAlmanacRead'], supplies: { books: 1 }, doc: '§ Books, pages and the library: The Chicken Keeper\'s Almanac', by: 'W8' });
-  lock('heartLibrary', { type: 'item', needs: ['library'], count: { books: 10 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
+  // W36: the boots first, at 12; the heart last, at 30.
+  lock('swiftfootBoots', { type: 'item', needs: ['library'], count: { books: 12 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('shellPurse', { type: 'item', needs: ['library'], count: { books: 20 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
-  lock('swiftfootBoots', { type: 'item', needs: ['library'], count: { books: 30 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
+  lock('heartLibrary', { type: 'item', needs: ['library'], count: { books: 30 }, optional: true, doc: '§ Books, pages and the library: Rewards for books returned', by: 'W11' });
   lock('lostChicken', { needs: ['chickens', 'town'], doc: '§ Chickens: The lost chicken', by: 'W11' });
   lock('pageLostChicken', { type: 'item', needs: ['lostChicken'], supplies: { pages: 1 }, doc: '§ Chickens: The lost chicken', by: 'W11' });
   lock('pageFieldA', { type: 'item', needs: ['town'], supplies: { pages: 1 }, doc: '§ Books, pages and the library: Missing pages', by: 'W8' });

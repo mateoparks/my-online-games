@@ -84,7 +84,8 @@ module.exports = (step) => {
     // Berries regrow once the hero has been away.
     drive.walkTo({ area: 'hut', screen: '0,0', tx: 7, ty: 8 });
     pickBerries(drive, bush);
-    buy(drive, 'shop', ['sellBerry', 'sellBerry', 'paper']);
+    // W36: the store's paper costs 3 shells.
+    buy(drive, 'shop', ['sellBerry', 'sellBerry', 'sellBerry', 'paper']);
     if (drive.state.inventory.paper < 1) throw new Error('woodsMapCopy: no paper bought');
     grindInk(drive);
     drive.walkTo(at('0,0', 7, 2));

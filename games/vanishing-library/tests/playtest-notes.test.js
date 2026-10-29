@@ -166,13 +166,14 @@ test('the Herbalist\'s trunk keeps away from the Woods\' secret ore (W34: no boo
   assert.notEqual(herbalist.screen, ore.screen, 'not on the ore\'s screen');
 });
 
-test('the solver stays green; the 10-book heart comes before the shockwave, the purse and the boots after it (W30; W34 moved the Chicken Almanac to the wreck)', () => {
+test('the solver stays green; the 12-book boots come before the shockwave, the purse and the heart after it (W30; W34 moved the Chicken Almanac to the wreck; W36 swapped the boots and the heart)', () => {
   const { VL } = loadGame();
   const result = VL.solveProgression();
   assert.deepEqual([...result.problems], []);
   const beforeShockwave = result.stages[0].reached;
-  for (const id of ['heartLibrary', 'bookPrimer', 'bookHerbalist']) assert.ok(beforeShockwave.includes(id), id);
-  for (const id of ['shellPurse', 'swiftfootBoots']) {
+  // W36: the boots come first now, at 12 books; the heart last, at 30.
+  for (const id of ['swiftfootBoots', 'bookPrimer', 'bookHerbalist']) assert.ok(beforeShockwave.includes(id), id);
+  for (const id of ['shellPurse', 'heartLibrary']) {
     assert.ok(!beforeShockwave.includes(id), `${id} comes after the shockwave`);
     assert.ok(result.stages.some((stage) => stage.reached.includes(id)), `${id} is reachable`);
   }
@@ -270,7 +271,7 @@ test('every handover holds up: librarian rewards, the Scriptorium key, heart con
       return 'item-swiftfoot';
     },
     heartLibrary: (state) => {
-      state.library.returned = Array.from({ length: 10 }, (_, i) => `b${i}`);
+      state.library.returned = Array.from({ length: 30 }, (_, i) => `b${i}`);
       VL.giveLibraryReward(state, 'heartLibrary');
       return 'pickup-heart-container';
     },
@@ -377,31 +378,32 @@ test('a reward at the end of a talk or a reading is held up before its popup, no
   const { VL, app, step } = heldApp();
   const g = app.game;
   g.flags['met:fenwick'] = true;
-  const nine = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic').slice(0, 9);
-  for (const id of [...nine, 'hiddenBookSealed']) VL.markFound(g, id);
+  // W36: the first reward is the boots, at 12 books.
+  const eleven = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic').slice(0, 11);
+  for (const id of [...eleven, 'hiddenBookSealed']) VL.markFound(g, id);
   VL.place(g, { area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT, facing: 'up' });
   const seen = [];
-  for (let i = 0; i < 60 * 30 && !(VL.rewardGiven(g, 'heartLibrary') && !g.holdUp && app.sceneId === 'play'); i += 1) {
+  for (let i = 0; i < 60 * 30 && !(VL.rewardGiven(g, 'swiftfootBoots') && !g.holdUp && app.sceneId === 'play'); i += 1) {
     step(i % 10 === 0 && (app.sceneId !== 'play' || i === 0) ? VL.actions({ pressed: ['interact'] }) : VL.noActions());
     const popup = VL.currentPopup(g)?.id || null;
     if (app.sceneId === 'popup' && seen.at(-1)?.popup !== popup) seen.push({ popup, holding: Boolean(g.holdUp), held: g.holdUp ? g.holdUp.t : null });
   }
   const key = seen.find((s) => s.popup === 'scriptoriumKey');
-  const heart = seen.find((s) => s.popup === 'heartContainer');
-  assert.ok(key && heart, `both popups shown: ${JSON.stringify(seen)}`);
-  for (const shown of [key, heart]) assert.ok(shown.holding && shown.held >= VL.TUNING.holdUpSeconds, `${shown.popup} only after the hold-up: ${JSON.stringify(shown)}`);
+  const boots = seen.find((s) => s.popup === 'swiftfootBoots');
+  assert.ok(key && boots, `both popups shown: ${JSON.stringify(seen)}`);
+  for (const shown of [key, boots]) assert.ok(shown.holding && shown.held >= VL.TUNING.holdUpSeconds, `${shown.popup} only after the hold-up: ${JSON.stringify(shown)}`);
 });
 
-test('every reward the librarian hands over is heard: the 10-book heart\'s fanfare, the 20-book purse\'s jingle, the sealed book\'s key', () => {
+test('every reward the librarian hands over is heard: the 12-book boots\' jingle, the 20-book purse\'s jingle, the 30-book heart\'s fanfare, the sealed book\'s key', () => {
   const { VL, app, sounds, step } = heldApp();
   const g = app.game;
   g.flags['met:fenwick'] = true;
-  const generic = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic').slice(0, 19);
-  assert.equal(generic.length, 19);
-  for (const id of [...generic, 'hiddenBookSealed']) VL.markFound(g, id);
+  const generic = Object.keys(VL.BOOKS).filter((id) => VL.BOOKS[id].kind === 'generic').slice(0, 28);
+  assert.equal(generic.length, 28);
+  for (const id of [...generic, 'hiddenBookSealed', 'bookHerbalist']) VL.markFound(g, id);
   VL.place(g, { area: 'library', screen: '0,0', ...VL.LIBRARY_TALK_AT, facing: 'up' });
   const heard = {};
-  const done = () => VL.rewardGiven(g, 'shellPurse') && VL.rewardGiven(g, 'heartLibrary') && VL.hasItem(g, 'scriptoriumKey') && !g.holdUp && app.sceneId === 'play';
+  const done = () => VL.rewardGiven(g, 'swiftfootBoots') && VL.rewardGiven(g, 'shellPurse') && VL.rewardGiven(g, 'heartLibrary') && VL.hasItem(g, 'scriptoriumKey') && !g.holdUp && app.sceneId === 'play';
   for (let i = 0; i < 60 * 60 && !done(); i += 1) {
     const before = g.holdUp ? null : sounds.length;
     step(i % 10 === 0 && (app.sceneId !== 'play' || i === 0 || !g.holdUp) ? VL.actions({ pressed: ['interact'] }) : VL.noActions());
@@ -411,6 +413,7 @@ test('every reward the librarian hands over is heard: the 10-book heart\'s fanfa
   assert.ok(heard['pickup-heart-container']?.includes('fanfare'), `the heart's fanfare: ${JSON.stringify(heard)}`);
   assert.ok(!heard['pickup-heart-container'].includes('holdUpJingle'), 'no jingle on top of the fanfare');
   assert.ok(heard['item-purse']?.includes('holdUpJingle'), `the purse's jingle: ${JSON.stringify(heard)}`);
+  assert.ok(heard['item-swiftfoot']?.includes('holdUpJingle'), `the boots' jingle: ${JSON.stringify(heard)}`);
   assert.ok(heard['item-scriptorium-key']?.includes('holdUpJingle'), `the key's jingle: ${JSON.stringify(heard)}`);
 });
 
