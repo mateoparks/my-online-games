@@ -23,6 +23,11 @@
     npcRose: '#c8485a',
     npcRoseDark: '#983244',
     npcRoseLight: '#e57585',
+    npcBlack: '#3a333c',
+    npcBlackLight: '#5a525d',
+    npcGray: '#b3b1aa',
+    skinBrown: '#a5683f',
+    skinBrownShade: '#83502f',
   });
 
   // ---------- looks: 12×14 like the hero, three frames per facing ----------
@@ -67,20 +72,38 @@
     ],
   };
 
+  // The hair at the temples of the short head, [row, column] per facing: a
+  // look with `temples` grays these few.
+  const TEMPLES = {
+    down: [[3, 2], [3, 9]],
+    up: [[5, 3], [5, 8]],
+    left: [[3, 4], [4, 5]],
+  };
+  function headRows(id, head, facing, temples) {
+    const rows = HEADS[head][facing];
+    if (!temples) return rows;
+    if (head !== 'short') throw new Error(`npc look ${id}: temples need the short head`);
+    const grid = rows.map((row) => [...row]);
+    for (const [r, c] of TEMPLES[facing]) grid[r][c] = 'g';
+    return grid.map((row) => row.join(''));
+  }
+
   VL.NPC_LOOKS = {};
 
-  // colors: { hair, hairLight, top, topDark, topLight, legs, hat?, hatLight? } (palette names).
+  // colors: { hair, hairLight, top, topDark, topLight, legs, hat?, hatLight?,
+  // skin?, skinShade?, temples? } (palette names).
   VL.defineNpcLook = function defineNpcLook(id, { head = 'short', colors }) {
     if (VL.NPC_LOOKS[id]) throw new Error(`npc look ${id} is already defined`);
     if (!HEADS[head]) throw new Error(`npc look ${id}: no head ${head}`);
     const map = {
-      h: colors.hair, H: colors.hairLight, s: 'skin', S: 'skinShade', e: 'ink',
+      h: colors.hair, H: colors.hairLight, s: colors.skin || 'skin', S: colors.skinShade || 'skinShade', e: 'ink',
       t: colors.top, d: colors.topDark, l: colors.topLight, b: colors.legs || 'boots',
     };
     if (head === 'hat') Object.assign(map, { a: colors.hat, A: colors.hatLight });
+    if (colors.temples) map.g = colors.temples;
     for (const facing of ['down', 'up', 'left']) {
       LEGS[facing].forEach((feet, frame) => {
-        VL.ART.defineSprite(`npc-${id}-${facing}-${frame}`, { colors: map, rows: [...HEADS[head][facing], ...BODY[facing], ...feet] });
+        VL.ART.defineSprite(`npc-${id}-${facing}-${frame}`, { colors: map, rows: [...headRows(id, head, facing, colors.temples), ...BODY[facing], ...feet] });
       });
     }
     for (let frame = 0; frame < 3; frame += 1) VL.ART.defineSprite(`npc-${id}-right-${frame}`, { mirrorOf: `npc-${id}-left-${frame}` });

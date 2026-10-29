@@ -23,32 +23,55 @@
     }
   }
 
-  // Sprites in canvas pixels, heads included.
+  // Sprites in canvas pixels as drawn (12×14 plus the outline, a pixel of
+  // bob or lift above).
   const heroSprite = (game) => {
-    const { tile, hudHeight } = VL.TUNING;
-    return { x: game.player.x - tile / 2, y: hudHeight + game.player.y - 18, w: tile, h: 24 };
+    const { hudHeight } = VL.TUNING;
+    const lift = Math.round(game.player.lift || 0);
+    return { x: game.player.x - 7, y: hudHeight + game.player.y - 12 - lift, w: 14, h: 18 };
   };
   const npcSprite = (entity) => {
-    const { tile, hudHeight } = VL.TUNING;
+    const { hudHeight } = VL.TUNING;
     const feet = VL.npcFeet(entity, 0, hudHeight);
-    return { x: feet.x - tile / 2, y: feet.y - 22, w: tile, h: 24 };
+    return { x: Math.round(feet.x) - 7, y: Math.round(feet.y) - 12, w: 14, h: 18 };
+  };
+  // A speaker drawn by decor (her on the gallery) gives its own box in tile
+  // pixels: `speakerBox`.
+  const speakerSprite = (entity) => {
+    if (!entity.speakerBox) return npcSprite(entity);
+    const { tile, hudHeight } = VL.TUNING;
+    const box = entity.speakerBox;
+    return { x: entity.x * tile + box.x, y: hudHeight + entity.y * tile + box.y, w: box.w, h: box.h };
   };
   const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
-  // The half away from the hero, unless the box there would hide the hero or
-  // the speaker and the other half hides neither (Mr. Fenwick behind his desk).
+  // The half away from the one speaking, so the box flips as the talk passes
+  // between people and the speaker stands clear of it (Matthew: her box low,
+  // his high). It is never over the speaker; the hero decides only when
+  // nobody on screen speaks or that half would hide the speaker.
   VL.dialogueSide = function dialogueSide(game, speaker, popup) {
-    const { tile, rows } = VL.TUNING;
-    const away = game.player.y > (rows * tile) / 2 ? 'top' : 'bottom';
-    const sprites = [heroSprite(game), ...(speaker ? [npcSprite(speaker)] : [])];
-    const clear = (at) => !sprites.some((sprite) => overlaps(VL.ART.popupLayout({ ...popup, at }), sprite));
-    if (clear(away)) return away;
-    const other = away === 'top' ? 'bottom' : 'top';
-    return clear(other) ? other : away;
+    const { tile, rows, hudHeight } = VL.TUNING;
+    const hero = heroSprite(game);
+    const talker = speaker ? speakerSprite(speaker) : null;
+    const lower = (sprite) => sprite.y - hudHeight + sprite.h / 2 > (rows * tile) / 2;
+    const hides = (at, sprite) => overlaps(VL.ART.popupLayout({ ...popup, at }), sprite);
+    const awayFrom = (sprite) => (lower(sprite) ? 'top' : 'bottom');
+    const flip = (at) => (at === 'top' ? 'bottom' : 'top');
+    if (talker) {
+      const away = awayFrom(talker);
+      if (!hides(away, talker)) return away;
+      return hides(flip(away), talker) ? away : flip(away);
+    }
+    const away = awayFrom(hero);
+    return hides(away, hero) && !hides(flip(away), hero) ? flip(away) : away;
   };
 
-  const speakerEntity = (game, name) =>
-    game.room?.entities?.find((entity) => entity.type === 'npc' && VL.NPCS[entity.id] && VL.popupText(VL.NPCS[entity.id].name, game) === name) || null;
+  // The one speaking, by the name on the box: a person, or decor that stands
+  // for one (`speaker: <npc id>`).
+  const speakerEntity = (game, name) => game.room?.entities?.find((entity) => {
+    const id = entity.type === 'npc' ? entity.id : entity.speaker;
+    return id && VL.NPCS[id] && VL.popupText(VL.NPCS[id].name, game) === name;
+  }) || null;
 
   VL.defineScene('dialogue', {
     // data: { speaker, pages (from VL.dialoguePages), shop, end (for VL.endTalk),
@@ -100,7 +123,7 @@
         left -= line.length + 1;
       }
       const done = view.shown >= pageText(view).length;
-      const speaker = view.speakers?.[view.page] ?? view.speaker;
+      const speaker = VL.popupText(view.speakers?.[view.page] ?? view.speaker, game);
       // Placed for the full page, so the box never jumps while it types out.
       const at = VL.dialogueSide(game, speakerEntity(game, speaker), { title: speaker, text: Array.from({ length: height }, (_, i) => view.pages[view.page][i] ?? '').join('\n') });
       VL.ART.drawPopup(ctx, { title: speaker, text: lines.join('\n'), at, prompt: done }, t);

@@ -97,7 +97,9 @@
 
   // ---------- people ----------
 
-  VL.defineNpcLook('librarian', { head: 'short', colors: { hair: 'npcSilver', hairLight: 'npcSilverLight', top: 'npcNavy', topDark: 'npcNavyDark', topLight: 'npcNavyLight', legs: 'woodDark' } });
+  // Mr. Fenwick: warm brown skin, black hair just gray at the temples (W39:
+  // clear of Gran Ottie's white bun and fair face).
+  VL.defineNpcLook('librarian', { head: 'short', colors: { hair: 'npcBlack', hairLight: 'npcBlackLight', temples: 'npcGray', skin: 'skinBrown', skinShade: 'skinBrownShade', top: 'npcNavy', topDark: 'npcNavyDark', topLight: 'npcNavyLight', legs: 'woodDark' } });
   VL.defineNpcLook('librarianWife', { head: 'bun', colors: { hair: 'npcBlonde', hairLight: 'npcBlondeLight', top: 'npcRose', topDark: 'npcRoseDark', topLight: 'npcRoseLight' } });
   VL.defineNpcLook('chickenKid', { head: 'short', colors: { hair: 'hair', hairLight: 'hairLight', top: 'gold', topDark: 'woodDark', topLight: 'goldLight' } });
 

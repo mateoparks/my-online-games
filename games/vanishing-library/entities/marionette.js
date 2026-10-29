@@ -73,8 +73,8 @@
   const joint = (ctx, x, y) => rect(ctx, 'woodLight', x, y, 1, 1);
 
   const LOOKS = {
-    hero: { hair: 'hair', top: 'tunic', topDark: 'tunicDark', legs: 'boots' },
-    librarian: { hair: 'npcSilver', top: 'npcNavy', topDark: 'npcNavyDark', legs: 'woodDark' },
+    hero: { skin: 'skin', hair: 'hair', top: 'tunic', topDark: 'tunicDark', legs: 'boots' },
+    librarian: { skin: 'skinBrown', hair: 'npcBlack', temples: 'npcGray', top: 'npcNavy', topDark: 'npcNavyDark', legs: 'woodDark' },
   };
   // The hero marionette wears the player's clothes and hair (`m.look`, W37).
   function lookOf(m) {
@@ -85,13 +85,13 @@
   }
 
   // An arm from the shoulder up to the hand the string holds (or hanging when cut).
-  function arm(ctx, from, hand, color) {
+  function arm(ctx, from, hand, color, skin) {
     const steps = 4;
     for (let i = 0; i <= steps; i += 1) {
       const x = Math.round(from.x + ((hand.x - from.x) * i) / steps);
       const y = Math.round(from.y + ((hand.y - from.y) * i) / steps);
       rect(ctx, 'outline', x - 1, y - 1, 4, 4);
-      rect(ctx, i === steps ? 'skin' : color, x, y, 2, 2);
+      rect(ctx, i === steps ? skin : color, x, y, 2, 2);
     }
   }
 
@@ -114,8 +114,8 @@
     else rect(ctx, 'white', bx - 1, y - 4, 2, 3);
     // Arms up to the strings; a cut one hangs.
     const hands = shape(m).hands.map((dx, i) => (m.strings[i].cut ? { x: bx + (dx / SCALE) * 0.6, y: y + 4 } : { x: x + dx / SCALE - 1, y: y - shape(m).reach / SCALE - 1 }));
-    arm(ctx, { x: bx - 7, y: y - 3 }, hands[0], look.top);
-    arm(ctx, { x: bx + 5, y: y - 3 }, hands[1], look.top);
+    arm(ctx, { x: bx - 7, y: y - 3 }, hands[0], look.top, look.skin);
+    arm(ctx, { x: bx + 5, y: y - 3 }, hands[1], look.top, look.skin);
     if (m.puppet === 'librarian') part(ctx, 'heart', hands[1].x - 1, hands[1].y - 3, 4, 3);
     if (m.puppet === 'hero') part(ctx, 'wood', hands[1].x, hands[1].y - 7, 2, 7);
     // A big painted head.
@@ -125,10 +125,14 @@
       part(ctx, look.hair, hx - 3, y - 12, 3, 9);
       part(ctx, look.hair, hx + 10, y - 12, 3, 9);
     }
-    part(ctx, 'skin', hx, y - 14, 10, 9);
+    part(ctx, look.skin, hx, y - 14, 10, 9);
     rect(ctx, look.hair, hx, y - 14, 10, 3);
     rect(ctx, look.hair, hx, y - 11, 1, 3);
     rect(ctx, look.hair, hx + 9, y - 11, 1, 3);
+    if (look.temples) {
+      rect(ctx, look.temples, hx, y - 12, 1, 2);
+      rect(ctx, look.temples, hx + 9, y - 12, 1, 2);
+    }
     rect(ctx, 'ink', hx + 2, y - 10, 2, 2);
     rect(ctx, 'ink', hx + 6, y - 10, 2, 2);
     if (m.puppet === 'librarian') {
@@ -175,7 +179,7 @@
     const look = lookOf(m);
     part(ctx, look.top, x - 7, y + 3, 12, 6);
     part(ctx, look.legs, x + 5, y + 6, 6, 3);
-    part(ctx, 'skin', x - 11, y + 1, 8, 7);
+    part(ctx, look.skin, x - 11, y + 1, 8, 7);
     rect(ctx, look.hair, x - 11, y + 1, 8, 2);
     if (look.long) rect(ctx, look.hair, x - 11, y + 3, 1, 5);
     rect(ctx, 'ink', x - 9, y + 4, 1, 1);

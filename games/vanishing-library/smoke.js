@@ -2611,7 +2611,7 @@ async function main() {
     // hall (her words from the gallery, the three marionettes), Space through
     // a string and the last string cut (all three down), her coming down,
     // the confession show, the apology and forgiveness, the ending (shelves
-    // filling, the town's cheer, the book about the hero, the promise), the
+    // filling, the book about the hero, the town's cheer), the
     // credits, THE END and the title; then her kind show and the full
     // library. Saved as w20-*.png.
     {
@@ -2759,7 +2759,7 @@ async function main() {
       if (!(await waitFor("VL.app.sceneId === 'ending'", 2000))) w20Problems.push(`no ending: ${await see('VL.app.sceneId')}`);
       await sleep(1600);
       await shot('w20-ending-fill');
-      const beatShots = { 2: 'w20-ending-thanks', 3: 'w20-ending-cheer', 4: 'w20-ending-book', 6: 'w20-ending-promise', 8: 'w20-ending-town-books' };
+      const beatShots = { 1: 'w20-ending-book', 2: 'w20-ending-thanks', 3: 'w20-ending-cheer', 4: 'w20-ending-town-books' };
       for (let i = 0; i < 40 && (await see('VL.app.ending.phase')) === 'beats'; i += 1) {
         const beat = await see('VL.app.ending.beat');
         if (beatShots[beat]) {
@@ -2891,6 +2891,141 @@ async function main() {
       if (w33Problems.length) failures += 1;
       console.log(`${w33Problems.length ? 'FAIL' : 'ok  '} finale fixes: the puppet behind him fades, Esc in the ending's fade-in, no HUD over the ending, the ammo count inside its slot, ${path.join(outDir, 'w33-*.png')}`);
       for (const problem of w33Problems) console.log(`     ${problem}`);
+    }
+
+    // W39, Matthew's finale talk: every page of the hall's three talks (the
+    // box low while Mrs. Fenwick speaks, high while Mr. Fenwick does, never
+    // over the one speaking), the new confession show beat by beat, the
+    // ending's boxes, and Mr. Fenwick's new look beside Gran Ottie. Real keys
+    // turn the pages. Saved as w39-*.png.
+    {
+      errors.length = 0;
+      const w39Problems = [];
+      const key = { key: 's', code: 'KeyS', windowsVirtualKeyCode: 83, nativeVirtualKeyCode: 83 };
+      const tapS = async () => {
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...key });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...key });
+        if (!(await settle())) w39Problems.push('animation frames stopped after S');
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const waitFor = async (expression, ms = 2000) => {
+        for (let waited = 0; waited < ms; waited += 50) {
+          if (await see(`Boolean(${expression})`)) return true;
+          await sleep(50);
+        }
+        return false;
+      };
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      // The last text box drawn, and every sprite drawn since the frame before.
+      await evaluate(`(() => {
+        if (window.__w39) return;
+        window.__w39 = { sprites: [] };
+        const { drawPopup, drawSprite } = VL.ART;
+        VL.ART.drawPopup = (ctx, popup, t) => (window.__w39.box = drawPopup(ctx, popup, t));
+        VL.ART.drawSprite = (ctx, id, x, y) => {
+          if (id.startsWith('npc-')) window.__w39.sprites.push({ id, x, y });
+          return drawSprite(ctx, id, x, y);
+        };
+      })()`);
+      const stage = (where, flags, setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin' }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'dungeonMap']) g.popups.seen[id] = true;
+        Object.assign(g.items, { woodSword: true, mirrorShield: true });
+        g.hands = { mainHand: 'woodSword', offHand: 'mirrorShield' };
+        g.dungeons.lair.boss = true;
+        VL.markFound(g, 'heartD4');
+        for (const id of ${JSON.stringify(flags)}) g.flags[id] = true;
+        ${setup}
+        g.popups.queue.length = 0;
+        VL.app.setScene('play');
+        VL.place(g, ${JSON.stringify(where)});
+        document.getElementById('game').focus();
+      })()`);
+      // Whether the box now drawn covers the speaker's sprite (npc look `look`).
+      const covered = (look) => see(`(() => {
+        const box = window.__w39.box;
+        const hud = VL.TUNING.hudHeight;
+        return window.__w39.sprites.filter((s) => s.id.startsWith('npc-${look}-')).some((s) => s.x - 1 < box.x + box.w && box.x < s.x + 13 && s.y + hud - 1 < box.y + box.h && box.y < s.y + hud + 15);
+      })()`);
+      const LOOK = { 'Mrs. Fenwick': 'librarianWife', 'Mr. Fenwick': 'librarian' };
+      // Every page of the talk on screen, shot as w39-<name>-<page>.png.
+      const pages = async (name) => {
+        const got = [];
+        for (let page = 0; page < 12 && (await see('VL.app.sceneId')) === 'dialogue'; page += 1) {
+          if (!(await waitFor('VL.app.dialogue.shown >= VL.app.dialogue.pages[VL.app.dialogue.page].join("\\n").length', 6000))) w39Problems.push(`${name} page ${page + 1} never typed out`);
+          await evaluate('window.__w39.sprites.length = 0');
+          await sleep(300);
+          const [speaker, y] = await see('[VL.app.dialogue.speakers[VL.app.dialogue.page], window.__w39.box.y]');
+          await shot(`w39-${name}-${page + 1}`);
+          if (await covered(LOOK[speaker])) w39Problems.push(`${name} page ${page + 1}: the box covers ${speaker}`);
+          got.push([speaker, y > 100 ? 'low' : 'high']);
+          await tapS();
+          await sleep(150);
+        }
+        return got;
+      };
+      const BELOW = ['trapdoorOpen', 'finale:followed'];
+      const AFTER = [...BELOW, 'finale:confronted', 'marionettes'];
+
+      await stage({ area: 'workshop', screen: '0,-1', tx: 7, ty: 9, facing: 'up' }, BELOW);
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'"))) w39Problems.push('no confrontation in the hall');
+      const confronted = await pages('confront');
+      if (JSON.stringify(confronted) !== JSON.stringify([['Mrs. Fenwick', 'low'], ['Mr. Fenwick', 'high'], ['Mrs. Fenwick', 'low']])) w39Problems.push(`confrontation boxes: ${JSON.stringify(confronted)}`);
+
+      await stage({ area: 'workshop', screen: '0,-1', tx: 4, ty: 8, facing: 'up' }, AFTER);
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'", 3000))) w39Problems.push('she did not speak after the fight');
+      const asked = await pages('after-fight');
+      if (asked.length !== 3 || asked.some(([who, at]) => at !== (who === 'Mr. Fenwick' ? 'high' : 'low'))) w39Problems.push(`after the fight: ${JSON.stringify(asked)}`);
+      if (!(await waitFor("VL.app.sceneId === 'puppetShow'"))) w39Problems.push('no confession show');
+      for (let beat = 0; beat < 6 && (await see('VL.app.sceneId')) === 'puppetShow'; beat += 1) {
+        if (!(await waitFor('VL.app.puppetShow.shown >= VL.popupText(VL.app.puppetShow.show.beats[VL.app.puppetShow.beat].say, g).length', 6000))) w39Problems.push(`show beat ${beat + 1} never typed out`);
+        await sleep(700);
+        await shot(`w39-show-${beat + 1}`);
+        await tapS();
+      }
+      if (!(await waitFor("VL.app.sceneId === 'dialogue'", 3000))) w39Problems.push('no forgiveness after the show');
+      const forgiven = await pages('forgiven');
+      if (forgiven.length !== 5 || forgiven.some(([who, at]) => at !== (who === 'Mr. Fenwick' ? 'high' : 'low'))) w39Problems.push(`forgiveness: ${JSON.stringify(forgiven)}`);
+
+      // The ending, a shot of every box.
+      if (!(await waitFor("VL.app.sceneId === 'ending' && VL.app.ending.phase === 'beats'", 4000))) w39Problems.push('no ending');
+      for (let beat = 0; beat < 5 && (await see('VL.app.ending.phase')) === 'beats'; beat += 1) {
+        const ready = 'VL.app.ending.shown >= VL.popupText(VL.ENDING_BEATS[VL.app.ending.beat].say, g).length && VL.app.ending.fill >= (VL.ENDING_BEATS[VL.app.ending.beat].fill || 0)';
+        if (!(await waitFor(ready, 8000))) w39Problems.push(`ending box ${beat + 1} never typed out`);
+        await evaluate('window.__w39.sprites.length = 0');
+        await sleep(600);
+        await shot(`w39-ending-${beat + 1}`);
+        const { speaker } = await see('VL.ENDING_BEATS[VL.app.ending.beat]');
+        const look = speaker && (await see(`Object.values(VL.NPCS).find((n) => n.name === ${JSON.stringify(speaker)})?.look || null`));
+        if (look && (await covered(look))) w39Problems.push(`ending box ${beat + 1} covers ${speaker}`);
+        await tapS();
+      }
+
+      // Mr. Fenwick beside Gran Ottie at the well, and at his desk.
+      await stage({ area: 'overworld', screen: '2,0', tx: 8, ty: 9, facing: 'up' }, ['trapdoorOpen', 'forgiven'], 'g.finished = true;');
+      await evaluate(`(() => {
+        const g = VL.app.game;
+        const gran = g.room.entities.find((e) => e.type === 'npc' && e.id === 'gran');
+        Object.assign(gran, { wander: 0, facing: 'down' });
+        g.room.entities.push({ type: 'npc', id: 'librarian', x: gran.x + 1, y: gran.y, facing: 'down', wander: 0 });
+      })()`);
+      await sleep(400);
+      await shot('w39-fenwick-and-gran');
+      await stage({ area: 'library', screen: '0,0', tx: 7, ty: 6, facing: 'up' }, []);
+      await sleep(400);
+      await shot('w39-fenwick-library');
+      const skins = await see("[VL.ART.color('skinBrown'), VL.ART.sprite('npc-librarian-down-0').runs.map((r) => r.color), VL.ART.sprite('npc-' + VL.NPCS.gran.look + '-down-0').runs.map((r) => r.color)]");
+      if (!skins[1].includes(skins[0]) || skins[2].includes(skins[0])) w39Problems.push('Mr. Fenwick and Gran share a skin colour');
+
+      w39Problems.push(...errors);
+      if (w39Problems.length) failures += 1;
+      console.log(`${w39Problems.length ? 'FAIL' : 'ok  '} W39 finale talk: the hall's talks with the box clear of whoever speaks (hers low, his high), the new confession show, the ending's boxes, Mr. Fenwick beside Gran, ${path.join(outDir, 'w39-*.png')}`);
+      for (const problem of w39Problems) console.log(`     ${problem}`);
     }
 
     // W35, Matthew's fourth playtest notes on the dungeons: a seed over the

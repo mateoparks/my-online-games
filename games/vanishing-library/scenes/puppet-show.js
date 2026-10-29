@@ -46,8 +46,8 @@
     rows: ['..hH..', '.hhhh.', 'hseseh', '.ssss.', '.tttt.', 'tttttt', 'tTttTt', 'tttttt', '..ww..', '..ww..'],
   });
   VL.ART.defineSprite('puppet-librarian', {
-    colors: { h: 'npcSilver', s: 'skin', e: 'ink', g: 'metalDark', t: 'npcNavy', T: 'npcNavyDark', w: stick },
-    rows: ['.hhhh.', 'hhhhhh', 'hgegeg', '.ssss.', 'tttttt', 'tTttTt', '.tttt.', '..ww..', '..ww..'],
+    colors: { h: 'npcBlack', G: 'npcGray', s: 'skinBrown', e: 'ink', g: 'metalDark', t: 'npcNavy', T: 'npcNavyDark', w: stick },
+    rows: ['.hhhh.', 'GhhhhG', 'hgegeg', '.ssss.', 'tttttt', 'tTttTt', '.tttt.', '..ww..', '..ww..'],
   });
   VL.ART.defineSprite('puppet-book', {
     colors: { r: 'heart', w: 'white', d: 'heartLight', s: stick },
@@ -66,7 +66,8 @@
 
   // Each beat: words under the stage, and where each puppet stands across the
   // stage (0 left .. 1 right); a puppet not named this beat ducks out of
-  // sight. `move` adds a little action: 'hop', 'shake', 'run' or 'fly'.
+  // sight. `move` adds a little action: 'hop', 'shake', 'run', 'fly' or
+  // 'sigh' (a slow droop and lift, for missing home).
   VL.PUPPET_SHOWS = [
     {
       title: 'The Dragon Who Wanted a Hug',
@@ -123,13 +124,11 @@
     title: 'The Puppeteer Who Missed Home',
     sky: 'showSkyDusk',
     beats: [
-      { say: 'Once upon a time, a puppeteer lived in a little town by the sea. But it was not her town.', cast: { wife: 0.5 } },
-      { say: 'Her home was far over the hills, and she missed it every single day.', cast: { wife: 0.3, house: 0.75 }, move: { wife: 'shake' } },
-      { say: 'She married a kind librarian. He loved his books and this town, and he would never, ever leave.', cast: { wife: 0.35, librarian: 0.65 }, move: { librarian: 'hop' } },
-      { say: 'So she had a sad, silly idea. If the books were gone, perhaps he would want to leave too.', cast: { wife: 0.4, book: 0.7 } },
+      { say: 'Once upon a time, a puppeteer lived in a little town by the sea. But it was not her town, and she missed home.', cast: { wife: 0.45 }, move: { wife: 'sigh' } },
+      { say: 'She married a kind librarian who would never, ever leave his books. So she had a sad, silly idea: if the books were gone, perhaps he would leave too.', cast: { wife: 0.3, librarian: 0.6, book: 0.82 }, move: { librarian: 'hop' } },
       { say: 'Every night, she carried books up a secret tunnel to a sleepy old dragon, who was glad to keep them.', cast: { wife: 0.25, book: 0.5, dragon: 0.78 }, move: { book: 'run' } },
-      { say: 'But the library only grew sadder, and so did the librarian. And so, at last, did she.', cast: { librarian: 0.4, wife: 0.65 }, move: { librarian: 'shake', wife: 'shake' } },
-      { say: 'Then a brave young hero came along, and brought every book back home.', cast: { hero: 0.35, book: 0.6 }, move: { hero: 'hop' } },
+      { say: 'But the library and its librarian only grew sadder, and so did she.', cast: { librarian: 0.38, wife: 0.65 }, move: { librarian: 'sigh', wife: 'sigh' } },
+      { say: 'Then a brave young hero came along, and brought every book back home.', cast: { hero: 0.3, book: 0.52, librarian: 0.76 }, move: { hero: 'hop', book: 'hop' } },
       { speaker: 'Mrs. Fenwick', say: 'The end.', cast: { wife: 0.5 } },
     ],
   };
@@ -255,6 +254,7 @@
         if (actor.move === 'hop') py -= Math.round(Math.abs(Math.sin(t * 6)) * 6);
         if (actor.move === 'run') py -= Math.round(Math.abs(Math.sin(t * 12)) * 3);
         if (actor.move === 'shake') px += Math.round(Math.sin(t * 30) * 2);
+        if (actor.move === 'sigh') py += Math.round((Math.sin(t * 1.6) + 1) * 2);
         if (actor.move === 'fly') {
           const k = Math.min(1, actor.since / 1.2);
           px += k * 90;
