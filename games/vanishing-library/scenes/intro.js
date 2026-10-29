@@ -5,7 +5,7 @@
   VL.INTRO_LINES = [
     'In a world where books mysteriously disappear,',
     'one brave adventurer has set out',
-    'to save his culture from oblivion...',
+    'to save {his} culture from oblivion...',
   ];
   const lineDelay = 2.4;
   const fade = 1.2;
@@ -42,7 +42,7 @@
       VL.INTRO_LINES.forEach((content, i) => {
         const alpha = VL.clamp((elapsed - i * lineDelay) / fade, 0, 1);
         if (alpha <= 0) return;
-        const rows = VL.ART.wrapText(content, WRAP_WIDTH);
+        const rows = VL.ART.wrapText(VL.popupText(content, app.game), WRAP_WIDTH);
         ctx.save();
         rows.forEach((row, r) => {
           const y = LINE_TOP + i * LINE_SPACING + r * line;

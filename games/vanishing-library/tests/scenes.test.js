@@ -217,10 +217,13 @@ test('name entry trims spaces and Esc goes back to the title without a game', ()
 test('the intro shows the three weathered lines, then plays on its own', () => {
   const { VL, document } = loadGame();
   assert.equal(VL.INTRO_LINES.length, 3);
-  assert.equal(VL.INTRO_LINES.join(' '), 'In a world where books mysteriously disappear, one brave adventurer has set out to save his culture from oblivion...');
+  assert.equal(VL.INTRO_LINES.join(' '), 'In a world where books mysteriously disappear, one brave adventurer has set out to save {his} culture from oblivion...');
   for (const line of VL.INTRO_LINES) {
-    assert.deepEqual([...VL.ART.missingGlyphs(line)], [], line);
-    assert.ok(VL.ART.wrapText(line, 232).length <= 2, 'each line fits in two rows');
+    for (const gender of VL.HERO_GENDERS) {
+      const shown = VL.popupText(line, { look: { gender } });
+      assert.deepEqual([...VL.ART.missingGlyphs(shown)], [], shown);
+      assert.ok(VL.ART.wrapText(shown, 232).length <= 2, 'each line fits in two rows');
+    }
   }
   const { app } = titleApp(VL);
   newGameTo(VL, app, 'Ash', 0, 'intro');

@@ -131,9 +131,9 @@ const slideSetup = `(() => {
           return drawScreen.call(this, ctx, screenArea, screenKey, ox, oy, ...rest);
         };
         const drawHero = VL.ART.drawHero;
-        VL.ART.drawHero = function (ctx, player, x, y, t) {
+        VL.ART.drawHero = function (ctx, player, x, y, ...rest) {
           if (VL.app.game.transition) window.__slideDraws.push({ hero: true, x, y });
-          return drawHero.call(this, ctx, player, x, y, t);
+          return drawHero.call(this, ctx, player, x, y, ...rest);
         };
         return JSON.stringify({ dir, dx, dy, from: key, to: VL.neighborKey(key, dx, dy), tx, ty });
       }
@@ -437,6 +437,118 @@ async function main() {
       if (soundProblems.length) failures += 1;
       console.log(`${soundProblems.length ? 'FAIL' : 'ok  '} sound: context ${sound.state}, mute toggles and persists, ${path.join(outDir, 'muted.png')}`);
       for (const problem of soundProblems) console.log(`     ${problem}`);
+    }
+
+    // W37's look with real keys: a new game in slot 3, a girl, every clothes
+    // colour with short and long hair on the chooser (w37-look-<outfit>-<hair>),
+    // then pink and long into the intro ("her culture") and play; each outfit
+    // in the world on sand under grass (w37-world-<outfit>), every facing
+    // (w37-facing-<facing>), the hero puppet on stage (w37-puppet-show) and the
+    // title hero in the slot's look (w37-title-look). A block of its own.
+    {
+      errors.length = 0;
+      const lookProblems = [];
+      const codes = { Enter: [13, 'Enter'], Escape: [27, 'Escape'], KeyS: [83, 's'], ArrowDown: [40, 'ArrowDown'], ArrowUp: [38, 'ArrowUp'], ArrowLeft: [37, 'ArrowLeft'], ArrowRight: [39, 'ArrowRight'] };
+      const hit = async (code, keyName) => {
+        const [vkCode, name] = codes[code] || [code.charCodeAt(3), keyName];
+        const event = { key: keyName || name, code, windowsVirtualKeyCode: vkCode, nativeVirtualKeyCode: vkCode };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) lookProblems.push(`animation frames stopped after ${code}`);
+      };
+      const snap = async (name) => {
+        const rect = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const { data } = await call('Page.captureScreenshot', { format: 'png', clip: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+      };
+      const peek = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { return ${expression}; })())`));
+      await evaluate("localStorage.removeItem('vanishing-library-slot-3'); VL.app.setScene('title', { slot: 2 }); document.getElementById('game').focus()");
+      await hit('Enter');
+      if ((await peek('VL.app.sceneId')) !== 'name') lookProblems.push('Enter on slot 3 did not open name entry');
+      for (const ch of 'Sky') await hit(`Key${ch.toUpperCase()}`, ch);
+      await hit('ArrowDown');
+      await hit('ArrowRight');
+      await hit('ArrowDown');
+      const outfits = await peek('VL.HERO_OUTFITS');
+      for (const [i, outfit] of outfits.entries()) {
+        if (i) await hit('ArrowRight');
+        await hit('ArrowDown');
+        for (const hair of ['short', 'long']) {
+          await hit(hair === 'long' ? 'ArrowRight' : 'ArrowLeft');
+          const look = await peek('VL.app.naming.look');
+          if (look.outfit !== outfit || look.hair !== hair || look.gender !== 'girl') lookProblems.push(`the chooser shows ${JSON.stringify(look)}, expected a girl in ${outfit} with ${hair} hair`);
+          await sleep(150);
+          await snap(`w37-look-${outfit}-${hair}`);
+        }
+        await hit('ArrowUp');
+      }
+      // Back to pink, long hair, then START.
+      await hit('ArrowLeft');
+      await hit('ArrowDown');
+      await hit('ArrowRight');
+      await hit('ArrowDown');
+      await hit('KeyS', 's');
+      if ((await peek('VL.app.sceneId')) !== 'intro') lookProblems.push(`S on START went to ${await peek('VL.app.sceneId')}`);
+      const intro = await peek('VL.popupText(VL.INTRO_LINES[2], VL.app.game)');
+      if (intro !== 'to save her culture from oblivion...') lookProblems.push(`the intro says ${JSON.stringify(intro)}`);
+      const saved = await peek("JSON.parse(localStorage.getItem('vanishing-library-slot-3') || 'null')");
+      if (!saved || JSON.stringify(saved.look) !== JSON.stringify({ outfit: 'pink', hair: 'long', gender: 'girl' }) || saved.name !== 'Sky') lookProblems.push(`slot 3 holds ${JSON.stringify(saved && { name: saved.name, look: saved.look })}`);
+      await sleep(600);
+      await hit('KeyS', 's');
+      await sleep(400);
+      await hit('KeyS', 's');
+      if ((await peek('VL.app.sceneId')) !== 'play') lookProblems.push(`after the intro and the controls popup: ${await peek('VL.app.sceneId')}`);
+      // Sand with grass just above it, away from the screen edges.
+      const spot = await peek(`(() => {
+        for (const key of Object.keys(VL.AREAS.overworld.screens)) {
+          const tiles = VL.getScreen('overworld', key).tiles;
+          for (let ty = 3; ty < 9; ty += 1) for (let tx = 3; tx < 13; tx += 1) {
+            if (tiles[ty][tx] === 's' && tiles[ty + 1][tx] === 's' && tiles[ty][tx - 1] === 's' && tiles[ty][tx + 1] === 's' && tiles[ty - 1][tx] === '.' && tiles[ty - 1][tx - 1] === '.') return { area: 'overworld', screen: key, tx, ty };
+          }
+        }
+        return null;
+      })()`);
+      if (!spot) lookProblems.push('no sand under grass to stand the hero on');
+      const stand = (look, facing) => evaluate(`(() => {
+        const g = VL.app.game;
+        g.look = ${JSON.stringify(look)};
+        VL.place(g, ${JSON.stringify({ ...spot, facing })});
+        g.room.entities = g.room.entities.filter((e) => !VL.ENEMIES[e.type]);
+        g.player.moving = false;
+      })()`);
+      if (spot) {
+        for (const outfit of outfits) {
+          await stand({ outfit, hair: 'long', gender: 'girl' }, 'down');
+          await sleep(200);
+          const drawn = await peek("(() => { const ids = []; const d = VL.ART.drawSprite; VL.ART.drawSprite = (c, id, ...r) => { ids.push(id); return d(c, id, ...r); }; VL.drawWorld(document.createElement('canvas').getContext('2d'), VL.app.game, 0); VL.ART.drawSprite = d; return ids.filter((id) => id.startsWith('hero-')); })()");
+          if (!drawn.includes(`hero-down-0~${outfit}-long`)) lookProblems.push(`${outfit}: the world drew ${drawn}`);
+          await snap(`w37-world-${outfit}`);
+        }
+        for (const facing of ['down', 'left', 'up', 'right']) {
+          await stand({ outfit: 'yellow', hair: 'long', gender: 'girl' }, facing);
+          await sleep(150);
+          await snap(`w37-facing-${facing}`);
+        }
+      }
+      await evaluate("VL.app.game.look = { outfit: 'pink', hair: 'long', gender: 'girl' }; VL.app.setScene('puppetShow', { show: 0 })");
+      const heroBeat = 'VL.app.puppetShow.show.beats[VL.app.puppetShow.beat].cast.hero !== undefined';
+      for (let i = 0; i < 8 && !(await peek(heroBeat)); i += 1) {
+        await sleep(120);
+        await hit('KeyS', 's');
+      }
+      await sleep(700);
+      const onStage = await peek(heroBeat);
+      if (!onStage) lookProblems.push('the hero puppet is not on stage for the shot');
+      await snap('w37-puppet-show');
+      await hit('Escape');
+      await evaluate("VL.app.setScene('title', { slot: 2 })");
+      await sleep(150);
+      await snap('w37-title-look');
+      await evaluate("localStorage.removeItem('vanishing-library-slot-3')");
+      lookProblems.push(...errors);
+      if (lookProblems.length) failures += 1;
+      console.log(`${lookProblems.length ? 'FAIL' : 'ok  '} W37 look: the chooser in all ${outfits.length * 2} looks, a girl into the intro, the world, every facing, the puppet show, the title`);
+      for (const problem of lookProblems.slice(0, 8)) console.log(`     ${problem}`);
     }
 
     // W5's core loop with real keys: the hut and its chest (S), the sword and

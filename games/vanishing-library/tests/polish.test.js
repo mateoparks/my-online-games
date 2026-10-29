@@ -57,7 +57,8 @@ test('name entry: ↓ picks START, and S, Space or Enter there starts the game',
     const app = titleApp(VL);
     press(VL, app, 'confirm');
     type(VL, app, 'Sam');
-    press(VL, app, 'down');
+    // W37: the look's three rows sit between the name and START.
+    for (let i = 0; i < 4; i += 1) press(VL, app, 'down');
     assert.equal(app.naming.onStart, true);
     // A real S or Space press also types its character; on START it is the press that counts.
     app.update(VL.actions({ pressed: [confirm], typed: { interact: 's', mainHand: ' ', confirm: '' }[confirm] }), STEP);
@@ -71,12 +72,12 @@ test('name entry: ↑ or typing a letter on START goes back to the field', () =>
   const app = titleApp(VL);
   press(VL, app, 'confirm');
   type(VL, app, 'Sa');
-  press(VL, app, 'down');
-  press(VL, app, 'up');
+  for (let i = 0; i < 4; i += 1) press(VL, app, 'down');
+  for (let i = 0; i < 4; i += 1) press(VL, app, 'up');
   assert.equal(app.naming.onStart, false);
   press(VL, app, 'interact');
   assert.equal(app.sceneId, 'name', 'S in the field is only a letter');
-  press(VL, app, 'down');
+  for (let i = 0; i < 4; i += 1) press(VL, app, 'down');
   type(VL, app, 'm');
   assert.equal(app.naming.onStart, false);
   assert.equal(app.naming.text, 'Sam');
@@ -186,9 +187,9 @@ test('menu sounds: title moves and picks, the delete dialog, and name entry', ()
   press(VL, app, 'confirm');
   assert.deepEqual(played.splice(0), ['menuSelect'], 'an empty slot opens name entry');
   type(VL, app, 'Kit');
-  press(VL, app, 'down');
-  press(VL, app, 'down');
-  assert.deepEqual(played.splice(0), ['menuMove'], 'onto START once');
+  // W37: four rows down to START (past the look's three); a fifth press is silent.
+  for (let i = 0; i < 5; i += 1) press(VL, app, 'down');
+  assert.deepEqual(played.splice(0), ['menuMove', 'menuMove', 'menuMove', 'menuMove'], 'onto START, a sound per row');
   press(VL, app, 'interact');
   assert.ok(played.splice(0).includes('menuSelect'), 'START');
   // Back at the title with Kit in slot 1: the delete dialog.

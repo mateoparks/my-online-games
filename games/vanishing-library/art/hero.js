@@ -48,11 +48,12 @@
 
   // (x, y) is the centre of the feet box (state.player.x/y); boots end at y + 3.
   // `player.lift` raises the hero off the ground (a chicken flight) and leaves
-  // the shadow behind on it.
-  VL.ART.drawHero = function drawHero(ctx, player, x, y, t) {
+  // the shadow behind on it. `look` is the game's (`state.look`, W37); none
+  // draws today's look.
+  VL.ART.drawHero = function drawHero(ctx, player, x, y, t, look) {
     const { sprite, bob } = VL.ART.heroFrame(player, t);
     const lift = Math.round(player.lift || 0);
     VL.ART.drawShadow(ctx, x, y + 2, lift > 4 ? 9 : 11);
-    VL.ART.drawSprite(ctx, sprite, x - 6, y - 10 - bob - lift);
+    VL.ART.drawSprite(ctx, VL.ART.lookSprite(sprite, look), x - 6, y - 10 - bob - lift);
   };
 })();

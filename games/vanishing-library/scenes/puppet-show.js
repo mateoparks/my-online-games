@@ -241,7 +241,9 @@
       for (let i = 0; i < WINDOW.w; i += 1) rect(ctx, 'showHill', WINDOW.x + i, FLOOR - 6 + Math.round(Math.sin(i / 14) * 3), 1, 20);
       for (const [name, actor] of Object.entries(view.actors)) {
         if (actor.rise <= 0) continue;
-        const sprite = VL.ART.sprite(PUPPETS[name]);
+        // The hero puppet wears the player's look (W37).
+        const id = name === 'hero' ? VL.ART.lookSprite(PUPPETS.hero, VL.heroLook(app.game)) : PUPPETS[name];
+        const sprite = VL.ART.sprite(id);
         let px = WINDOW.x + actor.x * WINDOW.w - (sprite.w * SCALE) / 2;
         let py = FLOOR - sprite.h * SCALE + 6 + Math.round((1 - actor.rise) * 40);
         if (actor.move === 'hop') py -= Math.round(Math.abs(Math.sin(t * 6)) * 6);
@@ -258,7 +260,7 @@
         ctx.clip();
         ctx.translate(Math.round(px), Math.round(py));
         ctx.scale(SCALE, SCALE);
-        VL.ART.drawSprite(ctx, PUPPETS[name], 0, 0);
+        VL.ART.drawSprite(ctx, id, 0, 0);
         ctx.restore();
       }
       // The front board hides the puppeteer's hands.
