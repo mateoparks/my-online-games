@@ -1049,6 +1049,10 @@ thorny slime, a step onto lava (`w35-lava.png`), the Lair's guards (a wood
 sword's "Clink!", the metal sword beats them, the cave opens), the hoard
 with no twinkle, the dazed Dragon untouched by wood and tinted by metal
 (`w35-dragon-hit-tint.png`), and the third round's fan (`w35-dragon-fan.png`).
+Then W43's boss life meters: each of the four bosses with its meter full
+and drained by a hit (`w43-meter-<boss>.png`, `w43-meter-<boss>-hit.png`),
+the meter gone once it is beaten, and the Dragon's two strikes a round with
+real keys (`w43-dragon-strike.png`).
 Then W40's hand keys with real keys: Esc, down to Controls
 (`w40-controls.png`), the main hand waiting (`w40-capture.png`), S refused
 with a note (`w40-refused.png`), D refused as the off hand's key, Q taken
@@ -1081,8 +1085,8 @@ with either or both states at R / (R + G + B) of 0.8 or more). WCAG 2.1 and 2.2
 replaced it with a CIE 1976 UCS chromaticity change over 0.2; that test isn't
 added, since every real scene scores 0% on the red check. A control run with the steady layers
 off must fail the first two, and a red-and-black strobe over 6% of the
-canvas the red one. It runs for 360 s at most (about 1.45 times its run time
-of about 250 s alone). A
+canvas the red one. It runs for 540 s of awake time at most (about 1.45 times its run time
+of about 365 s alone, W43; it was 360 s when the run took 250 s). A
 test file that runs no tests, and an `async` test function, both fail the
 node run.
 
@@ -2363,10 +2367,11 @@ the boss door, the Dragon.
 - **The Dragon** (`dragon`, `rooted`, `size: 'big'`): paces the back of the
   hoard after the hero, draws breath (`inhale`, its chest glowing) and
   breathes a ball at him. The sword clinks off, saying nothing (W35);
-  its own ball bounced home dazes it (`onFire`), and then
-  `TUNING.dragonRoundLife` of **metal** sword damage ends the round (a sword
-  in `TUNING.toughSwords`; `onHit` gets the weapon; wood and throws
-  clink). Three rounds, each quicker (`dragonSpeedUp`); the third ends in
+  its own ball bounced home dazes it (`onFire`), and then a **metal** sword
+  strike counts (a sword in `TUNING.toughSwords`; `onHit` gets the weapon;
+  wood and throws clink) and wakes it (`recover`), so every strike needs its
+  own ball bounced home. `TUNING.dragonRoundLife` (4: two metal strikes, W43,
+  Matthew: twice the life) ends the round. Three rounds, each quicker (`dragonSpeedUp`); the third ends in
   a puff of smoke (`defeated`, then gone). Nothing about it blinks (its hp
   is refilled and `hurt` cleared on every hit; a hit shakes it), and the
   flash guard samples the fight. A hit that counts (W35) tints it pale pink
@@ -2383,8 +2388,9 @@ the boss door, the Dragon.
   chest) and breathes a fan: the middle ball aimed at him and two **wild**
   balls `dragonFanSpread` (0.45 rad) either side, purple (`fx-fire-wild-*`),
   which no shield bounces or blocks (size `wildFire`), so they must be
-  dodged; they fly wide of a hero who stands in the middle line. Still one
-  metal hit a round, three rounds; a faint rebuilds the room, so the fight
+  dodged; they fly wide of a hero who stands in the middle line. Two metal
+  hits a round since W43 (six in all, twice W35's three), each round keeping
+  its own attack for both; a faint rebuilds the room, so the fight
   starts again at round one.
 - **The hoard spills** (`onDefeat`): the `lairHoard` decor turns from a
   mound behind the Dragon into books strewn over the floor (and stays so),
@@ -2524,6 +2530,22 @@ with them home (`finale:booksHome`, `finale:home:<id>`). W33's tests: `tests/w33
   (`stringSnap`), `puppetDown` (`puppetClatter`), `marionettesBeaten`
   (`dungeonBoss`), `finaleForgiven` (`libraryChime`), and the credits'
   `endingTune`.
+
+## Boss life meter (W43)
+
+`systems/boss-meter.js`: while one of the four dungeon bosses is fought
+(not the marionettes), a meter with its name sits in the boss room's
+bottom wall row, `VL.BOSS_METER` (play-area pixels, left of the boss gate
+on the door tile). No boss, hero or exit is ever drawn there, and it keeps
+clear of the keys readout, the HUD bar and the room's note; it hides while a
+popup is up (so no box half-covers it) and during a screen slide. It is a
+hero layer drawn in the `overlay` pass. `VL.bossMeter(state)` gives
+`{ name, left, total }` or null: shown from the moment the hero is in the
+room with the boss, empty while it goes up in smoke, gone once it is
+beaten. Each boss's life comes from `VL.BOSS_METERS` (the Bookworm's hits;
+the others' rounds of `life`). A hit's lost part shows lighter for a moment
+and then drains away smoothly; nothing on it blinks (the flash guard).
+Tests: `tests/w43-bosses.test.js`. No saved field.
 
 ## Boss hints (W35)
 
