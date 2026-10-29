@@ -2,9 +2,12 @@
 // Oak's moss key comes up only from the last of its grass dug in one visit,
 // the Scriptorium's boss key waits behind two switches (the second sealed
 // until the first opens a gate), and the Lair's Mirror Shield lies across a
-// room of lava too wide to cross there and back on hearts alone.
+// room of lava too wide to cross there and back on hearts alone, his only
+// once he walks out alive (a faint or a reload puts it back in the chest).
 const assert = require('node:assert/strict');
-const { test, loadGame, playState, hold } = require('./harness');
+const fs = require('node:fs');
+const path = require('node:path');
+const { test, loadGame, playState, hold, memoryStorage } = require('./harness');
 
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -401,18 +404,37 @@ function walkPath(VL, app, path, { eat = true } = {}) {
   return burns;
 }
 
-function shieldApp(VL, { maxHp, berries }) {
-  const app = VL.createApp();
-  app.game = VL.newGame({ name: 'Robin' });
+// In the shield room on the entrance square, saved at the Lair's statue,
+// holding the wood sword and the metal shield, into slot 1 of `storage`.
+function shieldApp(VL, { maxHp, berries, storage = VL.createStorage(memoryStorage()) }) {
+  const app = VL.createApp({ storage });
+  app.startGame(VL.newGame({ name: 'Robin' }), 0, { fresh: true });
   app.setScene('play');
   const game = app.game;
   for (const id of ['controls', 'dungeonMap', 'berries', 'digKey']) game.popups.seen[id] = true;
+  Object.assign(game.items, { woodSword: true, metalShield: true });
+  game.hands = { mainHand: 'woodSword', offHand: 'metalShield' };
   VL.dungeonState(game, 'lair').doors.d4DoorA = true;
   game.maxHp = maxHp;
   game.hp = maxHp;
   game.inventory.berries = berries;
+  VL.touchSavePoint(game, STATUE);
   VL.place(game, { ...SHIELD, tx: ENTRANCE[0], ty: ENTRANCE[1], facing: 'left' });
   return app;
+}
+
+const STATUE = { area: 'lair', screen: '0,0', tx: 3, ty: 3, facing: 'up' };
+const saved = (VL, app) => VL.readSlot(app.storage, 0).save;
+const where = (VL, state) => [state.player.area, state.player.screen, VL.heroTile(state).tx, VL.heroTile(state).ty];
+const shieldChest = (state) => state.room.entities.find((e) => e.type === 'bigChest' && e.id === 'd4ShieldChest');
+
+// The shield is back in its chest and the hands are as they were before it.
+function shieldReturned(VL, state, label) {
+  assert.equal(VL.hasItem(state, 'mirrorShield'), false, `${label}: no shield`);
+  assert.equal(VL.spotFound(state, 'd4ShieldChest'), false, `${label}: the chest is shut again`);
+  assert.equal(state.pendingChest, null, `${label}: nothing pending`);
+  assert.deepEqual(plain(state.hands), { mainHand: 'woodSword', offHand: 'metalShield' }, `${label}: the metal shield back in the off hand`);
+  assert.equal(VL.LOCKS.mirrorShield.reached(state), false, `${label}: the lock is not reached`);
 }
 
 // Along the top: west along row 1 to the chest, then back.
@@ -432,16 +454,129 @@ function openChest(VL, app) {
   }
 }
 
-test('with every heart and no berries he faints on the way back, the Mirror Shield kept', () => {
+test('with every heart and no berries he faints on the way back, and the Mirror Shield slips back into its chest', () => {
   const { VL } = loadGame();
   const app = shieldApp(VL, { maxHp: 20, berries: 0 });
   walkPath(VL, app, ROW_THERE, { eat: false });
   assert.equal(app.sceneId, 'play', 'he reaches the chest on hearts');
   openChest(VL, app);
-  assert.ok(VL.hasItem(app.game, 'mirrorShield'));
+  assert.ok(VL.hasItem(app.game, 'mirrorShield'), 'his to use at once');
+  assert.equal(VL.heldItem(app.game, 'offHand'), 'mirrorShield');
+  assert.equal(app.game.pendingChest.item, 'mirrorShield', 'but only once he leaves');
+  assert.equal(VL.LOCKS.mirrorShield.reached(app.game), false);
+  assert.equal(saved(VL, app).pendingChest.item, 'mirrorShield', 'the autosave knows it is pending');
   walkPath(VL, app, ROW_BACK, { eat: false });
   assert.equal(app.sceneId, 'fainted', 'too far to walk back');
-  assert.deepEqual(plain(app.game.fainted), { cause: 'lava' });
+  assert.deepEqual(plain(app.game.fainted), { cause: 'lava', returned: 'mirrorShield' });
+  shieldReturned(VL, app.game, 'on fainting');
+  assert.equal(shieldChest(app.game).opened, false, 'the chest under the faint screen is shut');
+  const lines = plain(VL.faintLines(app.game));
+  assert.equal(lines[0], 'The Mirror Shield slipped back into its chest.');
+  assert.equal(lines[1], 'Everything else you found is still yours.');
+  assert.ok(!lines.includes('Everything you found is still yours.'));
+  // The save already has it back in the chest, so a reload now agrees.
+  shieldReturned(VL, VL.restoreGame(saved(VL, app)), 'the save after the faint');
+  for (let i = 0; i < 60; i += 1) app.update(VL.actions({}), 1 / 60);
+  app.update(VL.actions({ pressed: ['interact'] }), 1 / 60);
+  assert.equal(app.sceneId, 'play');
+  assert.deepEqual(where(VL, app.game), ['lair', '0,0', 3, 3], 'he wakes at the statue');
+  shieldReturned(VL, app.game, 'awake');
+  // Back at the chest it is shut and full, and opens again.
+  VL.place(app.game, { ...SHIELD, tx: 2, ty: 1, facing: 'left' });
+  assert.equal(shieldChest(app.game).opened, false);
+  openChest(VL, app);
+  assert.ok(VL.hasItem(app.game, 'mirrorShield'), 'the chest gives it again');
+  assert.equal(app.game.pendingChest.item, 'mirrorShield');
+});
+
+test('any other faint keeps the plain words', () => {
+  const { VL } = loadGame();
+  const game = playState(VL, { area: 'lair', screen: '0,0', tx: 3, ty: 4 });
+  VL.faint(game, 'default');
+  assert.deepEqual(plain(VL.faintLines(game)), ['Everything you found is still yours.', 'You wake up at your last save point.']);
+  assert.deepEqual(plain(game.fainted), { cause: 'default' });
+});
+
+test('a reload, or Save & Quit then Continue, while the shield is still pending puts it back in the chest too', () => {
+  const { VL } = loadGame();
+  const app = shieldApp(VL, { maxHp: 20, berries: 0 });
+  VL.place(app.game, { ...SHIELD, tx: 2, ty: 1, facing: 'left' });
+  openChest(VL, app);
+  assert.equal(saved(VL, app).items.mirrorShield, true, 'saved the moment it is taken');
+  const reloaded = VL.reloadApp(app);
+  shieldReturned(VL, reloaded.game, 'after a reload');
+  assert.deepEqual(where(VL, reloaded.game), ['lair', '0,0', 3, 3], 'he wakes at the statue');
+  assert.ok(!reloaded.game.popups.queue.includes('mirrorShield'), 'no popup for a shield he does not have');
+  VL.place(reloaded.game, { ...SHIELD, tx: 2, ty: 1, facing: 'left' });
+  assert.equal(shieldChest(reloaded.game).opened, false, 'the chest is full again');
+
+  // Save & Quit (the pause menu's save, then quit), then Continue on the title.
+  const quitter = shieldApp(VL, { maxHp: 20, berries: 0 });
+  VL.place(quitter.game, { ...SHIELD, tx: 2, ty: 1, facing: 'left' });
+  openChest(VL, quitter);
+  quitter.update(VL.actions({ pressed: ['pause'] }), 1 / 60);
+  assert.equal(quitter.sceneId, 'pause');
+  quitter.update(VL.actions({ pressed: ['down'] }), 1 / 60);
+  quitter.update(VL.actions({ pressed: ['interact'] }), 1 / 60);
+  assert.equal(quitter.game, null, 'quit to the title');
+  assert.equal(saved(VL, quitter).pendingChest.item, 'mirrorShield', 'quit with the shield pending');
+  const continued = VL.loadSlot(quitter.storage, 0);
+  shieldReturned(VL, continued, 'after Continue');
+  assert.deepEqual(where(VL, continued), ['lair', '0,0', 3, 3]);
+});
+
+test('walking out of the lava room alive makes the shield his for good, across a reload', () => {
+  const { VL } = loadGame();
+  const app = shieldApp(VL, { maxHp: 20, berries: 6 });
+  walkPath(VL, app, ROW_THERE);
+  openChest(VL, app);
+  walkPath(VL, app, ROW_BACK);
+  assert.equal(app.game.pendingChest?.item, 'mirrorShield', 'still pending on the entrance square');
+  for (let i = 0; i < 120 && app.game.player.screen === SHIELD.screen; i += 1) app.update(VL.actions({ held: ['right'] }), 1 / 60);
+  assert.equal(app.game.player.screen, '0,-1', 'out through door A');
+  app.update(VL.actions({}), 1 / 60);
+  assert.equal(app.game.pendingChest, null);
+  assert.ok(VL.LOCKS.mirrorShield.reached(app.game), 'the lock is reached');
+  assert.equal(saved(VL, app).pendingChest, null, 'saved as his');
+  const reloaded = VL.reloadApp(app);
+  assert.ok(VL.hasItem(reloaded.game, 'mirrorShield') && VL.spotFound(reloaded.game, 'd4ShieldChest'));
+  assert.equal(VL.heldItem(reloaded.game, 'offHand'), 'mirrorShield');
+  // A faint later, even back in the lava room, keeps it.
+  VL.place(reloaded.game, { ...SHIELD, tx: ENTRANCE[0], ty: ENTRANCE[1] });
+  VL.faint(reloaded.game, 'lava');
+  assert.ok(VL.hasItem(reloaded.game, 'mirrorShield'));
+  assert.deepEqual(plain(reloaded.game.fainted), { cause: 'lava' });
+});
+
+const fixture = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8');
+
+test('the W42 fixture (saved with the shield pending on the lava) continues at the statue, the shield back in its chest', () => {
+  const { VL } = loadGame();
+  const raw = JSON.parse(fixture('save-v1-W42.json'));
+  assert.equal(raw.pendingChest.item, 'mirrorShield');
+  assert.equal(raw.items.mirrorShield, true);
+  const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: fixture('save-v1-W42.json') }));
+  const slot = VL.readSlot(storage, 0);
+  assert.deepEqual(plain(slot.resets), []);
+  const game = VL.loadSlot(storage, 0);
+  shieldReturned(VL, game, 'the W42 fixture');
+  assert.deepEqual(where(VL, game), ['lair', '0,0', 3, 3]);
+});
+
+test('older saves: one without the field loads with nothing pending; one that has the shield keeps it, and a chest whose item he owns pends nothing', () => {
+  const { VL } = loadGame();
+  const before = VL.loadSlot(VL.createStorage(memoryStorage({ [VL.slotKey(0)]: fixture('save-v1-W40.json') })), 0);
+  assert.equal(before.pendingChest, null);
+  const holder = VL.loadSlot(VL.createStorage(memoryStorage({ [VL.slotKey(0)]: fixture('save-v1-W19.json') })), 0);
+  assert.ok(VL.hasItem(holder, 'mirrorShield') && VL.LOCKS.mirrorShield.reached(holder));
+  assert.equal(holder.pendingChest, null);
+  const app = shieldApp(VL, { maxHp: 20, berries: 0 });
+  app.game.items.mirrorShield = true;
+  VL.place(app.game, { ...SHIELD, tx: 2, ty: 1, facing: 'left' });
+  openChest(VL, app);
+  assert.equal(app.game.pendingChest, null, 'nothing to lose: he already had it');
+  VL.faint(app.game, 'lava');
+  assert.ok(VL.hasItem(app.game, 'mirrorShield'));
 });
 
 test('with berries to eat on the way, the round trip is made, even on the fewest hearts he can have there', () => {

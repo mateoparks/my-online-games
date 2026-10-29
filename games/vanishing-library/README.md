@@ -834,7 +834,10 @@ the art kit, and the render smoke in `tests/engine.test.js` covers every one.
   entity). Save & Quit saves; a new game is saved as soon as it is named.
   Dying never saves or loses anything: `VL.faint(state, cause)` → the
   `fainted` scene → `VL.respawn(state)`. `VL.addFaintLine('crab', '…')` adds
-  the line for a cause (`shrub` is already there).
+  the line for a cause (`shrub` is already there). The one exception is a
+  big chest with `keptOnLeaving` (W42, the Mirror Shield across the lava):
+  see "Lifting" (the gloves' bullet). `VL.onLoad((state) => …)` runs on every
+  loaded game before he is placed (`VL.LOAD_HOOKS`).
 - **When a write fails** (the browser ran out of space after boot), the game
   stays dirty and every step retries; play shows "COULD NOT SAVE" and Save &
   Quit stays on the pause menu with the note until a write succeeds
@@ -958,7 +961,9 @@ boulder (`w14-boulder.png`) and the Bookworm up, hit and beaten
 gate, the first switch lifting it and a pot through it throwing the second
 (`w42-niche-shut.png`, `w42-niche-open.png`, `w42-niche-switch.png`), and
 the Lair's lava room with two steps onto it (`w42-lava-room.png`,
-`w42-lava-step.png`). Then W15's Woods and Hollow Oak with real keys: a step
+`w42-lava-step.png`), and the shield taken there on one half heart, the
+next lava step fainting him and the shield slipping back into its chest
+(`w42-shield-returned.png`). Then W15's Woods and Hollow Oak with real keys: a step
 deeper into the Woods without the map leading on (`w15-woods-no-map.png`),
 the pass below the Oak shut by trees (`w15-woods-pass-shut.png`), the same
 step with the map (`w15-woods-map.png`, its popup; `w15-woods-edge-map.png`,
@@ -1707,7 +1712,17 @@ Tests: `tests/lifting.test.js`.
   with `worn: true` is owned without filling a hand. `VL.giveWornItem(state,
   id)` gives one (popup, earned); a `{ type: 'bigChest', id, item }` (solid, S
   opens it once, `found:<id>`) wears a worn item and hands anything else over
-  like a chest.
+  like a chest. With `keptOnLeaving: true` (the Mirror Shield, W42) the item
+  is his at once but counts only once he walks off that screen alive: until
+  then the saved field `pendingChest: { id, item, area, screen, hands }`
+  holds it (fixture `tests/fixtures/save-v1-W42.json`). A faint there, or a
+  reload or Save & Quit → Continue before he leaves, puts it back
+  (`VL.returnPendingChest`: the item and `found:<id>` gone, the hands as they
+  were before it, the chest shut and full again), and the faint screen says
+  "The Mirror Shield slipped back into its chest." above "Everything else you
+  found is still yours." (`VL.faintLines`). Leaving the screen alive clears
+  it (system `pendingChestKept`) and saves. A save without the field, or one
+  that already owns the item, has nothing pending.
 - **What lifts:** S facing an entity whose type says `liftable: 'pot'` (a
   `{ type: 'pot', x, y, respawn? }`, solid), a tile with `rock: true` or a
   tile with `boulder: true` (the canyon's `O`). `VL.tryLift(state)` checks the
@@ -2372,9 +2387,13 @@ the boss door, the Dragon.
   hearts) is less than the round trip: at the fewest, cutting every corner,
   12 burns there and 11 back (23); walked along the walls, 16 and 15 (31).
   So he eats berries on the way (standing still on lava is safe, and E then
-  S eats); the first highland shelf's bush grows back each visit. A faint
-  there keeps the shield (dying never loses anything). The playthrough
-  stocks berries at that bush on the way up (`tests/lair-route.js`).
+  S eats); the first highland shelf's bush grows back each visit. The
+  shield counts only once he walks out alive (Matthew's call): its chest is
+  `keptOnLeaving`, so a faint on the lava, or a reload before he leaves,
+  puts it back in the chest and he wakes at the statue without it (see the
+  gloves' bullet under "Lifting"). The `mirrorShield` lock is reached only
+  once it is no longer pending. The playthrough stocks berries at that bush
+  on the way up and walks back out through door A (`tests/lair-route.js`).
 - **Fire** (`VL.spawnFire(state, { cx, cy, vx, vy, owner })`, entity
   `dragonFire`): flies straight over floors, pits and lava; walls and solid
   things stop it (`VL.fireStops`). It hurts `TUNING.fireDamage` (a full

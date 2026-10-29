@@ -1607,6 +1607,25 @@ async function main() {
       await shot('w42-lava-step');
       if ((await see('g.hp')) !== hpBefore - 2) scrProblems.push(`W42: two lava tiles took ${hpBefore} to ${await see('g.hp')}`);
 
+      // W42: the shield counts only once he walks out alive. Taken with one
+      // half heart left, the first lava step faints him, and it slips back
+      // into its chest (w42-shield-returned.png: the faint screen says so).
+      await scrGame({ area: 'lair', screen: '-1,-1', tx: 2, ty: 1, facing: 'left' }, "g.dungeons.lair.doors.d4DoorA = true; Object.assign(g.items, { woodSword: true, metalShield: true }); g.hands = { mainHand: 'woodSword', offHand: 'metalShield' };");
+      await sleep(200);
+      await tapKey('KeyS');
+      if (!(await waitFor("VL.app.sceneId === 'popup'", 2500))) scrProblems.push('W42: no popup from the shield chest');
+      await sleep(400);
+      await tapKey('KeyS');
+      await waitFor("VL.app.sceneId === 'play'", 1500);
+      const pending = await see("[VL.heldItem(g, 'offHand'), g.pendingChest && g.pendingChest.item]");
+      if (pending.join() !== 'mirrorShield,mirrorShield') scrProblems.push(`W42: the shield taken (off hand, pending) = ${pending}`);
+      await evaluate('VL.app.game.hp = 1');
+      await holdArrowUntil('Right', "VL.app.sceneId === 'fainted'");
+      await sleep(900);
+      await shot('w42-shield-returned');
+      const returned = await see("[VL.app.sceneId, VL.hasItem(g, 'mirrorShield'), g.room.entities.find((e) => e.id === 'd4ShieldChest').opened, VL.heldItem(g, 'offHand'), VL.faintLines(g)[0]]");
+      if (returned.join() !== 'fainted,false,false,metalShield,The Mirror Shield slipped back into its chest.') scrProblems.push(`W42: a faint with the shield pending = ${returned}`);
+
       const rock = await see("(() => { const s = VL.SPOTS.bookScriptoriumRock; return { screen: s.screen, x: s.x, y: s.y }; })()");
       await scrGame({ area: 'overworld', screen: rock.screen, tx: rock.x + 1, ty: rock.y, facing: 'left' });
       await tapKey('KeyS');

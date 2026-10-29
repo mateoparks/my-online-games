@@ -142,7 +142,8 @@ function beatTheGuards(drive) {
 
 // The shield room (W42) is lava but for the square inside door A and the
 // chest in the far corner: the route crosses along the top, 16 burns there
-// and 15 back, eating a berry whenever the next step could faint him.
+// and 15 back, eating a berry whenever the next step could faint him, then
+// walks out through door A, which is when the shield becomes his.
 const SHIELD_THERE = [[14, 4], [14, 3], [14, 2], [14, 1], ...[13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2].map((x) => [x, 1])];
 const SHIELD_BACK = [...[3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map((x) => [x, 1]), [14, 2], [14, 3], [14, 4], [14, 5]];
 const SHIELD_BURNS = SHIELD_THERE.length + SHIELD_BACK.length - 1;
@@ -231,6 +232,10 @@ const route = {
     drive.closePopups();
     crossLava(drive, SHIELD_BACK);
     assert.equal(drive.app.sceneId, 'play', 'back across on berries');
+    // It counts only once he walks out of the room alive (W42).
+    assert.equal(drive.state.pendingChest?.item, 'mirrorShield', 'still the chest\'s until he leaves');
+    walk(drive, at('0,-1', 1, 5));
+    assert.equal(drive.state.pendingChest, null, 'carried out alive: his for good');
     drive.reload();
     assert.ok(VL.hasItem(drive.state, 'mirrorShield'), 'the Mirror Shield survives a reload');
     equipShield(drive);
