@@ -3090,6 +3090,8 @@ async function main() {
       await tapKey('Space');
       await sleep(600);
       if (!(await see('VL.eggOnFace(g)'))) w38Problems.push('no egg on his face');
+      await evaluate("VL.app.game.player.facing = 'down'");
+      await sleep(100);
       await shot('w38-egg-on-face');
       const y0 = await see('g.player.y');
       await holdArrowUntil('Up', 'false', 400);
@@ -3105,12 +3107,12 @@ async function main() {
       await sleep(400);
       await shot('w38-path-hole');
       if ((await see('VL.tileAt("overworld", "1,1", 9, 5, g.room)')) !== '=') w38Problems.push('X did not dig the road');
-      await stage(ow('5,-1', 4, 8, 'right'), 'g.items.metalShovel = true;');
+      await stage(ow('5,-1', 4, 7, 'right'), 'g.items.metalShovel = true;');
       await settle();
       await tapKey('KeyX');
       await sleep(400);
       await shot('w38-moss-hole');
-      if ((await see('VL.tileAt("overworld", "5,-1", 5, 8, g.room)')) !== '~') w38Problems.push('X did not dig the Woods floor');
+      if ((await see('VL.tileAt("overworld", "5,-1", 5, 7, g.room)')) !== '~') w38Problems.push('X did not dig the Woods floor');
 
       // The buried heart's ring of flowers.
       await stage(ow('5,0', 11, 8, 'right'));
