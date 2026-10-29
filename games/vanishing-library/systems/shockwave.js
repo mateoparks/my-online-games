@@ -34,10 +34,6 @@
     text: 'A gift from Gran Ottie. Brannock the smith makes a sword from 3 wood. Pull a bush or two for one more!',
   });
 
-  // The Thornback's fall knocks him out in the Oak: until then the finished
-  // Hollow Oak keeps its own save point (systems/dungeon.js would send it home).
-  VL.keepSavePoint((state, point) => !state.flags.shockwave && VL.bossBeaten(state, 'hollowOak') && VL.savePointInDungeon(point, 'hollowOak'));
-
   // Takes exactly what VL.LOCKS.shockwave `loses`, so the game and the solver
   // can't drift apart: whole shells crack into broken ones. A key it can't
   // take throws; this runs from the scene's update, outside any guard, so
@@ -57,9 +53,7 @@
     }
     state.items.glowstone = true;
     state.flags.shockwave = true;
-    state.savePoint = { ...VL.SHOCKWAVE_WAKE };
     VL.tidyHands(state);
-    VL.earned(state);
     return true;
   };
 
@@ -72,7 +66,6 @@
     if (!VL.spotFound(state, 'heartD2')) VL.giveHeartContainer(state, 'heartD2');
     VL.holdUp(state, 'item-glowstone');
     VL.showPopup(state, 'glowstone');
-    VL.earned(state);
     return true;
   };
 
@@ -127,14 +120,6 @@
     if (room.area === 'overworld' && VL.SHOCKWAVE_QUIET.includes(room.screen) && VL.shockwaveQuiet(state)) {
       room.entities = room.entities.filter((e) => !VL.isEnemy(e));
     }
-  });
-
-  // A pull that faints the hero keeps what the bush dropped: on the climb
-  // back the one piece of wood still missing must never be thrown away.
-  VL.onFaint((state) => {
-    if (state.fainted?.cause !== 'shrub' || !state.room) return;
-    const dropped = state.room.entities.filter((e) => e.type === 'drop' && e.born === state.time && e.kind !== 'heart');
-    for (const drop of dropped) VL.ENTITIES.drop.onStand(state, drop);
   });
 
   // ---------- progression (README "Progression") ----------

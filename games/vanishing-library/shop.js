@@ -89,7 +89,6 @@
     for (const [spent, n] of Object.entries(offer.cost)) VL.addResource(state, spent, -n);
     for (const [gained, n] of Object.entries(offer.gain || {})) VL.addResource(state, gained, n);
     offer.give?.(state);
-    VL.earned(state);
     state.events.push({ type: 'bought', offer: offer.id });
     return { ok: true };
   };

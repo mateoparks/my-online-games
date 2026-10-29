@@ -258,30 +258,22 @@ test('while the wreck is unfinished, a faint below deck wakes him by the hold\'s
   assert.deepEqual([drive.state.player.area, drive.state.player.screen, ...heroTile(VL, drive.state)], ['wreck', '0,0', 7, 3]);
 });
 
-test('once the wreck\'s page is found, every Continue and every faint wakes him on the harbour by the pier, never below deck', () => {
+test('with the page found, a faint below deck still goes back to the hold\'s lantern, and he can sail home from it (W44: the harbour wake is gone)', () => {
   const { VL, app, drive } = afterShockwave();
-  const home = plain(VL.WRECK_HOME);
-  assert.deepEqual([home.area, home.screen], ['overworld', '2,1'], 'the harbour, where Nell built the raft');
-  assert.ok(!VL.tileInfo('overworld', VL.getScreen('overworld', '2,1').tiles[home.ty][home.tx]).solid, 'on open land');
+  assert.equal(VL.WRECK_HOME, undefined);
   Object.assign(app.game.items, { raft: true, oar: true });
+  drive.state.flags['found:pageShipwreck'] = true;
   VL.place(app.game, { area: 'wreck', screen: '0,0', tx: 7, ty: 4, facing: 'up' });
   drive.until((state) => state.savePoint?.area === 'wreck', 1, ['up']);
-  drive.state.flags['found:pageShipwreck'] = true;
-  VL.earned(drive.state);
-  drive.hold([], 0.1);
   const woke = (state) => [state.player.area, state.player.screen, ...heroTile(VL, state)];
   drive.reload();
-  assert.deepEqual(woke(drive.state), ['overworld', '2,1', home.tx, home.ty], 'Continue after the page');
-  drive.closePopups();
+  assert.deepEqual(woke(drive.state), ['wreck', '0,0', 7, 3], 'Continue at the lantern');
   VL.place(drive.state, { area: 'wreck', screen: '1,0', tx: 7, ty: 5 });
   VL.faint(drive.state, 'crab');
   VL.respawn(drive.state);
-  assert.deepEqual(woke(drive.state), ['overworld', '2,1', home.tx, home.ty], 'a faint below deck after the page');
-  VL.place(drive.state, { area: 'overworld', screen: '5,2', tx: 5, ty: 6 });
-  VL.faint(drive.state, 'crab');
-  VL.respawn(drive.state);
-  assert.deepEqual(woke(drive.state), ['overworld', '2,1', home.tx, home.ty], 'a faint on the wreck\'s deck after the page');
-  assert.ok(findPath(VL, home, { area: 'wreck', screen: '0,0', tx: 7, ty: 3 }, drive.state), 'and he can still sail back out to the wreck');
+  assert.deepEqual(woke(drive.state), ['wreck', '0,0', 7, 3], 'a faint below deck');
+  assert.ok(VL.spotFound(drive.state, 'pageShipwreck'), 'the page was saved by the lantern');
+  assert.ok(findPath(VL, { area: 'wreck', screen: '0,0', tx: 7, ty: 3 }, { area: 'overworld', screen: '2,1', tx: 8, ty: 7 }, drive.state), 'and he can sail back to the harbour');
 });
 
 // ---------- progression ----------
@@ -328,7 +320,7 @@ test('from waking after the shockwave: wood, a sword, an oar and Nell\'s raft; t
   assert.ok(VL.loosePages(drive.state) >= 1);
 });
 
-test('the W17 fixture loads with no field reset: the raft and the oar, the wreck\'s door open, and its saved lantern wakes him on the harbour', () => {
+test('the W17 fixture loads with no field reset: the raft and the oar, the wreck\'s door open, and he wakes at its saved lantern', () => {
   const VL = loadGame().VL;
   const text = fs.readFileSync(path.join(__dirname, 'fixtures', 'save-v1-W17.json'), 'utf8');
   const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: text }));
@@ -336,7 +328,7 @@ test('the W17 fixture loads with no field reset: the raft and the oar, the wreck
   const game = VL.loadSlot(storage, 0);
   assert.ok(VL.canRaft(game) && VL.dungeonState(game, 'wreck').doors.wreckDoor);
   assert.equal(game.savePoint.area, 'wreck', 'saved by the hold\'s lantern');
-  assert.deepEqual([game.player.area, game.player.screen], ['overworld', '2,1']);
+  assert.deepEqual([game.player.area, game.player.screen], ['wreck', '0,0'], 'W44: the hold\'s lantern is a lantern still');
   for (const id of ['raft', 'lakeIsland', 'shipwreck', 'oreShipwreck', 'pageShipwreck']) assert.ok(VL.LOCKS[id].reached(game), id);
 });
 

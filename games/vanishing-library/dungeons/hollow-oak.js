@@ -11,7 +11,7 @@
 //   tangle S (-1,-1) ── root hall (0,-1) ── pit garden (1,-1): key B on an island
 //   map                      │                        │ door B
 //   moss room (-1,0) ── entrance (0,0) ─bars─ sap well (1,0): switch, boss key
-//   key under the grass  statue, door out
+//   key under the grass  door out
 //
 // W30: key A appears once the tangle's thorny spitters (metal sword only)
 // are beaten, and the moss room's key is dug up with the metal shovel; both
@@ -125,7 +125,7 @@
   const post = (x, y) => ({ type: 'grapplePost', x, y });
 
   VL.addScreens(DUNGEON, {
-    // The entrance: the statue, the door out, and bars east that the sap
+    // The entrance: the door out, and bars east that the sap
     // well's switch lifts (a way back once it is thrown).
     '0,0': {
       tiles: [
@@ -143,7 +143,6 @@
       ],
       entities: [
         { type: 'door', x: 7, y: 10, to: { area: 'overworld', screen: '7,-2', tx: 7, ty: 4, facing: 'down' } },
-        { type: 'saveStatue', x: 3, y: 2 },
         { type: 'sign', x: 10, y: 2, title: 'The Hollow Oak', text: 'Mind the pits! The old woodsmen crossed them with a rope and a hook.' },
         { type: 'shutter', id: 'd2ShutterSap', x: 15, y: 5, open: { switch: 'd2SwitchSap' } },
       ],
@@ -360,10 +359,9 @@
   // ---------- the boss, and the hook for what follows it ----------
 
   // W16's shockwave attaches here (design: The path through the game, 4).
-  // The win is written first, in the step the Thornback falls; a hook runs
-  // only once the game is clean again (that write landed), and its id is
-  // saved with whatever it changes in that same step. So a reload before it
-  // runs it once, a reload after it never again (README "The Hollow Oak").
+  // A hook runs in a step after the Thornback falls, and its id is recorded
+  // with whatever it changes in that same step, so a save never holds one
+  // without the other (README "The Hollow Oak").
   VL.THORNBACK_DEFEAT_HOOKS = [];
   VL.afterThornback = function afterThornback(id, hook) {
     if (typeof id !== 'string' || typeof hook !== 'function') throw new Error('VL.afterThornback(id, hook)');
@@ -385,7 +383,7 @@
   VL.defineSystem('afterThornback', {
     order: 95,
     update(state) {
-      if (state.dirty || !VL.bossBeaten(state, DUNGEON)) return;
+      if (!VL.bossBeaten(state, DUNGEON)) return;
       const failed = failedHooks.get(state) || new Set();
       const next = VL.THORNBACK_DEFEAT_HOOKS.find(({ id }) => !state.afterThornbackDone.includes(id) && !failed.has(id));
       if (!next) return;
@@ -400,7 +398,6 @@
         return;
       }
       state.afterThornbackDone.push(next.id);
-      VL.earned(state);
     },
   });
 
@@ -412,7 +409,6 @@
     if (!d || !d.doors.d2DoorA || d.doors.d2DoorC) return;
     d.doors.d2DoorC = true;
     d.keysGiven = (d.keysGiven || 0) + 1;
-    VL.earned(state);
   });
 
   VL.defineDungeon(DUNGEON, {

@@ -30,11 +30,10 @@
     },
   });
 
-  // A flag that only ever turns on, saved with the earning.
+  // A flag that only ever turns on.
   VL.firstTimeFlag = function firstTimeFlag(state, flag) {
     if (state.flags[flag]) return;
     state.flags[flag] = true;
-    VL.earned(state);
   };
 
   // Titled books switch on once their lock is reached (W11 claims them:

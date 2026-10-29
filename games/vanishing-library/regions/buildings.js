@@ -457,7 +457,6 @@
       }
       VL.addResource(state, 'berries', 1);
       state.flags.shopThief = true;
-      VL.earned(state);
       keeper.facing = 'down';
       state.events.push({ type: 'pickup', kind: 'berries' });
       VL.showMessage(state, { text: 'You slip a berry into your pocket. Mabel spins round... did she see?' });

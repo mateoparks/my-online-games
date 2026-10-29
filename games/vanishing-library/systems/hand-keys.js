@@ -31,13 +31,11 @@
   VL.setHandKey = function setHandKey(state, hand, code) {
     if (VL.handKeyChoice(state, hand, code) !== 'ok') return false;
     state.handKeys = { ...VL.handKeys(state), [hand]: code };
-    VL.earned(state);
     return true;
   };
 
   VL.resetHandKeys = function resetHandKeys(state) {
     state.handKeys = { ...VL.DEFAULT_HAND_KEYS };
-    VL.earned(state);
   };
 
   // A key in words ('Space', 'Q', '7') and as a small label ('␣', 'Q', '7').

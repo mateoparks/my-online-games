@@ -466,9 +466,6 @@ test('books vanish only on the next visit after a return trip or a boss, never o
   t.leaveAndEnterLibrary();
   assert.deepEqual(plain(t.game.library.gone), ['bookRiverside', 'bookBeachBuried', 'bookCliffRoad']);
   assert.equal(VL.booksReturned(t.game), 5, 'the count never goes down');
-  assert.equal(t.game.dirty, true);
-  t.step();
-  assert.equal(t.game.dirty, false, 'a theft is saved like anything else');
 });
 
 test('the thief never takes a book the librarian has yet to read', () => {
@@ -823,8 +820,8 @@ test('progress in the library survives a reload at any point of a visit', () => 
   t.press('interact');
   t.hold([], 0.35);
   t.press('interact');
-  // The talk ended (books handed in): reload before the reading.
-  const app = VL.reloadApp(t.app);
+  // The talk ended (books handed in): Save & Quit and reload before the reading.
+  const app = VL.reloadApp(t.app, { save: true });
   assert.equal(VL.booksReturned(app.game), 2);
   assert.ok(!app.game.flags.chickenAlmanacRead, 'not read yet');
   assert.equal(VL.nextReading(app.game), 'bookChickenAlmanac', 'the reading waits for the next talk');

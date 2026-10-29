@@ -171,7 +171,7 @@ test('an old finished save still carrying the hoard books (W20) shows them on it
   assert.deepEqual(plain(VL.booksCarried(drive.state)), []);
   assert.ok(VL.HOARD_BOOKS.every((id) => VL.bookReturned(drive.state, id)));
   assert.ok(!drive.state.events.some((e) => e.type === 'booksReturned'), 'no chime on waking up');
-  assert.equal(JSON.parse(backing.getItem(VL.slotKey(0))).library.returned.length, slot.summary.books, 'healed and saved');
+  assert.equal(backing.getItem(VL.slotKey(0)), text, 'healed in play, saved with his next save (W44)');
   assert.equal(VL.readSlot(storage, 0).summary.books, slot.summary.books, 'the card says the same after the heal');
   drive.walkTo({ area: 'library', screen: '0,0', tx: 7, ty: 6 });
   assert.doesNotMatch(fenwickSays(VL, drive.state), HANDED_IN);

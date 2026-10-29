@@ -30,7 +30,6 @@
     VL.showPopup(state, 'heartContainer');
     VL.holdUp(state, 'pickup-heart-container', { sound: 'fanfare' });
     state.events.push({ type: 'heartContainer' });
-    VL.earned(state);
   };
 
   VL.defineEntity('heartContainer', {

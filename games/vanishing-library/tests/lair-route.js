@@ -1,7 +1,6 @@
 // The Dragon's Lair played for real (W19): one function per lock on the
-// way, each starting from wherever the hero stands (the statue after a
-// faint, the last save point outside after a reload, or where the last one
-// left him). tests/steps/w19.steps.js strings them into the story
+// way, each starting from wherever the hero stands (his last save after a
+// faint or a reload, or where the last one left him). tests/steps/w19.steps.js strings them into the story
 // milestones; tests/lair.test.js runs them one lock at a time, fainting in
 // between.
 const assert = require('node:assert/strict');
@@ -202,11 +201,12 @@ const route = {
     drive.closePopups();
     toTheLair(drive);
     beatTheGuards(drive);
+    // W44: the lantern outside the cave saves first.
+    walk(drive, drive.VL.SAVE_LANTERNS.lair);
+    assert.equal(drive.state.savePoint?.screen, '-1,-5', 'the lantern saved');
     walk(drive, ow('-1,-5', 7, 5));
     drive.until((state) => state.player.area === AREA && settled(state), 2, ['up']);
     drive.closePopups();
-    walk(drive, at('0,0', 3, 3));
-    drive.until((state) => state.savePoint?.area === AREA, 1, ['up']);
   },
   // The cellar's block shoved onto its plate lifts the bars on key A.
   d4KeyA(drive) {
@@ -228,14 +228,11 @@ const route = {
     face(drive, 'left');
     drive.press('interact');
     assert.ok(VL.hasItem(drive.state, 'mirrorShield'), 'the Mirror Shield from the chest across the lava');
-    assert.equal(VL.readSlot(drive.app.storage, drive.app.slot).save.items.mirrorShield, true, 'saved before its popup closes');
+    assert.notEqual(VL.readSlot(drive.app.storage, drive.app.slot).save.items.mirrorShield, true, 'not saved by taking it (W44)');
     drive.closePopups();
     crossLava(drive, SHIELD_BACK);
     assert.equal(drive.app.sceneId, 'play', 'back across on berries');
-    // It counts only once he walks out of the room alive (W42).
-    assert.equal(drive.state.pendingChest?.item, 'mirrorShield', 'still the chest\'s until he leaves');
     walk(drive, at('0,-1', 1, 5));
-    assert.equal(drive.state.pendingChest, null, 'carried out alive: his for good');
     drive.reload();
     assert.ok(VL.hasItem(drive.state, 'mirrorShield'), 'the Mirror Shield survives a reload');
     equipShield(drive);
@@ -291,7 +288,7 @@ const route = {
     walk(drive, at('0,-3', 7, 7));
     drive.until((state) => state.player.area === 'overworld' && settled(state), 2, ['down']);
     drive.hold([], 0.2);
-    assert.deepEqual(drive.state.savePoint && [drive.state.savePoint.area, drive.state.savePoint.screen], ['overworld', '-1,-5'], 'the warp saved him on the doorstep');
+    assert.notEqual(drive.state.savePoint?.area, 'overworld', 'the warp saves nothing (W44)');
   },
 };
 

@@ -1,8 +1,8 @@
 // Under the puppet stage (design: The path through the game, 9; Ending
 // (decided)): Mrs. Fenwick's hidden workshop, the hall where her giant
 // marionettes dance, and the tunnel she carried the books along to the
-// dragon. Not a dungeon: no keys, no statue, nothing that shuts behind him;
-// a faint or a reload wakes him at his last save point (the hut) and the
+// dragon. Not a dungeon: no keys, no lantern, nothing that shuts behind him;
+// a faint, a reload or Save & Quit wakes him at his last lantern and the
 // ladder is always there. The rules are systems/finale.js; this file is the
 // place, who stands in it and what everyone says. README "The finale (W20)".
 //
@@ -43,6 +43,8 @@
     t: { floor: true, art: 'wsRails' },
   });
   VL.defineArea(AREA, { tileset: AREA });
+  // Mr. Fenwick only follows him down the ladder, so Continue never starts below.
+  VL.quitRule(AREA, 'lastSave');
   VL.ART.setAreaLight(AREA, 'indoor');
 
   VL.ART.defineTileStyle('wsLadder', {

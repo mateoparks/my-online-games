@@ -11,7 +11,7 @@
 //                       stairwell (0,-1) ─door A─ store (1,-1): the Slingshot
 //                            │                        │ bars (target)
 //   cellar (-1,0) ──── entrance (0,0)             cistern (1,0): beam → key B
-//   dark floor, map, key A   statue, door out
+//   dark floor, map, key A   door out
 (() => {
   const { rect } = VL.ART;
   const DUNGEON = 'lighthouse';
@@ -90,7 +90,7 @@
   const trunk = (id, x, y) => ({ type: 'spot', id, x, y, how: 'trunk', by: 'W11', lock: id });
 
   VL.addScreens(DUNGEON, {
-    // The entrance: the statue, the door out.
+    // The entrance: the door out.
     '0,0': {
       tiles: [
         '#######_########',
@@ -108,7 +108,6 @@
       entities: [
         trunk('bookHighPathB', 13, 8),
         { type: 'door', x: 7, y: 10, to: { area: 'overworld', screen: '-1,1', tx: 7, ty: 5, facing: 'down' } },
-        { type: 'saveStatue', x: 3, y: 2 },
         { type: 'sign', x: 10, y: 2, title: 'The Lighthouse', text: 'The keeper\'s old lamps still line the dark rooms. Hold your Glowstone up to one (S) and it will burn again.' },
       ],
     },
@@ -342,7 +341,6 @@
         VL.holdUp(state, 'pickup-page');
         VL.showMessage(state, VL.LIGHTHOUSE_TREASURE);
         VL.findPage(state, 'pageLighthouse');
-        VL.earned(state);
       },
     },
     light: 'indoor',

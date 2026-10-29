@@ -547,12 +547,14 @@ test('enemies never block a path: none is solid, so a corridor is never walled o
 
 // ---------- fainting ----------
 
-test('hearts running out faints the hero with the enemy\'s line; waking keeps everything and resets the screen', () => {
+test('hearts running out faints the hero with the enemy\'s line; waking goes back to the last save and resets the screen', () => {
   const t = setup({ storage: true });
   const { VL } = t;
   t.give('woodSword');
   VL.addResource(t.game, 'shells', 7);
   t.step();
+  VL.saveGame(t.game, VL.START);
+  VL.addResource(t.game, 'shells', 3);
   t.at(6, 5);
   const crab = t.spawn('crab', 9, 5);
   t.game.hp = 1;
@@ -567,9 +569,9 @@ test('hearts running out faints the hero with the enemy\'s line; waking keeps ev
   assert.equal(t.app.sceneId, 'play');
   assert.equal(t.game.hp, t.game.maxHp, 'full hearts');
   assert.deepEqual([t.player.area, t.player.screen], [VL.START.area, VL.START.screen], 'at the last save point (the start)');
-  assert.equal(t.player.knockback, null);
+  assert.ok(!t.player.knockback);
   assert.ok(!(t.player.flash > 0) && !(t.player.invuln > 0));
-  assert.equal(t.game.inventory.shells, 7);
+  assert.equal(t.game.inventory.shells, 7, 'the shells saved, not the 3 since');
   assert.ok(VL.hasItem(t.game, 'woodSword'));
 });
 
@@ -963,13 +965,13 @@ test('a heart container adds a heart, fills every heart, and explains itself onc
   assert.equal(VL.currentPopup(t.game), null);
 });
 
-test('a heart container is saved at once, and is gone for good once taken', () => {
+test('a heart container is kept by the next save, and is gone for good once taken', () => {
   const t = setup({ storage: true });
   const { VL } = t;
   const max = t.game.maxHp;
   standOn(t, 'heartFieldB');
-  const reloaded = VL.reloadApp(t.app);
-  assert.equal(reloaded.game.maxHp, max + 2, 'saved without anything else happening');
+  const reloaded = VL.reloadApp(t.app, { save: true });
+  assert.equal(reloaded.game.maxHp, max + 2, 'saved by Save & Quit');
   assert.equal(reloaded.game.hp, max + 2, 'loads with every heart full');
   const spot = VL.SPOTS.heartFieldB;
   VL.place(reloaded.game, { area: spot.area, screen: spot.screen, tx: spot.x + 1, ty: spot.y });

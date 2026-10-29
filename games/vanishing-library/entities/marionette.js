@@ -390,7 +390,6 @@
       if (!state.flags.marionettes && all.length === placed && all.every((m) => m.fallen)) {
         state.flags.marionettes = true;
         state.events.push({ type: 'marionettesBeaten' });
-        VL.earned(state);
       }
     },
   });

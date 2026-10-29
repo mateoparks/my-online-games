@@ -48,8 +48,10 @@ VL.createGame = function createGame(options = {}) {
   return Object.assign(state, transient);
 };
 
+// A new game's last save is its start, so a faint before any lantern goes back there.
 VL.newGame = function newGame(options) {
   const state = VL.createGame(options);
   VL.place(state, VL.START);
+  state.lastSave = VL.serializeSave(state);
   return state;
 };

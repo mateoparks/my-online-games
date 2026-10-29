@@ -17,7 +17,8 @@ const LOST_ITEMS = ['woodSword', 'woodShield', 'woodShovel', 'metalSword', 'meta
 const KEPT_ITEMS = ['scriptoriumKey', 'liftingGloves', 'mortarPestle', 'woodsMapCopy', 'grapplingRope', 'shellPurse', 'swiftfootBoots'];
 
 // A game loaded from `text` into slot 0 of an in-memory store, in play:
-// t.reload() is a page reload (no save first), t.saved() the slot on disk.
+// t.reload() is a page reload (no save first; `true` saves as Save & Quit),
+// t.saved() the slot on disk.
 function load(text, { VL = loadGame().VL } = {}) {
   const backing = memoryStorage({ [VL.slotKey(0)]: text });
   const storage = VL.createStorage(backing);
@@ -48,8 +49,8 @@ function load(text, { VL = loadGame().VL } = {}) {
       for (let s = 0; s < seconds - 1e-9 && !done(app); s += STEP) app.update(VL.actions({ held }), STEP);
       assert.ok(done(app), `reached within ${seconds} s (scene ${app.sceneId})`);
     },
-    reload() {
-      app = VL.reloadApp(app);
+    reload(save = false) {
+      app = VL.reloadApp(app, { save });
     },
     saved: () => JSON.parse(backing.getItem(VL.slotKey(0))),
     closePopups() {
@@ -84,13 +85,13 @@ function throughScene(t) {
 
 // ---------- the hook and when the knock-out comes ----------
 
-test('a save that beat the Thornback before W16: the hook marks the shockwave due on the next load, saved with its id, and takes nothing yet', () => {
+test('a save that beat the Thornback before W16: the hook marks the shockwave due on the next load, with its id, and takes nothing yet', () => {
   const t = beaten();
   const before = plain({ items: t.game.items, inventory: t.game.inventory });
   assert.deepEqual(plain(t.game.afterThornbackDone), []);
   t.step();
   t.step();
-  assert.deepEqual([t.saved().afterThornbackDone, t.saved().flags.shockwaveDue], [['shockwave'], true]);
+  assert.deepEqual([plain(t.game.afterThornbackDone), t.game.flags.shockwaveDue], [['shockwave'], true]);
   assert.deepEqual(plain({ items: t.game.items, inventory: t.game.inventory }), before, 'nothing is lost before the scene');
   assert.equal(t.scene, 'play');
 });
@@ -158,10 +159,9 @@ test('the losses: sword, shield, shovel (wood and metal), the map, wood, paper, 
   assert.deepEqual(after.inventory, { wood: 0, shells: 0, brokenShells: 9, berries: 0, ore: 1, paper: 0, ink: 0 }, 'unused ore is kept');
   assert.equal(VL.hasItem(game, 'glowstone'), true, 'he wakes holding the Glowstone');
   assert.deepEqual(after.hands, { mainHand: null, offHand: 'grapplingRope' }, 'a hand that held lost gear is empty');
-  assert.deepEqual(after.savePoint, plain(VL.SHOCKWAVE_WAKE), 'he wakes at home, and comes back there');
   // Every other saved field, hearts, books, pages and quest flags included, is as it was.
   const changed = Object.keys(after).filter((key) => JSON.stringify(after[key]) !== JSON.stringify(before[key]));
-  assert.deepEqual(changed.sort(), ['flags', 'hands', 'inventory', 'items', 'savePoint']);
+  assert.deepEqual(changed.sort(), ['flags', 'hands', 'inventory', 'items'], 'the save point too is left for a lantern (W44)');
   assert.deepEqual(Object.keys(after.flags).filter((f) => !(f in before.flags)), ['shockwave']);
   assert.deepEqual([after.maxHp, after.library, after.visited], [before.maxHp, before.library, before.visited]);
   assert.equal(VL.applyShockwave(game), false, 'once only');
@@ -206,7 +206,7 @@ test('the scene: the ground shakes, the losses land at the flash and he is carri
   assert.ok(VL.hasItem(t.game, 'woodSword'), 'nothing is lost while the ground shakes');
   t.until((app) => app.shockwave.phase === 'flash', 0.3);
   assert.ok(t.game.flags.shockwave && !VL.hasItem(t.game, 'woodSword'));
-  assert.equal(t.saved().flags.shockwave, true, 'the losses are written as they land');
+  assert.notEqual(t.saved().flags.shockwave, true, 'nothing is written: a closed tab plays it again (W44)');
   assert.deepEqual([t.game.player.area, t.game.player.screen], ['hut', '0,0']);
   t.until((app) => app.shockwave.phase === 'dark', VL.SHOCKWAVE_TIMES.flash + 0.1);
   t.hold([], 5);
@@ -220,10 +220,10 @@ test('the scene: the ground shakes, the losses land at the flash and he is carri
   assert.equal(t.app.shockwave.phase, 'wake');
   t.until((app) => app.sceneId === 'play', VL.SHOCKWAVE_TIMES.wake + 0.1);
   assert.deepEqual([t.game.player.area, VL.heroTile(t.game).tx, VL.heroTile(t.game).ty], ['hut', VL.SHOCKWAVE_WAKE.tx, VL.SHOCKWAVE_WAKE.ty]);
-  assert.equal(t.saved().flags.shockwaveWoke, true);
+  assert.equal(t.game.flags.shockwaveWoke, true);
 });
 
-test('reloads: before the flash the scene plays again with nothing lost; after it, the story resumes on black at home with nothing lost twice; after waking, never again', () => {
+test('reloads: before the flash the scene plays again with nothing lost; an old save written after it resumes on black at home with nothing lost twice; after waking and a save, never again', () => {
   const early = beaten();
   const { VL } = early;
   early.until((app) => app.sceneId === 'shockwave', 3);
@@ -236,6 +236,8 @@ test('reloads: before the flash the scene plays again with nothing lost; after i
   const late = beaten();
   late.until((app) => app.game.flags.shockwave, 5);
   late.game.inventory.shells = 4;
+  // Only a save from before W44 can hold this moment: written with the hut as its save point.
+  late.VL.saveGame(late.game, late.VL.SHOCKWAVE_WAKE);
   late.app.save();
   late.reload();
   assert.deepEqual([late.game.player.area, late.game.player.screen], ['hut', '0,0'], 'loaded at home');
@@ -245,7 +247,7 @@ test('reloads: before the flash the scene plays again with nothing lost; after i
   throughScene(late);
   assert.deepEqual([late.game.inventory.shells, late.game.inventory.brokenShells], [4, 0], 'shells earned since are never cracked again');
   late.closePopups();
-  late.reload();
+  late.reload(true);
   late.hold([], 2);
   assert.notEqual(late.scene, 'shockwave');
   assert.equal(late.saved().afterThornbackDone.filter((id) => id === 'shockwave').length, 1);
@@ -272,9 +274,8 @@ test('waking: he holds the Glowstone up, it is named, and then Gran Ottie talks 
   assert.equal(t.game.inventory.wood, 0);
   talkThrough({ app: t.app, hold: (held, s) => t.hold(held, s), press: (a) => t.press(a) });
   assert.equal(t.game.inventory.wood, VL.TUNING.helperWood);
-  assert.equal(t.saved().inventory.wood, 2, 'the gift and its flag are saved together');
-  assert.equal(t.saved().flags['gave:helperWood'], true);
-  assert.equal(t.saved().flags['met:gran'], true, 'she has introduced herself, so her town greeting does not again');
+  assert.equal(t.game.flags['gave:helperWood'], true, 'the gift and its flag come together');
+  assert.equal(t.game.flags['met:gran'], true, 'she has introduced herself, so her town greeting does not again');
   assert.deepEqual(plain(t.game.holdUp.sprites), ['icon-wood']);
   t.until((app) => app.sceneId === 'popup', VL.TUNING.holdUpSeconds + 0.1);
   assert.equal(VL.currentPopup(t.game).id, 'helperWood');
@@ -291,12 +292,12 @@ test('waking: he holds the Glowstone up, it is named, and then Gran Ottie talks 
   assert.equal(t.game.inventory.wood, 2);
 });
 
-test('Esc ends Gran\'s talk and still hands the wood over; a reload before she talks has her talk again', () => {
+test('Esc ends Gran\'s talk and still hands the wood over; Save & Quit before she talks has her talk again', () => {
   const t = beaten();
   const { VL } = t;
   throughScene(t);
   t.closePopups();
-  t.reload();
+  t.reload(true);
   t.until((app) => app.sceneId === 'dialogue', 1);
   t.press('pause');
   t.closePopups();
@@ -346,7 +347,7 @@ test('the home corner is quiet after the shockwave; the slimes and crabs come ba
   for (const screen of VL.SHOCKWAVE_QUIET) assert.equal(enemiesOn(screen), before[screen], `${screen} is back to normal`);
 });
 
-test('a pull that faints the hero keeps what the bush dropped', () => {
+test('a pull that faints the hero goes back to the last save, without what the bush dropped (W44)', () => {
   const { VL } = loadGame();
   const app = VL.createApp();
   app.game = VL.newGame();
@@ -360,12 +361,11 @@ test('a pull that faints the hero keeps what the bush dropped', () => {
   game.hp = 1;
   app.update(VL.actions({ pressed: ['interact'] }), STEP);
   assert.equal(app.sceneId, 'fainted');
-  assert.equal(game.inventory.wood, 1, 'the wood is his');
   for (let s = 0; s < 1; s += STEP) app.update(VL.noActions(), STEP);
   app.update(VL.actions({ pressed: ['interact'] }), STEP);
   assert.equal(app.sceneId, 'play');
-  assert.equal(game.inventory.wood, 1, 'and still his after waking');
-  assert.ok(game.popups.queue.includes('wood') || game.popups.seen.wood, 'and the find is explained');
+  assert.equal(game.inventory.wood, 0, 'back to the new game\'s save');
+  assert.equal(game.hp, game.maxHp);
 });
 
 test('the climb with real keys: from waking at home, bare-hand pulls on the home bushes to a third piece of wood, then the smith makes a sword', () => {

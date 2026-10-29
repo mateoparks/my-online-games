@@ -1,12 +1,16 @@
 // Saving: three localStorage slots, the versioned save schema (migrations plus
-// default-filling for fields later items add), save points, earning (which
-// autosaves), fainting and respawn. README "Saving".
+// default-filling for fields later items add), and the save itself: only a
+// lantern, Save & Quit and the credits save, and fainting goes back to the
+// last save (W44). README "Saving".
 (() => {
   VL.SLOT_COUNT = 3;
   VL.STORAGE_PROBE_KEY = 'vanishing-library-probe';
   VL.slotKey = (slot) => `vanishing-library-slot-${slot + 1}`;
 
   VL.extendGame('save', () => ({ savePoint: null, finished: false }));
+  // The last save as written (or about to be), kept in play so a faint can go
+  // back to it even with storage off.
+  VL.extendGame('lastSave', () => ({ lastSave: null }), { transient: true });
 
   // ---------- storage that never throws ----------
 
@@ -132,67 +136,33 @@
     return { save, resets };
   }
 
-  // A place can hand its save point on once it is done with: `rule(state,
-  // point)` returns where to wake instead, or nothing to leave it.
-  const wakeRules = [];
-  VL.moveSavePoint = (rule) => wakeRules.push(rule);
-  // `rule(state, point)` true holds the save point where it is, whatever any
-  // move rule says (a story moment that must start there).
-  const keepRules = [];
-  VL.keepSavePoint = (rule) => keepRules.push(rule);
-
-  // Where the hero reappears: the last save point touched (or where a rule
-  // moved it), or the start when there is none or a later map change removed its screen.
+  // Where the hero wakes: the save's place, or the start when there is none
+  // or a later map change removed its screen.
   VL.respawnPlace = function respawnPlace(state) {
     const point = state.savePoint;
     if (!(isPlainObject(point) && VL.screenExists(point.area, point.screen) && Number.isInteger(point.tx) && Number.isInteger(point.ty))) return VL.START;
-    if (keepRules.some((rule) => rule(state, point))) return point;
-    for (const rule of wakeRules) {
-      const moved = rule(state, point);
-      if (moved) return moved;
-    }
     return point;
   };
 
-  // Words for a place a move rule wakes him at ('at home'), so a save point
-  // whose rule sends him elsewhere can say so.
-  const wakeNames = [];
-  VL.nameWakePlace = (place, words) => wakeNames.push({ place, words });
-  const samePlace = (a, b) => a.area === b.area && a.screen === b.screen && a.tx === b.tx && a.ty === b.ty;
-
-  // Where he wakes, in words, when it is not the save point he touched; null
-  // when it is (or the place has no name).
-  VL.wakeWords = function wakeWords(state) {
-    const point = state.savePoint;
-    const place = VL.respawnPlace(state);
-    if (isPlainObject(point) && samePlace(place, point)) return null;
-    return wakeNames.find((named) => samePlace(named.place, place))?.words ?? null;
-  };
-
-  // The note a save point shows, in its saved and could-not-save words (the
-  // app shows whichever its write made true, and a retry can still make it
-  // saved). `plain` is { saved, failed } for where he simply wakes there;
-  // without it, that case has no note (null).
-  VL.savePointNote = function savePointNote(state, plain = null) {
-    const words = VL.wakeWords(state);
-    const saving = words
-      ? { saved: `Your journey is saved. You'll wake up ${words}.`, failed: `Could not save yet. You'll wake up ${words}.` }
-      : plain;
-    return saving ? { text: saving.saved, t: 0, saving } : null;
-  };
-
-  // `hook(state)` runs on every loaded game before he is placed: a file
-  // undoes there what only counts once a moment is over (a treasure taken
-  // but not yet carried out of its room), as a faint would.
+  // `hook(state)` runs on every loaded game before he is placed.
   VL.LOAD_HOOKS = [];
   VL.onLoad = (hook) => VL.LOAD_HOOKS.push(hook);
 
+  // He wakes standing still on his spot: a lantern under him saves again only
+  // once he steps off it and back.
+  function wakeOnSpot(state) {
+    const { tx, ty } = VL.heroTile(state);
+    state.room.standingOn = state.room.entities.find((e) => e.x === tx && e.y === ty && VL.ENTITIES[e.type]?.onStand) || null;
+  }
+
   function stateFrom(save) {
-    const { v, ...fields } = save;
+    const { v, ...fields } = clone(save);
     const state = Object.assign(VL.createGame({ name: save.name }), fields);
     for (const hook of VL.LOAD_HOOKS) hook(state);
     state.hp = state.maxHp;
     VL.place(state, VL.respawnPlace(state));
+    wakeOnSpot(state);
+    state.lastSave = clone(save);
     return state;
   }
 
@@ -248,21 +218,60 @@
 
   VL.deleteSlot = (storage, slot) => storage.remove(VL.slotKey(slot));
 
-  // ---------- earning, save points, fainting ----------
+  // ---------- saving, fainting ----------
 
-  // Anything the player earns (an item, a chest, a book, a flag) calls this;
-  // the app saves at the end of the same step, whatever the scene (design:
-  // Option B, Zelda-style).
-  VL.earned = function earned(state) {
-    state.dirty = true;
-    state.events.push({ type: 'earned' });
-  };
-
-  VL.touchSavePoint = function touchSavePoint(state, place) {
+  // Saves the game as it is now, waking at `place` (the app writes it at the
+  // end of the step, in whatever scene). Only a lantern, Save & Quit and the
+  // credits call this (design: Starting and saving, W44).
+  VL.saveGame = function saveGame(state, place) {
     state.savePoint = { area: place.area, screen: place.screen, tx: place.tx, ty: place.ty, facing: place.facing || 'down' };
-    VL.earned(state);
+    state.lastSave = VL.serializeSave(state);
+    state.dirty = true;
     state.events.push({ type: 'saved' });
   };
+
+  VL.touchSavePoint = (state, place) => VL.saveGame(state, place);
+
+  // Where Save & Quit wakes him: on the lantern he stands on; else an area's
+  // rule (VL.quitRule), or the tile he stands on when plain ground holds him
+  // there after a reload; otherwise where he came onto this screen, or his
+  // last save's place.
+  const quitRules = {};
+  VL.quitRule = (area, rule) => {
+    if (quitRules[area]) throw new Error(`quit rule for ${area} is already defined`);
+    quitRules[area] = rule;
+  };
+
+  VL.standsFirm = function standsFirm(state, place) {
+    if (!place || !VL.screenExists(place.area, place.screen)) return false;
+    const info = VL.tileInfo(place.area, VL.savedTile?.(state, place.area, place.screen, place.tx, place.ty) ?? VL.tileAt(place.area, place.screen, place.tx, place.ty));
+    if (info.solid || info.hurts || info.pit) return false;
+    return !VL.getScreen(place.area, place.screen).entities.some((e) => e.x === place.tx && e.y === place.ty && (e.solid || VL.ENTITIES[e.type]?.solid));
+  };
+
+  const busyHero = (player) => Boolean(player.flight || player.rope || player.knockback || player.lift);
+
+  // { place, words }: words say where Continue starts ('right here', 'where
+  // you came in', 'at your last save').
+  VL.quitPlace = function quitPlace(state) {
+    const player = state.player;
+    const last = { place: VL.respawnPlace(state), words: 'at your last save' };
+    const entry = state.room?.entry;
+    const rule = quitRules[player.area];
+    const lantern = state.room?.entities.find((e) => e.type === 'savePoint' && e === state.room.standingOn);
+    if (lantern) return { place: { area: player.area, screen: player.screen, tx: lantern.x, ty: lantern.y, facing: player.facing }, words: 'right here' };
+    if (rule === 'lastSave') return last;
+    if (rule === 'entry') return VL.standsFirm(state, entry) ? { place: entry, words: 'where you came in' } : last;
+    const here = { area: player.area, screen: player.screen, ...VL.heroTile(state), facing: player.facing };
+    if (!busyHero(player) && VL.standsFirm(state, here)) return { place: here, words: 'right here' };
+    if (VL.standsFirm(state, entry)) return { place: entry, words: 'where you came in' };
+    return last;
+  };
+
+  // Where he came onto this screen, for VL.quitPlace.
+  VL.onRoomBuilt((state) => {
+    state.room.entry = { area: state.room.area, screen: state.room.screen, ...VL.heroTile(state), facing: state.player.facing };
+  });
 
   VL.FAINT_LINES = {
     default: 'You fainted.',
@@ -288,12 +297,14 @@
     for (const hook of VL.FAINT_HOOKS) hook(state);
   };
 
-  // A page reload that continues the same slot: what the playthrough's
-  // drive.reload() does to prove progress survives (README "Progression").
-  // Like a real reload it does not save first, so a forgotten VL.earned shows;
-  // `{ save: true }` is for the console.
+  // A page reload that continues the same slot: only what was saved comes
+  // back. `{ save: true }` saves first as Save & Quit would (the console's
+  // shortcut, and the playthrough's drive.reload()).
   VL.reloadApp = function reloadApp(app, { save = false } = {}) {
-    if (save) app.save();
+    if (save && app.game) {
+      VL.saveGame(app.game, VL.quitPlace(app.game).place);
+      app.save();
+    }
     const next = VL.createApp({ storage: app.storage });
     const game = app.slot === null ? null : VL.loadSlot(app.storage, app.slot);
     if (game) {
@@ -303,12 +314,28 @@
     return next;
   };
 
-  // Dying only resets position: full hearts, back at the save point, everything kept.
+  // What a faint keeps although the save is older: `keep(fainted, woken)`
+  // copies it across (a boss's hint is earned by fainting to it).
+  VL.FAINT_KEEPS = [];
+  VL.keepThroughFaint = (keep) => VL.FAINT_KEEPS.push(keep);
+
+  // Fainting goes back to the last save: everything since is gone, and he
+  // wakes at its place with full hearts. Nothing is written. A game with no
+  // save yet (some tests) just wakes at its save point.
   VL.respawn = function respawn(state) {
-    state.hp = state.maxHp;
-    state.fainted = null;
-    state.transition = null;
-    state.player.moving = false;
-    VL.place(state, VL.respawnPlace(state));
+    const save = state.lastSave;
+    if (!save) {
+      state.hp = state.maxHp;
+      state.fainted = null;
+      state.transition = null;
+      state.player.moving = false;
+      VL.place(state, VL.respawnPlace(state));
+      return;
+    }
+    const fainted = { ...state };
+    const woken = stateFrom(normalizeSave(save).save);
+    for (const key of Object.keys(state)) delete state[key];
+    Object.assign(state, woken, { time: fainted.time });
+    for (const keep of VL.FAINT_KEEPS) keep(fainted, state);
   };
 })();

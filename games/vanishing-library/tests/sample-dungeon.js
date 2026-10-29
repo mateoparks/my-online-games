@@ -38,7 +38,7 @@
   VL.defineTileset('sampleDungeon', { ...VL.DUNGEON_TILES });
   VL.defineArea('sample', { tileset: 'sampleDungeon' });
   VL.addScreens('sample', {
-    // The entrance hall: the statue, a slime, a shutter east that lifts
+    // The entrance hall: a save lantern, a slime, a shutter east that lifts
     // once it is beaten, a locked door north.
     '0,0': {
       tiles: [
@@ -56,7 +56,7 @@
       ],
       entities: [
         { type: 'door', x: 7, y: 10, to: { area: 'sampleYard', screen: '0,0', tx: 8, ty: 4, facing: 'down' } },
-        { type: 'saveStatue', x: 2, y: 1 },
+        { type: 'savePoint', x: 2, y: 1 },
         { type: 'slime', x: 9, y: 5 },
         { type: 'shutter', id: 'sampleShutterEast', x: 15, y: 5, open: { cleared: true } },
         { type: 'lockedDoor', id: 'sampleDoorNorth', kind: 'small', x: 7, y: 0, lock: 'sampleDoorNorth' },

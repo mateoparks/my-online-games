@@ -48,11 +48,10 @@
   VL.isCuttable = (state, tx, ty) => inside(tx, ty) && Boolean(roomTile(state, tx, ty).cuttable);
   VL.isBerryBush = (state, tx, ty) => inside(tx, ty) && Boolean(roomTile(state, tx, ty).berry);
 
-  // A flag that only ever turns on: a lock's `reached`, saved with the next earning.
+  // A flag that only ever turns on: a lock's `reached`.
   function firstTime(state, flag) {
     if (state.flags[flag]) return;
     state.flags[flag] = true;
-    VL.earned(state);
   }
 
   // `how` is 'sword' or 'hands'. True when there was a bush to take.

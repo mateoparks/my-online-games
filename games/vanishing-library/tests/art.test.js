@@ -547,7 +547,7 @@ test('HUD: an item with no item-<id> sprite draws a "?" instead of nothing', () 
 
 test('render lights the area with its own mood', () => {
   const { VL, document } = loadGame();
-  VL.ART.setAreaLight('hut', 'indoor');
+  assert.equal(VL.ART.lightFor('hut'), 'indoor', 'the hut is indoors (W44)');
   const moods = [];
   const original = VL.ART.drawLight;
   VL.ART.drawLight = (ctx, mood, ...rest) => {

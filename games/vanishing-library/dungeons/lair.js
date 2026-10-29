@@ -11,7 +11,7 @@
 //   shield room (-1,-1) ─door A─ hall (0,-1)
 //   lava, the Mirror Shield      │
 //   cellar (-1,0) ─────── entrance (0,0)
-//   block on plate → key A   statue, door out to overworld -1,-5
+//   block on plate → key A   door out to overworld -1,-5
 (() => {
   const { rect } = VL.ART;
   const DUNGEON = 'lair';
@@ -118,7 +118,7 @@
   const spout = (id, x, y, dir) => ({ type: 'fireSpout', id, x, y, dir });
 
   VL.addScreens(DUNGEON, {
-    // The entrance: the statue, the door out, a warning.
+    // The entrance: the door out, a warning.
     '0,0': {
       tiles: [
         '#######_########',
@@ -135,7 +135,6 @@
       ],
       entities: [
         { type: 'door', x: 7, y: 10, to: { area: 'overworld', screen: '-1,-5', tx: 7, ty: 5, facing: 'down' } },
-        { type: 'saveStatue', x: 3, y: 2 },
         { type: 'sign', x: 10, y: 2, title: 'Scratched on the rock', text: 'Turn back! The Dragon sleeps on a mountain of books up there, and it does not like visitors.' },
       ],
     },
@@ -189,8 +188,7 @@
     // The shield room (W42): lava from wall to wall but for the square
     // inside door A and the far corner's big chest, too far to cross there
     // and back on even a full set of hearts; berries eaten on the way do it.
-    // The shield counts only once he walks out alive (Matthew, W42): a faint
-    // on the lava, or a reload before leaving, puts it back in the chest.
+    // A faint on the lava goes back to the last save, shield and all (W44).
     '-1,-1': {
       tiles: [
         '################',
@@ -207,7 +205,7 @@
       ],
       entities: [
         { type: 'lockedDoor', id: 'd4DoorA', kind: 'small', x: 15, y: 5, lock: 'd4DoorA' },
-        { type: 'bigChest', id: 'd4ShieldChest', x: 1, y: 1, item: 'mirrorShield', keptOnLeaving: true },
+        { type: 'bigChest', id: 'd4ShieldChest', x: 1, y: 1, item: 'mirrorShield' },
       ],
     },
     // The great cave: the boss door north, door B east, the ledge west.
@@ -398,7 +396,6 @@
       const room = state.room;
       if (!atLairMouth(room) || state.flags.lairGuards || !room.lairGuards?.every((g) => g.hp <= 0)) return;
       state.flags.lairGuards = true;
-      VL.earned(state);
       const door = room.entities.find((e) => e.type === 'door' && e.shutUntil === 'lairGuards');
       if (door) door.solid = false;
     },
@@ -427,7 +424,6 @@
         VL.showMessage(state, VL.HOARD_WORDS);
         VL.showPopup(state, 'firstBook');
         state.events.push({ type: 'pickup', kind: 'book' });
-        VL.earned(state);
       },
     },
     light: 'indoor',
@@ -454,8 +450,7 @@
     ...VL.LOCKS.mirrorShield,
     needs: ['dragonsLairEntered', 'd4DoorA'],
     replan: 'found mid-dungeon: the Mirror Shield lies behind the first locked door',
-    // Carried out of the lava room alive, not just taken from the chest.
-    reached: (state) => VL.hasItem(state, 'mirrorShield') && state.pendingChest?.item !== 'mirrorShield',
+    reached: (state) => VL.hasItem(state, 'mirrorShield'),
   });
   // Key B, door B and the boss key lie past stone heads only the shield chokes.
   VL.defineLock('d4KeyB', { type: 'item', needs: ['mirrorShield'], supplies: { [keys]: 1 }, doc, reached: found('d4KeyB') });

@@ -38,7 +38,7 @@
   VL.glowRadius = (state) => (VL.hasItem(state, 'glowstone') ? { inner: T.glowInner, outer: T.glowOuter } : { inner: 4, outer: T.glowBare });
 
   // Things worth seeing in the dark glint where they stand.
-  VL.DARK_GLINTS = new Set(['switch', 'smallKey', 'bossKey', 'dungeonMap', 'bigChest', 'lockedDoor', 'saveStatue', 'heartContainer', 'shutter']);
+  VL.DARK_GLINTS = new Set(['switch', 'smallKey', 'bossKey', 'dungeonMap', 'bigChest', 'lockedDoor', 'heartContainer', 'shutter']);
   const glints = (e) => VL.DARK_GLINTS.has(e.type) || VL.ENTITIES[e.type]?.glintsInDark;
 
   // Drawn with the hero (front pass), so the dark covers the room and its

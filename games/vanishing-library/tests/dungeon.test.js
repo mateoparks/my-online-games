@@ -80,9 +80,10 @@ function setup({ where = null, storage = false, enemies = false } = {}) {
       }
       assert.equal(app.sceneId, 'play');
     },
-    // A page reload (no save first), then the hero placed at `place` if given.
+    // Save & Quit and a page reload (W44: only a save comes back), then the
+    // hero placed at `place` if given.
     reload(place) {
-      app = VL.reloadApp(app);
+      app = VL.reloadApp(app, { save: true });
       assert.ok(app.game, 'the slot loaded');
       if (place) t.place(place);
     },
@@ -397,14 +398,13 @@ test('a shutter condition can name a flag, several plates, an opened door or the
 
 // ---------- the statue ----------
 
-test('the statue step saves the game and sets the respawn point; fainting returns there with everything kept', () => {
+test('a lantern in a dungeon saves the game; fainting goes back to that save, at the lantern (W44)', () => {
   const t = setup({ where: at('0,0', 2, 2, 'up'), storage: true });
   const { VL } = t;
   assert.equal(t.game.savePoint, null);
-  assert.ok(VL.isSolidAt('sample', '0,0', 2, 0), 'the statue stands in a wall niche');
   t.until((g) => g.savePoint !== null, 1, ['up']);
   assert.deepEqual(plain(t.game.savePoint), { area: 'sample', screen: '0,0', tx: 2, ty: 1, facing: 'down' });
-  assert.equal(t.game.dungeonNote?.text, 'The statue glows. Your journey is saved.');
+  assert.equal(t.game.dungeonNote?.text, 'The lantern glows. Your journey is saved.');
   assert.ok(t.app.savedAt !== null, 'saved');
   VL.giveSmallKey(t.game, 'sample');
   t.place(at('0,-1', 7, 5));
@@ -415,10 +415,10 @@ test('the statue step saves the game and sets the respawn point; fainting return
   t.press('interact');
   assert.equal(t.app.sceneId, 'play');
   assert.equal(t.game.player.screen, '0,0');
-  assert.deepEqual(t.tile(), [2, 1], 'awake at the statue');
+  assert.deepEqual(t.tile(), [2, 1], 'awake at the lantern');
   assert.equal(t.game.hp, t.game.maxHp);
-  assert.equal(t.keys, 1, 'the key is kept');
-  // A reload lands there too.
+  assert.equal(t.keys, 0, 'the key found since the save is gone');
+  // Save & Quit and a reload land there too (where he came into the room).
   t.reload();
   assert.deepEqual([t.game.player.area, ...t.tile()], ['sample', 2, 1]);
 });
@@ -811,9 +811,10 @@ test('playthrough: the sample dungeon from the yard to the boss and out, reloadi
   const { VL } = loadDungeon();
   const play = createPlaythrough(VL, { milestones: SAMPLE_MILESTONES, steps: sampleSteps });
   const drive = play.playTo('sampleBoss');
-  // playTo's last reload: out through the boss warp, the dungeon finished, so at home (W31).
-  assert.deepEqual(plain(drive.state.savePoint), plain(VL.DUNGEONS.sample.entrance));
-  assert.deepEqual([drive.state.player.area, VL_tile(drive).tx, VL_tile(drive).ty], [VL.HOME_SAVE.area, VL.HOME_SAVE.tx, VL.HOME_SAVE.ty]);
+  // playTo's last Save & Quit: out through the boss warp, on the doorstep (W44).
+  const { area, tx, ty } = VL.DUNGEONS.sample.entrance;
+  assert.deepEqual([drive.state.savePoint.area, drive.state.savePoint.tx, drive.state.savePoint.ty], [area, tx, ty]);
+  assert.deepEqual([drive.state.player.area, VL_tile(drive).tx, VL_tile(drive).ty], [area, tx, ty]);
   assert.equal(drive.state.maxHp, VL.TUNING.startMaxHp + VL.TUNING.heartContainerHp);
   assert.deepEqual(plain(drive.state.dungeons.sample), {
     keysGiven: 0, bossKey: true, map: true, boss: true,
@@ -822,8 +823,8 @@ test('playthrough: the sample dungeon from the yard to the boss and out, reloadi
 });
 
 test('a faint anywhere in the dungeon, before or after each puzzle, never leaves it unsolvable', () => {
-  // After each milestone's step: faint, wake at the statue, and check the rest
-  // of the path is still open to the pathfinder with the blocks reset.
+  // After each milestone's step (and its Save & Quit): faint, wake at that
+  // save, and check the rest of the path is still open with the blocks reset.
   const { VL } = loadDungeon();
   for (let n = 1; n < SAMPLE_MILESTONES.length; n += 1) {
     const play = createPlaythrough(VL, { milestones: SAMPLE_MILESTONES, steps: sampleSteps });
@@ -831,8 +832,9 @@ test('a faint anywhere in the dungeon, before or after each puzzle, never leaves
     VL.faint(drive.state, 'sampleGolem');
     drive.update();
     drive.hold([], 0.7);
+    const saved = drive.state.savePoint;
     drive.press('interact');
-    assert.deepEqual([drive.state.player.screen, VL_tile(drive).tx, VL_tile(drive).ty], ['0,0', 2, 1], `woke at the statue after ${SAMPLE_MILESTONES[n - 1]}`);
+    assert.deepEqual([drive.state.player.screen, VL_tile(drive).tx, VL_tile(drive).ty], [saved.screen, saved.tx, saved.ty], `woke at the save after ${SAMPLE_MILESTONES[n - 1]}`);
     for (const id of SAMPLE_MILESTONES.slice(n)) {
       drive.fight = false;
       sampleSteps[id](drive);
@@ -870,7 +872,7 @@ test('render smoke: every dungeon entity draws in each of its states, and every 
   t.step();
   assert.ok(t.find('warp'));
   assert.ok(draw() > 50);
-  for (const id of ['item-small-key', 'item-boss-key', 'pickup-dungeon-map', 'icon-skull', 'prop-locked-door', 'prop-boss-door', 'prop-door-open', 'prop-push-block', 'prop-plate', 'prop-plate-down', 'prop-switch-off', 'prop-switch-on', 'prop-shutter', 'prop-statue']) {
+  for (const id of ['item-small-key', 'item-boss-key', 'pickup-dungeon-map', 'icon-skull', 'prop-locked-door', 'prop-boss-door', 'prop-door-open', 'prop-push-block', 'prop-plate', 'prop-plate-down', 'prop-switch-off', 'prop-switch-on', 'prop-shutter', 'prop-lantern']) {
     assert.ok(VL.ART.sprite(id), id);
   }
 });
@@ -961,17 +963,17 @@ test('the block lint: a closed shutter on an exit is no way out, so a block push
   assert.deepEqual([...VL.dungeonBlockProblems()], []);
 });
 
-test('the block lint starts from the statue and every arrival tile too: a respawn pocket with no way out is a bricked save', () => {
+test('the block lint starts from a lantern and every arrival tile too: a respawn pocket with no way out is a bricked save', () => {
   const { VL } = loadDungeon();
-  // The statue step (2,1) sits in a pocket whose mouth (2,2) holds the block:
+  // The lantern (2,1) sits in a pocket whose mouth (2,2) holds the block:
   // pushed from outside it opens the way in; on every Continue the block is
   // back and the hero wakes behind it.
   const rows = [WALL, '#__#___________#', FLOOR, '#_##___________#', '####___________#', '####____________', '####___________#', '####___________#', '####___________#', '####___________#', WALL];
   VL.addScreens('sample', {
-    '5,5': walledRoom(rows, [{ type: 'pushBlock', x: 2, y: 2 }, { type: 'saveStatue', x: 2, y: 1 }]),
+    '5,5': walledRoom(rows, [{ type: 'pushBlock', x: 2, y: 2 }, { type: 'savePoint', x: 2, y: 1 }]),
     '6,5': stub({ x: 0, y: 5 }),
   });
-  assert.deepEqual([...VL.dungeonBlockProblems()], ['sample 5,5: the hero respawning at the statue (2,1) can reach no exit without a push']);
+  assert.deepEqual([...VL.dungeonBlockProblems()], ['sample 5,5: the hero waking at the lantern (2,1) can reach no exit without a push']);
   // A door landing the hero in the pocket is the same trap.
   VL.getScreen('sample', '5,5').entities.pop();
   VL.getScreen('sampleYard', '0,0').entities.push({ type: 'door', x: 12, y: 6, to: at('5,5', 1, 2, 'down') });
@@ -1068,29 +1070,25 @@ test('the boss warp waits for the keys to be let go, so a direction held through
   assert.equal(t.game.player.area, 'sample', 'let go and pressed again: in through the door');
 });
 
-test("the boss warp makes the dungeon's entrance the save point, and with the dungeon finished Continue starts at home (W31), not at the statue", () => {
+test("the boss warp out saves nothing (W44): a faint after it goes back to the last lantern, boss and all", () => {
   const t = setup({ where: at('0,0', 2, 2, 'up'), storage: true });
   t.until((g) => g.savePoint?.area === 'sample', 1, ['up']);
+  const written = t.app.storage.read(t.VL.slotKey(0));
   t.d.boss = true;
   t.game.flags['found:heartSample'] = true;
   t.d.doors.sampleBossDoor = true;
   t.place(at('0,-2', 7, 9, 'up'));
   t.hold(['up'], 0.8);
   assert.equal(t.game.player.area, 'sampleYard', 'out through the warp');
-  assert.deepEqual(plain(t.game.savePoint), plain(t.VL.DUNGEONS.sample.entrance));
+  assert.deepEqual(plain(t.game.savePoint), { area: 'sample', screen: '0,0', tx: 2, ty: 1, facing: 'down' }, 'still the lantern');
   t.step();
-  assert.ok(t.app.savedAt !== null && !t.game.dirty, 'saved at once');
-  t.place(at('0,0', 2, 6));
-  t.reload();
-  const home = t.VL.HOME_SAVE;
-  assert.deepEqual([t.game.player.area, t.game.player.screen, ...t.tile()], [home.area, home.screen, home.tx, home.ty], 'Continue starts at the hut');
-  // Back inside, the statue is the save point again, and still hands on to the hut.
-  t.place(at('0,0', 2, 2, 'up'));
-  t.until((g) => g.savePoint?.area === 'sample', 1, ['up']);
-  t.reload();
-  assert.deepEqual([t.game.player.area, ...t.tile()], [home.area, home.tx, home.ty]);
-  const readme = read('README.md');
-  assert.ok(readme.includes('**The warp out is a save') && readme.includes('records it as his save point') && readme.includes('VL.HOME_SAVE'), 'README: the boss room and How to build a dungeon');
+  assert.equal(t.app.storage.read(t.VL.slotKey(0)), written, 'nothing written');
+  t.VL.faint(t.game, 'sampleGolem');
+  t.step();
+  t.hold([], 0.7);
+  t.press('interact');
+  assert.deepEqual([t.game.player.area, ...t.tile()], ['sample', 2, 1], 'back at the lantern');
+  assert.equal(t.d.boss, false, 'the boss waits again');
 });
 
 test("every dungeon's entrance is a walkable tile just outside its door (a saved respawn point since W27)", () => {

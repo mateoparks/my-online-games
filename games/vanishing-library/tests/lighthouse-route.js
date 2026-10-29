@@ -1,5 +1,5 @@
 // The Lighthouse played for real (W18): one function per lock on the way,
-// each starting from wherever the hero stands (the statue after a faint, or
+// each starting from wherever the hero stands (his last save after a faint, or
 // where the last one left him). tests/steps/w18.steps.js strings them into
 // the story milestones; tests/lighthouse.test.js runs them one lock at a
 // time, fainting in between.
@@ -159,11 +159,12 @@ const route = {
     drive.closePopups();
     ensureSword(drive);
     beachcomb(drive, 16);
+    // W44: the lantern outside the door saves first.
+    walk(drive, drive.VL.SAVE_LANTERNS.lighthouse);
+    assert.equal(drive.state.savePoint?.screen, '-1,1', 'the lantern saved');
     walk(drive, { area: 'overworld', screen: '-1,1', tx: 7, ty: 5 });
     drive.until((state) => state.player.area === AREA && settled(state), 2, ['up']);
     drive.closePopups();
-    walk(drive, at('0,0', 3, 3));
-    drive.until((state) => state.savePoint?.area === AREA, 1, ['up']);
   },
   // Along the cellar's dark floor to key A.
   d3KeyA(drive) {

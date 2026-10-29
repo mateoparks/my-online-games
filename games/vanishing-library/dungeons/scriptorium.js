@@ -8,7 +8,7 @@
 //   gallery (0,0)    stacks (1,-1) ─door A─ vault (2,-1): the gloves
 //   mural, block → key A    │ map                │ rock
 //        └───── entrance (1,0) ──rock── pit room (2,0) ─door B─ copying hall (3,0)
-//                statue      (overworld)   pot → switch → key B,   pot over desks →
+//                            (overworld)   pot → switch → key B,   pot over desks →
 //                                          ore                     switch → gate → pot →
 //                                                                  switch → boss key
 (() => {
@@ -133,7 +133,7 @@
   const pot = (x, y, respawn = true) => ({ type: 'pot', x, y, respawn });
 
   VL.addScreens('scriptorium', {
-    // The entrance hall: the statue, the way out, pots too heavy until the gloves.
+    // The entrance hall: the way out, pots too heavy until the gloves.
     '1,0': {
       tiles: [
         '#######_########',
@@ -150,7 +150,6 @@
       ],
       entities: [
         { type: 'door', x: 7, y: 10, to: { area: 'overworld', screen: '2,-2', tx: 8, ty: 4, facing: 'down' } },
-        { type: 'saveStatue', x: 3, y: 2 },
         { type: 'sign', x: 10, y: 2, title: 'Old Scriptorium', text: 'Quiet, please! Scribes at work. (The last scribe went home a hundred years ago.)' },
         pot(2, 8, false),
         pot(13, 8, false),
@@ -337,7 +336,6 @@
     VL.showMessage(state, { title: 'A bundle of books!', text: 'The Bookworm left behind three books it had been nibbling. Take them to the library!' });
     VL.showPopup(state, 'firstBook');
     state.events.push({ type: 'pickup', kind: 'book' });
-    VL.earned(state);
   };
 
   VL.defineDungeon(DUNGEON, {

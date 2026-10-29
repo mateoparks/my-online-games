@@ -472,8 +472,9 @@ test('every text the hero sees goes through popupText: no {token} is ever drawn 
     VL.CREDITS.unshift({ big: mark });
     for (const [id, name] of Object.entries(VL.REGION_NAMES)) if (name) VL.REGION_NAMES[id] = plant(name);
     VL.MAP_ASK = plant(VL.MAP_ASK);
-    const wakeWords = VL.wakeWords;
-    VL.wakeWords = (state) => plant(wakeWords(state) || 'at home');
+    const quitPlace = VL.quitPlace;
+    VL.quitPlace = (state) => ({ ...quitPlace(state), words: plant('right here') });
+    VL.FAINT_WORDS[0] = plant(VL.FAINT_WORDS[0]);
     const shop = VL.SCENES.shop.smokeData().shop;
     shop.title = plant(shop.title);
     for (const offer of shop.offers) offer.name = plant(offer.name);

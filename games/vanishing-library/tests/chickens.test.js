@@ -750,7 +750,7 @@ test('a faint mid-flight never leaves the hero hanging in the air', () => {
   VL.respawn(app.game);
   step();
   assert.ok(!app.game.player.flight);
-  assert.equal(app.game.player.lift, 0);
+  assert.ok(!app.game.player.lift);
 });
 
 test('W7 claims the chicken locks: chickens, and both flights', () => {

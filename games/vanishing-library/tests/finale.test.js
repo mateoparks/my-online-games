@@ -17,9 +17,12 @@ const fixtureText = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', n
 
 // An app in slot 1 of an in-memory store, loaded from a save (the W19
 // fixture: the Dragon beaten, out by the warp), changed by `edit` first.
+// W44: saved last at the hut's lantern, as a player home from the highlands
+// would have (the fixture's own save point is the lair's doorstep).
 function fromSave({ name = 'save-v1-W19.json', edit } = {}) {
   const { VL } = loadGame();
   const save = JSON.parse(fixtureText(name));
+  save.savePoint = { ...VL.HOME_SAVE };
   edit?.(save, VL);
   const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: JSON.stringify(save) }));
   const app = VL.createApp({ storage });
@@ -214,7 +217,7 @@ test('the sword only clonks off a puppet (it says nothing, W35, and nothing blin
   assert.notEqual(drive.app.sceneId, 'popup');
 });
 
-test('all three down wins the fight, saved at once; on later visits they lie in heaps and she stands on the floor', () => {
+test('all three down wins the fight, kept by Save & Quit (which wakes him at his last lantern below ground); on later visits they lie in heaps', () => {
   const t = hall();
   const { VL, drive } = t;
   for (const m of puppets(drive)) {
@@ -224,8 +227,8 @@ test('all three down wins the fight, saved at once; on later visits they lie in 
   }
   assert.equal(drive.state.flags.marionettes, true);
   drive.reload();
-  assert.equal(drive.state.flags.marionettes, true, 'saved the moment the last fell');
-  assert.deepEqual(at(drive), ['hut', '0,0'], 'a reload wakes him at the hut');
+  assert.equal(drive.state.flags.marionettes, true, 'saved by Save & Quit');
+  assert.deepEqual(at(drive), ['hut', '0,0'], 'Continue wakes him at his last lantern, the hut\'s');
   drive.fight = true;
   VL_place(t, { area: 'workshop', screen: '0,-1', tx: 7, ty: 9, facing: 'up' });
   assert.ok(puppets(drive).every((m) => m.fallen && m.strings.every((s) => s.cut)));
@@ -261,7 +264,7 @@ test('a hall cleared of its puppets (as the playthrough clears enemies) never co
   assert.equal(drive.state.flags.marionettes, undefined);
 });
 
-test('the puppets hurt him; a faint wakes him at the hut with everything kept and the strings whole again; nothing shuts him in', () => {
+test('the puppets hurt him; a faint goes back to his last save at the hut, the strings whole again; nothing shuts him in', () => {
   const t = hall();
   const { VL, drive } = t;
   const m = puppets(drive)[0];
@@ -276,7 +279,7 @@ test('the puppets hurt him; a faint wakes him at the hut with everything kept an
   drive.hold([], 0.8);
   drive.press('interact');
   assert.deepEqual(at(drive), ['hut', '0,0']);
-  assert.ok(VL.hasItem(drive.state, 'mirrorShield') && VL.LOCKS.d4Boss.reached(drive.state), 'nothing lost');
+  assert.ok(VL.hasItem(drive.state, 'mirrorShield') && VL.LOCKS.d4Boss.reached(drive.state), 'what was saved is kept');
   toHall(drive);
   assert.ok(puppets(drive).every((p) => p.strings.every((s) => !s.cut)), 'a fresh fight');
   // Out the way he came in, mid-fight: no gate.
@@ -537,17 +540,17 @@ test('the ending: the shelves fill, the town comes, the book about the hero goes
   assert.equal(app.sceneId, 'title');
   assert.equal(app.title.slots[0].summary.finished, true);
   drive.press('confirm');
-  assert.deepEqual(at(drive), ['hut', '0,0']);
+  assert.deepEqual(at(drive), ['library', '0,0'], 'the credits saved him at the library\'s lantern (W44)');
   drive.hold([], 1);
   assert.equal(app.sceneId, 'play', 'the ending never plays again');
 });
 
-test('a reload during the ending plays it again from the start; Esc skips to the credits', () => {
+test('a reload during the ending (no Save & Quit there) plays it again from the start; Esc skips to the credits', () => {
   const { app, drive } = fromSave({ edit: withBeats('forgiven') });
   drive.update();
   drive.hold([], 1.5);
   drive.press('interact');
-  drive.reload();
+  drive.reload({ save: false });
   drive.update();
   assert.equal(drive.app.sceneId, 'ending');
   assert.equal(drive.app.ending.beat, 0);
@@ -559,7 +562,7 @@ test('a reload during the ending plays it again from the start; Esc skips to the
   void app;
 });
 
-test('reload-safe at every beat: from a reload after each one the finale goes on to the credits', () => {
+test('reload-safe at every beat: from Save & Quit and a reload after each one the finale goes on to the credits', () => {
   for (const beat of ['trapdoorOpen', 'finale:followed', 'finale:confronted', 'marionettes', 'finale:showAsked', 'finale:shown']) {
     const { VL, drive } = fromSave({ edit: withBeats(beat) });
     drive.reload();

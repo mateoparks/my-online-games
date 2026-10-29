@@ -92,10 +92,11 @@ for (const id of [...Object.keys(BOSSES), 'marionettes']) {
     state.flags['met:gran'] = true;
     const hint = VL.BOSS_HINTS[id].say.join(' ');
     assert.notEqual(granSays(VL, state), hint, 'nothing before a faint');
+    VL.saveGame(state, VL.quitPlace(state).place);
     VL.faint(state, 'default');
     assert.equal(state.flags[VL.bossFaintFlag(id)], true, 'the faint is remembered');
-    assert.ok(state.dirty, 'and saved');
     VL.respawn(state);
+    assert.equal(state.flags[VL.bossFaintFlag(id)], true, 'and outlasts the trip back to the last save (W44)');
     assert.equal(granSays(VL, state), hint);
     for (const other of Object.keys(VL.BOSS_HINTS).filter((o) => o !== id)) assert.equal(VL.bossHintDue(state, other), false, `not ${other}'s`);
     if (id === 'marionettes') state.flags.marionettes = true;
@@ -475,7 +476,6 @@ test('a wood sword only clinks off the guards (with W30\'s "Clink!" word); the m
   for (const g of guards()) VL.hitEnemy(state, g, VL.TUNING.swordDamage.metalSword, VL.heroCentre(state), 'metalSword');
   hold(VL, state, [], 0.1);
   assert.equal(state.flags.lairGuards, true);
-  assert.ok(state.dirty, 'saved');
   assert.equal(door().solid, false);
   assert.ok(VL.LOCKS.lairGuards.reached(state));
   VL.place(state, { area: 'overworld', screen: '-1,-5', tx: 7, ty: 8, facing: 'up' });
@@ -520,7 +520,7 @@ test('an old save standing in the Lair with only a wood sword: the Dragon can\'t
   const storage = VL.createStorage(memoryStorage({ [VL.slotKey(0)]: JSON.stringify(save) }));
   const state = VL.loadSlot(storage, 0);
   VL.respawn(state);
-  assert.deepEqual([state.player.area, VL.hasItem(state, 'woodSword'), VL.hasItem(state, 'metalSword')], ['lair', true, false]);
+  assert.deepEqual([state.player.area, VL.hasItem(state, 'woodSword'), VL.hasItem(state, 'metalSword')], ['overworld', true, false], 'W44: the old statue save wakes him at the lantern outside');
   assert.ok(state.inventory.ore >= 1, 'ore for the smith');
   // Out through the door, past the guards (who only spit), and the smith sells the sword.
   VL.place(state, VL.DUNGEONS.lair.entrance);
@@ -678,7 +678,7 @@ test('the W35 fixture (played to the Dragon with the metal sword forged again an
   assert.equal(game.flags.lairGuards, true);
   assert.ok(VL.hasItem(game, 'metalSword') && !VL.bossBeaten(game, 'lair'));
   VL.respawn(game);
-  assert.deepEqual([game.player.area, game.player.screen], ['lair', '0,0'], 'Continue at the Lair\'s statue');
+  assert.deepEqual([game.player.area, game.player.screen], ['overworld', '-1,-5'], 'Continue at the lantern outside the Lair (W44)');
   game.flags['met:gran'] = true;
   assert.equal([].concat(VL.pickDialogue(game, 'gran').say).join(' '), VL.BOSS_HINTS.lair.say.join(' '));
   VL.place(game, { area: 'overworld', screen: '-1,-5', tx: 7, ty: 8, facing: 'up' });

@@ -60,7 +60,7 @@ function setup({ where, storage = false, enemies = false, gloves = true } = {}) 
       }
     },
     reload(place) {
-      app = VL.reloadApp(app);
+      app = VL.reloadApp(app, { save: true });
       if (place) t.place(place);
     },
   };
@@ -116,14 +116,16 @@ test('the gallery block: a sign beside it says how to undo a wrong push, and ste
   assert.deepEqual([t.find('pushBlock').x, t.find('pushBlock').y], [11, 8], 'back where it started');
 });
 
-test('the statue by the entrance saves and is where a faint wakes the hero', () => {
-  const t = setup({ where: scr('1,0', 3, 4, 'up'), storage: true });
-  t.until((g) => g.savePoint?.area === 'scriptorium', 1, ['up']);
+test('the lantern outside the door saves (W44), and a faint inside wakes the hero there', () => {
+  const lantern = loadGame().VL.SAVE_LANTERNS.scriptorium;
+  const t = setup({ where: { ...lantern, ty: lantern.ty + 1, facing: 'up' }, storage: true });
+  t.until((g) => g.savePoint?.screen === lantern.screen, 1, ['up']);
+  t.place(scr('1,0', 7, 5));
   t.VL.faint(t.game, 'bookworm');
   t.step();
   t.hold([], 0.7);
   t.press('interact');
-  assert.deepEqual([t.game.player.screen, t.VL.heroTile(t.game).tx, t.VL.heroTile(t.game).ty], ['1,0', 3, 2]);
+  assert.deepEqual([t.game.player.area, t.game.player.screen, t.VL.heroTile(t.game).tx, t.VL.heroTile(t.game).ty], ['overworld', lantern.screen, lantern.tx, lantern.ty]);
 });
 
 // ---------- the layout ----------
@@ -137,11 +139,11 @@ test('seven rooms in a readable layout, no gap a chicken could fly, and the fram
   assert.deepEqual(Object.keys(legend).filter((ch) => legend[ch].flyOver), []);
   assert.deepEqual([...VL.dungeonProblems()], []);
   assert.equal(VL.DUNGEONS.scriptorium.boss.type, 'bookworm');
-  // One of each: the map, the statue, two small keys and their doors, the boss key and door.
+  // One of each: the map, two small keys and their doors, the boss key and door; no lantern inside (W44).
   const all = rooms.flatMap((key) => VL.getScreen('scriptorium', key).entities);
   const count = (type) => all.filter((e) => e.type === type).length;
   assert.equal(count('dungeonMap'), 1);
-  assert.equal(count('saveStatue'), 1);
+  assert.equal(count('savePoint'), 0);
   assert.equal(count('smallKey'), 2);
   assert.equal(new Set(all.filter((e) => e.type === 'lockedDoor' && e.kind === 'small').map((e) => e.id)).size, 2);
   assert.equal(count('bossKey'), 1);
@@ -372,11 +374,13 @@ test('a faint anywhere in the Scriptorium, after each lock, never leaves it unso
   for (let n = BEFORE.length + 1; n < ROUTE_MILESTONES.length; n += 1) {
     const play = createPlaythrough(VL, { milestones: ROUTE_MILESTONES, steps });
     const drive = play.playTo(ROUTE_MILESTONES[n - 1]);
+    // W44: a faint goes back to the last save, the Save & Quit after that lock.
+    const saved = drive.state.savePoint;
     VL.faint(drive.state, 'bookworm');
     drive.update();
     drive.hold([], 0.7);
     drive.press('interact');
-    assert.deepEqual([drive.state.player.area, drive.state.player.screen, VL.heroTile(drive.state).tx, VL.heroTile(drive.state).ty], ['scriptorium', '1,0', 3, 2], `woke at the statue after ${ROUTE_MILESTONES[n - 1]}`);
+    assert.deepEqual([drive.state.player.area, drive.state.player.screen, VL.heroTile(drive.state).tx, VL.heroTile(drive.state).ty], [saved.area, saved.screen, saved.tx, saved.ty], `woke at his last save after ${ROUTE_MILESTONES[n - 1]}`);
     for (const id of ROUTE_MILESTONES.slice(n)) {
       drive.fight = false;
       route[id](drive);

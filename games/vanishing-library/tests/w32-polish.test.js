@@ -215,106 +215,54 @@ function drawnText(VL, app, t = 1) {
   return strings;
 }
 
-// The Scriptorium's statue, with its boss beaten and (when `done`) the heart taken.
-function atScriptoriumStatue({ done }) {
-  const { VL } = loadGame();
-  const app = VL.createApp({ storage: VL.createStorage(memoryStorage()) });
-  app.game = VL.newGame({ name: 'Robin' });
-  app.setScene('play');
-  const game = app.game;
-  game.popups.seen.controls = true;
-  const [screen, statue] = Object.entries(VL.AREAS.scriptorium.screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'saveStatue').map((e) => [key, e]))[0];
-  VL.place(game, { area: 'scriptorium', screen, tx: statue.x, ty: statue.y, facing: 'down' });
-  VL.dungeonState(game, 'scriptorium').boss = true;
-  if (done) VL.markFound(game, VL.DUNGEONS.scriptorium.boss.heart);
-  VL.ENTITIES.saveStatue.onStand(game, statue);
-  return { VL, app, game };
-}
+// W44 retired the wake-elsewhere words: every lantern wakes him at itself.
+const wreckLantern = (VL) => Object.entries(VL.AREAS.wreck.screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'savePoint').map((e) => [key, e]))[0];
 
-test('a statue in a dungeon still to finish says the journey is saved; a finished one says he wakes at home', () => {
-  const open = atScriptoriumStatue({ done: false });
-  assert.equal(open.game.dungeonNote.text, 'The statue glows. Your journey is saved.');
-  assert.equal(open.VL.wakeWords(open.game), null);
-  const done = atScriptoriumStatue({ done: true });
-  assert.equal(done.VL.wakeWords(done.game), 'at home');
-  assert.equal(done.game.dungeonNote.text, 'Your journey is saved. You\'ll wake up at home.');
-});
-
-test('the faint screen and the pause menu name where he wakes when it is not the save point', () => {
-  for (const [done, faint, pause] of [[false, 'You wake up at your last save point.', 'CONTINUE STARTS AT YOUR LAST SAVE POINT'], [true, 'You wake up at home.', 'CONTINUE STARTS AT HOME']]) {
-    const { VL, app, game } = atScriptoriumStatue({ done });
-    app.setScene('pause');
-    app.pause.cursor = VL.PAUSE_OPTIONS.indexOf('Save & Quit');
-    assert.ok(drawnText(VL, app).includes(pause), `pause, done ${done}`);
-    app.setScene('play');
-    VL.faint(game, 'crab');
-    app.setScene('fainted');
-    assert.ok(drawnText(VL, app).includes(faint), `faint, done ${done}`);
-  }
-});
-
-test('the wreck\'s lantern, once the page is found, says he wakes by the harbour; before it, it only saves', () => {
+test('the wreck\'s lantern says the journey is saved, page or no page (W44)', () => {
   for (const page of [false, true]) {
     const { VL } = loadGame();
     const game = VL.newGame({ name: 'Robin' });
-    const [screen, lantern] = Object.entries(VL.AREAS.wreck.screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'savePoint').map((e) => [key, e]))[0];
+    const [screen, lantern] = wreckLantern(VL);
     VL.place(game, { area: 'wreck', screen, tx: lantern.x, ty: lantern.y, facing: 'down' });
     if (page) game.flags['found:pageShipwreck'] = true;
     VL.ENTITIES.savePoint.onStand(game, lantern);
-    assert.equal(game.dungeonNote?.text ?? null, page ? 'Your journey is saved. You\'ll wake up by the harbour.' : null);
-    assert.equal(VL.wakeWords(game), page ? 'by the harbour' : null);
+    assert.equal(game.dungeonNote?.text, 'The lantern glows. Your journey is saved.');
+    assert.deepEqual([game.savePoint.area, game.savePoint.tx, game.savePoint.ty], ['wreck', lantern.x, lantern.y]);
   }
 });
 
-test('when the save cannot be written, the statue and the lantern never say the journey is saved, and do once a retry works', () => {
-  for (const done of [false, true]) {
-    const { VL } = loadGame();
-    const backing = memoryStorage();
-    const app = VL.createApp({ storage: VL.createStorage(backing) });
-    app.startGame(VL.newGame({ name: 'Robin' }), 0, { fresh: true });
-    app.setScene('play');
-    const game = app.game;
-    game.popups.seen.controls = true;
-    const [screen, statue] = Object.entries(VL.AREAS.scriptorium.screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'saveStatue').map((e) => [key, e]))[0];
-    VL.place(game, { area: 'scriptorium', screen, tx: statue.x, ty: statue.y, facing: 'down' });
-    VL.dungeonState(game, 'scriptorium').boss = true;
-    if (done) VL.markFound(game, VL.DUNGEONS.scriptorium.boss.heart);
-    const setItem = backing.setItem;
-    backing.setItem = () => { throw new Error('full'); };
-    VL.ENTITIES.saveStatue.onStand(game, statue);
-    app.update(VL.noActions(), VL.TUNING.step);
-    assert.ok(app.saveFailed, 'the write failed');
-    const failed = game.dungeonNote.text;
-    assert.ok(!/is saved/i.test(failed) && /could not save/i.test(failed), failed);
-    if (done) assert.ok(/wake up at home/.test(failed), failed);
-    assert.ok(drawnText(VL, app).includes(failed), 'the failed words are what is drawn');
-    backing.setItem = setItem;
-    app.update(VL.noActions(), VL.TUNING.step);
-    assert.ok(!app.saveFailed, 'the retry worked');
-    assert.equal(game.dungeonNote.text, done ? 'Your journey is saved. You\'ll wake up at home.' : 'The statue glows. Your journey is saved.');
-  }
+test('when the save cannot be written, the wreck\'s lantern never says the journey is saved, and does once a retry works', () => {
   const { VL } = loadGame();
   const backing = memoryStorage();
   const app = VL.createApp({ storage: VL.createStorage(backing) });
   app.startGame(VL.newGame({ name: 'Robin' }), 0, { fresh: true });
+  app.setScene('play');
   const game = app.game;
-  const [screen, lantern] = Object.entries(VL.AREAS.wreck.screens).flatMap(([key, s]) => s.entities.filter((e) => e.type === 'savePoint').map((e) => [key, e]))[0];
+  game.popups.seen.controls = true;
+  const [screen, lantern] = wreckLantern(VL);
   VL.place(game, { area: 'wreck', screen, tx: lantern.x, ty: lantern.y, facing: 'down' });
-  game.flags['found:pageShipwreck'] = true;
+  const setItem = backing.setItem;
   backing.setItem = () => { throw new Error('full'); };
   VL.ENTITIES.savePoint.onStand(game, lantern);
-  app.save();
-  assert.equal(game.dungeonNote.text, 'Could not save yet. You\'ll wake up by the harbour.');
+  app.update(VL.noActions(), VL.TUNING.step);
+  assert.ok(app.saveFailed, 'the write failed');
+  const failed = game.dungeonNote.text;
+  assert.ok(!/is saved/i.test(failed) && /could not save/i.test(failed), failed);
+  assert.ok(drawnText(VL, app).includes(failed), 'the failed words are what is drawn');
+  backing.setItem = setItem;
+  app.update(VL.noActions(), VL.TUNING.step);
+  assert.ok(!app.saveFailed, 'the retry worked');
+  assert.equal(game.dungeonNote.text, 'The lantern glows. Your journey is saved.');
 });
 
-test('the hut\'s lantern out in the world shows no note: he wakes right there', () => {
+test('the hut\'s lantern out in the world shows no note: SAVED in the bar says it', () => {
   const { VL } = loadGame();
   const game = VL.newGame({ name: 'Robin' });
   VL.place(game, VL.HOME_SAVE);
   const lantern = game.room.entities.find((e) => e.type === 'savePoint');
   VL.ENTITIES.savePoint.onStand(game, lantern);
   assert.equal(game.dungeonNote ?? null, null);
-  assert.equal(VL.wakeWords(game), null);
+  assert.equal(game.dirty, true, 'saved');
 });
 
 // ---------- 4. broken shells show in the counts ----------

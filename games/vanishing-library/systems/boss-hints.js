@@ -1,6 +1,7 @@
 // How to beat a boss is never told up front: once the hero has fainted to a
 // boss, Gran Ottie tells how it's done, until it is beaten (README "Boss
-// hints"). A faint in a boss room marks `bossFainted:<id>` in the flags.
+// hints"). A faint in a boss room marks `bossFainted:<id>` in the flags, and
+// it outlasts the faint's trip back to the last save (W44).
 (() => {
   const dungeonBoss = (id) => ({
     at: (state) => {
@@ -56,7 +57,12 @@
     for (const [id, hint] of Object.entries(VL.BOSS_HINTS)) {
       if (!hint.at(state)) continue;
       state.flags[VL.bossFaintFlag(id)] = true;
-      VL.earned(state);
+    }
+  });
+  VL.keepThroughFaint((fainted, woken) => {
+    for (const id of Object.keys(VL.BOSS_HINTS)) {
+      const flag = VL.bossFaintFlag(id);
+      if (fainted.flags[flag] && !VL.BOSS_HINTS[id].beaten(woken)) woken.flags[flag] = true;
     }
   });
 

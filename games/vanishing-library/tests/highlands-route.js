@@ -242,4 +242,17 @@ function dropChicken(drive) {
   }
 }
 
-module.exports = { route, ROUTE: Object.keys(route), walk, flyFrom, dropChicken, talkTo, ow, gatherWood };
+// Back down from the shelves (W44: Save & Quit by the lair wakes him there):
+// the lair side's chicken west over the second chasm, the middle shelves'
+// one down to the ledge, and down the hidden path.
+const HIGHLANDS = ['-1,-3', '-2,-3', '-2,-4', '-1,-4', '-1,-5'];
+function downFromTheHighlands(drive) {
+  const { state } = drive;
+  if (state.player.area !== 'overworld' || !HIGHLANDS.includes(state.player.screen)) return;
+  if (['-1,-4', '-1,-5'].includes(state.player.screen)) flyFrom(drive, ow('-1,-4', 1, 5), 'chickenLair', 'left');
+  flyFrom(drive, ow('-1,-3', 7, 9), 'chickenHighlands', 'down');
+  if (drive.state.player.carrying) dropChicken(drive);
+  assert.equal(drive.state.player.screen, '-1,-2', 'down on the ledge');
+}
+
+module.exports = { route, ROUTE: Object.keys(route), walk, flyFrom, dropChicken, downFromTheHighlands, talkTo, ow, gatherWood };

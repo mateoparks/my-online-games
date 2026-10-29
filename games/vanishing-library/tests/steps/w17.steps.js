@@ -180,7 +180,7 @@ function belowDeck(drive) {
   drive.closePopups();
   drive.reload();
   assert.ok(VL.spotFound(drive.state, 'pageShipwreck') && VL.spotFound(drive.state, 'oreShipwreck'), 'the page and the ore survive a reload');
-  assert.deepEqual([drive.state.player.area, drive.state.player.screen], ['overworld', '2,1'], 'with the page found he wakes on the harbour, not below deck');
+  assert.deepEqual([drive.state.player.area, drive.state.player.screen], ['wreck', '1,0'], 'Save & Quit below deck wakes him where he came into the cabin (W44)');
   drive.closePopups();
 }
 

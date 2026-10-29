@@ -84,7 +84,6 @@ VL.FILES = {
     'entities/pressure-plate.js',
     'entities/switch.js',
     'entities/shutter.js',
-    'entities/save-statue.js',
     'entities/small-key.js',
     'entities/boss-key.js',
     'entities/dungeon-map.js',
@@ -128,6 +127,7 @@ VL.FILES = {
     'dungeons/shipwreck.js',
     'dungeons/lair.js',
     'dungeons/workshop.js',
+    'dungeons/save-lanterns.js',
   ],
 
   scenes: [

@@ -1,7 +1,7 @@
 // The dungeon framework (design: The world, "Each dungeon has Zelda
 // conventions"): dungeons made of rooms, small keys and locked doors per
 // dungeon, the boss key, the dungeon map, push blocks, pressure plates,
-// switches and shutters, entrance statues, the boss room and saved puzzle
+// switches and shutters, the boss room and saved puzzle
 // state. Entities live one per file in entities/; the map screen is
 // scenes/dungeon-map.js. README "Dungeons".
 (() => {
@@ -10,8 +10,8 @@
   // ---------- saved state ----------
 
   // Per dungeon: keys given from code, doors opened, plates latched, switches
-  // thrown, the boss beaten, the map found. Every one is a permanent earning,
-  // so it saves at once; room state (block positions, a held plate, a shutter
+  // thrown, the boss beaten, the map found. Every one lasts (saved with the
+  // next save); room state (block positions, a held plate, a shutter
   // waiting on a fight) is the visit's and comes back fresh on re-entry. The
   // keys in hand are never stored: VL.smallKeys derives them, so a door or
   // key id renamed after a save can never leave a key spent on a door that
@@ -54,6 +54,9 @@
       addBossGate(id, def);
     }
     if (!VL.ART.AREA_LIGHT[def.area]) VL.ART.setAreaLight(def.area, def.light || 'indoor');
+    // Rooms come back fresh on every entry, so Save & Quit wakes him where he
+    // came into the room, a tile the stranding check below covers.
+    VL.quitRule(def.area, 'entry');
     VL.DUNGEONS[id] = { id, name: id, light: 'indoor', ...def };
     return VL.DUNGEONS[id];
   };
@@ -121,7 +124,6 @@
 
   // A key found on the map is counted by its found flag; this only tells.
   VL.smallKeyFound = function smallKeyFound(state, dungeonId) {
-    VL.earned(state);
     state.events.push({ type: 'smallKey', dungeon: dungeonId, keys: VL.smallKeys(state, dungeonId) });
   };
 
@@ -135,14 +137,12 @@
   VL.giveBossKey = function giveBossKey(state, dungeonId) {
     const d = VL.dungeonState(state, dungeonId);
     d.bossKey = true;
-    VL.earned(state);
     state.events.push({ type: 'bossKey', dungeon: dungeonId });
   };
 
   VL.giveDungeonMap = function giveDungeonMap(state, dungeonId) {
     const d = VL.dungeonState(state, dungeonId);
     d.map = true;
-    VL.earned(state);
     state.events.push({ type: 'dungeonMap', dungeon: dungeonId });
   };
 
@@ -188,7 +188,6 @@
     d.doors[door.id] = true;
     door.open = true;
     door.solid = false;
-    VL.earned(state);
     state.events.push({ type: 'doorUnlocked', door: door.id, kind: door.kind });
     return 'opened';
   };
@@ -217,7 +216,6 @@
     }
     d.switches[lever.id] = true;
     lever.on = true;
-    VL.earned(state);
     state.events.push({ type: 'switchOn', switch: lever.id });
     return true;
   };
@@ -298,7 +296,6 @@
     plate.down = down;
     if (plate.latch && down && plate.id && !latched) {
       d.plates[plate.id] = true;
-      VL.earned(state);
     }
   }
 
@@ -444,8 +441,7 @@
     }
     // The way out waits for the heart (W30's boss gate).
     if (!VL.spotFound(state, boss.heart) || room.entities.some((e) => e.type === 'warp')) return;
-    // savePoint: Continue after the win starts outside, not back at the statue.
-    const warp = { type: 'warp', x: boss.warp.tx, y: boss.warp.ty, to: dungeon.entrance, savePoint: true };
+    const warp = { type: 'warp', x: boss.warp.tx, y: boss.warp.ty, to: dungeon.entrance };
     room.entities.push(warp);
     // A warp that opens under the hero waits for him to step off and back on.
     const hero = VL.heroTile(state);
@@ -473,7 +469,6 @@
     const d = VL.dungeonState(state, dungeonId);
     if (d.boss) return false;
     d.boss = true;
-    VL.earned(state);
     state.events.push({ type: 'bossDefeated', dungeon: dungeonId });
     const room = state.room;
     if (room && room.area === dungeon.area && room.screen === dungeon.boss.screen) bossRewards(state, dungeon);
@@ -484,19 +479,6 @@
   VL.bossBeaten = (state, dungeonId) => Boolean(VL.dungeonState(state, dungeonId).boss);
   VL.bossDone = (state, dungeonId) => VL.bossBeaten(state, dungeonId) && VL.spotFound(state, VL.DUNGEONS[dungeonId].boss.heart);
 
-  // A dungeon's own save points: any spot inside it, or the doorstep its warp out saves.
-  VL.savePointInDungeon = function savePointInDungeon(point, dungeonId) {
-    const { area, entrance } = VL.DUNGEONS[dungeonId];
-    return point.area === area || (point.area === entrance.area && point.screen === entrance.screen && point.tx === entrance.tx && point.ty === entrance.ty);
-  };
-
-  // Once a dungeon is finished, its statue and doorstep wake him at the hut's
-  // lantern instead, so Continue never starts out at a far dungeon he is done
-  // with (README "The boss room").
-  VL.moveSavePoint((state, point) => {
-    const finished = Object.values(VL.DUNGEONS).some((d) => d.boss && VL.savePointInDungeon(point, d.id) && VL.bossDone(state, d.id));
-    return finished ? VL.HOME_SAVE : null;
-  });
 
   // ---------- saved tile changes (for W14's boulders and anything else that outlasts a visit) ----------
 
@@ -506,7 +488,6 @@
     const key = `${area}:${screen}`;
     (state.tileChanges[key] || (state.tileChanges[key] = {}))[`${tx},${ty}`] = ch;
     if (state.room && state.room.area === area && state.room.screen === screen) VL.setRoomTile(state, tx, ty, ch);
-    VL.earned(state);
   };
 
   VL.savedTile = (state, area, screen, tx, ty) => state.tileChanges[`${area}:${screen}`]?.[`${tx},${ty}`] ?? null;
@@ -735,9 +716,8 @@
   // leaves the hero with no exit he can reach (then he can neither leave to
   // reset the blocks nor, in a room without enemies, faint). A breadth-first
   // search over block positions from every tile the hero can appear on: each
-  // exit and the tiles beside it, the statue step (a faint or Continue puts
-  // him there with the blocks back at their start), and every tile a door
-  // or warp lands him on; the first (shortest) stranding sequence per room
+  // exit and the tiles beside it, a lantern (Continue puts him there with the
+  // blocks back at their start), and every tile a door or warp lands him on; the first (shortest) stranding sequence per room
   // is reported. It models what the room is made of: walls, solid things,
   // exits (openings, doors, locked doors, warps; an exit under closed bars
   // is no exit), plates pressed by blocks (or a latch plate the hero can
@@ -827,13 +807,13 @@
       return region.has(exit) || beside(region, tx, ty);
     });
     // Where the hero can appear: every exit and the tiles beside it, the
-    // statue step, and wherever a door or warp lands him.
+    // lantern, and wherever a door or warp lands him.
     const starts = [];
     for (const exit of exits) {
       const [tx, ty] = exit.split(',').map(Number);
       for (const [dx, dy] of [[0, 0], ...STEPS]) if (inside(tx + dx, ty + dy)) starts.push({ tx: tx + dx, ty: ty + dy, label: `the hero at (${tx + dx},${ty + dy})` });
     }
-    for (const e of fixed) if (e.type === 'saveStatue' || e.type === 'savePoint') starts.push({ tx: e.x, ty: e.y, label: `the hero respawning at the statue (${e.x},${e.y})` });
+    for (const e of fixed) if (e.type === 'savePoint') starts.push({ tx: e.x, ty: e.y, label: `the hero waking at the lantern (${e.x},${e.y})` });
     for (const to of arrivals(areaId, key)) starts.push({ tx: to.tx, ty: to.ty, label: `the hero arriving at (${to.tx},${to.ty})` });
     const seen = new Set();
     const queue = [];
@@ -1027,5 +1007,4 @@
   VL.SOUND.onEvent('warp', 'dungeonWarp');
   VL.SOUND.onEvent('bossDefeated', 'dungeonBoss');
   VL.SOUND.onEvent('revealed', 'dungeonPlate');
-  VL.SOUND.onEvent('statue', 'popup');
 })();

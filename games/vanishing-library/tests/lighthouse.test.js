@@ -106,22 +106,6 @@ test('without the Glowstone, walking into the Lighthouse door says why', () => {
   assert.equal(VL.currentPopup(t.game).text, VL.LIGHTHOUSE_DARK_WORDS);
 });
 
-test('the doorstep is safe: Continue after the win lands there, and nothing hurts him while he stands still', () => {
-  const t = setup({ enemies: true });
-  const { VL } = t;
-  const step = VL.DUNGEONS.lighthouse.entrance;
-  assert.ok(!VL.isSolidAt(step.area, step.screen, step.tx, step.ty));
-  t.game.savePoint = { ...step };
-  t.place(lh('0,0', 7, 7));
-  VL.faint(t.game);
-  t.hold([], 0.7);
-  t.press('interact');
-  assert.deepEqual([t.game.player.area, t.game.player.screen, VL.heroTile(t.game).tx, VL.heroTile(t.game).ty], [step.area, step.screen, step.tx, step.ty], 'woke on the doorstep');
-  const hp = t.game.hp;
-  t.hold([], 15);
-  assert.ok(t.game.hp >= hp - 1, `fifteen seconds standing on the doorstep costs at most half a heart (${hp - t.game.hp})`);
-});
-
 // ---------- layout ----------
 
 test('every lint is clean: locks, doors, blocks; 8 to 14 rooms', () => {
@@ -769,11 +753,13 @@ test('a faint anywhere in the Lighthouse, after each lock, never leaves it unsol
   for (let n = 1; n < ROUTE.length; n += 1) {
     const play = createPlaythrough(VL, { app: fixtureApp(VL, 'save-v1-W16.json'), milestones: ROUTE, steps: route });
     const drive = play.playTo(ROUTE[n - 1]);
+    // W44: a faint goes back to the last save, the Save & Quit after that lock.
+    const saved = drive.state.savePoint;
     VL.faint(drive.state, 'lensCrab');
     drive.update();
     drive.hold([], 0.7);
     drive.press('interact');
-    assert.deepEqual([drive.state.player.area, drive.state.player.screen, VL.heroTile(drive.state).tx, VL.heroTile(drive.state).ty], [AREA, '0,0', 3, 2], `woke at the statue after ${ROUTE[n - 1]}`);
+    assert.deepEqual([drive.state.player.area, drive.state.player.screen, VL.heroTile(drive.state).tx, VL.heroTile(drive.state).ty], [saved.area, saved.screen, saved.tx, saved.ty], `woke at his last save after ${ROUTE[n - 1]}`);
     for (const id of ROUTE.slice(n)) {
       drive.fight = false;
       route[id](drive);

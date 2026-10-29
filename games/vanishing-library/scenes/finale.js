@@ -2,9 +2,9 @@
 // back in the library, the town fills the shelves with the hoard's books, a
 // book about the hero goes on the shelf, the town cheers the hero by name, a
 // line about the town writing its own books, then the credits and the title. The game is
-// marked finished as the credits begin, so a reload from there on shows the
-// slot as FINISHED; Continue wakes him at his last save point before the
-// finale (the hut), in the world after the ending. README "The finale (W20)".
+// marked finished and saved as the credits begin, so the slot shows
+// FINISHED; Continue wakes him at the library's lantern, in the world after
+// the ending. README "The finale (W20)".
 (() => {
   VL.ENDING_TIMES = { fadeIn: 1.2, fadeOut: 1.2, fillPerSecond: 0.35, creditsSpeed: 14 };
   const T = VL.ENDING_TIMES;
@@ -86,11 +86,12 @@
     view.t = 0;
   }
 
-  // The credits begin: the game is finished for good (saved this step).
+  // The credits begin: the game is finished for good, saved this step at
+  // the library's lantern (W44).
   function finish(app, view) {
     startPhase(view, 'credits');
     app.game.finished = true;
-    VL.earned(app.game);
+    VL.saveGame(app.game, VL.SAVE_LANTERNS.library);
     VL.sfx('endingTune');
   }
 

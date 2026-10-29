@@ -1,5 +1,5 @@
 // The play scene: the world updates and is drawn. Esc pauses, E opens the
-// equipment screen, a save flashes SAVED (the app saves after every step),
+// equipment screen, a save (a lantern) flashes SAVED once it is written,
 // a waiting popup opens over the world, and hearts running out hands over
 // to the fainted scene.
 (() => {

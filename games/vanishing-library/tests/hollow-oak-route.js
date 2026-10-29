@@ -1,6 +1,6 @@
 // The Woods and the Hollow Oak played for real (W15): one function per lock
-// on the way, each starting from wherever the hero stands (the statue after
-// a faint, or where the last one left him). tests/steps/w15.steps.js strings
+// on the way, each starting from wherever the hero stands (his last save
+// after a faint, or where the last one left him). tests/steps/w15.steps.js strings
 // them into the story milestones; tests/hollow-oak.test.js runs them one lock
 // at a time, fainting in between.
 const assert = require('node:assert/strict');
@@ -119,10 +119,11 @@ const route = {
     // The first step into the Woods with the map says how it helps.
     drive.until((state) => state.player.screen === '5,-1' && settled(state), 2, ['up']);
     drive.closePopups();
+    // W44: the lantern below the Oak saves first.
+    drive.walkTo(drive.VL.SAVE_LANTERNS.woods);
+    assert.equal(drive.state.savePoint?.screen, drive.VL.SAVE_LANTERNS.woods.screen, 'the Woods lantern saved');
     drive.walkTo({ area: 'overworld', screen: '7,-2', tx: 7, ty: 4 });
     drive.until((state) => state.player.area === AREA && settled(state), 2, ['up']);
-    drive.walkTo(at('0,0', 3, 3));
-    drive.until((state) => state.savePoint?.area === AREA, 1, ['up']);
   },
   // The map first, from its nook on the way through the tangle; then the
   // thorny spitters, beaten with the metal sword, and key A appears (W30).

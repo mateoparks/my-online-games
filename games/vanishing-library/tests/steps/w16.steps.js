@@ -1,5 +1,6 @@
 // Playthrough step for the shockwave (W16): the ground shakes after the
-// Thornback, a reload once the losses are saved, the lines told on black,
+// Thornback, a reload with nothing saved since that plays it again (W44),
+// the lines told on black,
 // waking at home with the Glowstone, and Gran Ottie's wood.
 const assert = require('node:assert/strict');
 
@@ -16,9 +17,12 @@ function shockwave(drive) {
   const { VL } = drive;
   drive.until(() => drive.app.sceneId === 'shockwave', 4);
   drive.until((state) => state.flags.shockwave, VL.SHOCKWAVE_TIMES.rumble + 0.5);
-  // A reload after the losses are saved picks the story up on black.
-  drive.reload();
-  drive.until(() => drive.app.sceneId === 'shockwave' && drive.app.shockwave.phase === 'dark', 1);
+  // A closed tab: nothing was saved since, so the knock-out comes again.
+  drive.reload({ save: false });
+  assert.equal(drive.state.flags.shockwave, undefined, 'the losses were never saved');
+  drive.until(() => drive.app.sceneId === 'shockwave', 6);
+  drive.until((state) => state.flags.shockwave, VL.SHOCKWAVE_TIMES.rumble + 0.5);
+  drive.until(() => drive.app.sceneId === 'shockwave' && drive.app.shockwave.phase === 'dark', 3);
   for (let i = 0; i < 30 && drive.app.shockwave?.phase === 'dark'; i += 1) {
     drive.hold([], 0.2);
     drive.press('interact');

@@ -699,7 +699,7 @@ test('drive.reload swaps in the app a reload hook returns, and says what is miss
   });
   const before = reloaded.drive.app;
   reloaded.drive.walkTo({ area: 'hut', screen: '0,0', tx: 7, ty: 5 });
-  reloaded.drive.reload();
+  reloaded.drive.reload({ save: false });
   assert.equal(reloads, 1);
   assert.notEqual(reloaded.drive.app, before);
   assert.equal(reloaded.drive.state.player.area, 'hut', 'drive.state follows the new app');
