@@ -1,5 +1,5 @@
 // Shovels and digging (design: Resources and economy, Digging; Tools: two
-// tiers). A shovel takes both hands; Space or D digs the tile ahead. Sand
+// tiers). A shovel takes both hands; either hand key digs the tile ahead. Sand
 // gives a whole shell 20% of the time (30% once the Tide Tables are read)
 // and a broken one 50%; the metal shovel also digs grass, where a few
 // secrets lie buried, and (W38) roads and the Whispering Woods floor, which

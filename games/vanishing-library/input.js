@@ -46,7 +46,9 @@ VL.keyCode = function keyCode(event) {
 // when `hands` ({ mainHand, offHand } codes) gives it one.
 VL.actionsForKey = function actionsForKey(event, hands = VL.DEFAULT_HAND_KEYS) {
   const out = [];
-  const fixed = VL.KEYS[event.code] || VL.KEY_NAMES[(event.key || '').toLowerCase()];
+  // Key names only when the browser gives no code: on another layout the
+  // D key may type s or e, and must still be only the off hand.
+  const fixed = event.code ? VL.KEYS[event.code] : VL.KEY_NAMES[(event.key || '').toLowerCase()];
   if (fixed) out.push(fixed);
   const code = VL.keyCode(event);
   if (code === 'Space') out.push('space');

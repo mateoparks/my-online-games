@@ -1,7 +1,8 @@
 // The hero's hands (design: Controls, Tools, Bare hands). S interacts with
 // what the hero faces: an entity's onInteract (chest, sign), a berry bush, or
-// a bush pulled by hand when no sword is in the main hand. Space and D use
-// what each hand holds; Space with an empty main hand pulls a bush too.
+// a bush pulled by hand when no sword is in the main hand. The hand keys use
+// what each hand holds; the main-hand key with an empty main hand pulls a
+// bush too.
 (() => {
   VL.tune({ swingSeconds: 0.24, berryHeal: 2, pullCost: 1 });
 

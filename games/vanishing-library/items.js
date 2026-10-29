@@ -89,7 +89,7 @@
 
   // Puts an item in a hand; it leaves the other hand if it was there. Choosing
   // the item the hand already holds empties it. A two-handed item takes both
-  // hands (Space and D both use it), and anything put in either hand frees both.
+  // hands (both hand keys use it), and anything put in either hand frees both.
   VL.setHand = function setHand(state, hand, id) {
     if (!VL.HANDS.includes(hand)) throw new Error(`no hand ${hand}`);
     const other = hand === 'mainHand' ? 'offHand' : 'mainHand';

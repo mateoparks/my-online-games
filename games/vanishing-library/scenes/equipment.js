@@ -1,6 +1,7 @@
 // The equipment screen (E): everything the hero carries over the paused
-// world. Arrows choose an item, Space puts it in the main hand and D in the
-// off hand, S uses it (eats a berry), X, E or Esc goes back (design: Controls).
+// world. Arrows choose an item, the main-hand key puts it in the main hand
+// and the off-hand key in the off hand, S uses it (eats a berry), X, E or
+// Esc goes back (design: Controls).
 // The chosen item's description wraps; one longer than its lines scrolls
 // with Down and Up before they move the cursor (W36).
 (() => {

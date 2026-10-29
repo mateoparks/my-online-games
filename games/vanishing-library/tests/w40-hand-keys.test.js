@@ -109,6 +109,31 @@ test('a number pad digit counts as that digit', () => {
   assert.equal(VL.keyCode({ key: '7' }), 'Digit7');
 });
 
+test('on another layout a hand key gives only its hand: key names count only when there is no code', () => {
+  const { VL } = loadGame();
+  assert.deepEqual([...VL.actionsForKey({ code: 'KeyD', key: 's' })], ['offHand'], 'Colemak: the D key types s');
+  assert.deepEqual([...VL.actionsForKey({ code: 'KeyD', key: 'e' })], ['offHand'], 'Dvorak: the D key types e');
+  assert.deepEqual([...VL.actionsForKey({ code: 'KeyQ', key: 'x' }, { mainHand: 'KeyQ', offHand: 'Digit1' })], ['mainHand'], 'a chosen key too');
+  assert.deepEqual([...VL.actionsForKey({ code: 'KeyS', key: 'o' })], ['interact'], 'the physical S key still talks');
+  assert.deepEqual([...VL.actionsForKey({ code: '', key: 'e' })], ['equipment'], 'a browser without `code` uses the key name');
+  assert.deepEqual([...VL.actionsForKey({ key: 'd' })], ['offHand'], 'and finds the hand key by its name');
+});
+
+test('every letter and digit a hand key can show has its own glyph in each font (O is not 0)', () => {
+  const { VL } = loadGame();
+  const chars = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'];
+  for (const size of ['small', 'normal', 'large']) {
+    const font = VL.ART.FONTS[size];
+    const seen = new Map();
+    for (const ch of chars) {
+      const glyph = font.glyphs[ch] || font.glyphs[ch.toLowerCase()];
+      const shape = JSON.stringify(glyph.runs);
+      assert.ok(!seen.has(shape), `${size}: ${ch} looks the same as ${seen.get(shape)}`);
+      seen.set(shape, ch);
+    }
+  }
+});
+
 // ---------- the input layer ----------
 
 test('the chosen keys give the hand actions, and Space and D only do while they are chosen', () => {
@@ -296,6 +321,24 @@ test('Esc or X while waiting for a key backs out with nothing changed; Reset put
   app.controls.cursor = rows.indexOf('back');
   press(VL, app, 'confirm');
   assert.equal(app.sceneId, 'pause');
+});
+
+test('N while the Controls screen waits for a key is only refused: it does not mute', () => {
+  const { VL, window } = loadGame();
+  const app = controlsApp(VL);
+  VL.app = app;
+  VL.SOUND.setMuted(false);
+  press(VL, app, 'confirm');
+  assert.equal(app.controls.capture, 'mainHand');
+  window.dispatch('keydown', keyEvent('KeyN', { key: 'n' }));
+  key(VL, app, 'KeyN');
+  assert.equal(VL.SOUND.muted, false, 'no mute while capturing');
+  assert.match(app.controls.note, /taken/i, 'N is refused');
+  press(VL, app, 'pause');
+  assert.equal(app.controls.capture, null);
+  window.dispatch('keydown', keyEvent('KeyN', { key: 'n' }));
+  assert.equal(VL.SOUND.muted, true, 'N mutes again on the Controls screen once it stops waiting');
+  VL.SOUND.setMuted(false);
 });
 
 test('the capture press itself is not taken as the new key', () => {

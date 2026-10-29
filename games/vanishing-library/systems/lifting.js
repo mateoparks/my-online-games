@@ -1,7 +1,7 @@
 // The Lifting Gloves (design: The path through the game, 2): with them S
-// lifts a pot, a rock or an east-road boulder overhead and S (or Space or
-// D) throws it. A throw flies over pits, water and low furniture, throws a
-// switch it hits, hurts an enemy it hits, and shatters. README "Lifting
+// lifts a pot, a rock or an east-road boulder overhead and S (or either
+// hand key) throws it. A throw flies over pits, water and low furniture,
+// throws a switch it hits, hurts an enemy it hits, and shatters. README "Lifting
 // (W14)".
 (() => {
   VL.tune({

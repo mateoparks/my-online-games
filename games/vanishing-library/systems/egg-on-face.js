@@ -1,6 +1,6 @@
 // Egg on his face (W38, Matthew's Easter egg): the rope's hook at a chicken
 // brings back an egg that splats on the hero's face. Until he leaves the
-// screen the arrows go the other way, Space and D swap hands, and everyone
+// screen the arrows go the other way, the hand keys swap hands, and everyone
 // who talks only says so. It lives on the visit (state.room), so any new
 // screen, a faint or a reload clears it, and it is never saved. README
 // "Egg on his face (W38)".
