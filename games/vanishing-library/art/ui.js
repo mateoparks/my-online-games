@@ -5,7 +5,7 @@
 
   // What the HUD shows besides hearts. The file that owns each value (the
   // inventory, the equipment screen) plugs its reader in once.
-  const sources = { shells: () => 0, brokenShells: () => 0, mainHand: () => null, offHand: () => null };
+  const sources = { shells: () => 0, brokenShells: () => 0, mainHand: () => null, offHand: () => null, mainKey: () => '␣', offKey: () => 'D' };
   const plugged = new Set();
 
   VL.ART.hudSource = function hudSource(name, read) {
@@ -27,6 +27,8 @@
       brokenShells: sources.brokenShells(state),
       mainHand: sources.mainHand(state),
       offHand: sources.offHand(state),
+      mainKey: sources.mainKey(state),
+      offKey: sources.offKey(state),
     };
   };
 
@@ -39,14 +41,14 @@
     // it never covers the play area or the dungeon keys under it.
     note: { right: 197, y: 5, twoLineY: 1 },
     slots: [
-      { hand: 'mainHand', label: '␣', x: 200 },
-      { hand: 'offHand', label: 'D', x: 228 },
+      { hand: 'mainHand', key: 'mainKey', label: '␣', x: 200 },
+      { hand: 'offHand', key: 'offKey', label: 'D', x: 228 },
     ],
     slotY: 1, slotW: 24, slotH: 14,
   };
 
   // An item in a hand slot is drawn with the sprite `item-<id>`.
-  function drawSlot(ctx, slot, item) {
+  function drawSlot(ctx, slot, item, label) {
     const { slotY, slotW, slotH } = VL.ART.HUD_LAYOUT;
     const edge = item ? 'text' : 'slotEmpty';
     rect(ctx, edge, slot.x + 1, slotY, slotW - 2, 1);
@@ -54,7 +56,7 @@
     rect(ctx, edge, slot.x, slotY + 1, 1, slotH - 2);
     rect(ctx, edge, slot.x + slotW - 1, slotY + 1, 1, slotH - 2);
     if (!item) return;
-    text(ctx, slot.label, slot.x + 2, slotY + 2, { size: 'small', color: 'textDim' });
+    text(ctx, label ?? slot.label, slot.x + 2, slotY + 2, { size: 'small', color: 'textDim' });
     const id = `item-${item}`;
     // A missing sprite shows, like the missing tile style, instead of an empty slot.
     if (!VL.ART.SPRITES[id]) {
@@ -87,7 +89,7 @@
       VL.ART.drawSprite(ctx, 'icon-shell-broken', layout.brokenX, layout.shellY);
       VL.ART.text(ctx, String(model.brokenShells), layout.brokenX + 10, layout.shellY - 1, { color: 'textDim' });
     }
-    for (const slot of layout.slots) drawSlot(ctx, slot, model[slot.hand]);
+    for (const slot of layout.slots) drawSlot(ctx, slot, model[slot.hand], model[slot.key]);
   };
 
   // ---------- boxes and popups ----------

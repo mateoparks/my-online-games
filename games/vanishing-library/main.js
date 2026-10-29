@@ -28,7 +28,11 @@ VL.boot = function boot(doc, win) {
   canvas.addEventListener('click', () => canvas.focus());
 
   const loop = VL.createLoop({
-    poll: input.poll,
+    // The hand keys follow the game being played (W40); title and name use the defaults.
+    poll: () => {
+      input.setHands(VL.handKeys(app.game));
+      return input.poll();
+    },
     update: (actions, dt) => app.update(actions, dt),
     draw: (t) => {
       app.draw(screen.ctx, t);

@@ -184,6 +184,8 @@
     if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return false;
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return false;
     if (VL.app?.scene?.textEntry || VL.input?.confirmPending()) return false;
+    // The Controls screen waiting for a key refuses N; it doesn't mute too.
+    if (VL.app?.sceneId === 'controls' && VL.app.controls?.capture) return false;
     return event.code ? event.code === VL.SOUND.MUTE_CODE : (event.key || '').toLowerCase() === 'n';
   }
 

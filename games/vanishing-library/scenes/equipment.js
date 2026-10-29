@@ -1,6 +1,7 @@
 // The equipment screen (E): everything the hero carries over the paused
-// world. Arrows choose an item, Space puts it in the main hand and D in the
-// off hand, S uses it (eats a berry), X, E or Esc goes back (design: Controls).
+// world. Arrows choose an item, the main-hand key puts it in the main hand
+// and the off-hand key in the off hand, S uses it (eats a berry), X, E or
+// Esc goes back (design: Controls).
 // The chosen item's description wraps; one longer than its lines scrolls
 // with Down and Up before they move the cursor (W36).
 (() => {
@@ -31,7 +32,7 @@
 
   // The keys that use an item: both for a two-handed one held in both hands.
   VL.handMarks = (game, id) => VL.HANDS.filter((hand) => VL.heldItem(game, hand) === id)
-    .map((hand) => (hand === 'mainHand' ? '␣' : 'D')).join('');
+    .map((hand) => VL.handKeyMark(game, hand)).join('');
 
   // The grid shows GRID.rows rows at a time and scrolls a row at a time to
   // keep the chosen item in view; arrows at its side say there is more.
@@ -138,7 +139,7 @@
         frame(ctx, 'text', HANDS_X, y, GRID.w, GRID.h);
         const held = VL.ITEMS[VL.heldItem(game, hand)];
         if (held) centred(ctx, `item-${held.icon}`, HANDS_X + GRID.w / 2, y + GRID.h / 2);
-        VL.ART.text(ctx, hand === 'mainHand' ? '␣ MAIN' : 'D OFF', HANDS_X + GRID.w + 5, y + 8, { size: 'small', color: 'text' });
+        VL.ART.text(ctx, `${VL.handKeyMark(game, hand)} ${hand === 'mainHand' ? 'MAIN' : 'OFF'}`, HANDS_X + GRID.w + 5, y + 8, { size: 'small', color: 'text' });
       });
       const item = list[app.equipment.cursor];
       const infoY = GRID.y + 2 * (GRID.h + GRID.gap) + 2;
@@ -171,7 +172,8 @@
       const pagesX = GRID.x + 12 + VL.ART.measureText(books) + 14;
       centred(ctx, 'pickup-page', pagesX + 4, countsY + 3);
       VL.ART.text(ctx, VL.popupText(`${VL.loosePages(game)}/${VL.pagesToBind()} pages`, game), pagesX + 11, countsY, { color: 'text' });
-      const hint = list.length > GRID.cols ? '←→↑↓ CHOOSE   ␣/D: HOLD   S: USE   X: BACK' : list.length ? '←→ CHOOSE   ␣/D: HOLD   S: USE   X: BACK' : 'X: BACK';
+      const hold = `${VL.handKeyMark(game, 'mainHand')}/${VL.handKeyMark(game, 'offHand')}: HOLD`;
+      const hint = list.length ? `${list.length > GRID.cols ? '←→↑↓' : '←→'} CHOOSE   ${hold}   S: USE   X: BACK` : 'X: BACK';
       VL.ART.text(ctx, hint, BOX.x + BOX.w / 2, BOX.y + BOX.h - 11, { size: 'small', align: 'center', color: 'textDim' });
     },
   });

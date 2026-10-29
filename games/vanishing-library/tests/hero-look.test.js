@@ -323,7 +323,7 @@ function textsDrawn(VL, draw) {
 
 test('boy or girl starts unpicked: no start until it is chosen, from any row or key, and the HERO row asks', () => {
   const { VL } = loadGame();
-  for (const [row, key, typed] of [[0, 'confirm', ''], [1, 'confirm', ''], [2, 'confirm', ''], [3, 'confirm', ''], [4, 'confirm', ''], [4, 'interact', 's'], [4, 'mainHand', ' ']]) {
+  for (const [row, key, typed] of [[0, 'confirm', ''], [1, 'confirm', ''], [2, 'confirm', ''], [3, 'confirm', ''], [4, 'confirm', ''], [4, 'interact', 's'], [4, 'space', ' ']]) {
     const app = nameApp(VL);
     type(VL, app, 'Ash');
     assert.equal(app.naming.look.gender, null, 'nothing is assumed');
@@ -367,7 +367,7 @@ test('the chooser: S or Space on a choice steps down; a letter goes back to the 
   press(VL, app, 'interact', 's');
   assert.equal(app.naming.row, 2, 'S on boy or girl steps to the clothes');
   assert.equal(app.naming.look.gender, null, 'and picks nothing');
-  press(VL, app, 'mainHand', ' ');
+  press(VL, app, 'space', ' ');
   assert.equal(app.naming.row, 3, 'Space too');
   assert.equal(app.naming.text, 'Jo', 'neither typed into the name');
   type(VL, app, 'e');
@@ -661,7 +661,7 @@ test('no hero pronoun or gendered word is left written out in the game\'s text: 
 
 test('every token in the game\'s text is one popupText knows', () => {
   const { VL } = loadGame();
-  const known = new Set(['name', ...Object.keys(VL.HERO_WORDS.boy)]);
+  const known = new Set(['name', ...Object.keys(VL.HERO_WORDS.boy), 'mainkey', 'offkey']);
   for (const file of VL.scriptFiles()) {
     for (const text of literals(read(file))) {
       // A template's ${...} is code, not a token.

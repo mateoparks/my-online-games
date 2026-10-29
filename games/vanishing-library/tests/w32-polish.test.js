@@ -17,7 +17,7 @@ test('the Mirror Shield goes into the off hand even when it is full; the old ite
   assert.deepEqual(plain(game.hands), { mainHand: 'woodSword', offHand: 'mirrorShield' });
   assert.ok(VL.hasItem(game, 'slingshot'), 'the slingshot is still his, in the equipment list');
   assert.ok(VL.equipmentItems(game).some((item) => item.id === 'slingshot'));
-  const popup = VL.POPUPS.mirrorShield.text;
+  const popup = VL.popupText(VL.POPUPS.mirrorShield.text, game);
   assert.ok(/off hand/.test(popup) && /\bD\b/.test(popup), popup);
 });
 

@@ -133,7 +133,7 @@ test('actions carry typed text; heldOnly drops it', () => {
   assert.equal(VL.heldOnly(actions).typed, '');
   assert.equal(VL.confirmed(VL.actions({ pressed: ['confirm'] })), true);
   assert.equal(VL.confirmed(VL.actions({ pressed: ['interact'] })), true);
-  assert.equal(VL.confirmed(VL.actions({ pressed: ['mainHand'] })), true);
+  assert.equal(VL.confirmed(VL.actions({ pressed: ['space'] })), true);
   assert.equal(VL.confirmed(VL.actions({ pressed: ['offHand'] })), false);
 });
 

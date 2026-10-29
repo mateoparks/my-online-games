@@ -3545,6 +3545,95 @@ async function main() {
       for (const problem of w38Problems) console.log(`     ${problem}`);
     }
 
+    // W40, choosable hand keys with real keys: Esc → Controls (w40-controls),
+    // the main hand waiting for a key (w40-capture), S refused with a note
+    // (w40-refused), D refused as the off hand's key, Q taken
+    // (w40-controls-chosen), the pause list naming Q (w40-pause-keys), Q
+    // swinging and Space not, the sword's popup saying Q
+    // (w40-popup-custom-key) and the equipment view and HUD (w40-equipment).
+    {
+      errors.length = 0;
+      const w40Problems = [];
+      const codes = { Escape: [27, 'Escape'], ArrowDown: [40, 'ArrowDown'], Enter: [13, 'Enter'], KeyS: [83, 's'], KeyD: [68, 'd'], KeyQ: [81, 'q'], Space: [32, ' '], KeyE: [69, 'e'] };
+      const tapKey = async (code) => {
+        const [vk, keyName] = codes[code];
+        const event = { key: keyName, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', ...event });
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+        if (!(await settle())) w40Problems.push(`animation frames stopped after ${code}`);
+      };
+      const see = async (expression) => JSON.parse(await evaluate(`JSON.stringify((() => { const g = VL.app.game; return ${expression}; })())`));
+      const shot = async (name) => {
+        const box = JSON.parse(await evaluate('JSON.stringify(document.getElementById("game").getBoundingClientRect())'));
+        const png = await call('Page.captureScreenshot', { format: 'png', clip: { x: box.x, y: box.y, width: box.width, height: box.height, scale: 1 } });
+        fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.data, 'base64'));
+      };
+      const stage = (setup = '') => evaluate(`(() => {
+        VL.app.startGame(VL.newGame({ name: 'Robin', look: { outfit: 'green', hair: 'short', gender: 'boy' } }), null);
+        const g = VL.app.game;
+        for (const id of ['controls', 'digKey']) g.popups.seen[id] = true;
+        ${setup}
+        VL.app.setScene('play');
+        VL.place(g, { area: 'overworld', screen: '1,1', tx: 8, ty: 6, facing: 'down' });
+        g.room.entities = g.room.entities.filter((e) => !VL.isEnemy(e));
+        document.getElementById('game').focus();
+      })()`);
+      const armed = "g.items.woodSword = true; g.items.woodShield = true; g.hands = { mainHand: 'woodSword', offHand: 'woodShield' }; g.popups.queue.length = 0;";
+
+      await stage(armed);
+      await settle();
+      await tapKey('Escape');
+      await tapKey('ArrowDown');
+      await tapKey('ArrowDown');
+      await tapKey('Enter');
+      if ((await see('VL.app.sceneId')) !== 'controls') w40Problems.push(`Esc, down, down, Enter opened ${await see('VL.app.sceneId')}, not Controls`);
+      await shot('w40-controls');
+      await tapKey('Enter');
+      if ((await see('VL.app.controls.capture')) !== 'mainHand') w40Problems.push('Enter on Main hand did not wait for a key');
+      await shot('w40-capture');
+      await tapKey('KeyS');
+      const refused = await see('[VL.app.controls.capture, VL.app.controls.note, g.handKeys.mainHand]');
+      if (refused[0] !== 'mainHand' || !/taken/i.test(refused[1] || '') || refused[2] !== 'Space') w40Problems.push(`S was not refused: ${JSON.stringify(refused)}`);
+      await shot('w40-refused');
+      await tapKey('KeyD');
+      if (!/off hand/i.test(await see('VL.app.controls.note') || '')) w40Problems.push('D (the off hand) was not refused');
+      await tapKey('KeyQ');
+      const chosen = await see('[VL.app.controls.capture, g.handKeys]');
+      if (chosen[0] !== null || chosen[1].mainHand !== 'KeyQ' || chosen[1].offHand !== 'KeyD') w40Problems.push(`Q was not taken: ${JSON.stringify(chosen)}`);
+      await shot('w40-controls-chosen');
+      await tapKey('Escape');
+      if ((await see('VL.app.sceneId')) !== 'pause') w40Problems.push('Esc on Controls did not go back to the pause menu');
+      if (!(await see("VL.pauseControls(g).some((line) => line.includes('Q: MAIN HAND'))"))) w40Problems.push('the pause list does not name Q');
+      await shot('w40-pause-keys');
+      await tapKey('Escape');
+      await tapKey('Space');
+      await sleep(50);
+      if (await see('Boolean(g.player.swing)')) w40Problems.push('Space still swings after the main hand moved to Q');
+      await sleep(400);
+      await tapKey('KeyQ');
+      await sleep(30);
+      if (!(await see('Boolean(g.player.swing)'))) w40Problems.push('Q did not swing the sword');
+
+      await stage("g.handKeys = { mainHand: 'KeyQ', offHand: 'Digit1' };");
+      await evaluate("VL.giveItem(VL.app.game, 'woodSword')");
+      await sleep(300);
+      await settle();
+      const popup = await see('[VL.app.sceneId, VL.currentPopup(g)?.text]');
+      if (popup[0] !== 'popup' || !/Press Q to swing/.test(popup[1] || '')) w40Problems.push(`the sword's popup: ${JSON.stringify(popup)}`);
+      await shot('w40-popup-custom-key');
+      await sleep(400);
+      await tapKey('Space');
+      if ((await see('VL.app.sceneId')) !== 'play') w40Problems.push('Space did not close the popup');
+      await evaluate("(() => { const g = VL.app.game; g.items.woodShield = true; g.hands.offHand = 'woodShield'; })()");
+      await tapKey('KeyE');
+      await shot('w40-equipment');
+
+      w40Problems.push(...errors);
+      if (w40Problems.length) failures += 1;
+      console.log(`${w40Problems.length ? 'FAIL' : 'ok  '} hand keys: Esc → Controls, S and D refused with a note, Q taken and saved, the pause list, Q swings and Space does not, a popup and the equipment view naming the chosen keys, ${path.join(outDir, 'w40-*.png')}`);
+      for (const problem of w40Problems) console.log(`     ${problem}`);
+    }
+
     // The flash guard (WCAG 2.3.1): sample scenes are stepped by hand on an
     // app of their own and drawn to an offscreen canvas every 1/60 s. In 16x16
     // cells, a flip is a change in mean relative luminance against the last

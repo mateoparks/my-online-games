@@ -1,7 +1,8 @@
 // The hero's hands (design: Controls, Tools, Bare hands). S interacts with
 // what the hero faces: an entity's onInteract (chest, sign), a berry bush, or
-// a bush pulled by hand when no sword is in the main hand. Space and D use
-// what each hand holds; Space with an empty main hand pulls a bush too.
+// a bush pulled by hand when no sword is in the main hand. The hand keys use
+// what each hand holds; the main-hand key with an empty main hand pulls a
+// bush too.
 (() => {
   VL.tune({ swingSeconds: 0.24, berryHeal: 2, pullCost: 1 });
 
@@ -67,7 +68,7 @@
     icon: 'sword-wood',
     sword: true,
     about: 'Swing it to cut bushes.',
-    popup: { title: 'You got a Wood Sword!', text: 'Press Space to swing it. Cutting bushes can turn up wood, shells and hearts.' },
+    popup: { title: 'You got a Wood Sword!', text: 'Press {mainKey} to swing it. Cutting bushes can turn up wood, shells and hearts.' },
     use(state, hand) {
       VL.swing(state, 'woodSword', hand);
     },
@@ -78,7 +79,7 @@
     icon: 'shield-wood',
     prefers: 'offHand',
     about: 'Hold it up to block small things.',
-    popup: { title: 'You got a Wood Shield!', text: 'Hold D to raise it. Press E to choose what each hand holds.' },
+    popup: { title: 'You got a Wood Shield!', text: 'Hold {offKey} to raise it. Press E to choose what each hand holds.' },
     hold(state) {
       state.player.shield = true;
     },
