@@ -23,7 +23,7 @@ tool, so they're imported here instead of copied:
   Foxfire Eventing), linked from the home page. It isn't a game, so leave it
   alone unless asked.
 - `docs/` and `copilot/` are gitignored. `docs/` holds design records such as
-  `escape-alpha-centauri-design.md` and briefs such as `FOXFIRE-BRIEF.md`.
+  `vanishing-library-design.md` and briefs such as `FOXFIRE-BRIEF.md`.
 
 ## Conventions
 
@@ -50,7 +50,7 @@ No test runner. The existing tests are plain Node scripts that load `game.js`
 into a `node:vm` context with a hand-rolled fake DOM and use `node:assert`:
 
 ```sh
-node games/escape-alpha-centauri/game.test.js
+node games/vanishing-library/game.test.js
 ```
 
 ## Git
