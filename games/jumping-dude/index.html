@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e9f7ed">
+  <title>Jumping Dude Game | Arcade Current</title>
+  <script src="../../assets/theme.js"></script>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="game.css">
+</head>
+<body class="game-page">
+  <header class="site-header game-header">
+    <a class="back" href="../../index.html">&larr; All games</a>
+    <a class="brand" href="../../index.html">Arcade Current</a>
+    <button class="theme-toggle" type="button" aria-label="Switch color theme">
+      <span class="theme-icon" aria-hidden="true">☀</span>
+      <span class="theme-icon" aria-hidden="true">☾</span>
+      <span class="theme-thumb" aria-hidden="true"></span>
+    </button>
+  </header>
+  <main>
+    <p class="eyebrow">11 levels &middot; 0 mercy</p>
+    <h1>Jumping Dude Game</h1>
+    <p id="message" class="sr-only" aria-live="polite"></p>
+    <div class="stage-wrap">
+      <canvas id="stage" width="800" height="400" tabindex="-1" aria-label="Jumping Dude game"></canvas>
+      <div id="win" class="win" hidden>
+        <p id="win-title" class="eyebrow"></p>
+        <h2 id="win-quip"></h2>
+        <p id="win-deaths"></p>
+        <button id="next" class="primary-button" type="button">Next level &rarr;</button>
+      </div>
+    </div>
+    <p class="keys">
+      <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> to walk &middot;
+      <kbd>Space</kbd> / <kbd>&uarr;</kbd> / <kbd>W</kbd> to jump &middot;
+      <kbd>R</kbd> to restart the level
+    </p>
+    <p><button id="start-over" class="text-button" type="button">Start over from level 1</button></p>
+  </main>
+  <script src="levels.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
