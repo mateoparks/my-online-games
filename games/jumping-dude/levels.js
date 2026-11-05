@@ -60,12 +60,15 @@ const LEVELS = (() => {
         sign(130, 'trust me'),
         ground(0, 200),
         solid(200, G, 40, 60, { actions: [crumble()] }),
-        ground(240, 560),
+        ground(240, 290),
+        // Once the door has fled, this bit of floor drops away under the dude on the walk back.
+        solid(530, G, 60, 60, { actions: [{ on: { zone: [530, G - 10, 60, 10], signal: 'door-fled' }, do: 'fall', say: 'Mind the gap.' }] }),
+        ground(590, 210),
         spikes(380, G, 60, { hidden: true, actions: [{ on: { zone: [376, 0, 64, 400] }, do: 'appear' }] }),
         dropBlock(600, 568),
         door(740, G, {
           actions: [{
-            on: at(690), do: 'move', to: [22, G], arc: 150, time: 0.8,
+            on: at(690), do: 'move', to: [22, G], arc: 150, time: 0.8, emit: 'door-fled',
             say: 'Ha. No.', sayAfter: 'The door is back at the start now. Have a nice walk.'
           }]
         })

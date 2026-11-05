@@ -122,7 +122,8 @@ function play(levelIndex, script, { maxSeconds = 40, lag = 0, onTick } = {}) {
 // ---- One solution per level
 
 const SOLUTIONS = [
-  // 1. Trust Me: hop the tile, hop the spikes, tease the block, chase the door home.
+  // 1. Trust Me: hop the tile, hop the spikes, tease the block, chase the door home,
+  // leaping from the fallen block over the floor that drops away.
   function* () {
     yield* jumpFrom(160, 'right');
     yield* jumpFrom(330, 'right');
@@ -132,7 +133,8 @@ const SOLUTIONS = [
     yield* jumpFrom(560, 'right');
     yield* go(705);
     yield* wait(1);
-    yield* jumpFrom(680, 'left');
+    yield* jumpFrom(680, 'left', { to: 620 });
+    yield* jumpFrom(608, 'left');
     yield* jumpFrom(470, 'left');
     yield* jumpFrom(260, 'left');
     yield* go(37);
@@ -393,6 +395,24 @@ game.LEVELS.forEach((def, i) => {
     const result = play(i, SOLUTIONS[i], { lag: LAG[i] || 0 });
     assert.strictEqual(result.mode, 'won', JSON.stringify(result));
   });
+});
+
+check('level 1: the floor past the fallen block holds on the way out but drops on the way back', () => {
+  const trapdoor = () => thing(t => t.kind === 'solid' && t.x === 530);
+  const result = play(0, function* () {
+    yield* jumpFrom(160, 'right');
+    yield* jumpFrom(330, 'right');
+    yield* waitFor(() => thing(t => t.look === 'block').motion, { right: true });
+    yield* hold('left', 0.3);
+    yield* wait(0.4);
+    yield* jumpFrom(560, 'right');
+    assert.ok(!trapdoor().motion && !trapdoor().gone, 'the floor fell before the door fled');
+    yield* go(705);
+    yield* wait(1);
+    yield* jumpFrom(680, 'left');
+  });
+  assert.strictEqual(result.mode, 'dead', JSON.stringify(result));
+  assert.ok(trapdoor().motion || trapdoor().gone, 'the floor never dropped');
 });
 
 if (failures) {
