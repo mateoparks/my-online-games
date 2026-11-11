@@ -20,7 +20,7 @@
     </button>
   </header>
   <main>
-    <p class="eyebrow">11 levels &middot; 0 mercy</p>
+    <p class="eyebrow"><span id="level-count"></span> levels &middot; 0 mercy</p>
     <h1>Jumping Dude Game</h1>
     <p id="message" class="sr-only" aria-live="polite"></p>
     <div class="stage-wrap">
@@ -37,9 +37,14 @@
       <kbd>Space</kbd> / <kbd>&uarr;</kbd> / <kbd>W</kbd> to jump &middot;
       <kbd>R</kbd> to restart the level
     </p>
+    <details class="surface-guide">
+      <summary>Surface markings</summary>
+      <p>D: delayed jump &middot; S: sticky</p>
+    </details>
     <p><button id="start-over" class="text-button" type="button">Start over from level 1</button></p>
   </main>
   <script src="levels.js"></script>
+  <script src="surfaces.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

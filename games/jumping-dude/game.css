@@ -59,6 +59,14 @@
   color: var(--muted);
 }
 
+.surface-guide {
+  color: var(--muted);
+}
+
+.surface-guide summary {
+  cursor: pointer;
+}
+
 kbd {
   display: inline-block;
   min-width: 1.6em;

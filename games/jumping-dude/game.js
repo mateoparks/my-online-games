@@ -1,5 +1,4 @@
-// Jumping Dude Game: an 11-level rage platformer (plus five bonus levels it
-// pretends aren't there).
+// Jumping Dude Game: a rage platformer.
 // Every level looks easy, every trap fires the same way every time, and death
 // is instant with an instant retry. Level layouts live in levels.js.
 
@@ -40,6 +39,7 @@ const winQuip = document.getElementById('win-quip');
 const winDeaths = document.getElementById('win-deaths');
 const nextButton = document.getElementById('next');
 const startOverButton = document.getElementById('start-over');
+document.getElementById('level-count').textContent = LEVELS.length;
 
 // ---- Input (kept apart from the game rules so touch controls can plug in later)
 
@@ -137,6 +137,8 @@ function buildLevel(index) {
   }));
   for (const thing of things) {
     thing.waitsToAppear = thing.hidden && thing.actions.some(action => action.do === 'appear');
+    thing.baseX = thing.x;
+    thing.baseY = thing.y;
   }
   layOutWords(things);
   return {
@@ -149,13 +151,16 @@ function buildLevel(index) {
     reversed: false,
     hasKey: false,
     lockedNoted: false,
+    time: 0,
+    jumpDelay: 0,
     message: def.hint,
     messageTimer: 0,
     standing: [],
     touched: new Set(),
     player: {
-      x: def.spawn, y: GROUND - PLAYER_H, w: PLAYER_W, h: PLAYER_H,
-      vx: 0, vy: 0, onGround: true, coyote: 0, jumping: false, facing: 1, squash: 0, stride: 0
+      x: def.spawn, y: (def.spawnY ?? GROUND) - PLAYER_H, w: PLAYER_W, h: PLAYER_H,
+      vx: 0, vy: 0, onGround: true, coyote: 0, jumping: false, facing: 1, squash: 0, stride: 0,
+      stuckOn: null, stickyTimer: 0, queuedJump: null, beltVx: 0
     }
   };
 }
@@ -206,11 +211,27 @@ function overlaps(a, b, inset = 0) {
 }
 
 function isSolid(thing) {
-  return thing.kind === 'solid' && !thing.gone && !thing.fake && !thing.waitsToAppear;
+  return thing.kind === 'solid' && !thing.gone && !thing.fake && !thing.waitsToAppear &&
+    (!thing.blink || (level.time + (thing.blink.phase || 0)) % (thing.blink.on + thing.blink.off) < thing.blink.on);
 }
 
 function solids() {
   return level.things.filter(isSolid);
+}
+
+function fanReaches(fan, player, walls) {
+  const centerX = player.x + player.w / 2;
+  const top = Math.max(player.y, fan.y - 44);
+  const bottom = Math.min(player.y + player.h, fan.y - 4);
+  if (top >= bottom) return false;
+  const centerY = (top + bottom) / 2;
+  const direction = Math.sign(fan.speed);
+  if ((centerX - fan.x) * direction <= 0) return false;
+  return !walls.some(wall =>
+    wall.y < centerY && wall.y + wall.h > centerY &&
+    (direction > 0
+      ? wall.x < centerX && wall.x + wall.w > fan.x
+      : wall.x + wall.w > centerX && wall.x < fan.x));
 }
 
 function touch(thing) {
@@ -269,38 +290,63 @@ function startOver() {
 
 function updatePlayer(dt) {
   const p = level.player;
+  p.stickyTimer = Math.max(0, p.stickyTimer - dt);
   const pressed = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   const dir = level.reversed ? -pressed : pressed;
-  p.vx = dir * SPEED;
+  p.vx = p.stickyTimer > 0 ? 0 : dir * SPEED;
+  const walls = solids();
+  for (const fan of level.things) {
+    if (fan.kind === 'fan' && !fan.gone &&
+        (!fan.period || level.time % fan.period < fan.active) &&
+        fanReaches(fan, p, walls)) {
+      p.vx += fan.speed;
+    }
+  }
+  p.vx += p.beltVx;
+  p.beltVx = Math.sign(p.beltVx) * Math.max(0, Math.abs(p.beltVx) - 240 * dt);
   if (dir) p.facing = dir;
 
   p.coyote = p.onGround ? COYOTE_TIME : p.coyote - dt;
   input.jumpBuffer -= dt;
-  if (input.jumpBuffer > 0 && p.coyote > 0) {
+  if (p.queuedJump !== null) p.queuedJump -= dt;
+  if (input.jumpBuffer > 0 && p.coyote > 0 && p.stickyTimer <= 0 && p.queuedJump === null && level.jumpDelay > 0) {
+    p.queuedJump = level.jumpDelay;
+    level.jumpDelay = 0;
+    input.jumpBuffer = 0;
+  }
+  if (((input.jumpBuffer > 0 && p.queuedJump === null) || (p.queuedJump !== null && p.queuedJump <= 0)) &&
+      p.coyote > 0 && p.stickyTimer <= 0) {
     p.vy = JUMP_VELOCITY;
     p.coyote = 0;
     input.jumpBuffer = 0;
     p.onGround = false;
     p.jumping = true;
+    p.queuedJump = null;
+  } else if (p.queuedJump !== null && p.queuedJump <= 0 && p.coyote <= 0) {
+    p.queuedJump = null;
   }
   if (p.jumping && !input.jumpHeld && p.vy < JUMP_CUT) p.vy = JUMP_CUT;
   p.vy = Math.min(p.vy + GRAVITY * dt, MAX_FALL);
 
-  const walls = solids();
   level.touched.clear();
 
-  p.x = Math.max(0, Math.min(W - p.w, p.x + p.vx * dt));
+  const nextX = p.x + p.vx * dt;
+  p.x = Math.max(0, Math.min(W - p.w, nextX));
+  if (p.x !== nextX) p.beltVx = 0;
   for (const s of walls) {
-    if (!overlaps(p, s) || !p.vx) continue;
+    if (s.oneWay || !overlaps(p, s) || !p.vx) continue;
     touch(s);
     p.x = p.vx > 0 ? s.x - p.w : s.x + s.w;
+    p.beltVx = 0;
   }
 
   const wasOnGround = p.onGround;
+  const previousBottom = p.y + p.h;
   p.y += p.vy * dt;
   p.onGround = false;
   for (const s of walls) {
     if (!overlaps(p, s)) continue;
+    if (s.oneWay && (p.vy < 0 || previousBottom > s.y + 1)) continue;
     touch(s);
     if (p.vy >= 0) {
       p.y = s.y - p.h;
@@ -317,6 +363,9 @@ function updatePlayer(dt) {
 
   const feet = { x: p.x, y: p.y + p.h, w: p.w, h: 1 };
   level.standing = p.onGround ? walls.filter(s => overlaps(feet, s)) : [];
+  const sticky = level.standing.find(s => s.sticky);
+  if (sticky && p.stuckOn !== sticky) p.stickyTimer = sticky.sticky;
+  p.stuckOn = sticky || null;
 }
 
 function updateGadgets() {
@@ -336,11 +385,26 @@ function updateGadgets() {
       thing.pressed = true;
       emit(thing.signal || thing.press);
     }
-    if (thing.kind === 'key' && !thing.motion && overlaps(p, thing)) {
+    if (thing.jumpDelay && level.standing.includes(thing) && !thing.pressed) {
+      thing.pressed = true;
+      level.jumpDelay = thing.jumpDelay;
+      say('Your next jump has a delay.');
+    }
+    if (thing.kind === 'checkpoint' && !thing.pressed && overlaps(p, thing)) {
+      thing.pressed = true;
+      emit(thing.signal);
+      say(thing.say || 'Checkpoint! Probably.');
+    }
+    if (thing.kind === 'key' && !thing.hidden && !thing.motion && overlaps(p, thing)) {
       thing.gone = true;
-      level.hasKey = true;
-      say('Got the key!');
-      emit('key');
+      if (thing.fake) {
+        say('That key was a fake.');
+        emit(thing.signal || 'fake-key');
+      } else {
+        level.hasKey = true;
+        say('Got the key!');
+        emit('key');
+      }
     }
   }
 }
@@ -348,13 +412,19 @@ function updateGadgets() {
 function conditionsMet(on, thing) {
   if (on === 'start') return true;
   if (on === 'stand') return level.standing.includes(thing);
+  if (on === 'leave') return thing.wasStoodOn && !level.standing.includes(thing);
   if (on === 'touch') return level.touched.has(thing) || level.standing.includes(thing);
   if (on.zone) {
     const [x, y, w, h] = on.zone;
     if (!overlaps(level.player, { x, y, w, h })) return false;
   }
   if (on.signal && !level.signals.has(on.signal)) return false;
+  if (on.unlessSignal && level.signals.has(on.unlessSignal)) return false;
   if (on.signals && !on.signals.every(signal => level.signals.has(signal))) return false;
+  if (on.anySignals && !on.anySignals.some(signal => level.signals.has(signal))) return false;
+  if (on.lowPlatforms && !on.lowPlatforms.every(id => level.things.some(platform =>
+    platform.sink && platform.sink.id === id &&
+    platform.y >= platform.baseY + platform.sink.depth - (platform.sink.tolerance ?? 2)))) return false;
   if (on.after !== undefined && thing.actions[on.after].state !== 'done') return false;
   return true;
 }
@@ -373,6 +443,7 @@ function updateTriggers(dt) {
         if (action.timer <= 0) fire(thing, action);
       }
     }
+    thing.wasStoodOn = level.standing.includes(thing);
   }
 }
 
@@ -438,19 +509,34 @@ function updateMotion(thing, dt) {
     }
     return;
   }
+  if (a.back && a.back.signal && level.signals.has(a.back.signal)) {
+    if (m.phase === 'go') {
+      m.phase = 'back';
+      m.t = 1 - m.t;
+    } else if (m.phase === 'hold') {
+      m.phase = 'back';
+      m.t = 0;
+    }
+  }
   if (m.phase === 'go' || m.phase === 'back') {
     const time = m.phase === 'go' ? a.time || 0.5 : a.back.time;
     m.t = Math.min(1, m.t + dt / time);
-    const k = m.phase === 'go' ? ease(a.ease, m.t) : 1 - ease('smooth', m.t);
-    thing.x = m.fromX + m.dx * k;
-    thing.y = m.fromY + m.dy * k - (m.phase === 'go' ? (a.arc || 0) * Math.sin(Math.PI * m.t) : 0);
+    const travel = m.phase === 'go' ? m.t : 1 - m.t;
+    const k = m.phase === 'go' || a.back.signal ? ease(a.ease, travel) : 1 - ease('smooth', m.t);
+    if (a.semicircle) {
+      thing.x = m.fromX + m.dx * (1 - Math.cos(Math.PI * travel)) / 2;
+      thing.y = m.fromY + m.dy * travel + Math.abs(m.dx) / 2 * Math.sin(Math.PI * travel);
+    } else {
+      thing.x = m.fromX + m.dx * k;
+      thing.y = m.fromY + m.dy * k - ((m.phase === 'go' || a.back.signal) ? (a.arc || 0) * Math.sin(Math.PI * travel) : 0);
+    }
     if (m.t < 1) return;
     if (m.phase === 'go') {
       if (a.sayAfter) say(a.sayAfter);
       if (thing.look === 'crusher') shake = Math.max(shake, 0.12);
       if (a.back) {
         m.phase = 'hold';
-        m.wait = a.back.after;
+        m.wait = a.back.after ?? 0;
       } else {
         finishMotion(thing);
       }
@@ -462,6 +548,7 @@ function updateMotion(thing, dt) {
     }
     return;
   }
+  if (m.phase === 'hold' && a.back.signal) return;
   m.wait -= dt;
   if (m.wait > 0) return;
   m.t = 0;
@@ -503,7 +590,7 @@ function checkHazards() {
     if (thing.gone || level.mode !== 'play') continue;
     if (thing.kind === 'spikes' && !thing.hidden && thing.grow > 0.2 && overlaps(p, spikeHitbox(thing), 3)) {
       die('spikes', thing);
-    } else if (isSolid(thing) && overlaps(p, thing, 1)) {
+    } else if (isSolid(thing) && !thing.oneWay && overlaps(p, thing, 1)) {
       die(thing.look === 'block' ? 'block' : thing.look === 'words' ? 'words' : 'crush', thing);
     } else if (thing.kind === 'pole' && poleHits(thing, p)) {
       die('spikes', thing);
@@ -548,7 +635,11 @@ function update(dt) {
     return;
   }
   if (level.mode !== 'play') return;
+  level.time += dt;
+  const oldX = level.player.x;
   updatePlayer(dt);
+  beltUpdate(level, solids(), dt, W);
+  const playerDX = level.player.x - oldX;
   updateGadgets();
   updateTriggers(dt);
   const p = level.player;
@@ -560,6 +651,23 @@ function update(dt) {
       const carries = thing.motion.type === 'move' && level.standing.includes(thing);
       updateMotion(thing, dt);
       if (carries) {
+        p.x = Math.max(0, Math.min(W - p.w, p.x + thing.x - fromX));
+        p.y += thing.y - fromY;
+      }
+    }
+    if (!thing.motion && !thing.gone && thing.kind === 'solid' && (thing.sink || thing.mimic)) {
+      const fromX = thing.x;
+      const fromY = thing.y;
+      if (thing.sink) {
+        const occupied = level.standing.includes(thing);
+        const target = thing.baseY + (occupied ? thing.sink.depth : 0);
+        const step = (occupied ? thing.sink.speed : thing.sink.riseSpeed ?? thing.sink.speed) * dt;
+        thing.y += Math.max(-step, Math.min(step, target - thing.y));
+      }
+      if (thing.mimic) {
+        thing.x = Math.max(thing.mimic.min, Math.min(thing.mimic.max, thing.x + playerDX * thing.mimic.factor));
+      }
+      if (level.standing.includes(thing)) {
         p.x = Math.max(0, Math.min(W - p.w, p.x + thing.x - fromX));
         p.y += thing.y - fromY;
       }
@@ -576,7 +684,7 @@ function token(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-const LAYERS = { sign: 0, zone: 0, door: 1, key: 2, button: 3, spring: 3, solid: 4, spikes: 5, pole: 5 };
+const LAYERS = { sign: 0, zone: 0, fan: 0, checkpoint: 1, door: 1, key: 2, button: 3, spring: 3, solid: 4, spikes: 5, pole: 5 };
 
 function draw() {
   const colors = {
@@ -593,6 +701,7 @@ function draw() {
     if (thing.gone) continue;
     const draw = DRAWERS[thing.kind];
     if (draw) draw(thing, colors);
+    if (thing.kind === 'solid' && isSolid(thing)) beltDraw(ctx, thing, colors);
   }
   drawDude(colors);
   ctx.restore();
@@ -606,6 +715,8 @@ const DRAWERS = {
   button: drawButton,
   spring: drawSpring,
   solid: drawSolid,
+  fan: drawFan,
+  checkpoint: drawCheckpoint,
   spikes: drawSpikes,
   pole: drawPole
 };
@@ -621,6 +732,7 @@ function drawSolid(thing, colors) {
   }
   const x = thing.x + jitter(thing);
   const { y, w, h } = thing;
+  if (thing.blink && !isSolid(thing)) return;
   if (thing.look === 'words') {
     ctx.fillStyle = colors.ink;
     ctx.font = wordsFont();
@@ -665,6 +777,20 @@ function drawSolid(thing, colors) {
   }
   ctx.fillStyle = colors.ground;
   ctx.fillRect(x, y, w, h);
+  if (thing.jumpDelay) {
+    ctx.fillStyle = colors.door;
+    ctx.fillRect(x, y, w, 4);
+  }
+  const marks = [thing.jumpDelay && 'D', thing.sticky && 'S'].filter(Boolean).join('');
+  if (marks) {
+    ctx.font = `800 10px ${HUD_FONT}`;
+    ctx.textAlign = 'left';
+    const width = Math.min(w, marks.length * 8 + 6);
+    ctx.fillStyle = colors.sand;
+    ctx.fillRect(x, y + 4, width, 12);
+    ctx.fillStyle = colors.ink;
+    ctx.fillText(marks, x + 3, y + 14, width - 3);
+  }
   if (thing.press) drawButton({ x: x + w / 2 - 15, y: y - 8, w: 30, h: 8, pressed: thing.pressed }, colors);
 }
 
@@ -734,6 +860,7 @@ function drawDoor(door, colors) {
 }
 
 function drawKey(key, colors) {
+  if (key.hidden) return;
   const bob = key.motion ? 0 : Math.sin(performance.now() / 300) * 2;
   const y = key.y + bob;
   ctx.fillStyle = colors.gold;
@@ -745,6 +872,49 @@ function drawKey(key, colors) {
   ctx.fillRect(key.x + 9, y + 5, 13, 3);
   ctx.fillRect(key.x + 16, y + 8, 3, 4);
   ctx.fillRect(key.x + 20, y + 8, 2, 3);
+}
+
+function drawFan(fan, colors) {
+  const direction = Math.sign(fan.speed);
+  const x = fan.x + direction * 24;
+  const y = fan.y - 24;
+  const runningTime = fan.period
+    ? Math.floor(level.time / fan.period) * fan.active + Math.min(level.time % fan.period, fan.active)
+    : level.time;
+  ctx.fillStyle = colors.muted;
+  ctx.fillRect(x - 4, y + 15, 8, 9);
+  ctx.fillRect(x - 3, fan.y, 6, Math.max(0, GROUND - fan.y));
+  ctx.beginPath();
+  ctx.arc(x, y, 20, 0, Math.PI * 2);
+  ctx.fillStyle = colors.sand;
+  ctx.fill();
+  ctx.strokeStyle = colors.ink;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(runningTime * 9 * direction);
+  ctx.fillStyle = colors.ground;
+  for (let i = 0; i < 3; i++) {
+    ctx.rotate(Math.PI * 2 / 3);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(3, -19, 13, -12);
+    ctx.quadraticCurveTo(16, -5, 0, 0);
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = colors.ink;
+  ctx.fill();
+}
+
+function drawCheckpoint(checkpoint, colors) {
+  ctx.fillStyle = colors.ink;
+  ctx.fillRect(checkpoint.x, checkpoint.y, 3, checkpoint.h);
+  ctx.fillStyle = checkpoint.pressed ? colors.muted : colors.door;
+  ctx.fillRect(checkpoint.x + 3, checkpoint.y, checkpoint.w - 3, 12);
 }
 
 function drawButton(button, colors) {
@@ -846,12 +1016,9 @@ function hudText(text, x, y, font, color, align, colors) {
   ctx.fillText(text, x, y);
 }
 
-// The bonus levels don't count. The HUD will happily say "LEVEL 13 / 11".
-const ADVERTISED_LEVELS = LEVELS.filter(def => !def.bonus).length;
-
 function drawHud(colors) {
   const def = level.def;
-  hudText(`LEVEL ${level.index + 1} / ${ADVERTISED_LEVELS} · ${def.name.toUpperCase()}`, 16, 22, `800 12px ${HUD_FONT}`, colors.muted, 'left', colors);
+  hudText(`LEVEL ${level.index + 1} / ${LEVELS.length} · ${def.name.toUpperCase()}`, 16, 22, `800 12px ${HUD_FONT}`, colors.muted, 'left', colors);
   // On the words level the hint line is made of real, falling words, so
   // other messages go one line lower.
   const wordsHome = def.wordsHint;

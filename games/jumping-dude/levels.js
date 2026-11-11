@@ -1,16 +1,23 @@
-// Jumping Dude Game: the 11 levels (and 5 bonus levels), as data the engine in game.js runs.
+// Jumping Dude Game levels, as data the engine in game.js runs.
 //
 // Each level is a list of "things" (ground, spikes, springs, doors...). A thing
 // can carry actions that fire once when their trigger happens:
-//   on:  'start' | 'stand' (dude stands on it) | 'touch' |
-//        { zone: [x, y, w, h], signal: 'a', signals: ['a', 'b'], after: index }
+//   on:  'start' | 'stand' (dude stands on it) | 'leave' | 'touch' |
+//        { zone: [x, y, w, h], signal: 'a', unlessSignal: 'b', signals: ['a', 'b'], anySignals: ['a', 'b'], lowPlatforms: ['a', 'b'], after: index }
 //        (every condition given must hold; `after` waits for another action
 //        on the same thing to finish)
 //   do:  'fall' | 'move' (dx/dy or to: [x, floorY]) | 'appear' | 'vanish' | 'reverse' |
 //        'tilt' (poles only: to an angle in degrees, 0 is upright) | 'none'
-//   plus delay, say, sayAfter, emit, and move options time/arc/ease/back/loop.
+//   plus delay, say, sayAfter, emit, and move options time/arc/semicircle/ease/back/loop.
+//   A move's back.signal waits for a signal and can reverse the outgoing move early.
 // Hidden solids with no 'appear' action are invisible blocks: solid, and they
 // show themselves once touched.
+// Solids can also have sticky (seconds), jumpDelay (seconds), sink {depth, speed, riseSpeed, id, tolerance},
+// mimic {min, max, factor}, blink {on, off, phase}, or oneWay properties.
+// Fans push horizontally within the height of their visible blades until blocked by a solid;
+// fake keys and checkpoints emit signals.
+// A solid's belt has speed and sides {top, right, bottom, left}; each side's
+// direction is 1 (right/down) or -1 (left/up).
 //
 // The canvas is 800 x 400 and the ground surface is at y = 340.
 
@@ -52,25 +59,22 @@ const LEVELS = (() => {
 
   return [
     {
-      name: 'Trust Me',
-      hint: 'Get to the door. Easy.',
-      cleared: 'Only 10 more to go.',
-      spawn: 70,
+      name: 'Encore',
+      hint: 'You know how this goes. Right?',
+      cleared: 'Take a bow.',
+      spawn: 60,
       things: [
-        sign(130, 'trust me'),
-        ground(0, 200),
-        solid(200, G, 40, 60, { actions: [crumble()] }),
-        ground(240, 290),
-        // Once the door has fled, this bit of floor drops away under the dude on the walk back.
-        solid(530, G, 60, 60, { actions: [{ on: { zone: [530, G - 10, 60, 10], signal: 'door-fled' }, do: 'fall', say: 'Mind the gap.' }] }),
-        ground(590, 210),
-        spikes(380, G, 60, { hidden: true, actions: [{ on: { zone: [376, 0, 64, 400] }, do: 'appear' }] }),
-        dropBlock(600, 568),
+        ground(0, 250),
+        solid(310, G, 40, 60, { actions: [crumble(0.06)] }),
+        ground(350, 450),
+        spring(520, -950),
+        platform(300, 150, 120),
+        dropBlock(640, 608),
         door(740, G, {
-          actions: [{
-            on: at(690), do: 'move', to: [22, G], arc: 150, time: 0.8, emit: 'door-fled',
-            say: 'Ha. No.', sayAfter: 'The door is back at the start now. Have a nice walk.'
-          }]
+          actions: [
+            { on: at(690), do: 'move', to: [340, 150], arc: 120, time: 0.8, say: 'Encore!' },
+            { on: { zone: [300, 60, 120, 92], after: 0 }, do: 'move', to: [22, G], arc: 150, time: 0.9, say: 'One more time, with feeling.' }
+          ]
         })
       ]
     },
@@ -215,35 +219,38 @@ const LEVELS = (() => {
       ]
     },
     {
-      name: 'Encore',
-      hint: 'You know how this goes. Right?',
-      cleared: 'Take a bow.',
-      spawn: 60,
+      name: 'Trust Me',
+      hint: 'Get to the door. Easy.',
+      cleared: 'The door has trust issues.',
+      spawn: 70,
       things: [
-        ground(0, 250),
-        solid(310, G, 40, 60, { actions: [crumble(0.06)] }),
-        ground(350, 450),
-        spring(520, -950),
-        platform(300, 150, 120),
-        dropBlock(640, 608),
+        sign(130, 'trust me'),
+        ground(0, 200),
+        solid(200, G, 40, 60, { actions: [crumble()] }),
+        ground(240, 290),
+        // Once the door has fled, this bit of floor drops away under the dude on the walk back.
+        solid(530, G, 60, 60, { actions: [{ on: { zone: [530, G - 10, 60, 10], signal: 'door-fled' }, do: 'fall', say: 'Mind the gap.' }] }),
+        ground(590, 210),
+        spikes(380, G, 60, { hidden: true, actions: [{ on: { zone: [376, 0, 64, 400] }, do: 'appear' }] }),
+        dropBlock(600, 568),
         door(740, G, {
-          actions: [
-            { on: at(690), do: 'move', to: [340, 150], arc: 120, time: 0.8, say: 'Encore!' },
-            { on: { zone: [300, 60, 120, 92], after: 0 }, do: 'move', to: [22, G], arc: 150, time: 0.9, say: 'One more time, with feeling.' }
-          ]
+          actions: [{
+            on: at(690), do: 'move', to: [22, G], arc: 150, time: 0.8, emit: 'door-fled',
+            say: 'Ha. No.', sayAfter: 'The door is back at the start now. Have a nice walk.'
+          }]
         })
       ]
     },
     {
-      name: 'The Last Door',
-      hint: 'Last level. The door is right there.',
-      cleared: 'You beat the Jumping Dude Game.',
+      name: 'Out of Reach',
+      hint: 'The door is right there.',
+      cleared: 'You found the key to success. And a door.',
       spawn: 60,
       things: [
         ground(0, 800),
         door(150, G, {
           locked: true,
-          actions: [{ on: at(120), do: 'move', to: [720, 100], arc: 180, time: 1, say: 'Did you really think the last one would be easy?' }]
+          actions: [{ on: at(120), do: 'move', to: [720, 100], arc: 180, time: 1, say: 'Did you really think it would be that easy?' }]
         }),
         solid(170, 260, 40, 16, { hidden: true, twinkle: true }),
         platform(40, 180, 80),
@@ -257,12 +264,10 @@ const LEVELS = (() => {
       ]
     },
 
-    // ---- Bonus levels. Level 11 says it's the end. It isn't.
     {
-      name: 'Just Kidding',
-      bonus: true,
-      hint: 'Bonus level! Okay, THIS is the last one.',
-      cleared: 'Okay, that was the last one. Probably.',
+      name: 'Moving On',
+      hint: 'Mind the moving platforms.',
+      cleared: 'You really went places.',
       spawn: 40,
       things: [
         ground(0, 120),
@@ -279,7 +284,6 @@ const LEVELS = (() => {
     },
     {
       name: 'Run',
-      bonus: true,
       hint: 'Take your time.',
       cleared: 'It was a very slow wall, to be fair.',
       spawn: 60,
@@ -299,7 +303,6 @@ const LEVELS = (() => {
     },
     {
       name: 'Flip Flop',
-      bonus: true,
       hint: 'Left is left. For now.',
       cleared: 'Your fingers may now uncross.',
       spawn: 60,
@@ -317,10 +320,9 @@ const LEVELS = (() => {
       ]
     },
     {
-      name: 'The Actual Last Door',
-      bonus: true,
-      hint: 'Seriously. Last one.',
-      cleared: 'You actually beat the Jumping Dude Game. We checked. Mostly.',
+      name: 'The Long Way Back',
+      hint: 'The key is over there. The door is not.',
+      cleared: 'Turns out you can go home again.',
       spawn: 40,
       things: [
         ground(0, 300),
@@ -342,9 +344,8 @@ const LEVELS = (() => {
     },
     {
       name: 'Double Trouble',
-      bonus: true,
       hint: 'Every trap here only works once. Promise.',
-      cleared: 'Okay. NOW you have beaten the Jumping Dude Game.',
+      cleared: 'Double the trouble, double the victory.',
       spawn: 40,
       things: [
         ground(0, 800),
@@ -371,6 +372,385 @@ const LEVELS = (() => {
           ]
         }),
         door(750)
+      ]
+    },
+    {
+      name: 'Second Guess',
+      hint: 'Watch where you land.',
+      cleared: 'Your landing privileges have been restored.',
+      spawn: 50,
+      things: [
+        ground(0, 500),
+        ground(570, 230),
+        spikes(180, G, 40),
+        spikes(220, G, 40, {
+          hidden: true,
+          actions: [{ on: { zone: [175, 0, 60, 300] }, do: 'appear', say: 'Surprise landing!' }]
+        }),
+        dropBlock(400, 365),
+        spikes(630, G, 60),
+        door(750)
+      ]
+    },
+    {
+      name: 'Keys to Chaos',
+      hint: 'A key, two buttons. What could go wrong?',
+      cleared: 'That gate was very impressed.',
+      spawn: 60,
+      things: [
+        ground(0, 800),
+        platform(85, 200, 80),
+        platform(225, 270, 60),
+        key(105, 200),
+        zone([{ on: { signal: 'key' }, do: 'reverse', say: 'Key acquired. Controls confiscated.' }]),
+        button(150, 'a'),
+        spikes(330, G, 120),
+        platform(365, 250, 50, { press: 'b', actions: [crumble(0.35)] }),
+        zone([{ on: { signals: ['a', 'b'] }, do: 'none', emit: 'gate-close', say: 'Both buttons? Gate closed.' }]),
+        solid(570, 0, 24, 340, {
+          look: 'gate',
+          actions: [{ on: { anySignals: ['a', 'b'] }, do: 'move', dy: -300, time: 0.9, back: { signal: 'gate-close', time: 0.9 }, say: 'The gate is open. You are welcome.' }]
+        }),
+        dropBlock(670, 638),
+        door(750, G, { locked: true })
+      ]
+    },
+    {
+      name: 'No Standing',
+      hint: 'The platforms prefer short visits.',
+      cleared: 'Please rate your platforms before they leave.',
+      spawn: 45,
+      things: [
+        ground(0, 150),
+        ground(150, 520),
+        spikes(150, G, 520),
+        platform(175, 290, 50, { actions: [crumble(0.35)] }),
+        platform(290, 250, 50, { actions: [crumble(0.3)] }),
+        platform(410, 220, 50, { actions: [crumble(0.3)] }),
+        platform(535, 260, 55, { actions: [ride('start', 70, 1.1)] }),
+        ground(670, 130),
+        door(752)
+      ]
+    },
+    {
+      name: 'Rush and Crush',
+      hint: 'Please remain calm under pressure.',
+      cleared: 'Only slightly flattened.',
+      spawn: 50,
+      things: [
+        ground(0, 800),
+        solid(200, 0, 430, 200),
+        solid(260, 200, 50, 20, { look: 'crusher', actions: [slam(at(230), { delay: 0.12 })] }),
+        solid(390, 200, 50, 20, { look: 'crusher', actions: [slam('start', { time: 0.12, back: { after: 0.35, time: 0.5 }, loop: 0.6 })] }),
+        solid(520, 200, 50, 20, {
+          look: 'crusher',
+          actions: [slam(at(490), { delay: 0.1 }), slam({ zone: [520, 0, 50, 400], after: 0 }, { delay: 0.08 })]
+        }),
+        spikes(600, G, 40, {
+          hidden: true,
+          actions: [{ on: at(575), do: 'appear', say: 'A little something for the exit.' }]
+        }),
+        spikes(650, G, 50),
+        door(750)
+      ]
+    },
+    {
+      name: 'No Time to Think',
+      hint: 'Keep moving. Preferably in the right direction.',
+      cleared: 'You outran the wall. It took that personally.',
+      spawn: 50,
+      things: [
+        ground(0, 200),
+        ground(270, 530),
+        spikes(-36, 60, 30, {
+          dir: 'right', y: 60, h: 280, quip: 'The wall caught up.',
+          actions: [{ on: at(110), do: 'move', dx: 900, time: 900 / 135, ease: 'linear', say: 'Go. Now.' }]
+        }),
+        spikes(345, G, 45),
+        dropBlock(490, 458),
+        spikes(570, G, 50),
+        zone([{ on: inAir(580), do: 'reverse', say: 'Wrong way!' }]),
+        door(750)
+      ]
+    },
+    {
+      name: 'Low Expectations',
+      hint: 'A little jump goes a long way. Tap, do not hold.',
+      cleared: 'You kept a low profile.',
+      spawn: 50,
+      things: [
+        ground(0, 800),
+        spikes(190, G, 50),
+        spikes(400, G, 50),
+        spikes(140, 225, 350, { dir: 'down' }),
+        door(750)
+      ]
+    },
+    {
+      name: 'Round Trip',
+      hint: 'Two blocks, one very suspicious return journey.',
+      cleared: 'You caught the return trip.',
+      spawn: 60,
+      spawnY: 160,
+      things: [
+        solid(0, 160, 160, 240),
+        solid(230, 160, 40, 40, {
+          look: 'block',
+          actions: [
+            { on: { signal: 'second-block' }, do: 'move', to: [530, 200], time: 1.5, semicircle: true, back: { signal: 'left-second', time: 1.2 }, say: 'Going around.' }
+          ]
+        }),
+        solid(380, 160, 40, 40, {
+          look: 'block',
+          press: 'second-block',
+          actions: [{ on: 'leave', do: 'none', emit: 'left-second' }]
+        }),
+        solid(620, 250, 180, 150),
+        spikes(650, 250, 24, {
+          hidden: true,
+          actions: [{ on: { zone: [590, 130, 80, 120] }, do: 'appear' }]
+        }),
+        door(740, 250)
+      ]
+    },
+    {
+      name: 'Late and Fragile',
+      hint: 'Watch your step. And the ceiling.',
+      cleared: 'Your timing has been noted.',
+      spawn: 50,
+      things: [
+        ground(0, 140),
+        ground(140, 50, { jumpDelay: 0.25 }),
+        ground(190, 610),
+        spikes(280, G, 40),
+        spikes(430, G, 40, { hidden: true, actions: [{ on: at(400), do: 'appear' }] }),
+        solid(480, 65, 40, 40, {
+          look: 'block',
+          actions: [{ on: { zone: [390, 0, 155, 245] }, do: 'fall', vy: 600, g: 4000, say: 'That ceiling was load-bearing.' }]
+        }),
+        spikes(570, G, 40),
+        door(750)
+      ]
+    },
+    {
+      name: 'Stay a While',
+      hint: 'Some platforms take their time.',
+      cleared: 'Thanks for sticking around.',
+      spawn: 50,
+      things: [
+        ground(0, 150),
+        ground(150, 500),
+        spikes(150, G, 500),
+        platform(180, 290, 60, { sticky: 0.65 }),
+        platform(310, 260, 55, { sink: { depth: 55, speed: 65 } }),
+        platform(440, 250, 55, { actions: [crumble(0.35)] }),
+        platform(555, 270, 55),
+        ground(650, 150),
+        door(750)
+      ]
+    },
+    {
+      name: 'Copy and Gust',
+      hint: 'Your movements are being watched.',
+      cleared: 'The wind would like a rematch.',
+      spawn: 50,
+      things: [
+        ground(0, 160),
+        ground(160, 490),
+        spikes(160, G, 490),
+        platform(200, 290, 80, { mimic: { min: 200, max: 260, factor: 0.25 } }),
+        platform(400, 250, 55),
+        platform(535, 270, 55),
+        { kind: 'fan', x: 0, y: G, speed: 110, period: 2, active: 1.4 },
+        ground(650, 150),
+        spikes(700, G, 24, { hidden: true, actions: [{ on: at(660), do: 'appear' }] }),
+        door(750)
+      ]
+    },
+    {
+      name: 'Fine Print',
+      hint: 'The checkpoint looks official.',
+      cleared: 'Read the terms and conditions.',
+      spawn: 50,
+      things: [
+        ground(0, 190),
+        ground(190, 420, { actions: [{ on: { ...at(190), unlessSignal: 'checkpoint' }, do: 'fall' }] }),
+        ground(610, 190),
+        { kind: 'checkpoint', x: 130, y: 290, w: 25, h: 50, signal: 'checkpoint' },
+        spikes(190, G, 420, {
+          hidden: true,
+          actions: [{ on: { signal: 'checkpoint' }, do: 'appear', say: 'Checkpoint denied. Floor revoked.' }]
+        }),
+        spikes(610, G, 190, {
+          hidden: true,
+          actions: [{ on: { ...at(190), unlessSignal: 'checkpoint' }, do: 'appear', say: 'Skipping the fine print has consequences.' }]
+        }),
+        platform(165, 280, 80, { oneWay: true }),
+        platform(290, 250, 60, { oneWay: true, blink: { on: 1.7, off: 1 } }),
+        platform(415, 230, 60, { oneWay: true, blink: { on: 1.7, off: 1, phase: 1.2 } }),
+        platform(540, 270, 70, { oneWay: true }),
+        dropBlock(700, 668),
+        door(750)
+      ]
+    },
+    {
+      name: 'Key Exchange',
+      hint: 'One of these keys is very convincing.',
+      cleared: 'Accept no substitutes.',
+      spawn: 50,
+      things: [
+        ground(0, 800),
+        spikes(200, G, 40),
+        platform(235, 270, 75),
+        platform(160, 200, 75),
+        platform(35, 130, 75),
+        spikes(215, 200, 20, {
+          hidden: true,
+          actions: [{ on: { zone: [215, 80, 40, 130] }, do: 'appear' }]
+        }),
+        spikes(35, 130, 14, {
+          hidden: true,
+          actions: [{ on: { zone: [35, 20, 105, 125] }, do: 'appear' }]
+        }),
+        key(55, 130, { fake: true }),
+        key(335, G, { hidden: true, actions: [{ on: { signal: 'fake-key' }, do: 'appear' }] }),
+        spikes(440, G, 40),
+        dropBlock(590, 558),
+        door(750, G, { locked: true })
+      ]
+    },
+    {
+      name: 'Belt It Out',
+      hint: 'Follow the arrows. Or fight them.',
+      cleared: 'You made the moving walkway work for you.',
+      spawn: 50,
+      things: [
+        ground(0, 160),
+        ground(160, 180, { belt: { speed: 170, sides: { top: 1 } } }),
+        ground(340, 460),
+        spikes(350, G, 50),
+        spikes(430, G, 40),
+        solid(490, 240, 100, 30, {
+          belt: { speed: 110, sides: { top: 1, right: 1, bottom: -1, left: -1 } }
+        }),
+        spikes(650, G, 40, { hidden: true, actions: [{ on: at(620), do: 'appear' }] }),
+        door(750)
+      ]
+    },
+    {
+      name: 'Under Pressure',
+      hint: 'Down is the new up. Tap to jump.',
+      cleared: 'Low enough for you?',
+      spawn: 50,
+      spawnY: 120,
+      things: [
+        solid(0, 120, 150, 280),
+        platform(195, 120, 120, { sink: { depth: 220, speed: 85 } }),
+        ground(345, 455),
+        spikes(315, 250, 160, { dir: 'down' }),
+        spikes(520, G, 40),
+        door(750)
+      ]
+    },
+    {
+      name: 'Balancing Act',
+      hint: 'The first platform opens the gate. Getting there is another matter.',
+      cleared: 'A balanced performance.',
+      spawn: 40,
+      spawnY: 120,
+      things: [
+        solid(0, 120, 135, 280),
+        platform(145, 120, 70, { sink: { id: 'left', depth: 210, speed: 120, riseSpeed: 8, tolerance: 0 } }),
+        platform(255, 120, 70, { sink: { id: 'right', depth: 210, speed: 120, riseSpeed: 8, tolerance: 15 } }),
+        ground(395, 405),
+        solid(565, 0, 24, 340, {
+          look: 'gate',
+          actions: [{ on: { lowPlatforms: ['left'] }, do: 'move', dy: -300, time: 0.9, say: 'Gate open. Good luck reaching it.' }]
+        }),
+        spikes(470, G, 40),
+        door(750)
+      ]
+    },
+    {
+      name: 'Blown Away',
+      hint: 'That gap looks a little ambitious.',
+      cleared: 'Precision, with a little help from the air.',
+      spawn: 50,
+      things: [
+        ground(0, 150),
+        { kind: 'fan', x: 0, y: 240, speed: 240 },
+        spikes(260, G, 80),
+        solid(340, G, 26, 60),
+        spikes(366, G, 70),
+        ground(460, 110),
+        solid(570, G, 60, 60, { actions: [{ on: inAir(540), do: 'fall', say: 'The landing is mostly optional.' }] }),
+        ground(630, 30),
+        solid(660, G, 60, 60, { actions: [{ on: inAir(540), do: 'fall' }] }),
+        ground(720, 80),
+        door(750)
+      ]
+    },
+    {
+      name: 'Up and Down',
+      hint: 'The key is right up there. Easy.',
+      cleared: 'What goes up must come down. And then jump again.',
+      spawn: 150,
+      things: [
+        ground(0, 800),
+        solid(120, 0, 16, 300),
+        solid(220, 60, 16, 240),
+        solid(272, 60, 16, 240),
+        platform(136, 270, 84, {
+          oneWay: true,
+          actions: [{ on: { zone: [136, 260, 84, 10] }, do: 'none', emit: 'first-platform' }]
+        }),
+        platform(136, 200, 84, {
+          oneWay: true,
+          actions: [{ on: { zone: [136, 170, 84, 10] }, do: 'none', emit: 'second-platform' }]
+        }),
+        platform(136, 130, 84, {
+          oneWay: true,
+          actions: [{ on: { zone: [136, 100, 84, 10] }, do: 'none', emit: 'third-platform' }]
+        }),
+        platform(136, 60, 84, {
+          oneWay: true,
+          actions: [{ on: { zone: [136, 50, 84, 10] }, do: 'none', emit: 'top-platform' }]
+        }),
+        spikes(136, 270, 42, {
+          hidden: true, actions: [{ on: { signal: 'first-platform' }, do: 'appear' }]
+        }),
+        spikes(178, 200, 42, {
+          hidden: true, actions: [{ on: { signal: 'second-platform' }, do: 'appear' }]
+        }),
+        spikes(136, 130, 42, {
+          hidden: true, actions: [{ on: { signal: 'third-platform' }, do: 'appear' }]
+        }),
+        spikes(136, 0, 84, {
+          dir: 'down', hidden: true, actions: [{ on: { signal: 'top-platform' }, do: 'appear' }]
+        }),
+        key(160, 60, {
+          actions: [{ on: { signal: 'first-platform' }, do: 'vanish' }]
+        }),
+        key(290, 172, {
+          hidden: true, actions: [
+            { on: { signal: 'first-platform' }, do: 'appear' },
+            { on: { signal: 'top-platform' }, do: 'move', to: [290, 302], time: 0.4 }
+          ]
+        }),
+        spikes(236, 190, 15, {
+          hidden: true, actions: [{ on: { zone: [236, 70, 36, 90], signal: 'top-platform' }, do: 'appear' }]
+        }),
+        spikes(257, 280, 15, {
+          hidden: true, actions: [
+            { on: { zone: [236, 160, 36, 65], signal: 'top-platform' }, do: 'appear' },
+            { on: { signal: 'key' }, do: 'vanish' }
+          ]
+        }),
+        spikes(288, 240, 36, {
+          dir: 'down', hidden: true,
+          actions: [{ on: { zone: [288, 306, 50, 34], signal: 'top-platform' }, do: 'appear' }]
+        }),
+        door(750, G, { locked: true })
       ]
     }
   ];
